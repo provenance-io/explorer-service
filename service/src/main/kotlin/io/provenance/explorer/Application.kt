@@ -7,10 +7,8 @@ import io.provenance.explorer.config.ExplorerProperties
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
 import org.springframework.boot.builder.SpringApplicationBuilder
-import org.springframework.boot.context.properties.ConfigurationPropertiesScan
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.ComponentScan
-import org.springframework.context.annotation.Configuration
 import springfox.documentation.swagger2.annotations.EnableSwagger2
 import java.util.*
 

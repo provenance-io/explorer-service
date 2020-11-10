@@ -125,7 +125,7 @@ bootRun {
 }
 
 springBoot {
-    mainClassName = 'io.provenance.explorer.Application'
+    mainClassName = 'io.provenance.explorer.ApplicationKt'
 }
 
 // Disable spring boot dev tools when building for production
