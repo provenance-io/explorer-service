@@ -1,0 +1,104 @@
+wrapper {
+    distributionType = 'all'
+    version = '4.10.2'
+}
+
+buildscript {
+    rootProject.apply {
+        from(rootProject.file("versions.gradle"))
+    }
+    repositories {
+        jcenter()
+        mavenCentral()
+        maven { url "https://mvnrepository.com/artifact" }
+        maven { url "https://repo.spring.io/plugins-release" }
+        maven { url "https://dl.bintray.com/kotlin/exposed" }
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jetbrains.kotlin:kotlin-allopen:$kotlin_version"
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:$springboot_version"
+        classpath "org.jetbrains.kotlin:kotlin-allopen:$kotlin_version"
+        classpath 'io.spring.gradle:propdeps-plugin:0.0.10.RELEASE'
+
+        // ლ(ಠ益ಠლ) JDK9+
+        classpath 'com.sun.xml.bind:jaxb-impl:2.3.1'
+        classpath 'com.sun.xml.bind:jaxb-core:2.3.0.1'
+        classpath 'javax.xml.bind:jaxb-api:2.3.1'
+        classpath 'javax.activation:activation:1.1.1'
+    }
+}
+
+subprojects {
+    apply plugin: 'java-library'
+    apply plugin: 'idea'
+    apply plugin: 'eclipse'
+    apply plugin: 'kotlin'
+
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+
+    group 'io.provenance.explorer'
+
+    // read version from jenkins/manually provided 'artifactVersion', fall back to snapshot (local builds)
+    version = project.hasProperty("artifactVersion") ? artifactVersion : '1.0-SNAPSHOT'
+
+    // actually fix "Calls to static methods in Java interfaces are prohibited in JVM target 1.6" everywhere
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+        kotlinOptions {
+            jvmTarget = "1.8"
+        }
+    }
+
+    repositories {
+        mavenLocal()
+        maven {
+            url "https://nexus.figure.com/repository/figure"
+            credentials {
+                username = project.hasProperty("nexusUser") ? nexusUser : System.getenv("NEXUS_USER")
+                password = project.hasProperty("nexusPass") ? nexusPass : System.getenv("NEXUS_PASS")
+            }
+        }
+        mavenCentral()
+        // For KEthereum library
+        maven { url 'https://jitpack.io' }
+        jcenter()
+        maven { url "https://mvnrepository.com/artifact" }
+        maven { url "https://repo.spring.io/plugins-release" }
+        maven { url "https://maven.java.net/content/groups/public" }
+        maven { url "https://oss.sonatype.org/content/repositories/snapshots" }
+        maven { url "https://dl.bintray.com/kotlin/exposed" }
+    }
+
+    tasks.withType(Javadoc).all { enabled = false }
+
+    dependencies {
+
+        implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+
+    }
+
+    test {
+        useJUnitPlatform {
+            excludeTags 'intTest'
+            includeEngines 'junit-jupiter', 'junit-vintage'
+        }
+
+        failFast = true
+    }
+
+    task testJar(type: Jar) {
+        classifier = 'test'
+        from sourceSets.test.output
+    }
+
+//    // include the version within the manifest in order to allow for consumers to detect the version at runtime
+//    jar {
+//        manifest {
+//            attributes("Implementation-Version": version)
+//            attributes("Implementation-Title": project.name)
+//            attributes("Git-Revision": getCommitId())
+//            attributes("Git-Short-Revision": getShortCommitId())
+//        }
+//    }
+}

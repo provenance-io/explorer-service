@@ -1,0 +1,27 @@
+buildscript {
+    rootProject.apply {
+        from(rootProject.file("versions.gradle"))
+    }
+}
+
+plugins {
+    id 'org.flywaydb.flyway' version '6.4.4'
+}
+
+apply plugin: "org.flywaydb.flyway"
+
+dependencies {
+    // flyway
+    api group: 'org.flywaydb', name: 'flyway-core', version: "$flyway_version"
+}
+
+flyway {
+    url = 'jdbc:postgresql://127.0.0.1:5432/provenanceexplorer'
+    driver = 'org.postgresql.Driver'
+    user = 'postgres'
+    password = 'password1'
+    schemas = ['provenancekeystone']
+    locations = ["filesystem:${projectDir}/src/main/resources/db/migration"]
+    validateOnMigrate = false
+    outOfOrder = false
+}
