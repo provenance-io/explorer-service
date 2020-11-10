@@ -108,7 +108,6 @@ dependencies {
     api group: 'org.jetbrains.exposed', name: 'exposed', version: "$exposed_version"
 
     testImplementation group: "org.springframework.boot", name: "spring-boot-starter-test", version: "$springboot_version"
-    testCompile group: 'com.h2database', name: 'h2', version: '1.4.200'
 }
 
 dependencyManagement {

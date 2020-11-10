@@ -68,6 +68,9 @@ spec:
           test: us.gcr.io/figure-development/provenance-service-explorer:latest
         db:
           enabled: true
+          separateDbInstance:
+            prod: false
+            test: false
           name:
             prod: provenanceexplorer
             test: provenanceexplorer
@@ -88,6 +91,9 @@ spec:
         env:
           - name: JAVA_OPTS
             value: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+        envFrom:
+          - secretRef:
+              name: common
         configMap:
           test:
             PROVENANCE_EXPLORER_PB_URL: https://test.provenance.io/explorer/sentinel/
