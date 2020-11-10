@@ -96,6 +96,7 @@ spec:
               name: common
         configMap:
           test:
+            SERVICE_ENVIRONMENT: apis
             PROVENANCE_EXPLORER_PB_URL: https://test.provenance.io/explorer/sentinel/
         readinessProbe:
           path: /actuator/health
