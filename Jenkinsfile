@@ -5,7 +5,7 @@ def common
 pipeline {
     agent any
     tools{
-        jdk 'JDK12'
+        jdk 'JDK11'
     }
 
     stages {
