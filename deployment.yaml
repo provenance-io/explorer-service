@@ -91,9 +91,6 @@ spec:
         configMap:
           test:
             PROVENANCE_EXPLORER_PB_URL: https://test.provenance.io/explorer/sentinel/
-          dev:
-          prod:
-          common:
         readinessProbe:
           path: /actuator/health
           periodSeconds: 3
