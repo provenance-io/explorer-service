@@ -1,6 +1,5 @@
 package io.provenance.explorer.config
 
-import io.provenance.core.extensions.toUuidProv
 import io.provenance.explorer.config.filters.HeaderInterceptFilter
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration
@@ -27,21 +26,21 @@ class SecurityConfig(val serviceProperties: ServiceProperties) : WebSecurityConf
 
     @Throws(Exception::class)
     override fun configure(http: HttpSecurity) {
+        http.authorizeRequests()
+                .antMatchers("/api/v1/**").authenticated()
+                .antMatchers("/swagger*/**").permitAll()
+                .antMatchers("/webjars/**").permitAll()
+                .antMatchers("/v2/api-docs").permitAll()
+                .antMatchers("/actuator/**").permitAll()
+                .anyRequest().authenticated()
+                .and()
+                .csrf().disable()
+                .addFilterBefore(HeaderInterceptFilter(), BasicAuthenticationFilter::class.java)
         http.sessionManagement()
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
                 .csrf().disable()
                 .headers().frameOptions().disable()
-
-        http.authorizeRequests()
-                .antMatchers("/swagger*/**").permitAll()
-                .antMatchers("/webjars/**").permitAll()
-                .antMatchers("/v2/api-docs").permitAll()
-                .antMatchers("/api/v1/**").permitAll()
-                .anyRequest()
-                .authenticated()
-                .and()
-                .addFilterBefore(HeaderInterceptFilter(), BasicAuthenticationFilter::class.java)
     }
 
     @Throws(Exception::class)
@@ -91,6 +90,7 @@ class ExplorerAuthenticationManager(private val serviceProperties: ServiceProper
             if (explorerAuthentication.uuid.toString().isNullOrEmpty()) {
                 throw BadCredentialsException("Invalid authentication object")
             }
+            explorerAuthentication.isAuthenticated = true
             explorerAuthentication
         } catch (e: Exception) {
             throw BadCredentialsException("Invalid authentication object")
