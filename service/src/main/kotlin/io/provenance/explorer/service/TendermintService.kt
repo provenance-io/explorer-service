@@ -32,7 +32,7 @@ class TendermintService(private val explorerProperties: ExplorerProperties,
     fun getStatus() = OBJECT_MAPPER.readValue(getRestResult("${explorerProperties.pbUrl}status").toJsonString(), StatusResult::class.java)
 
     fun getRestResult(url: String) = let {
-        if(!url.contains("status")) logger.info("GET request to $url")
+        if (!url.contains("status")) logger.info("GET request to $url")
         restTemplate.getForEntity(url, JsonNode::class.java).let { result ->
             if (result.statusCode != HttpStatus.OK || result.body.has("error") || !result.body.has("result"))
                 throw Exception("Failed to calling $url status code: ${result.statusCode} response body: ${result.body}")
@@ -66,7 +66,8 @@ class TendermintService(private val explorerProperties: ExplorerProperties,
         result
     }
 
-    fun getBlockAtHeight(height: Long) = runBlocking(Dispatchers.IO) {
+    fun getBlockAtHeight(height: Long?) = runBlocking(Dispatchers.IO) {
+        val height = if (height == null) latestHeight.get() else height!!
         val blockResponse = async { getBlock(height) }
         val validatorsResponse = async { getValidators(height) }
         hydrateBlock(blockResponse.await(), validatorsResponse.await())
@@ -81,7 +82,7 @@ class TendermintService(private val explorerProperties: ExplorerProperties,
                 "",
                 validatorsResponse.validators.sumBy { v -> v.votingPower.toInt() },
                 validatorsResponse.count.toInt(),
-                if(blockResponse.block.data.txs == null) 0 else blockResponse.block.data.txs.size,
+                if (blockResponse.block.data.txs == null) 0 else blockResponse.block.data.txs.size,
                 0,
                 0,
                 0)
@@ -114,11 +115,11 @@ class TendermintService(private val explorerProperties: ExplorerProperties,
     fun getRecentTransactions(count: Int, page: Int, sort: String) = let {
         var height = latestHeight.get() - 1000 * (page + 1)
         var recentTxs = mutableListOf<Transaction>()
-        while(count != recentTxs.size) {
+        while (count != recentTxs.size) {
             logger.info("Getting recent transactions height: $height count: $count page: $page sort: $sort")
             val jsonString = getRestResult(recentTransactionUrl(height, count, page)).toString()
             val txs = OBJECT_MAPPER.readValue(jsonString, TXSearchResult::class.java).txs
-            if(txs.size == count)recentTxs.addAll(txs)
+            if (txs.size == count) recentTxs.addAll(txs)
             height -= 1000
         }
         val result = recentTxs.map { tx ->
@@ -129,7 +130,7 @@ class TendermintService(private val explorerProperties: ExplorerProperties,
         result
     }
 
-    private fun recentTransactionUrl(height: Long, count:Int, page: Int) = "${explorerProperties.pbUrl}tx_search?query=\"tx.height>$height\"&page=$page&per_page=$count&order_by=\"desc\""
+    private fun recentTransactionUrl(height: Long, count: Int, page: Int) = "${explorerProperties.pbUrl}tx_search?query=\"tx.height>$height\"&page=$page&per_page=$count&order_by=\"desc\""
 
     fun hydrateRecentTransaction(txResult: Transaction, block: BlockResponse) = let {
         val eventType = txResult.txResult.events[1].type

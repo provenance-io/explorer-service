@@ -42,7 +42,7 @@ spec:
             proxy:
               path: /api
             route:
-              path: /provenance-service-explorer/secured
+              path: /explorer/secured
               strip_path: true
               preserve_host: true
             jwt:

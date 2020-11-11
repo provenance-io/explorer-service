@@ -34,7 +34,7 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     @ApiOperation(value = "Return block at specified height")
     @GetMapping(value = ["/block"],
             produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun blockHeight(@RequestParam(required = true) height: Long): ResponseEntity<Any> = ResponseEntity.ok(tendermintService.getBlockAtHeight(height))
+    fun blockHeight(@RequestParam(required = false) height: Long?): ResponseEntity<Any> = ResponseEntity.ok(tendermintService.getBlockAtHeight(height))
 
     @ApiOperation(value = "Return transaction by hash value")
     @GetMapping(value = ["/tx"],
