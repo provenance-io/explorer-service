@@ -46,10 +46,9 @@ open class TendermintServiceTest {
     @Ignore("TODO turn into integration tests")
     fun `should return most recent transactions` () {
         val result = mutableListOf<RecentTx>()
-        result.addAll(tendermintService.getRecentTransactions(10, 0, ""))
-        result.addAll(tendermintService.getRecentTransactions(10, 1, ""))
-        result.addAll(tendermintService.getRecentTransactions(10, 2, ""))
-        Assert.assertEquals(30, result.count())
+        result.addAll(tendermintService.getRecentTransactions(30, 0, ""))
+        result.addAll(tendermintService.getRecentTransactions(30, 1, ""))
+        Assert.assertEquals(60, result.count())
     }
 
 

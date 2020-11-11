@@ -35,7 +35,6 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
             ResponseEntity<Any> = if (user() != serviceProperties.adminUUID.toUuidProv()) {
         throw AccessDeniedException("access denied")
     } else {
-
         ResponseEntity.ok(tendermintService.getRecentTransactions(count, page, sort))
     }
 

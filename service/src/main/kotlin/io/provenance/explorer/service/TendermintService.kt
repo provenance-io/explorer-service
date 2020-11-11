@@ -32,6 +32,7 @@ class TendermintService(private val explorerProperties: ExplorerProperties,
     fun getStatus() = OBJECT_MAPPER.readValue(getRestResult("${explorerProperties.pbUrl}status").toJsonString(), StatusResult::class.java)
 
     fun getRestResult(url: String) = let {
+        if(!url.contains("status")) logger.info("GET request to $url")
         restTemplate.getForEntity(url, JsonNode::class.java).let { result ->
             if (result.statusCode != HttpStatus.OK || result.body.has("error") || !result.body.has("result"))
                 throw Exception("Failed to calling $url status code: ${result.statusCode} response body: ${result.body}")
@@ -111,18 +112,24 @@ class TendermintService(private val explorerProperties: ExplorerProperties,
     }
 
     fun getRecentTransactions(count: Int, page: Int, sort: String) = let {
-        val height = latestHeight.get() - 1000 * (page + 1)
-        val query = "\"tx.height>$height\"&page=$page&per_page=$count&order_by=\"desc\""
-        val url = "${explorerProperties.pbUrl}tx_search?query=$query"
-        val jsonString = getRestResult(url).toString()
-        val result = OBJECT_MAPPER.readValue(jsonString, TXSearchResult::class.java)
-                .txs.map { tx ->
-                    val txBlock = getBlock(tx.height.toLong())
-                    hydrateRecentTransaction(tx, txBlock)
-                }
-        if (!sort.isNullOrEmpty() && sort.toLowerCase() == "asc") result.reversed()
+        var height = latestHeight.get() - 1000 * (page + 1)
+        var recentTxs = mutableListOf<Transaction>()
+        while(count != recentTxs.size) {
+            logger.info("Getting recent transactions height: $height count: $count page: $page sort: $sort")
+            val jsonString = getRestResult(recentTransactionUrl(height, count, page)).toString()
+            val txs = OBJECT_MAPPER.readValue(jsonString, TXSearchResult::class.java).txs
+            if(txs.size == count)recentTxs.addAll(txs)
+            height -= 1000
+        }
+        val result = recentTxs.map { tx ->
+            val txBlock = getBlock(tx.height.toLong())
+            hydrateRecentTransaction(tx, txBlock)
+        }
+        if (!sort.isNullOrEmpty() && sort.toLowerCase() == "asc") recentTxs.reversed()
         result
     }
+
+    private fun recentTransactionUrl(height: Long, count:Int, page: Int) = "${explorerProperties.pbUrl}tx_search?query=\"tx.height>$height\"&page=$page&per_page=$count&order_by=\"desc\""
 
     fun hydrateRecentTransaction(txResult: Transaction, block: BlockResponse) = let {
         val eventType = txResult.txResult.events[1].type
