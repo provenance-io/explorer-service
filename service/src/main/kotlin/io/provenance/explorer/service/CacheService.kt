@@ -96,7 +96,7 @@ class CacheService() {
                 it[hitCount] = tx[hitCount] + 1
                 it[lastHit] = DateTime.now()
             }
-            jsonNode = tx[ValidatorsCacheTable.validators]
+            jsonNode = tx[TransactionCacheTable.tx]
         }
         jsonNode
     }

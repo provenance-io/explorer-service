@@ -39,13 +39,13 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
             ResponseEntity<Any> = ResponseEntity.ok(explorerService.getRecentBlocks(count, page, sort))
 
     @ApiOperation(value = "Returns recent validators")
-    @GetMapping(value = ["/recent/validators/"],
+    @GetMapping(value = ["/recent/validators"],
             produces = [MediaType.APPLICATION_JSON_VALUE])
     fun validators(@RequestParam(required = false, defaultValue = "10") count: Int, @RequestParam(required = false, defaultValue = "0") page: Int, @RequestParam(required = false, defaultValue = "desc") sort: String):
             ResponseEntity<Any> = ResponseEntity.ok(explorerService.getRecentValidators(count, page, sort))
 
     @ApiOperation(value = "Returns validator by hash")
-    @GetMapping(value = ["/validator/"],
+    @GetMapping(value = ["/validator"],
             produces = [MediaType.APPLICATION_JSON_VALUE])
     fun validator(@RequestParam(required = true) blockHeight: Int):
             ResponseEntity<Any> = ResponseEntity.ok(explorerService.getValidators(blockHeight))
