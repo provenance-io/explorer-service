@@ -22,7 +22,7 @@ spec:
         services:
           - name: provenance-service-explorer
             proxy:
-              path: /api
+              path: /
             route:
               path: /api/explorer
               strip_path: true
@@ -40,7 +40,7 @@ spec:
                     - apikey
           - name: provenance-service-explorer-secured
             proxy:
-              path: /api
+              path: /
             route:
               path: /explorer/secured
               strip_path: true

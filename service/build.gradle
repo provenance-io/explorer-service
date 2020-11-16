@@ -55,10 +55,6 @@ dependencies {
 
     api project(":database")
 
-// provenance
-//    api group: 'io.provenance', name: 'core-encryption', version: "$provenance_core", changing: true
-//    api group: 'io.provenance', name: 'core-proto', version: "$provenance_core", changing: true
-//    api group: 'io.provenance', name: 'core-client', version: "$provenance_core", changing: true
     api group: 'io.provenance', name: 'core-db-exposed', version: "$provenance_core", changing: true, force: true
     api group: 'io.provenance', name: 'core-domain', version: "$provenance_core", changing: true
     api group: 'io.provenance', name: 'core-extensions', version: "$provenance_core", changing: true
@@ -79,7 +75,6 @@ dependencies {
     api group: 'org.springframework.boot', name: 'spring-boot-starter-validation', version: "$springboot_version"
     kapt group: 'org.springframework.boot', name: 'spring-boot-configuration-processor', version: "$springboot_version"
     optional group: 'org.springframework.boot', name: 'spring-boot-configuration-processor', version: "$springboot_version"
-//    api group: 'org.springframework.kafka', name: 'spring-kafka', version: '2.4.5.RELEASE'
 
     //postgres
     implementation group: "org.postgresql", name: "postgresql", version: "$postgres_version"
@@ -101,7 +96,7 @@ dependencies {
     // swagger-ui
     api group: 'io.springfox', name: 'springfox-swagger-ui', version: "$swagger_version"
     api("io.springfox:springfox-swagger2:$swagger_version") {
-//        exclude module: 'mapstruct'
+        exclude module: 'mapstruct'
     }
 
     // jetbrains exposed

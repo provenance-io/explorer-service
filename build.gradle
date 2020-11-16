@@ -92,13 +92,4 @@ subprojects {
         from sourceSets.test.output
     }
 
-//    // include the version within the manifest in order to allow for consumers to detect the version at runtime
-//    jar {
-//        manifest {
-//            attributes("Implementation-Version": version)
-//            attributes("Implementation-Title": project.name)
-//            attributes("Git-Revision": getCommitId())
-//            attributes("Git-Short-Revision": getShortCommitId())
-//        }
-//    }
 }

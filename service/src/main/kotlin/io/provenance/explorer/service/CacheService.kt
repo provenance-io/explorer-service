@@ -2,22 +2,19 @@ package io.provenance.explorer.service
 
 import com.fasterxml.jackson.databind.JsonNode
 import io.provenance.core.extensions.logger
-import io.provenance.explorer.config.ServiceProperties
-import io.provenance.explorer.domain.BlockCacheTable
-import io.provenance.explorer.domain.ValidatorsCacheTable
-import org.jetbrains.exposed.sql.insertIgnore
-import org.jetbrains.exposed.sql.select
+import io.provenance.explorer.domain.*
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
+import kotlin.math.max
 
 @Service
 class CacheService() {
 
     protected val logger = logger(CacheService::class)
 
-    fun getBlockByHeight(blockHeight: Long) = transaction {
+    fun getBlockByHeight(blockHeight: Int) = transaction {
         var jsonNode: JsonNode? = null
         var block = BlockCacheTable.select { (BlockCacheTable.height eq blockHeight) }.firstOrNull()?.let {
             it
@@ -27,21 +24,45 @@ class CacheService() {
                 it[hitCount] = block[hitCount] + 1
                 it[lastHit] = DateTime.now()
             }
-            jsonNode = block[BlockCacheTable.data]
+            jsonNode = block[BlockCacheTable.block]
         }
         jsonNode
     }
 
-    fun addBlockToCache(blockHeight: Long, json: JsonNode) = transaction {
+    fun addBlockToCache(blockHeight: Int, json: JsonNode) = transaction {
         BlockCacheTable.insertIgnore {
             it[height] = blockHeight
-            it[data] = json
+            it[block] = json
             it[hitCount] = 0
             it[lastHit] = DateTime.now()
         }
     }
 
-    fun getValidatorsByHeight(blockHeight: Long) = transaction {
+    fun getBlockchainFromMaxHeight(maxHeight: Int) = transaction {
+        var jsonNode: JsonNode? = null
+        var block = BlockchainCacheTable.select { (BlockchainCacheTable.maxHeight eq maxHeight) }.firstOrNull()?.let {
+            it
+        }
+        if (block != null) {
+            BlockchainCacheTable.update({ BlockchainCacheTable.maxHeight eq maxHeight }) {
+                it[hitCount] = block[hitCount] + 1
+                it[lastHit] = DateTime.now()
+            }
+            jsonNode = block[BlockchainCacheTable.blocks]
+        }
+        jsonNode
+    }
+
+    fun addBlockchainToCache(maxHeight: Int, json: JsonNode) = transaction {
+        BlockchainCacheTable.insertIgnore {
+            it[BlockchainCacheTable.maxHeight] = maxHeight
+            it[blocks] = json
+            it[hitCount] = 0
+            it[lastHit] = DateTime.now()
+        }
+    }
+
+    fun getValidatorsByHeight(blockHeight: Int) = transaction {
         var jsonNode: JsonNode? = null
         var validators = ValidatorsCacheTable.select { (ValidatorsCacheTable.height eq blockHeight) }.firstOrNull()?.let {
             it
@@ -51,17 +72,83 @@ class CacheService() {
                 it[hitCount] = validators[hitCount] + 1
                 it[lastHit] = DateTime.now()
             }
-            jsonNode = validators[ValidatorsCacheTable.data]
+            jsonNode = validators[ValidatorsCacheTable.validators]
         }
         jsonNode
     }
 
-    fun addValidatorsToCache(blockHeight: Long, json: JsonNode) = transaction {
+    fun addValidatorsToCache(blockHeight: Int, json: JsonNode) = transaction {
         ValidatorsCacheTable.insertIgnore {
             it[height] = blockHeight
-            it[data] = json
+            it[validators] = json
             it[hitCount] = 0
             it[lastHit] = DateTime.now()
         }
     }
+
+    fun getTransactionByHash(hash: String) = transaction {
+        var jsonNode: JsonNode? = null
+        var tx = TransactionCacheTable.select { (TransactionCacheTable.hash eq hash) }.firstOrNull()?.let {
+            it
+        }
+        if (tx != null) {
+            TransactionCacheTable.update({ TransactionCacheTable.hash eq hash }) {
+                it[hitCount] = tx[hitCount] + 1
+                it[lastHit] = DateTime.now()
+            }
+            jsonNode = tx[ValidatorsCacheTable.validators]
+        }
+        jsonNode
+    }
+
+    fun addTransactionToCache(txHash: String, json: JsonNode) = transaction {
+        TransactionCacheTable.insertIgnore {
+            it[hash] = txHash
+            it[tx] = json
+            it[hitCount] = 0
+            it[lastHit] = DateTime.now()
+        }
+    }
+
+    fun getTransactionCountByDay(day: String) = transaction {
+        TransactionCountTable.select { (TransactionCountTable.day eq day) }.firstOrNull()
+    }
+
+    fun addTransactionCount(day: String, totalTxs: Int, totalTxBlocks: Int, maxHeight: Int?, minHeight: Int, indexHeight: Int, complete: Boolean) =
+            transaction {
+                TransactionCountTable.insertIgnore {
+                    it[TransactionCountTable.day] = day
+                    if (maxHeight != null) it[TransactionCountTable.maxHeight] = maxHeight
+                    it[TransactionCountTable.minHeight] = minHeight
+                    it[TransactionCountTable.indexHeight] = indexHeight
+                    it[TransactionCountTable.numberTxBlocks] = totalTxBlocks
+                    it[TransactionCountTable.numberTxs] = totalTxs
+                    it[TransactionCountTable.complete] = complete
+                }
+            }
+
+    fun updateTransactionCount(day: String, totalTxs: Int, totalTxBlocks: Int, maxHeight: Int?, minHeight: Int, indexHeight: Int, complete: Boolean) =
+            transaction {
+                TransactionCountTable.update {
+                    it[TransactionCountTable.day] = day
+                    if (maxHeight != null) it[TransactionCountTable.maxHeight] = maxHeight
+                    it[TransactionCountTable.minHeight] = minHeight
+                    it[TransactionCountTable.indexHeight] = indexHeight
+                    it[TransactionCountTable.numberTxBlocks] = totalTxBlocks
+                    it[TransactionCountTable.numberTxs] = totalTxs
+                    it[TransactionCountTable.complete] = complete
+                }
+            }
+
+    fun getTransactionCounts(startDay: String, endDay: String) = transaction {
+        TransactionCountTable.select {
+            (TransactionCountTable.day lessEq startDay) and
+                    (TransactionCountTable.day greaterEq endDay)
+        }.orderBy(TransactionCountTable.day, SortOrder.DESC).map { it }
+    }
+
+    fun getTransactionCountsToDate(day: String) = transaction {
+        TransactionCountTable.select { TransactionCountTable.day lessEq day }.orderBy(TransactionCountTable.day, SortOrder.DESC).map { it }
+    }
+
 }

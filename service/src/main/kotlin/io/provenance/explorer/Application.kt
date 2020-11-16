@@ -9,6 +9,7 @@ import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfigurat
 import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.ComponentScan
+import org.springframework.scheduling.annotation.EnableScheduling
 import springfox.documentation.swagger2.annotations.EnableSwagger2
 import java.util.*
 
@@ -20,6 +21,8 @@ import java.util.*
         ]
 )
 @EnableConfigurationProperties(value = [ExplorerProperties::class])
+@EnableScheduling
+
 open class Application
 
 fun main(args: Array<String>) {

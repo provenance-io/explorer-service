@@ -41,7 +41,7 @@ data class BlockId(val hash: String, val parts: Parts)
 
 data class Parts(val total: String, val hash: String)
 
-data class Block(val header: BlockHeader, val data: BlockData, val evidence: Evidence, val lastCommit: LastCommit)
+data class Block(val header: BlockHeader, val data: BlockData, val evidence: Evidence?, val lastCommit: LastCommit)
 
 data class BlockHeader(val version: Version, val chainId: String, val height: String, val time: String, val lastBlockId: BlockId, val lastCommitHash: String, val dataHash: String, val validatorsHash: String, val nextValidatorsHash: String, val consensusHash: String, val appHash: String, val lastResultsHash: String, val evidenceHash: String, val proposerAddress: String)
 
@@ -49,14 +49,20 @@ data class Version(val block: String, val app: String)
 
 data class BlockData(val txs: List<String>?)
 
-data class Evidence(val evidence: String?)
-
 data class LastCommit(val height: String, val round: String, val blockId: BlockId, val signatures: List<Signature>)
 
 data class Signature(val blockIdFlag: Int, val validatorAddress: String, val timestamp: String, val signature: String)
 
-//Validator Result
+data class Evidence(val evidence: EvidenceDetail?)
 
+data class EvidenceDetail(val type: String?, val height: Long, val time: Int, val totalVotingPower: Int, val validator: Validator)
+
+//validator
 data class ValidatorsResponse(val blockHeight: String, val validators: List<Validator>, val count: String, val total: String)
 
 data class Validator(val address: String, val pubKey: PubKey, val votingPower: String, val proposerPriority: String)
+
+//Blockchain result
+data class Blockchain(val lastHeight: String, val blockMetas: List<BlockMeta>)
+
+data class BlockMeta(val blockId: BlockId, val header: BlockHeader, val numTxs: String)

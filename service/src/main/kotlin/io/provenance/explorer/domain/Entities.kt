@@ -6,30 +6,40 @@ import io.provenance.core.exposed.sql.jsonb
 import io.provenance.explorer.OBJECT_MAPPER
 
 object BlockCacheTable : Table(name = "block_cache") {
-    val height = long("height")
-    val data = jsonb<BlockCacheTable, JsonNode>("block", OBJECT_MAPPER)
+    val height = integer("height")
+    val block = jsonb<BlockCacheTable, JsonNode>("block", OBJECT_MAPPER)
     val lastHit = datetime("last_hit")
     val hitCount = integer("hit_count")
 }
 
-object ValidatorsCacheTable: Table(name="validators_cache") {
-    val height = long("height")
-    val data = jsonb<ValidatorsCacheTable, JsonNode>("validators", OBJECT_MAPPER)
+object BlockchainCacheTable : Table(name = "blockchain_cache") {
+    val maxHeight = integer("max_height")
+    val blocks = jsonb<BlockchainCacheTable, JsonNode>("blocks", OBJECT_MAPPER)
     val lastHit = datetime("last_hit")
     val hitCount = integer("hit_count")
 }
 
-//object TransactionBlockCacheTable : Table(name = "transaction_block_cache") {
-//    val height = long("height")
-//    val page = integer("page")
-//    val perPage = integer("per_page")
-//    val sortOrder = varchar("sort_order", 16)
-//    val result = jsonb<TransactionBlockCacheTable, JsonNode>("result", OBJECT_MAPPER)
-//    val lastHit = date("last_hit")
-//    val hitCount = integer("hit_count")
-//}
-//
-//object LatestBlockHeightTable : Table(name = "") {
-//    val height = long("latest_height")
-//    val lastUpdate = date("last_update")
-//}
+object ValidatorsCacheTable : Table(name = "validators_cache") {
+    val height = integer("height")
+    val validators = jsonb<ValidatorsCacheTable, JsonNode>("validators", OBJECT_MAPPER)
+    val lastHit = datetime("last_hit")
+    val hitCount = integer("hit_count")
+}
+
+object TransactionCacheTable : Table(name = "transaction_cache") {
+    val hash = varchar("hash", 64)
+    val tx = jsonb<TransactionCacheTable, JsonNode>("tx", OBJECT_MAPPER)
+    val lastHit = datetime("last_hit")
+    val hitCount = integer("hit_count")
+
+}
+
+object TransactionCountTable : Table(name = "transaction_count_cache") {
+    val day = varchar("day", 16)
+    val numberTxs = integer("number_txs")
+    val numberTxBlocks = integer("number_tx_blocks")
+    val complete = bool("complete")
+    val maxHeight = integer("max_height")
+    val minHeight = integer("min_height")
+    val indexHeight = integer("index_height")
+}
