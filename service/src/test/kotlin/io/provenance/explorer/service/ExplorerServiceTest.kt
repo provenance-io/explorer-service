@@ -98,6 +98,15 @@ open class ExplorerServiceTest {
     }
 
     @Test
+    @Ignore("TODO turn into integration tests")
+    fun `should get validator by address id of latest block`() {
+        var result = explorerService.getValidator("")
+        Assert.assertNull(result)
+        result = explorerService.getValidator("")
+        Assert.assertNotNull(result)
+    }
+
+    @Test
     @Ignore("")
     fun `test daily transaction count`() {
         explorerService.updateTodaysTransactionCount()

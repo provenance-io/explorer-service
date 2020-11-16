@@ -44,11 +44,17 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     fun validators(@RequestParam(required = false, defaultValue = "10") count: Int, @RequestParam(required = false, defaultValue = "0") page: Int, @RequestParam(required = false, defaultValue = "desc") sort: String):
             ResponseEntity<Any> = ResponseEntity.ok(explorerService.getRecentValidators(count, page, sort))
 
-    @ApiOperation(value = "Returns validator by hash")
+    @ApiOperation(value = "Returns set of validators at block height")
+    @GetMapping(value = ["/validators"],
+            produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun validators(@RequestParam(required = true) blockHeight: Int):
+            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getValidators(blockHeight))
+
+    @ApiOperation(value = "Returns validator by address id")
     @GetMapping(value = ["/validator"],
             produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun validator(@RequestParam(required = true) blockHeight: Int):
-            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getValidators(blockHeight))
+    fun validator(@RequestParam(required = true) id: String):
+            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getValidator(id))
 
     @ApiOperation(value = "Get X-Day Transaction History")
     @GetMapping(value = ["/txs/history"],

@@ -156,6 +156,11 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         OBJECT_MAPPER.readValue(validators.toString(), ValidatorsResponse::class.java)
     }
 
+    fun getValidator(addressId: String) = getValidators(latestHeight.get()).validators
+            .filter { v -> addressId == v.address }
+            .map { v -> ValidatorDetail(v.votingPower.toInt(), v.address, "", 0) }
+            .firstOrNull()
+
     fun getRecentValidators(count: Int, page: Int, sort: String) = runBlocking(Dispatchers.IO) {
         val startHeight = latestHeight.get() - (page * count)
         var heightList = arrayListOf<Int>()
