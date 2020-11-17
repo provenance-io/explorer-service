@@ -161,24 +161,20 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
             .map { v -> ValidatorDetail(v.votingPower.toInt(), v.address, "", 0) }
             .firstOrNull()
 
-    fun getRecentValidators(count: Int, page: Int, sort: String) = runBlocking(Dispatchers.IO) {
-        val startHeight = latestHeight.get() - (page * count)
-        var heightList = arrayListOf<Int>()
-        ((startHeight - count + 1)..startHeight).forEach { heightList.add(it) }
-        if ("asc" == sort.toLowerCase()) heightList.reverse()
-        val results = hydrateValidatorResponse(heightList.map { async { getValidators(it) } }.awaitAll())
-        PagedResults(latestHeight.get() / count, results)
+    fun getRecentValidators(count: Int, page: Int, sort: String) = let {
+        val startHeight = latestHeight.get()
+        val validatorsResponse = getValidators(startHeight)
+        val validators = if ("asc" == sort.toLowerCase()) validatorsResponse.validators.sortedBy { it.address }
+        else validatorsResponse.validators.sortedByDescending { it.address }
+        hydrateValidatorResponse(validators, (count * page), count)
     }
 
-    fun hydrateValidatorResponse(validatorResponses: List<ValidatorsResponse>) = let {
-        val response = arrayListOf<Validators>()
-        validatorResponses.forEach { x ->
-            response.add(Validators(x.validators.sumBy { it.votingPower.toInt() },
-                    x.blockHeight.toInt(),
-                    x.validators.map { v -> ValidatorDetail(v.votingPower.toInt(), "", v.address, 0) })
-            )
-        }
-        response
+    fun hydrateValidatorResponse(validators: List<Validator>, startIndex: Int, perPage: Int) = let {
+        val endIndex = if(perPage + startIndex >= validators.size)  validators.size else perPage + startIndex
+        if (startIndex > validators.size)
+            PagedResults(validators.size / perPage, listOf<ValidatorDetail>())
+        else PagedResults(validators.size / perPage, validators.subList(startIndex, endIndex)
+                .map { v -> ValidatorDetail(v.votingPower.toInt(), "", v.address, 0) })
     }
 
     fun getRecentTransactions(count: Int, page: Int, sort: String) = runBlocking(Dispatchers.IO) {
