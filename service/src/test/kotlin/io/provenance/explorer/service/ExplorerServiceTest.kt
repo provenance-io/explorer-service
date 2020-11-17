@@ -90,7 +90,7 @@ open class ExplorerServiceTest {
     }
 
     @Test
-    //@Ignore("TODO turn into integration tests")
+    @Ignore("TODO turn into integration tests")
     fun `get current validators at height and page`() {
         var result = explorerService.getRecentValidators(11, 0, "asc")
         Assert.assertEquals(4, result.results.size)
