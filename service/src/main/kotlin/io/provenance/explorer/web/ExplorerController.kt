@@ -6,8 +6,11 @@ import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
+import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
+import javax.validation.constraints.Min
 
+@Validated
 @RestController
 @RequestMapping(value = ["/api/v1"])
 @Api(value = "explorer", description = "Provenance Explorer")
@@ -17,7 +20,7 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     @ApiOperation(value = "Return the latest block transactions")
     @GetMapping(value = ["/recent/txs"],
             produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun txsRecent(@RequestParam(required = false, defaultValue = "10") count: Int, @RequestParam(required = false, defaultValue = "1") page: Int, @RequestParam(required = false, defaultValue = "desc") sort: String = "desc"):
+    fun txsRecent(@RequestParam(required = false, defaultValue = "10") @Min(1) count: Int, @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int, @RequestParam(required = false, defaultValue = "desc") sort: String = "desc"):
             ResponseEntity<Any> = ResponseEntity.ok(explorerService.getRecentTransactions(count, page - 1, sort))
 
     @ApiOperation(value = "Return block at specified height")
@@ -35,13 +38,13 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     @ApiOperation(value = "Returns most recent blocks")
     @GetMapping(value = ["/recent/blocks"],
             produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun recentBlocks(@RequestParam(required = true, defaultValue = "10") count: Int, @RequestParam(required = true, defaultValue = "1") page: Int, @RequestParam(required = false, defaultValue = "desc") sort: String):
+    fun recentBlocks(@RequestParam(required = true, defaultValue = "10") @Min(1) count: Int, @RequestParam(required = true, defaultValue = "1") @Min(1) page: Int, @RequestParam(required = false, defaultValue = "desc") sort: String):
             ResponseEntity<Any> = ResponseEntity.ok(explorerService.getRecentBlocks(count, page - 1, sort))
 
     @ApiOperation(value = "Returns recent validators")
     @GetMapping(value = ["/recent/validators"],
             produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun validators(@RequestParam(required = false, defaultValue = "10") count: Int, @RequestParam(required = false, defaultValue = "1") page: Int, @RequestParam(required = false, defaultValue = "desc") sort: String):
+    fun validators(@RequestParam(required = false, defaultValue = "10") @Min(1) count: Int, @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int, @RequestParam(required = false, defaultValue = "desc") sort: String):
             ResponseEntity<Any> = ResponseEntity.ok(explorerService.getRecentValidators(count, page - 1, sort))
 
     @ApiOperation(value = "Returns set of validators at block height")

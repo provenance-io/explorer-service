@@ -58,21 +58,18 @@ open class ExplorerServiceTest {
         val nameBoundHash = "AF558EF8E903D76F60EE41D415276FED32A542FBF278EE9218C4619E3DB6F641"
         val transferTransaction = explorerService.getTransactionByHash(transferHash)
         val nameBoundTransaction = explorerService.getTransactionByHash(nameBoundHash)
-        println("")
     }
 
     @Test
     @Ignore("TODO turn into integration tests")
     fun `get status`() {
         val result = explorerService.getStatus()
-        println(result)
     }
 
     @Test
     @Ignore("TODO turn into integration tests")
     fun `get current height 2827095`() {
         val currentHeight = explorerService.getLatestBlockHeight()
-        println(currentHeight)
     }
 
     @Test

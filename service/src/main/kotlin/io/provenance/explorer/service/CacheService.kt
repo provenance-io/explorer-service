@@ -7,7 +7,6 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
-import kotlin.math.max
 
 @Service
 class CacheService() {
@@ -30,13 +29,15 @@ class CacheService() {
     }
 
     fun addBlockToCache(blockHeight: Int, json: JsonNode) = transaction {
-        BlockCacheTable.insertIgnore {
+        if (shouldCacheBlock(blockHeight, json)) BlockCacheTable.insertIgnore {
             it[height] = blockHeight
             it[block] = json
             it[hitCount] = 0
             it[lastHit] = DateTime.now()
         }
     }
+
+    fun shouldCacheBlock(blockHeight: Int, json: JsonNode) = json.get("block").get("header").get("height").asInt() == blockHeight
 
     fun getBlockchainFromMaxHeight(maxHeight: Int) = transaction {
         var jsonNode: JsonNode? = null
@@ -54,13 +55,17 @@ class CacheService() {
     }
 
     fun addBlockchainToCache(maxHeight: Int, json: JsonNode) = transaction {
-        BlockchainCacheTable.insertIgnore {
+        if (shouldCacheBlockchain(maxHeight, json)) BlockchainCacheTable.insertIgnore {
             it[BlockchainCacheTable.maxHeight] = maxHeight
             it[blocks] = json
             it[hitCount] = 0
             it[lastHit] = DateTime.now()
         }
     }
+
+    fun shouldCacheBlockchain(maxHeight: Int, json: JsonNode) =
+            json.get("block_metas")[0].get("header").get("height").asInt() == maxHeight
+                    && json.get("block_metas").size() == 20
 
     fun getValidatorsByHeight(blockHeight: Int) = transaction {
         var jsonNode: JsonNode? = null
@@ -102,13 +107,15 @@ class CacheService() {
     }
 
     fun addTransactionToCache(txHash: String, json: JsonNode) = transaction {
-        TransactionCacheTable.insertIgnore {
+        if (shouldCacheTransaction(txHash, json)) TransactionCacheTable.insertIgnore {
             it[hash] = txHash
             it[tx] = json
             it[hitCount] = 0
             it[lastHit] = DateTime.now()
         }
     }
+
+    fun shouldCacheTransaction(txHash: String, json: JsonNode) = json.get("hash").asText()!! == txHash
 
     fun getTransactionCountByDay(day: String) = transaction {
         TransactionCountTable.select { (TransactionCountTable.day eq day) }.firstOrNull()

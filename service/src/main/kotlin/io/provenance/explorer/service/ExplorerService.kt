@@ -95,7 +95,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                     blockHeight = blockMeta.header.height.toInt()
                 }
             }
-            blockHeight -= 1
+            blockHeight = blockchain.blockMetas.minHeight() - 1
         }
         if ("asc" == sort.toLowerCase()) result.reverse()
         PagedResults(latestHeight.get() / count, result)
@@ -170,7 +170,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     }
 
     fun hydrateValidatorResponse(validators: List<Validator>, startIndex: Int, perPage: Int) = let {
-        val endIndex = if(perPage + startIndex >= validators.size)  validators.size else perPage + startIndex
+        val endIndex = if (perPage + startIndex >= validators.size) validators.size else perPage + startIndex
         if (startIndex > validators.size)
             PagedResults(validators.size / perPage, listOf<ValidatorDetail>())
         else PagedResults(validators.size / perPage, validators.subList(startIndex, endIndex)
@@ -181,7 +181,6 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         var height = latestHeight.get() - 1000 * (page + 1)
         var recentTxs = mutableListOf<Transaction>()
         while (count != recentTxs.size) {
-            logger.info("Getting recent transactions height: $height count: $count page: $page sort: $sort")
             val jsonString = getRestResult(recentTransactionUrl(height, count, page)).toString()
             val txs = OBJECT_MAPPER.readValue(jsonString, TXSearchResult::class.java).txs
             if (txs.size == count) recentTxs.addAll(txs)
