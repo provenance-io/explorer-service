@@ -2,6 +2,7 @@ package io.provenance.explorer.domain
 
 import org.junit.Test
 import org.junit.jupiter.api.Assertions.assertEquals
+import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
@@ -26,8 +27,7 @@ class ExtensionsTest {
 
     @Test
     fun `should calculate fee from multiplying gas used to min gas price as decimal and string`() {
-        val txResult = TxResult(1, "date", "Log", "info", "10000", "1000", "code", mutableListOf<TxEvent>())
-        assertEquals(25.0, txResult.fee(0.025))
-        assertEquals("25.0", txResult.feeAsString(0.025))
+        val txResult = TxResult(1, "date", "Log", "info", "10000", "70849", "code", mutableListOf<TxEvent>())
+        assertEquals(BigDecimal("1771.23"), txResult.fee(BigDecimal(0.025)))
     }
 }

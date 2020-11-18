@@ -1,5 +1,7 @@
 package io.provenance.explorer.domain;
 
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -15,6 +17,6 @@ fun List<BlockMeta>.maxHeight() = this.sortedByDescending { it.header.height.toI
 
 fun List<BlockMeta>.minHeight() = this.sortedByDescending { it.header.height.toInt() }.last().height()
 
-fun TxResult.fee(minGasPrice: Double) = this.gasUsed.toInt() * minGasPrice
+fun TxResult.fee(minGasPrice: BigDecimal) = this.gasUsed.toBigDecimal().multiply(minGasPrice).setScale(2, RoundingMode.CEILING)
 
-fun TxResult.feeAsString(minGasPrice: Double) = fee(minGasPrice).toString()
+fun BlockResponse.height() = this.block.header.height.toInt()

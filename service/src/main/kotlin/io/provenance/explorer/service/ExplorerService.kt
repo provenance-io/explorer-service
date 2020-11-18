@@ -12,13 +12,11 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
-import org.joda.time.Period
-import org.joda.time.PeriodType
 import org.springframework.http.HttpStatus
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
-import java.util.concurrent.atomic.AtomicInteger
+import kotlin.system.measureTimeMillis
 
 @Service
 class ExplorerService(private val explorerProperties: ExplorerProperties,
@@ -27,7 +25,8 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
 
     protected val logger = logger(ExplorerService::class)
 
-    protected var latestHeight = AtomicInteger(getLatestBlockHeight())
+    @Volatile
+    protected var latestHeight = getLatestBlockHeight()
 
     fun getLatestBlockHeight(): Int = getStatus().syncInfo.latestBlockHeight.toInt()
 
@@ -46,7 +45,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
 
     @Scheduled(initialDelay = 0L, fixedDelay = 1000L)
     fun updateLatestBlockHeightJob() = let {
-        latestHeight.set(getLatestBlockHeight())
+        latestHeight = getLatestBlockHeight()
     }
 
     @Scheduled(initialDelay = 0L, fixedDelay = 60000L)
@@ -56,32 +55,34 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
 
     fun updateTransactionCount() {
         val transactionCountIndex = cacheService.getTransactionCountIndex()
-        val startIndex = latestHeight.get()
+        val startIndex = latestHeight
         var currentIndex = startIndex
         val dayTxMetrics = mutableMapOf<String, TxHistory>()
         val startTime = DateTime.now()
         logger.info("Starting update of transaction metrics from current height $startIndex")
-        if (transactionCountIndex == null) {
-            while (dayTxMetrics.keys.size < explorerProperties.txsInitDays() + 1) {
-                getBlockchain(currentIndex).blockMetas.sortedByDescending { it.height() }.forEach {
-                    currentIndex = calculateDayMetrics(dayTxMetrics, it)
-                }
-            }
-            val incompleteDay = dayTxMetrics.keys.sortedByDescending { it }.last()
-            dayTxMetrics.remove(incompleteDay)
-        } else {
-            val endIndex = transactionCountIndex[TransactionCountIndex.maxHeightRead]
-            while (currentIndex > endIndex) {
-                getBlockchain(currentIndex).blockMetas.sortedByDescending { it.height() }.forEach {
-                    if (it.height() > endIndex) {
+        val time = measureTimeMillis {
+            if (transactionCountIndex == null) {
+                while (dayTxMetrics.keys.size < explorerProperties.txsInitDays() + 1 && currentIndex >= 0) {
+                    getBlockchain(currentIndex).blockMetas.sortedByDescending { it.height() }.forEach {
                         currentIndex = calculateDayMetrics(dayTxMetrics, it)
+                    }
+                }
+                val incompleteDay = dayTxMetrics.keys.sortedByDescending { it }.last()
+                dayTxMetrics.remove(incompleteDay)
+            } else {
+                val endIndex = transactionCountIndex[TransactionCountIndex.maxHeightRead]
+                while (currentIndex > endIndex) {
+                    getBlockchain(currentIndex).blockMetas.sortedByDescending { it.height() }.forEach {
+                        if (it.height() > endIndex) {
+                            currentIndex = calculateDayMetrics(dayTxMetrics, it)
+                        }
                     }
                 }
             }
         }
         val endIndex = dayTxMetrics.values.sortedBy { it.minHeight }.first().minHeight
         cacheService.addTransactionCounts(dayTxMetrics, startIndex, endIndex, startTime)
-        logger.info("Finished updating transactions read block heights from $startIndex to $endIndex in ${Period(startTime, DateTime.now(), PeriodType.millis()).millis} ms.")
+        logger.info("Finished updating transactions read ${endIndex - startIndex} blocks from $startIndex to $endIndex in $time ms.")
     }
 
     fun calculateDayMetrics(dayTxMetrics: MutableMap<String, TxHistory>, blockMeta: BlockMeta) = let {
@@ -97,7 +98,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     }
 
     fun getRecentBlocks(count: Int, page: Int, sort: String) = let {
-        var blockHeight = if (page < 0) latestHeight.get() else latestHeight.get() - (count * page)
+        var blockHeight = if (page < 0) latestHeight else latestHeight - (count * page)
         val result = mutableListOf<RecentBlock>()
         while (result.size < count) {
             var blockchain = getBlockchain(blockHeight)
@@ -112,7 +113,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
             blockHeight = blockchain.blockMetas.minHeight() - 1
         }
         if ("asc" == sort.toLowerCase()) result.reverse()
-        PagedResults(latestHeight.get() / count, result)
+        PagedResults(latestHeight / count, result)
     }
 
     fun getBlockchain(maxHeight: Int) = let {
@@ -126,7 +127,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     }
 
     fun getBlockAtHeight(height: Int?) = runBlocking(Dispatchers.IO) {
-        val queryHeight = if (height == null) latestHeight.get() else height
+        val queryHeight = if (height == null) latestHeight else height
         val blockResponse = async { getBlock(queryHeight) }
         val validatorsResponse = async { getValidators(queryHeight) }
         hydrateBlock(blockResponse.await(), validatorsResponse.await())
@@ -170,14 +171,13 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         OBJECT_MAPPER.readValue(validators.toString(), ValidatorsResponse::class.java)
     }
 
-    fun getValidator(addressId: String) = getValidators(latestHeight.get()).validators
+    fun getValidator(addressId: String) = getValidators(latestHeight).validators
             .filter { v -> addressId == v.address }
             .map { v -> ValidatorDetail(v.votingPower.toInt(), v.address, "", 0) }
             .firstOrNull()
 
     fun getRecentValidators(count: Int, page: Int, sort: String) = let {
-        val startHeight = latestHeight.get()
-        val validatorsResponse = getValidators(startHeight)
+        val validatorsResponse = getValidators(latestHeight)
         val validators = if ("asc" == sort.toLowerCase()) validatorsResponse.validators.sortedBy { it.address }
         else validatorsResponse.validators.sortedByDescending { it.address }
         hydrateValidatorResponse(validators, (count * page), count)
@@ -192,7 +192,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     }
 
     fun getRecentTransactions(count: Int, page: Int, sort: String) = runBlocking(Dispatchers.IO) {
-        var height = latestHeight.get() - 1000 * (page + 1)
+        var height = latestHeight - 1000 * (page + 1)
         var recentTxs = mutableListOf<Transaction>()
         while (count != recentTxs.size) {
             val jsonString = getRestResult(recentTransactionUrl(height, count, page)).toString()
@@ -207,7 +207,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
             }
         }.awaitAll()
         if (!sort.isNullOrEmpty() && sort.toLowerCase() == "asc") result.reversed()
-        PagedResults(latestHeight.get() / count, result)
+        PagedResults(latestHeight / count, result)
     }
 
     private fun recentTransactionUrl(height: Int, count: Int, page: Int) = "${explorerProperties.pbUrl}tx_search?query=\"tx.height>$height\"&page=$page&per_page=$count&order_by=\"desc\""
@@ -227,14 +227,15 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     private fun eventAmountDenom(txResult: TxResult) = let {
         val eventType = txResult.events[1].type
         val log = OBJECT_MAPPER.readValue(txResult.log, Array<TxLog>::class.java)
-        var fee = if (eventType == "transfer") log[0].events[1].attributes.find { a -> a.key == "amount" }?.value?.replace("vspn", "")!! else ""
+        var amount = if (eventType == "transfer") log[0].events[1].attributes.find { a -> a.key == "amount" }?.value?.replace("vspn", "")!!.toInt() else 0
         var denom = if (eventType == "transfer") "vspn" else ""
-        Triple(eventType, fee, denom)
+        Triple(eventType, amount, denom)
     }
 
     fun hydrateRecentTransaction(transaction: Transaction, block: BlockResponse) = let {
-        val eventFeeDenom = eventAmountDenom(transaction.txResult)
-        RecentTx(transaction.hash, block.block.header.time, eventFeeDenom.second, eventFeeDenom.third, eventFeeDenom.first, block.block.header.height.toInt(), "", "")
+        val eventAmountDenom = eventAmountDenom(transaction.txResult)
+        RecentTx(transaction.hash, block.block.header.time, transaction.txResult.fee(explorerProperties.minGasPrice()),
+                eventAmountDenom.third, eventAmountDenom.first, block.height(), "", "")
     }
 
     fun hydrateTransactionDetails(transaction: Transaction, block: BlockResponse) = let {
@@ -242,9 +243,9 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         TxDetails(transaction.height.toInt(), transaction.txResult.gasUsed.toInt(), transaction.txResult.gasWanted.toInt(), 0, 0, block.block.header.time,
                 "TODO status",
                 block.block.header.time,
-                transaction.txResult.feeAsString(explorerProperties.minGasPrice()),
+                transaction.txResult.fee(explorerProperties.minGasPrice()),
                 eventAmountDenom.third, "TODO signer", "TODO memo", eventAmountDenom.first, "TODO from",
-                eventAmountDenom.second, eventAmountDenom.third, "TODO to")
+                eventAmountDenom.second.toInt(), eventAmountDenom.third, "TODO to")
     }
 
     fun getTransactionHistory(fromDate: String, toDate: String) = let {

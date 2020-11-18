@@ -27,7 +27,7 @@ class ExplorerProperties {
 
     fun isMetricJobEnabled() = txsMetricJobEnabled.toBoolean()
 
-    fun minGasPrice() = minimumGasPrice.toDouble()
+    fun minGasPrice() = minimumGasPrice.toBigDecimal()
 
 }
 
