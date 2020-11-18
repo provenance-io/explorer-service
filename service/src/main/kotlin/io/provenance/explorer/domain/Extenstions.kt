@@ -14,3 +14,7 @@ fun BlockMeta.day() = this.header.time.dayPart()
 fun List<BlockMeta>.maxHeight() = this.sortedByDescending { it.header.height.toInt() }.first().height()
 
 fun List<BlockMeta>.minHeight() = this.sortedByDescending { it.header.height.toInt() }.last().height()
+
+fun TxResult.fee(minGasPrice: Double) = this.gasUsed.toInt() * minGasPrice
+
+fun TxResult.feeAsString(minGasPrice: Double) = fee(minGasPrice).toString()

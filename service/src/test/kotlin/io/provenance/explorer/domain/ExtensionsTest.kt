@@ -23,4 +23,11 @@ class ExtensionsTest {
     fun `should throw exception trying to parse day from invalid string`() {
         "NOT A DATE".asDay()
     }
+
+    @Test
+    fun `should calculate fee from multiplying gas used to min gas price as decimal and string`() {
+        val txResult = TxResult(1, "date", "Log", "info", "10000", "1000", "code", mutableListOf<TxEvent>())
+        assertEquals(25.0, txResult.fee(0.025))
+        assertEquals("25.0", txResult.feeAsString(0.025))
+    }
 }
