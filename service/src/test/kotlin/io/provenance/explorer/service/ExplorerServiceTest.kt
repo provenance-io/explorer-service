@@ -30,7 +30,7 @@ open class ExplorerServiceTest {
     @Test
     @Ignore("TODO turn into integration tests")
     fun `should return recent blocks of different sizes and sort order`() {
-        var result = explorerService.getRecentBlocks(25, 1, "")
+        var result = explorerService.getRecentBlocks(25, -1, "")
         Assert.assertEquals(25, result.results.size)
         result = explorerService.getRecentBlocks(102, 0, "asc")
         Assert.assertEquals(102, result.results.size)
@@ -75,8 +75,8 @@ open class ExplorerServiceTest {
     @Test
     @Ignore("TODO turn into integration tests")
     fun `test latest height job`() {
-        explorerService.updateLatestBlockHeight()
-        explorerService.updateLatestBlockHeight()
+        explorerService.updateLatestBlockHeightJob()
+        explorerService.updateLatestBlockHeightJob()
     }
 
     @Test
@@ -91,7 +91,8 @@ open class ExplorerServiceTest {
     fun `get current validators at height and page`() {
         var result = explorerService.getRecentValidators(11, 0, "asc")
         Assert.assertEquals(4, result.results.size)
-
+        result = explorerService.getRecentValidators(1, 1, "asc")
+        Assert.assertEquals(1, result.results.size)
         result = explorerService.getRecentValidators(2, 1, "asc")
         Assert.assertEquals(2, result.results.size)
     }
@@ -106,10 +107,9 @@ open class ExplorerServiceTest {
     }
 
     @Test
-    @Ignore("")
-    fun `test daily transaction count`() {
-        explorerService.updateTodaysTransactionCount()
-        val result = explorerService.getTransactionHistory("2020-11-13", "2020-11-13")
-        explorerService.updateTodaysTransactionCount()
+    @Ignore
+    fun `test history init`() {
+        explorerService.updateTransactionCount()
+        explorerService.updateTransactionCount()
     }
 }

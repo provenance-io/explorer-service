@@ -11,6 +11,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.joda.time.DateTime
+import org.joda.time.Period
+import org.joda.time.PeriodType
 import org.springframework.http.HttpStatus
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -33,57 +36,68 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     fun getRestResult(url: String) = let {
         if (!url.contains("status")) logger.info("GET request to $url")
         restTemplate.getForEntity(url, JsonNode::class.java).let { result ->
-            if (result.statusCode != HttpStatus.OK || result.body.has("error") || !result.body.has("result"))
-                throw Exception("Failed to calling $url status code: ${result.statusCode} response body: ${result.body}")
+            if (result.statusCode != HttpStatus.OK || result.body.has("error") || !result.body.has("result")) {
+                logger.error("Failed to calling $url status code: ${result.statusCode} response body: ${result.body}")
+                throw Exception(result.body.asText())
+            }
             result.body.get("result")
         }
     }
 
     @Scheduled(initialDelay = 0L, fixedDelay = 1000L)
-    fun updateLatestBlockHeight() = let {
+    fun updateLatestBlockHeightJob() = let {
         latestHeight.set(getLatestBlockHeight())
     }
 
-    //TODO: WIP
-    //    @Scheduled(initialDelay = 0L, fixedDelay = 30000L)
-    fun updateTodaysTransactionCount() = let {
-        val startHeight = latestHeight.get()
-        var blocks = getBlockchain(startHeight)
-        val cache = cacheService.getTransactionCountByDay(blocks.blockMetas[0].day())
-        val today = blocks.blockMetas[0].day();
-        if (cache == null) { //new day
-            var totalTxs = 0
-            var totalTxBlocks = 0
-            while (true) {
-                var todaysBlocks = blocks.blockMetas.filter { meta -> meta.day() == today }
-                totalTxs += todaysBlocks.sumBy { meta -> meta.numTxs.toInt() }
-                totalTxBlocks += todaysBlocks.count { meta -> meta.numTxs.toInt() > 0 }
-                if (todaysBlocks.size < 20) {
-                    val max_height = if (todaysBlocks.isNotEmpty()) todaysBlocks.minHeight()
-                    else blocks.blockMetas.maxHeight() + 1
-                    cacheService.addTransactionCount(today, totalTxs, totalTxBlocks, null, max_height, startHeight, false)
-                    break;
+    @Scheduled(initialDelay = 0L, fixedDelay = 60000L)
+    fun updateTransactionCountJob() = let {
+        if (explorerProperties.isMetricJobEnabled()) updateTransactionCount();
+    }
+
+    fun updateTransactionCount() {
+        val transactionCountIndex = cacheService.getTransactionCountIndex()
+        val startIndex = latestHeight.get()
+        var currentIndex = startIndex
+        val dayTxMetrics = mutableMapOf<String, TxHistory>()
+        val startTime = DateTime.now()
+        logger.info("Starting update of transaction metrics from current height $startIndex")
+        if (transactionCountIndex == null) {
+            while (dayTxMetrics.keys.size < explorerProperties.txsInitDays() + 1) {
+                getBlockchain(currentIndex).blockMetas.sortedByDescending { it.height() }.forEach {
+                    currentIndex = calculateDayMetrics(dayTxMetrics, it)
                 }
-                blocks = getBlockchain(blocks.blockMetas.minHeight() - 1)
             }
+            val incompleteDay = dayTxMetrics.keys.sortedByDescending { it }.last()
+            dayTxMetrics.remove(incompleteDay)
         } else {
-            var totalTxs = cache[TransactionCountTable.numberTxs]
-            var totalTxBlocks = cache[TransactionCountTable.numberTxBlocks]
-            val indexHeight = cache[TransactionCountTable.indexHeight]
-            while (true) {
-                var todaysBlocks = blocks.blockMetas.filter { meta -> meta.day() == today && meta.height() > indexHeight }
-                totalTxs += todaysBlocks.sumBy { meta -> meta.numTxs.toInt() }
-                totalTxBlocks += todaysBlocks.count { meta -> meta.numTxs.toInt() > 0 }
-                if (todaysBlocks.size < 20) {
-                    cacheService.updateTransactionCount(today, totalTxs, totalTxBlocks, null, cache[TransactionCountTable.minHeight], startHeight, false)
-                    break;
+            val endIndex = transactionCountIndex[TransactionCountIndex.maxHeightRead]
+            while (currentIndex > endIndex) {
+                getBlockchain(currentIndex).blockMetas.sortedByDescending { it.height() }.forEach {
+                    if (it.height() > endIndex) {
+                        currentIndex = calculateDayMetrics(dayTxMetrics, it)
+                    }
                 }
             }
         }
+        val endIndex = dayTxMetrics.values.sortedBy { it.minHeight }.first().minHeight
+        cacheService.addTransactionCounts(dayTxMetrics, startIndex, endIndex, startTime)
+        logger.info("Finished updating transactions read block heights from $startIndex to $endIndex in ${Period(startTime, DateTime.now(), PeriodType.millis()).millis} ms.")
+    }
+
+    fun calculateDayMetrics(dayTxMetrics: MutableMap<String, TxHistory>, blockMeta: BlockMeta) = let {
+        if (!dayTxMetrics.containsKey(blockMeta.day())) {
+            dayTxMetrics.put(blockMeta.day(), TxHistory(blockMeta.day(), blockMeta.numTxs.toInt(), 1, blockMeta.height(), blockMeta.height()))
+        } else {
+            val history = dayTxMetrics.get(blockMeta.day())!!
+            history.minHeight = blockMeta.height()
+            history.numberTxs += blockMeta.numTxs.toInt()
+            history.numberTxBlocks += if (blockMeta.numTxs.toInt() > 0) 1 else 0
+        }
+        blockMeta.height() - 1
     }
 
     fun getRecentBlocks(count: Int, page: Int, sort: String) = let {
-        var blockHeight = latestHeight.get() - (count * page)
+        var blockHeight = if (page < 0) latestHeight.get() else latestHeight.get() - (count * page)
         val result = mutableListOf<RecentBlock>()
         while (result.size < count) {
             var blockchain = getBlockchain(blockHeight)
@@ -210,7 +224,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         hydrateTransactionDetails(transaction, getBlock(transaction.height.toInt()))
     }
 
-    private fun eventFeeDenom(txResult: TXResult) = let {
+    private fun eventAmountDenom(txResult: TxResult) = let {
         val eventType = txResult.events[1].type
         val log = OBJECT_MAPPER.readValue(txResult.log, Array<TxLog>::class.java)
         var fee = if (eventType == "transfer") log[0].events[1].attributes.find { a -> a.key == "amount" }?.value?.replace("vspn", "")!! else ""
@@ -219,26 +233,22 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     }
 
     fun hydrateRecentTransaction(transaction: Transaction, block: BlockResponse) = let {
-        val eventFeeDenom = eventFeeDenom(transaction.txResult)
-        RecentTx(transaction.hash, block.block.header.time, eventFeeDenom.second, eventFeeDenom.third, eventFeeDenom.first)
+        val eventFeeDenom = eventAmountDenom(transaction.txResult)
+        RecentTx(transaction.hash, block.block.header.time, eventFeeDenom.second, eventFeeDenom.third, eventFeeDenom.first, block.block.header.height.toInt(), "", "")
     }
 
     fun hydrateTransactionDetails(transaction: Transaction, block: BlockResponse) = let {
-        val eventFeeDenom = eventFeeDenom(transaction.txResult)
+        val eventAmountDenom = eventAmountDenom(transaction.txResult)
         TxDetails(transaction.height.toInt(), transaction.txResult.gasUsed.toInt(), transaction.txResult.gasWanted.toInt(), 0, 0, block.block.header.time,
-                "status", block.block.header.time, eventFeeDenom.second, eventFeeDenom.third, "signer", "memo", eventFeeDenom.first, "from",
-                eventFeeDenom.second, eventFeeDenom.third, "to")
+                "TODO status",
+                block.block.header.time,
+                transaction.txResult.feeAsString(explorerProperties.minGasPrice()),
+                eventAmountDenom.third, "TODO signer", "TODO memo", eventAmountDenom.first, "TODO from",
+                eventAmountDenom.second, eventAmountDenom.third, "TODO to")
     }
 
     fun getTransactionHistory(fromDate: String, toDate: String) = let {
         cacheService.getTransactionCounts(fromDate, toDate)
-    }
-
-    fun updateTransactionCountToDate(toDate: String) = let {
-        val days = cacheService.getTransactionCountsToDate(toDate)
-        //loop through list of dates
-        //if days does not contain date and is not complete
-
     }
 
 }

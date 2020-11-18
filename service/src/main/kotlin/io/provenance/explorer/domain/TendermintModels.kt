@@ -23,10 +23,10 @@ data class ValidatorInfo(val address: String, val pubKey: PubKey, val votingPowe
 
 data class TXSearchResult(val txs: List<Transaction>, val totalCount: String)
 
-data class Transaction(val hash: String, val height: String, val index: Int, val txResult: TXResult, val tx: String)
+data class Transaction(val hash: String, val height: String, val index: Int, val txResult: TxResult, val tx: String)
 
 //data class TXResult(val data: String?, val log: String, val info: String, @JsonPropertyJsonProperty("gasWanted") val gasWanted: String, @JsonProperty("gasUsed") val gasUsed: String, val codespace: String)
-data class TXResult(val code: Int, val data: String?, val log: String, val info: String, @JsonProperty("gasWanted") val gasWanted: String, @JsonProperty("gasUsed") val gasUsed: String, val codespace: String, val events: List<TxEvent>)
+data class TxResult(val code: Int, val data: String?, val log: String, val info: String, @JsonProperty("gasWanted") val gasWanted: String, @JsonProperty("gasUsed") val gasUsed: String, val codespace: String, val events: List<TxEvent>)
 
 data class TxEvent(val type: String, val attributes: List<TxEvenAttribute>)
 

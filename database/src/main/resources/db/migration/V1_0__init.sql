@@ -21,6 +21,14 @@ CREATE TABLE validators_cache
     hit_count INT NOT NULL
 );
 
+CREATE TABLE validator_cache
+(
+    addressId   VARCHAR(64) PRIMARY KEY,
+    validator JSONB NOT NULL,
+    last_hit TIMESTAMP NOT NULL,
+    hit_count INT NOT NULL
+);
+
 CREATE TABLE transaction_cache
 (
     hash VARCHAR(64) PRIMARY KEY,
@@ -34,8 +42,15 @@ CREATE TABLE transaction_count_cache
     day VARCHAR(16) PRIMARY KEY,
     number_txs INT NOT NULL DEFAULT 0,
     number_tx_blocks INT NOT NULL DEFAULT 0,
-    complete BOOLEAN NOT NULL DEFAULT FALSE,
     max_height INT DEFAULT NULL,
-    min_height INT NOT NULL,
-    index_height INT NOT NULL
+    min_height INT NOT NULL
+);
+
+CREATE TABLE transcation_count_index
+(
+    id INT PRIMARY KEY,
+    max_height_read INT NULL,
+    min_height_read INT NULL,
+    last_run_start TIMESTAMP NOT NULL,
+    last_run_end TIMESTAMP NOT NULL
 );

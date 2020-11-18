@@ -10,12 +10,13 @@ import org.springframework.boot.autoconfigure.flyway.FlywayMigrationInitializer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory
 import org.springframework.web.client.RestTemplate
 import java.sql.Connection
 import javax.sql.DataSource
 
 @Configuration
-class DataConfig{
+class DataConfig {
 
     protected val logger = logger(DataConfig::class)
 
@@ -48,6 +49,12 @@ class DataConfig{
     }
 
     @Bean
-    fun restTemplate(): RestTemplate = RestTemplate()
+    fun restTemplate(): RestTemplate {
+        val httpRequestFactory: HttpComponentsClientHttpRequestFactory = HttpComponentsClientHttpRequestFactory()
+        httpRequestFactory.setConnectionRequestTimeout(10000);
+        httpRequestFactory.setConnectTimeout(10000);
+        httpRequestFactory.setReadTimeout(10000);
+        return RestTemplate(httpRequestFactory);
+    }
 
 }
