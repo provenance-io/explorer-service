@@ -51,7 +51,7 @@ data class BlockData(val txs: List<String>?)
 
 data class LastCommit(val height: String, val round: String, val blockId: BlockId, val signatures: List<Signature>)
 
-data class Signature(val blockIdFlag: Int, val validatorAddress: String, val timestamp: String, val signature: String)
+data class Signature(val blockIdFlag: Int, val validatorAddress: String, val timestamp: String, val signature: String?)
 
 data class Evidence(val evidence: EvidenceDetail?)
 
