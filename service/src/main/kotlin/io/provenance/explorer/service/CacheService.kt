@@ -32,6 +32,7 @@ class CacheService() {
         if (shouldCacheBlock(blockHeight, json)) BlockCacheTable.insertIgnore {
             it[height] = blockHeight
             it[block] = json
+            it[blockTimestamp] = DateTime.parse(json.get("block").get("header").get("time").asText())
             it[hitCount] = 0
             it[lastHit] = DateTime.now()
         }

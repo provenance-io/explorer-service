@@ -245,7 +245,6 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         val eventAmountDenom = eventAmountDenom(transaction.txResult)
         TxDetails(transaction.height.toInt(), transaction.txResult.gasUsed.toInt(), transaction.txResult.gasWanted.toInt(), 0, 0, block.block.header.time,
                 "TODO status",
-                block.block.header.time,
                 transaction.txResult.fee(explorerProperties.minGasPrice()),
                 eventAmountDenom.third, "TODO signer", "TODO memo", eventAmountDenom.first, "TODO from",
                 eventAmountDenom.second.toInt(), eventAmountDenom.third, "TODO to")

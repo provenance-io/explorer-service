@@ -8,6 +8,7 @@ import io.provenance.explorer.OBJECT_MAPPER
 object BlockCacheTable : Table(name = "block_cache") {
     val height = integer("height").primaryKey()
     val block = jsonb<BlockCacheTable, JsonNode>("block", OBJECT_MAPPER)
+    val blockTimestamp = datetime("block_timestamp")
     val lastHit = datetime("last_hit")
     val hitCount = integer("hit_count")
 }

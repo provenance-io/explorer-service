@@ -2,6 +2,7 @@ CREATE TABLE block_cache
 (
     height   INT PRIMARY KEY,
     block JSONB NOT NULL,
+    block_timestamp TIMESTAMP NOT NULL,
     last_hit TIMESTAMP NOT NULL,
     hit_count INT NOT NULL
 );
