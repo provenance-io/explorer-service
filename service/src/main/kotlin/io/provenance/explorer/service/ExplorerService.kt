@@ -137,7 +137,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     fun hydrateBlock(blockResponse: BlockResponse, validatorsResponse: ValidatorsResponse) = let {
         BlockDetail(blockResponse.block.header.height.toInt(),
                 blockResponse.block.header.time,
-                blockResponse.block.header.validatorsHash,
+                blockResponse.block.header.proposerAddress,
                 "",
                 "",
                 validatorsResponse.validators.sumBy { v -> v.votingPower.toInt() },
@@ -181,8 +181,8 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
 
     fun getValidatorsAtHeight(blockHeight: Int, count: Int, page: Int, sort: String) = let {
         val validatorsResponse = getValidators(blockHeight)
-        val validators = if ("asc" == sort.toLowerCase()) validatorsResponse.validators.sortedBy { it.address }
-        else validatorsResponse.validators.sortedByDescending { it.address }
+        val validators = if ("asc" == sort.toLowerCase()) validatorsResponse.validators.sortedBy { it.votingPower }
+        else validatorsResponse.validators.sortedByDescending { it.votingPower }
         hydrateValidatorResponse(validators, (count * page), count)
     }
 
