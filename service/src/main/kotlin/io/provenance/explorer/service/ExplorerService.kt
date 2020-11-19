@@ -36,8 +36,8 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         if (!url.contains("status")) logger.info("GET request to $url")
         restTemplate.getForEntity(url, JsonNode::class.java).let { result ->
             if (result.statusCode != HttpStatus.OK || result.body.has("error") || !result.body.has("result")) {
-                logger.error("Failed to calling $url status code: ${result.statusCode} response body: ${result.body}")
-                throw Exception(result.body.asText())
+                logger.error("Failed calling $url status code: ${result.statusCode} response body: ${result.body}")
+                throw TendermintApiException(result.body.toString())
             }
             result.body.get("result")
         }
@@ -83,7 +83,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         }
         val endIndex = dayTxMetrics.values.sortedBy { it.minHeight }.first().minHeight
         cacheService.addTransactionCounts(dayTxMetrics, startIndex, endIndex, startTime)
-        logger.info("Finished updating transactions read ${startIndex - endIndex} blocks from $startIndex to $endIndex in $time ms.")
+        logger.info("Finished updating transactions reading${startIndex - endIndex} blocks from height $startIndex to $endIndex in $time ms.")
     }
 
     fun calculateDayMetrics(dayTxMetrics: MutableMap<String, TxHistory>, blockMeta: BlockMeta) = let {
