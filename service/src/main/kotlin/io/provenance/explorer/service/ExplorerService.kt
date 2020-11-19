@@ -114,7 +114,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
             blockHeight = blockchain.blockMetas.minHeight() - 1
         }
         if ("asc" == sort.toLowerCase()) result.reverse()
-        PagedResults(latestHeight / count, result)
+        PagedResults((latestHeight / count) + 1, result)
     }
 
     fun getBlockchain(maxHeight: Int) = let {
@@ -189,8 +189,8 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     fun hydrateValidatorResponse(validators: List<Validator>, startIndex: Int, perPage: Int) = let {
         val endIndex = if (perPage + startIndex >= validators.size) validators.size else perPage + startIndex
         if (startIndex > validators.size)
-            PagedResults(validators.size / perPage, listOf<ValidatorDetail>())
-        else PagedResults(validators.size / perPage, validators.subList(startIndex, endIndex)
+            PagedResults((validators.size / perPage) + 1, listOf<ValidatorDetail>())
+        else PagedResults((validators.size / perPage) + 1, validators.subList(startIndex, endIndex)
                 .map { v -> ValidatorDetail(v.votingPower.toInt(), "", v.address, 0) })
     }
 
@@ -210,7 +210,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
             }
         }.awaitAll()
         if (!sort.isNullOrEmpty() && sort.toLowerCase() == "asc") result.reversed()
-        PagedResults(latestHeight / count, result)
+        PagedResults((latestHeight / count) + 1, result)
     }
 
     private fun recentTransactionUrl(height: Int, count: Int, page: Int) = "${explorerProperties.pbUrl}tx_search?query=\"tx.height>$height\"&page=$page&per_page=$count&order_by=\"desc\""
