@@ -46,7 +46,7 @@ CREATE TABLE transaction_count_cache
     min_height INT NOT NULL
 );
 
-CREATE TABLE transcation_count_index
+CREATE TABLE transation_count_index
 (
     id INT PRIMARY KEY,
     max_height_read INT NULL,

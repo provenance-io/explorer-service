@@ -53,6 +53,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         if (explorerProperties.isMetricJobEnabled()) updateTransactionCount();
     }
 
+    @Synchronized
     fun updateTransactionCount() {
         val transactionCountIndex = cacheService.getTransactionCountIndex()
         val startIndex = latestHeight
@@ -82,12 +83,12 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         }
         val endIndex = dayTxMetrics.values.sortedBy { it.minHeight }.first().minHeight
         cacheService.addTransactionCounts(dayTxMetrics, startIndex, endIndex, startTime)
-        logger.info("Finished updating transactions read ${endIndex - startIndex} blocks from $startIndex to $endIndex in $time ms.")
+        logger.info("Finished updating transactions read ${startIndex - endIndex} blocks from $startIndex to $endIndex in $time ms.")
     }
 
     fun calculateDayMetrics(dayTxMetrics: MutableMap<String, TxHistory>, blockMeta: BlockMeta) = let {
         if (!dayTxMetrics.containsKey(blockMeta.day())) {
-            dayTxMetrics.put(blockMeta.day(), TxHistory(blockMeta.day(), blockMeta.numTxs.toInt(), 1, blockMeta.height(), blockMeta.height()))
+            dayTxMetrics.put(blockMeta.day(), TxHistory(blockMeta.day(), blockMeta.numTxs.toInt(), if (blockMeta.numTxs.toInt() > 0) 1 else 0, blockMeta.height(), blockMeta.height()))
         } else {
             val history = dayTxMetrics.get(blockMeta.day())!!
             history.minHeight = blockMeta.height()
@@ -176,8 +177,10 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
             .map { v -> ValidatorDetail(v.votingPower.toInt(), v.address, "", 0) }
             .firstOrNull()
 
-    fun getRecentValidators(count: Int, page: Int, sort: String) = let {
-        val validatorsResponse = getValidators(latestHeight)
+    fun getRecentValidators(count: Int, page: Int, sort: String) = getValidatorsAtHeight(latestHeight, count, page, sort)
+
+    fun getValidatorsAtHeight(blockHeight: Int, count: Int, page: Int, sort: String) = let {
+        val validatorsResponse = getValidators(blockHeight)
         val validators = if ("asc" == sort.toLowerCase()) validatorsResponse.validators.sortedBy { it.address }
         else validatorsResponse.validators.sortedByDescending { it.address }
         hydrateValidatorResponse(validators, (count * page), count)
