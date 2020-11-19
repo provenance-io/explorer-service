@@ -42,7 +42,7 @@ object TransactionCacheTable : Table(name = "transaction_cache") {
 
 }
 
-object TransactionCountIndex : Table(name = "transation_count_index") {
+object TransactionCountIndex : Table(name = "transaction_count_index") {
     val id = integer("id").primaryKey()
     val maxHeightRead = integer("max_height_read")
     val minHeightRead = integer("min_height_read")
