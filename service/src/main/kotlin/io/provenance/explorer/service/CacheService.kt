@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode
 import io.provenance.core.extensions.logger
 import io.provenance.explorer.domain.*
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Transaction
+import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
@@ -28,17 +30,18 @@ class CacheService() {
         jsonNode
     }
 
-    fun addBlockToCache(blockHeight: Int, json: JsonNode) = transaction {
+    fun addBlockToCache(blockHeight: Int, transactionCount: Int, timestamp: DateTime, json: JsonNode) = transaction {
         if (shouldCacheBlock(blockHeight, json)) BlockCacheTable.insertIgnore {
             it[height] = blockHeight
             it[block] = json
-            it[blockTimestamp] = DateTime.parse(json.get("block").get("header").get("time").asText())
+            it[txCount] = transactionCount
+            it[blockTimestamp] = timestamp
             it[hitCount] = 0
             it[lastHit] = DateTime.now()
         }
     }
 
-    fun shouldCacheBlock(blockHeight: Int, json: JsonNode) = json.get("block").get("header").get("height").asInt() == blockHeight
+    fun shouldCacheBlock(blockHeight: Int, json: JsonNode) = json.get("header").get("height").asInt() == blockHeight
 
     fun getBlockchainFromMaxHeight(maxHeight: Int) = transaction {
         var jsonNode: JsonNode? = null
@@ -142,69 +145,42 @@ class CacheService() {
 
     fun shouldCacheTransaction(txHash: String, json: JsonNode) = json.get("hash").asText()!! == txHash
 
-    fun getTransactionCountByDay(day: String) = transaction {
-        TransactionCountTable.select { (TransactionCountTable.day eq day) }.firstOrNull()
+    fun getBlockIndex() = transaction {
+        BlockIndexTable.select { (BlockIndexTable.id eq 1) }.firstOrNull()
     }
 
-    fun getTransactionCountIndex() = transaction {
-        TransactionCountIndex.select { (TransactionCountIndex.id eq 1) }.firstOrNull()
-    }
+    fun updateBlockMaxHeightIndex(maxHeightRead: Int) = updateBlockIndex(maxHeightRead, null)
 
-    fun getTransactionCounts(fromDate: String, toDate: String) = transaction {
-        TransactionCountTable.select {
-            (TransactionCountTable.day greaterEq fromDate) and
-                    (TransactionCountTable.day lessEq toDate)
-        }.orderBy(TransactionCountTable.day, SortOrder.DESC).map {
-            TxHistory(it[TransactionCountTable.day],
-                    it[TransactionCountTable.numberTxs],
-                    it[TransactionCountTable.numberTxBlocks],
-                    it[TransactionCountTable.maxHeight],
-                    it[TransactionCountTable.minHeight])
-        }
+    fun updateBlockMinHeightIndex(minHeightRead: Int) = updateBlockIndex(null, minHeightRead)
 
-    }
-
-    fun getTransactionCountsToDate(day: String) = transaction {
-        TransactionCountTable.select { TransactionCountTable.day lessEq day }.orderBy(TransactionCountTable.day, SortOrder.DESC).map { it }
-    }
-
-    fun addTransactionCounts(dayCounts: Map<String, TxHistory>, maxHeightRead: Int, minHeightRead: Int, startTime: DateTime) = transaction {
-        val transactionIndex = TransactionCountIndex.select { (TransactionCountIndex.id eq 1) }.firstOrNull()
-        if (transactionIndex == null) {
-            TransactionCountIndex.insert {
+    private fun updateBlockIndex(maxHeightRead: Int?, minHeightRead: Int?) = transaction {
+        val blockIndex = BlockIndexTable.select { (BlockIndexTable.id eq 1) }.firstOrNull()
+        if (blockIndex == null) {
+            BlockIndexTable.insert {
                 it[id] = 1
-                it[TransactionCountIndex.maxHeightRead] = maxHeightRead
-                it[TransactionCountIndex.minHeightRead] = minHeightRead
-                it[TransactionCountIndex.lastRunStart] = startTime
-                it[lastRunEnd] = DateTime.now()
+                if (maxHeightRead != null) it[BlockIndexTable.maxHeightRead] = maxHeightRead
+                if (minHeightRead != null) it[BlockIndexTable.minHeightRead] = minHeightRead
+                it[lastUpdate] = DateTime.now()
             }
         } else {
-            TransactionCountIndex.update {
-                transactionIndex[TransactionCountIndex.maxHeightRead] = maxHeightRead
-                transactionIndex[TransactionCountIndex.minHeightRead] = minHeightRead
-                it[TransactionCountIndex.lastRunStart] = startTime
-                it[lastRunEnd] = DateTime.now()
-            }
-        }
-        dayCounts.values.forEach { metrics ->
-            val transactionCount = TransactionCountTable.select { TransactionCountTable.day eq metrics.day }.firstOrNull()
-            if (transactionCount == null) {
-                TransactionCountTable.insert {
-                    it[TransactionCountTable.day] = metrics.day
-                    it[TransactionCountTable.maxHeight] = metrics.maxHeight
-                    it[TransactionCountTable.minHeight] = metrics.minHeight
-                    it[TransactionCountTable.numberTxBlocks] = metrics.numberTxBlocks
-                    it[TransactionCountTable.numberTxs] = metrics.numberTxs
-                }
-            } else {
-                TransactionCountTable.update {
-                    transactionCount[TransactionCountTable.maxHeight] += metrics.maxHeight
-                    transactionCount[TransactionCountTable.numberTxBlocks] += metrics.numberTxBlocks
-                    transactionCount[TransactionCountTable.numberTxs] += metrics.numberTxs
-                }
+            BlockIndexTable.update {
+                if (maxHeightRead != null) it[BlockIndexTable.maxHeightRead] = maxHeightRead
+                if (minHeightRead != null) it[BlockIndexTable.minHeightRead] = minHeightRead
+                it[lastUpdate] = DateTime.now()
             }
         }
     }
 
+    fun getTransactionCountsForDates(startDate: String, endDate: String, granularity: String) = transaction {
+        val connection = TransactionManager.current().connection
+        val query = "select date_trunc(?, block_timestamp), sum(tx_count) " +
+                "from block_cache where block_timestamp <= ?::timestamp and block_timestamp >=?::timestamp " +
+                "GROUP BY 1 ORDER BY 1 DESC"
+        val statement = connection.prepareStatement(query)
+        statement.setObject(1, granularity)
+        statement.setObject(2, startDate)
+        statement.setObject(3, endDate)
+        statement.executeQuery()
+    }
 
 }

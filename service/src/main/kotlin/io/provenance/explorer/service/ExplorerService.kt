@@ -16,7 +16,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
-import kotlin.system.measureTimeMillis
+
 
 @Service
 class ExplorerService(private val explorerProperties: ExplorerProperties,
@@ -25,8 +25,34 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
 
     protected val logger = logger(ExplorerService::class)
 
-    @Volatile
-    protected var latestHeight = getLatestBlockHeight()
+    fun updateCache() {
+        val index = cacheService.getBlockIndex()
+        val startHeight = getLatestBlockHeight()
+        var indexHeight = startHeight
+        cacheService.updateBlockMaxHeightIndex(indexHeight)
+        if (index == null || index[BlockIndexTable.minHeightRead] == null) {
+            val days = mutableSetOf<String>()
+            while (days.count() <= explorerProperties.initialHistoryicalDays()) {
+                getBlockchain(indexHeight).blockMetas.forEach {
+                    val block = OBJECT_MAPPER.readValue(it.toString(), BlockMeta::class.java)
+                    cacheService.addBlockToCache(block.height(), block.numTxs.toInt(), DateTime.parse(block.header.time), it)
+                    days.add(block.day())
+                    indexHeight = block.height() - 1
+                }
+            }
+        } else {
+            while (indexHeight > index[BlockIndexTable.maxHeightRead]) {
+                getBlockchain(indexHeight).blockMetas.forEach {
+                    val block = OBJECT_MAPPER.readValue(it.toString(), BlockMeta::class.java)
+                    cacheService.addBlockToCache(block.height(), block.numTxs.toInt(), DateTime.parse(block.header.time), it)
+                    indexHeight = block.height() - 1
+                }
+            }
+        }
+        cacheService.updateBlockMinHeightIndex(indexHeight + 1)
+    }
+
+    fun getLatestBlockHeightIndex(): Int = cacheService.getBlockIndex()!![BlockIndexTable.maxHeightRead]
 
     fun getLatestBlockHeight(): Int = getStatus().syncInfo.latestBlockHeight.toInt()
 
@@ -44,80 +70,25 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     }
 
     @Scheduled(initialDelay = 0L, fixedDelay = 1000L)
-    fun updateLatestBlockHeightJob() = let {
-        latestHeight = getLatestBlockHeight()
-    }
-
-    @Scheduled(initialDelay = 0L, fixedDelay = 60000L)
-    fun updateTransactionCountJob() = let {
-        if (explorerProperties.isMetricJobEnabled()) updateTransactionCount();
-    }
-
-    @Synchronized
-    fun updateTransactionCount() {
-        val transactionCountIndex = cacheService.getTransactionCountIndex()
-        val startIndex = latestHeight
-        var currentIndex = startIndex
-        val dayTxMetrics = mutableMapOf<String, TxHistory>()
-        val startTime = DateTime.now()
-        logger.info("Starting update of transaction metrics from current height $startIndex")
-        val time = measureTimeMillis {
-            if (transactionCountIndex == null) {
-                while (dayTxMetrics.keys.size < explorerProperties.txsInitDays() + 1 && currentIndex >= 0) {
-                    getBlockchain(currentIndex).blockMetas.sortedByDescending { it.height() }.forEach {
-                        currentIndex = calculateDayMetrics(dayTxMetrics, it)
-                    }
-                }
-                val incompleteDay = dayTxMetrics.keys.sortedByDescending { it }.last()
-                dayTxMetrics.remove(incompleteDay)
-            } else {
-                val endIndex = transactionCountIndex[TransactionCountIndex.maxHeightRead]
-                while (currentIndex > endIndex) {
-                    getBlockchain(currentIndex).blockMetas.sortedByDescending { it.height() }.forEach {
-                        if (it.height() > endIndex) {
-                            currentIndex = calculateDayMetrics(dayTxMetrics, it)
-                        }
-                    }
-                }
-            }
-        }
-        val endIndex = dayTxMetrics.values.sortedBy { it.minHeight }.first().minHeight
-        cacheService.addTransactionCounts(dayTxMetrics, startIndex, endIndex, startTime)
-        logger.info("Finished updating transactions reading${startIndex - endIndex} blocks from height $startIndex to $endIndex in $time ms.")
-    }
-
-    fun calculateDayMetrics(dayTxMetrics: MutableMap<String, TxHistory>, blockMeta: BlockMeta) = let {
-        if (!dayTxMetrics.containsKey(blockMeta.day())) {
-            dayTxMetrics.put(blockMeta.day(), TxHistory(blockMeta.day(), blockMeta.numTxs.toInt(), if (blockMeta.numTxs.toInt() > 0) 1 else 0, blockMeta.height(), blockMeta.height()))
-        } else {
-            val history = dayTxMetrics.get(blockMeta.day())!!
-            history.minHeight = blockMeta.height()
-            history.numberTxs += blockMeta.numTxs.toInt()
-            history.numberTxBlocks += if (blockMeta.numTxs.toInt() > 0) 1 else 0
-        }
-        blockMeta.height() - 1
-    }
+    fun updateLatestBlockHeightJob() = updateCache()
 
     fun getRecentBlocks(count: Int, page: Int, sort: String) = let {
-        var blockHeight = if (page < 0) latestHeight else latestHeight - (count * page)
+        val currentHeight = getLatestBlockHeightIndex()
+        var blockHeight = if (page < 0) currentHeight else currentHeight - (count * page)
         val result = mutableListOf<RecentBlock>()
         while (result.size < count) {
-            var blockchain = getBlockchain(blockHeight)
-            blockchain.blockMetas.forEach { blockMeta ->
-                if (result.size < count) {
-                    result.add(RecentBlock(blockMeta.header.height.toInt(),
-                            blockMeta.numTxs.toInt(),
-                            blockMeta.header.time))
-                    blockHeight = blockMeta.header.height.toInt()
-                }
-            }
-            blockHeight = blockchain.blockMetas.minHeight() - 1
+            var blockMeta = getBlock(blockHeight)
+            result.add(RecentBlock(blockMeta.header.height.toInt(),
+                    blockMeta.numTxs.toInt(),
+                    blockMeta.header.time))
+            blockHeight = blockMeta.header.height.toInt()
+            blockHeight--
         }
         if ("asc" == sort.toLowerCase()) result.reverse()
-        PagedResults((latestHeight / count) + 1, result)
+        PagedResults((currentHeight / count) + 1, result)
     }
 
-    fun getBlockchain(maxHeight: Int) = let {
+    private fun getBlockchain(maxHeight: Int) = let {
         var blocks = cacheService.getBlockchainFromMaxHeight(maxHeight)
         if (blocks == null) {
             logger.info("cache miss for blockchain max height $maxHeight")
@@ -128,21 +99,21 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     }
 
     fun getBlockAtHeight(height: Int?) = runBlocking(Dispatchers.IO) {
-        val queryHeight = if (height == null) latestHeight else height
+        val queryHeight = if (height == null) getLatestBlockHeightIndex() else height
         val blockResponse = async { getBlock(queryHeight) }
         val validatorsResponse = async { getValidators(queryHeight) }
         hydrateBlock(blockResponse.await(), validatorsResponse.await())
     }
 
-    fun hydrateBlock(blockResponse: BlockResponse, validatorsResponse: ValidatorsResponse) = let {
-        BlockDetail(blockResponse.block.header.height.toInt(),
-                blockResponse.block.header.time,
-                blockResponse.block.header.proposerAddress,
+    fun hydrateBlock(blockResponse: BlockMeta, validatorsResponse: ValidatorsResponse) = let {
+        BlockDetail(blockResponse.header.height.toInt(),
+                blockResponse.header.time,
+                blockResponse.header.proposerAddress,
                 "",
                 "",
                 validatorsResponse.validators.sumBy { v -> v.votingPower.toInt() },
                 validatorsResponse.count.toInt(),
-                if (blockResponse.block.data.txs == null) 0 else blockResponse.block.data.txs.size,
+                blockResponse.numTxs.toInt(),
                 0,
                 0,
                 0)
@@ -152,12 +123,15 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         var block = cacheService.getBlockByHeight(blockHeight)
         if (block == null) {
             logger.info("cache miss for block height $blockHeight")
-            block = getRestResult("${explorerProperties.pbUrl}block?height=$blockHeight").let { node ->
-                cacheService.addBlockToCache(blockHeight, node)
-                node
+            getBlockchain(blockHeight).blockMetas.filter {
+                it.get("header").get("height").asInt() == blockHeight
+            }.map {
+                val block = OBJECT_MAPPER.readValue(it.toString(), BlockMeta::class.java)
+                cacheService.addBlockToCache(block.height(), block.numTxs.toInt(), DateTime.parse(block.header.time), it)
+                block
             }
         }
-        OBJECT_MAPPER.readValue(block.toString(), BlockResponse::class.java)
+        OBJECT_MAPPER.readValue(block.toString(), BlockMeta::class.java)
     }
 
     fun getValidators(blockHeight: Int) = let {
@@ -172,12 +146,12 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         OBJECT_MAPPER.readValue(validators.toString(), ValidatorsResponse::class.java)
     }
 
-    fun getValidator(addressId: String) = getValidators(latestHeight).validators
+    fun getValidator(addressId: String) = getValidators(getLatestBlockHeightIndex()).validators
             .filter { v -> addressId == v.address }
             .map { v -> ValidatorDetail(v.votingPower.toInt(), v.address, "", 0) }
             .firstOrNull()
 
-    fun getRecentValidators(count: Int, page: Int, sort: String) = getValidatorsAtHeight(latestHeight, count, page, sort)
+    fun getRecentValidators(count: Int, page: Int, sort: String) = getValidatorsAtHeight(getLatestBlockHeightIndex(), count, page, sort)
 
     fun getValidatorsAtHeight(blockHeight: Int, count: Int, page: Int, sort: String) = let {
         val validatorsResponse = getValidators(blockHeight)
@@ -195,7 +169,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     }
 
     fun getRecentTransactions(count: Int, page: Int, sort: String) = runBlocking(Dispatchers.IO) {
-        var height = latestHeight - 1000 * (page + 1)
+        var height = getLatestBlockHeightIndex() - 1000 * (page + 1)
         var recentTxs = mutableListOf<Transaction>()
         while (count != recentTxs.size) {
             val jsonString = getRestResult(recentTransactionUrl(height, count, page)).toString()
@@ -210,7 +184,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
             }
         }.awaitAll()
         if (!sort.isNullOrEmpty() && sort.toLowerCase() == "asc") result.reversed()
-        PagedResults((latestHeight / count) + 1, result)
+        PagedResults((getLatestBlockHeightIndex() / count) + 1, result)
     }
 
     private fun recentTransactionUrl(height: Int, count: Int, page: Int) = "${explorerProperties.pbUrl}tx_search?query=\"tx.height>$height\"&page=$page&per_page=$count&order_by=\"desc\""
@@ -227,31 +201,38 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         hydrateTransactionDetails(transaction, getBlock(transaction.height.toInt()))
     }
 
-    private fun eventAmountDenom(txResult: TxResult) = let {
-        val eventType = txResult.events[1].type
-        val log = OBJECT_MAPPER.readValue(txResult.log, Array<TxLog>::class.java)
-        var amount = if (eventType == "transfer") log[0].events[1].attributes.find { a -> a.key == "amount" }?.value?.replace("vspn", "")!!.toInt() else 0
-        var denom = if (eventType == "transfer") "vspn" else ""
-        Triple(eventType, amount, denom)
+    fun hydrateRecentTransaction(transaction: Transaction, block: BlockMeta) = let {
+        val eventMap = mapLogAttributes(transaction.txResult.log)
+        RecentTx(transaction.hash, block.header.time, transaction.txResult.fee(explorerProperties.minGasPrice()),
+                eventMap.getOrDefault("amount", "").replace("[\\d.]".toRegex(), ""), transaction.txResult.events[1].type, block.height(), "", "")
     }
 
-    fun hydrateRecentTransaction(transaction: Transaction, block: BlockResponse) = let {
-        val eventAmountDenom = eventAmountDenom(transaction.txResult)
-        RecentTx(transaction.hash, block.block.header.time, transaction.txResult.fee(explorerProperties.minGasPrice()),
-                eventAmountDenom.third, eventAmountDenom.first, block.height(), "", "")
+    fun mapLogAttributes(log: String) = let {
+        val log = OBJECT_MAPPER.readValue(log, Array<TxLog>::class.java)
+        val eventMap = mutableMapOf<String, String>()
+        log[0].events.flatMap { x -> x.attributes }.forEach { x -> eventMap.put(x.key, x.value) }
+        eventMap
     }
 
-    fun hydrateTransactionDetails(transaction: Transaction, block: BlockResponse) = let {
-        val eventAmountDenom = eventAmountDenom(transaction.txResult)
-        TxDetails(transaction.height.toInt(), transaction.txResult.gasUsed.toInt(), transaction.txResult.gasWanted.toInt(), 0, 0, block.block.header.time,
+    fun hydrateTransactionDetails(transaction: Transaction, block: BlockMeta) = let {
+        val eventMap = mapLogAttributes(transaction.txResult.log)
+        val denom = eventMap.getOrDefault("amount", "").replace("[\\d.]".toRegex(), "")
+        val amount = eventMap.getOrDefault("amount", "0").replace("[a-zA-Z]".toRegex(), "").toInt()
+        TxDetails(transaction.height.toInt(), transaction.txResult.gasUsed.toInt(), transaction.txResult.gasWanted.toInt(), 0, 0, block.header.time,
                 "TODO status",
                 transaction.txResult.fee(explorerProperties.minGasPrice()),
-                eventAmountDenom.third, "TODO signer", "TODO memo", eventAmountDenom.first, "TODO from",
-                eventAmountDenom.second.toInt(), eventAmountDenom.third, "TODO to")
+                denom, "TODO signer", "TODO memo",
+                transaction.txResult.events[1].type, eventMap.getOrDefault("sender", ""), amount,
+                denom, eventMap.getOrDefault("recipient", ""))
     }
 
-    fun getTransactionHistory(fromDate: String, toDate: String) = let {
-        cacheService.getTransactionCounts(fromDate, toDate)
+    fun getTransactionHistory(fromDate: DateTime, toDate: DateTime, granularity: String) = let {
+        val metrics = cacheService.getTransactionCountsForDates(fromDate.toString("yyyy-MM-dd"), toDate.toString("yyyy-MM-dd"), granularity)
+        val results = mutableListOf<TxHistory>()
+        while (metrics.next()) {
+            results.add(TxHistory(metrics.getString(1), metrics.getInt(2)))
+        }
+        results
     }
 
 }

@@ -1,6 +1,9 @@
 package io.provenance.explorer.domain
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.databind.JsonNode
+import javax.json.JsonArray
+import javax.json.JsonObject
 
 
 //Status Api Models
@@ -63,6 +66,6 @@ data class ValidatorsResponse(val blockHeight: String, val validators: List<Vali
 data class Validator(val address: String, val pubKey: PubKey, val votingPower: String, val proposerPriority: String)
 
 //Blockchain result
-data class Blockchain(val lastHeight: String, val blockMetas: List<BlockMeta>)
+data class Blockchain(val lastHeight: String, val blockMetas: List<JsonNode>)
 
 data class BlockMeta(val blockId: BlockId, val header: BlockHeader, val numTxs: String)

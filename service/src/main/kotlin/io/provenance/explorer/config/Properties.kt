@@ -1,10 +1,7 @@
 package io.provenance.explorer.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.boot.context.properties.ConfigurationPropertiesScan
-import org.springframework.context.annotation.Bean
 import org.springframework.validation.annotation.Validated
-import javax.validation.constraints.AssertTrue
 import javax.validation.constraints.NotNull
 
 @ConfigurationProperties(prefix = "provenance-explorer")
@@ -15,17 +12,12 @@ class ExplorerProperties {
     lateinit var pbUrl: String
 
     @NotNull
-    lateinit var txsCountInitDays: String
-
-    @NotNull
-    lateinit var txsMetricJobEnabled: String
+    lateinit var initialHistoryicalDayCount: String
 
     @NotNull
     lateinit var minimumGasPrice: String
 
-    fun txsInitDays() = txsCountInitDays.toInt()
-
-    fun isMetricJobEnabled() = txsMetricJobEnabled.toBoolean()
+    fun initialHistoryicalDays() = initialHistoryicalDayCount.toInt()
 
     fun minGasPrice() = minimumGasPrice.toBigDecimal()
 

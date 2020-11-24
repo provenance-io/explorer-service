@@ -21,4 +21,4 @@ data class TxDetails(val height: Int, val gasUsed: Int, val gasWanted: Int, val 
                      val status: String, val fee: BigDecimal, val feeDenomination: String, val signer: String,
                      val memo: String, val txType: String, val from: String, val amount: Int, val denomination: String, val to: String)
 
-data class TxHistory(val day: String, var numberTxs: Int, var numberTxBlocks: Int, var maxHeight: Int, var minHeight: Int)
+data class TxHistory(val date: String, var numberTxs: Int)

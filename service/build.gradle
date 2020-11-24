@@ -58,6 +58,8 @@ dependencies {
     api group: 'io.provenance', name: 'core-db-exposed', version: "$provenance_core", changing: true, force: true
     api group: 'io.provenance', name: 'core-domain', version: "$provenance_core", changing: true
     api group: 'io.provenance', name: 'core-extensions', version: "$provenance_core", changing: true
+    api group: 'io.provenance.pbc', name: 'simple-client', version: "$provenance_core", changing: true
+    api group: 'io.p8e', name: 'p8e-util', version: "$provenance_core", changing: true
 
     // kotlin
     api "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"

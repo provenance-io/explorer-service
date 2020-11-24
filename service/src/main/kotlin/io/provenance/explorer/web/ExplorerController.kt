@@ -4,6 +4,8 @@ import io.provenance.explorer.config.ServiceProperties
 import io.provenance.explorer.service.ExplorerService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
+import org.joda.time.DateTime
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
@@ -35,9 +37,14 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     @ApiOperation(value = "Get X-Day Transaction History")
     @GetMapping(value = ["/txs/history"],
             produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun txHistory(@RequestParam(required = true) fromDate: String,
-                  @RequestParam(required = true) toDate: String):
-            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getTransactionHistory(fromDate, toDate))
+    fun txHistory(@RequestParam(required = true)
+                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime,
+                  @RequestParam(required = true)
+                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime,
+                  @RequestParam(required = false, defaultValue = "day") granulatiry: String
+    ): ResponseEntity<Any> =
+            ResponseEntity.ok(explorerService.getTransactionHistory(fromDate, toDate,
+                    if (mutableListOf<String>("second", "minute", "hour", "day", "year").contains(granulatiry)) granulatiry else "day"))
 
     @ApiOperation(value = "Return block at specified height")
     @GetMapping(value = ["/block"],

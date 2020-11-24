@@ -109,7 +109,6 @@ open class ExplorerServiceTest {
     @Test
     @Ignore
     fun `test history init`() {
-        explorerService.updateTransactionCount()
-        explorerService.updateTransactionCount()
+        explorerService.updateCache()
     }
 }
