@@ -174,7 +174,7 @@ class CacheService() {
     fun getTransactionCountsForDates(startDate: String, endDate: String, granularity: String) = transaction {
         val connection = TransactionManager.current().connection
         val query = "select date_trunc(?, block_timestamp), sum(tx_count) " +
-                "from block_cache where block_timestamp <= ?::timestamp and block_timestamp >=?::timestamp " +
+                "from block_cache where block_timestamp >= ?::timestamp and block_timestamp <=?::timestamp " +
                 "GROUP BY 1 ORDER BY 1 DESC"
         val statement = connection.prepareStatement(query)
         statement.setObject(1, granularity)

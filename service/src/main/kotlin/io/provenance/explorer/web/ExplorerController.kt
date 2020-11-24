@@ -10,7 +10,6 @@ import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
-import java.text.SimpleDateFormat
 import javax.validation.constraints.Min
 
 @Validated
@@ -41,10 +40,10 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
                   @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime,
                   @RequestParam(required = true)
                   @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime,
-                  @RequestParam(required = false, defaultValue = "day") granulatiry: String
+                  @RequestParam(required = false, defaultValue = "day") granularity: String
     ): ResponseEntity<Any> =
             ResponseEntity.ok(explorerService.getTransactionHistory(fromDate, toDate,
-                    if (mutableListOf<String>("second", "minute", "hour", "day", "year").contains(granulatiry)) granulatiry else "day"))
+                    if (mutableListOf<String>("second", "minute", "hour", "day", "year").contains(granularity)) granularity else "day"))
 
     @ApiOperation(value = "Return block at specified height")
     @GetMapping(value = ["/block"],
