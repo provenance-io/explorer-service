@@ -69,7 +69,17 @@ pipeline {
     }
     post {
         always {
-           postNotifySlack(currentBuild.result,'#provenance-builds')
+            script {
+                if(currentBuild.result.contains("SUCCESS")) {
+                    postNotifySlack(currentBuild.result, '#provenance-builds', ':blockyapproves:')
+                } else if(currentBuild.result.contains("FAILURE")) {
+                    postNotifySlack(currentBuild.result, '#provenance-builds', ':dumpsterfire:')
+                } else if(currentBuild.result.contains("ABORTED")) {
+                    postNotifySlack(currentBuild.result, '#provenance-builds', ':_homer_:')
+                } else {
+                    postNotifySlack(currentBuild.result, '#provenance-builds', ':surprised_pikachu:')
+                }
+            }
             script {
                 rmrf('build', 'service/build')
                 dockerRmi(common.dockerTag())
