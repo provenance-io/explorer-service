@@ -227,7 +227,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     }
 
     fun getTransactionHistory(fromDate: DateTime, toDate: DateTime, granularity: String) = let {
-        val metrics = cacheService.getTransactionCountsForDates(fromDate.plusDays(1).toString("yyyy-MM-dd"), toDate.toString("yyyy-MM-dd"), granularity)
+        val metrics = cacheService.getTransactionCountsForDates(fromDate.toString("yyyy-MM-dd"), toDate.plusDays(1).toString("yyyy-MM-dd"), granularity)
         val results = mutableListOf<TxHistory>()
         while (metrics.next()) {
             results.add(TxHistory(metrics.getString(1), metrics.getInt(2)))
