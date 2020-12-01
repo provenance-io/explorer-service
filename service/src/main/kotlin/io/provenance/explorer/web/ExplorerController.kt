@@ -86,6 +86,6 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     @GetMapping(value = ["/spotlight"],
             produces = [MediaType.APPLICATION_JSON_VALUE])
     fun spotlight():
-            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getAverageBlockCreationTime())
+            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getSpotlightStatistics())
 
 }
