@@ -82,4 +82,10 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
                            @RequestParam(required = false, defaultValue = "desc") sort: String):
             ResponseEntity<Any> = ResponseEntity.ok(explorerService.getValidatorsAtHeight(blockHeight, count, page - 1, sort))
 
+    @ApiOperation(value = "Returns sportlight statistics")
+    @GetMapping(value = ["/spotlight"],
+            produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun spotlight():
+            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getAverageBlockCreationTime())
+
 }

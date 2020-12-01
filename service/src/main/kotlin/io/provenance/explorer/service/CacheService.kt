@@ -9,6 +9,7 @@ import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
+import java.math.BigDecimal
 
 @Service
 class CacheService() {
@@ -180,7 +181,28 @@ class CacheService() {
         statement.setObject(1, granularity)
         statement.setObject(2, startDate)
         statement.setObject(3, endDate)
-        statement.executeQuery()
+        val resultSet = statement.executeQuery()
+        val results = mutableListOf<TxHistory>()
+        while (resultSet.next()) {
+            results.add(TxHistory(resultSet.getString(1), resultSet.getInt(2)))
+        }
+        results
+    }
+
+    fun getLatestBlockCreationIntervals(limit: Int) = transaction {
+        val connection = TransactionManager.current().connection
+        val query = "SELECT  height, " +
+                "extract(epoch from LAG(block_timestamp) OVER(order by height desc) ) - " +
+                "extract(epoch from block_timestamp) as block_creation_time " +
+                "FROM block_cache limit ?"
+        val statement = connection.prepareStatement(query)
+        statement.setInt(1, limit)
+        val resultSet = statement.executeQuery()
+        val results = mutableListOf<Pair<Int, BigDecimal?>>()
+        while (resultSet.next()) {
+            results.add(Pair(resultSet.getInt(1), resultSet.getBigDecimal(2)))
+        }
+        results
     }
 
 }

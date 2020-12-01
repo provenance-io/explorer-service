@@ -22,3 +22,5 @@ data class TxDetails(val height: Int, val gasUsed: Int, val gasWanted: Int, val 
                      val memo: String, val txType: String, val from: String, val amount: Int, val denomination: String, val to: String)
 
 data class TxHistory(val date: String, var numberTxs: Int)
+
+data class Spotlight(val latestBlock: BlockDetail, val avgBlockTime: BigDecimal)

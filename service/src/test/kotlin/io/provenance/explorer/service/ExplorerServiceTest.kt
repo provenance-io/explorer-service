@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.junit4.SpringRunner
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
 
 
 @RunWith(SpringRunner::class)
@@ -107,8 +108,17 @@ open class ExplorerServiceTest {
     }
 
     @Test
-    @Ignore
+    @Ignore("TODO turn into integration tests")
     fun `test history init`() {
         explorerService.updateCache()
+    }
+
+    @Test
+    @Ignore("TODO turn into integration tests")
+    fun `should return spotlight object with current block and average block creation time`() {
+        Thread.sleep(5000)
+        val result = explorerService.getSpotlightStatistics()
+        Assert.assertNotNull(result)
+        Assert.assertTrue(result.avgBlockTime > BigDecimal("0.0"))
     }
 }

@@ -16,6 +16,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
+import java.math.BigDecimal
+import java.math.RoundingMode
 
 
 @Service
@@ -226,13 +228,17 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                 denom, eventMap.getOrDefault("recipient", ""))
     }
 
-    fun getTransactionHistory(fromDate: DateTime, toDate: DateTime, granularity: String) = let {
-        val metrics = cacheService.getTransactionCountsForDates(fromDate.toString("yyyy-MM-dd"), toDate.plusDays(1).toString("yyyy-MM-dd"), granularity)
-        val results = mutableListOf<TxHistory>()
-        while (metrics.next()) {
-            results.add(TxHistory(metrics.getString(1), metrics.getInt(2)))
-        }
-        results
+    fun getTransactionHistory(fromDate: DateTime, toDate: DateTime, granularity: String) = cacheService.getTransactionCountsForDates(fromDate.toString("yyyy-MM-dd"), toDate.plusDays(1).toString("yyyy-MM-dd"), granularity)
+
+    fun getAverageBlockCreationTime() = let {
+        val laggedCreationInter = cacheService.getLatestBlockCreationIntervals(100).filter { it.second != null }.map { it.second }
+        var sum = BigDecimal(0.00)
+        laggedCreationInter.forEach { sum = sum.add(it!!) }
+        sum.divide(BigDecimal(laggedCreationInter.size), 3, RoundingMode.CEILING)
+    }
+
+    fun getSpotlightStatistics() = let {
+        Spotlight(getBlockAtHeight(null), getAverageBlockCreationTime())
     }
 
 }
