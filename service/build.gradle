@@ -78,6 +78,9 @@ dependencies {
     kapt group: 'org.springframework.boot', name: 'spring-boot-configuration-processor', version: "$springboot_version"
     optional group: 'org.springframework.boot', name: 'spring-boot-configuration-processor', version: "$springboot_version"
 
+    implementation group: 'io.github.openfeign', name: 'feign-jackson', version: feign_version
+    implementation group: 'io.github.openfeign', name: 'feign-httpclient', version: feign_version
+
     //postgres
     implementation group: "org.postgresql", name: "postgresql", version: "$postgres_version"
 

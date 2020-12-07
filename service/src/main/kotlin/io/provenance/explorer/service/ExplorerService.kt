@@ -1,29 +1,40 @@
 package io.provenance.explorer.service
 
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import feign.Param
 import io.provenance.core.extensions.logger
 import io.provenance.core.extensions.toJsonString
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.client.PbClient
+import io.provenance.explorer.client.TendermintClient
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.*
+import io.provenance.explorer.domain.Blockchain
+import io.provenance.explorer.domain.Validator
+import io.provenance.pbc.clients.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
-import org.springframework.web.client.RestTemplate
 import java.math.BigDecimal
 import java.math.RoundingMode
 
 
 @Service
 class ExplorerService(private val explorerProperties: ExplorerProperties,
-                      private val restTemplate: RestTemplate,
-                      private val cacheService: CacheService) {
+                      private val cacheService: CacheService,
+                      private val pbClient: PbClient,
+                      private val tendermintClient: TendermintClient
+) {
 
     protected val logger = logger(ExplorerService::class)
 
@@ -58,18 +69,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
 
     fun getLatestBlockHeight(): Int = getStatus().syncInfo.latestBlockHeight.toInt()
 
-    fun getStatus() = OBJECT_MAPPER.readValue(getRestResult("${explorerProperties.pbUrl}status").toJsonString(), StatusResult::class.java)
-
-    fun getRestResult(url: String) = let {
-        if (!url.contains("status")) logger.info("GET request to $url")
-        restTemplate.getForEntity(url, JsonNode::class.java).let { result ->
-            if (result.statusCode != HttpStatus.OK || result.body.has("error") || !result.body.has("result")) {
-                logger.error("Failed calling $url status code: ${result.statusCode} response body: ${result.body}")
-                throw TendermintApiException(result.body.toString())
-            }
-            result.body.get("result")
-        }
-    }
+    fun getStatus() = OBJECT_MAPPER.readValue(tendermintClient.getStatus().toString(), StatusResult::class.java)
 
     @Scheduled(initialDelay = 0L, fixedDelay = 1000L)
     fun updateLatestBlockHeightJob() = updateCache()
@@ -94,7 +94,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         var blocks = cacheService.getBlockchainFromMaxHeight(maxHeight)
         if (blocks == null) {
             logger.info("cache miss for blockchain max height $maxHeight")
-            blocks = getRestResult("${explorerProperties.pbUrl}blockchain?maxHeight=$maxHeight")
+            blocks = tendermintClient.getBlockchain(maxHeight)
             cacheService.addBlockchainToCache(maxHeight, blocks)
         }
         OBJECT_MAPPER.readValue(blocks.toString(), Blockchain::class.java)
@@ -140,7 +140,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         var validators = cacheService.getValidatorsByHeight(blockHeight)
         if (validators == null) {
             logger.info("cache miss for validators height $blockHeight")
-            validators = getRestResult("${explorerProperties.pbUrl}validators?height=$blockHeight").let { node ->
+            validators = tendermintClient.getValidators(blockHeight).let { node ->
                 cacheService.addValidatorsToCache(blockHeight, node)
                 node
             }
@@ -150,7 +150,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
 
     fun getValidator(addressId: String) = getValidators(getLatestBlockHeightIndex()).validators
             .filter { v -> addressId == v.address }
-            .map { v -> ValidatorDetail(v.votingPower.toInt(), v.address, "", 0) }
+            .map { v -> ValidatorDetail(v.votingPower.toInt(), "TODO Moniker", v.address, BigDecimal(100.00)) }
             .firstOrNull()
 
     fun getRecentValidators(count: Int, page: Int, sort: String) = getValidatorsAtHeight(getLatestBlockHeightIndex(), count, page, sort)
@@ -167,14 +167,60 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         if (startIndex > validators.size)
             PagedResults((validators.size / perPage) + 1, listOf<ValidatorDetail>())
         else PagedResults((validators.size / perPage) + 1, validators.subList(startIndex, endIndex)
-                .map { v -> ValidatorDetail(v.votingPower.toInt(), "", v.address, 0) })
+                .map { v -> ValidatorDetail(v.votingPower.toInt(), "", v.address, BigDecimal(100.00)) })
     }
+
+    fun getRecentValidatorsV2(count: Int, page: Int, sort: String, status: String) = let {
+        val validators = getValidatorsV2(getLatestBlockHeight())
+        val stakingValidators = getRecentStakingValidators(count, page, status)
+        val validatorsDetails = hydrateValidatorsV2(validators.result.validators, stakingValidators.result)
+        PagedResults<ValidatorDetail>(validators.result.validators.size / count, validatorsDetails)
+    }
+
+    fun getRecentStakingValidators(count: Int, page: Int, status: String) =
+            OBJECT_MAPPER.readValue(pbClient.getStakingValidators(status, page, count).toString(), object : TypeReference<PbResponse<List<PbStakingValidator>>>() {})
+
+    fun getValidatorsV2(blockHeight: Int) = let {
+        var validators = cacheService.getValidatorsByHeight(blockHeight)
+        if (validators == null) {
+            logger.info("cache miss for validators height $blockHeight")
+            validators = pbClient.getValidatorsAtHeight(getLatestBlockHeightIndex()).let {
+                cacheService.addValidatorsToCache(blockHeight, it.get("result"))
+                it
+            }
+        }
+        OBJECT_MAPPER.readValue(validators.toString(), object : TypeReference<PbResponse<PbValidatorsResponse>>() {})
+    }
+
+    fun hydrateValidatorsV2(validators: List<PbValidator>, stakingValidators: List<PbStakingValidator>) = let {
+        val stakingPubKeys = stakingValidators.map { it.consensusPubkey }
+        val signingInfos = getSigningInfos()
+        val height = signingInfos.height
+        validators.filter { stakingPubKeys.contains(it.pubKey) }.map { validator ->
+            val stakingValidator = stakingValidators.find { it.consensusPubkey == validator.pubKey }
+            val signingInfo = signingInfos.result.find { it.address == validator.address }
+            hydrateValidatorV2(validator, stakingValidator!!, signingInfo!!, height.toInt())
+        }
+    }
+
+    //TODO: add caching
+    fun getSigningInfos() = let {
+        val signingInfos = pbClient.getSlashingSigningInfo()
+        OBJECT_MAPPER.readValue(signingInfos.toString(), object : TypeReference<PbResponse<List<SigningInfo>>>() {})
+    }
+
+    fun hydrateValidatorV2(validator: PbValidator, stakingValidator: PbStakingValidator, signingInfo: SigningInfo, height: Int) =
+            ValidatorDetail(moniker = stakingValidator.description.moniker,
+                    votingPower = validator.votingPower.toInt(),
+                    addressId = validator.address,
+                    uptime = signingInfo.uptime(height))
+
 
     fun getRecentTransactions(count: Int, page: Int, sort: String) = runBlocking(Dispatchers.IO) {
         var height = getLatestBlockHeightIndex() - 1000 * (page + 1)
         var recentTxs = mutableListOf<Transaction>()
         while (count != recentTxs.size) {
-            val jsonString = getRestResult(recentTransactionUrl(height, count, page)).toString()
+            val jsonString = tendermintClient.getRecentTransactions(height, page, count).toString()
             val txs = OBJECT_MAPPER.readValue(jsonString, TXSearchResult::class.java).txs
             if (txs.size == count) recentTxs.addAll(txs)
             height -= 1000
@@ -189,14 +235,11 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         PagedResults((getLatestBlockHeightIndex() / count) + 1, result)
     }
 
-    private fun recentTransactionUrl(height: Int, count: Int, page: Int) = "${explorerProperties.pbUrl}tx_search?query=\"tx.height>$height\"&page=$page&per_page=$count&order_by=\"desc\""
-
     fun getTransactionByHash(hash: String) = let {
         var tx = cacheService.getTransactionByHash(hash)
         if (tx == null) {
             logger.info("cache miss for transaction hash $hash")
-            val url = "${explorerProperties.pbUrl}tx?hash=" + if (!hash.startsWith("0x")) "0x$hash" else hash
-            tx = getRestResult(url)
+            tx = tendermintClient.getTransaction(hash)
             cacheService.addTransactionToCache(hash, tx)
         }
         val transaction = OBJECT_MAPPER.readValue(tx.toString(), Transaction::class.java)

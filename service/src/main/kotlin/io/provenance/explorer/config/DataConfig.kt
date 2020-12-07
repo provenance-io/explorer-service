@@ -1,11 +1,18 @@
 package io.provenance.explorer.config
 
+import feign.Feign
+import feign.Request
+import feign.jackson.JacksonDecoder
+import feign.jackson.JacksonEncoder
 import io.provenance.core.extensions.logger
+import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.client.PbClient
+import io.provenance.pbc.clients.CosmosRemoteInvocationException
 import org.flywaydb.core.Flyway
-import org.flywaydb.core.api.configuration.ClassicConfiguration
 import org.flywaydb.core.api.configuration.FluentConfiguration
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.TransactionManager
+import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.flyway.FlywayMigrationInitializer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -46,15 +53,6 @@ class DataConfig {
         flyway.info().all().forEach { logger.info("Flyway migration: ${it.script}") }
         flyway.clean()
         return flyway.migrate()
-    }
-
-    @Bean
-    fun restTemplate(): RestTemplate {
-        val httpRequestFactory: HttpComponentsClientHttpRequestFactory = HttpComponentsClientHttpRequestFactory()
-        httpRequestFactory.setConnectionRequestTimeout(10000);
-        httpRequestFactory.setConnectTimeout(10000);
-        httpRequestFactory.setReadTimeout(10000);
-        return RestTemplate(httpRequestFactory);
     }
 
 }

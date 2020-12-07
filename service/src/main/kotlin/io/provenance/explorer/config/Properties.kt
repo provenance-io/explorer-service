@@ -9,6 +9,9 @@ import javax.validation.constraints.NotNull
 class ExplorerProperties {
 
     @NotNull
+    lateinit var tendermintUrl: String
+
+    @NotNull
     lateinit var pbUrl: String
 
     @NotNull

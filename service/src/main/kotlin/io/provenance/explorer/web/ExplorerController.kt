@@ -67,6 +67,15 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
                    @RequestParam(required = false, defaultValue = "desc") sort: String):
             ResponseEntity<Any> = ResponseEntity.ok(explorerService.getRecentValidators(count, page - 1, sort))
 
+    @ApiOperation(value = "Returns recent validators")
+    @GetMapping(value = ["/v2/recent/validators"],
+            produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun validatorsV2(@RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+                     @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
+                     @RequestParam(required = false, defaultValue = "desc") sort: String,
+                     @RequestParam(required = false, defaultValue = "bonded") status: String):
+            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getRecentValidatorsV2(count, page - 1, sort, status))
+
     @ApiOperation(value = "Returns validator by address id")
     @GetMapping(value = ["/validator"],
             produces = [MediaType.APPLICATION_JSON_VALUE])

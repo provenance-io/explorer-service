@@ -1,10 +1,10 @@
 package io.provenance.explorer.service
 
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.node.ObjectNode
 import io.provenance.core.extensions.logger
 import io.provenance.explorer.domain.*
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -182,11 +182,11 @@ class CacheService() {
         statement.setObject(2, startDate)
         statement.setObject(3, endDate)
         val resultSet = statement.executeQuery()
-        val results = mutableListOf<TxHistory>()
+        val metrics = mutableListOf<TxHistory>()
         while (resultSet.next()) {
-            results.add(TxHistory(resultSet.getString(1), resultSet.getInt(2)))
+            metrics.add(TxHistory(resultSet.getString(1), resultSet.getInt(2)))
         }
-        results
+        metrics
     }
 
     fun getLatestBlockCreationIntervals(limit: Int) = transaction {

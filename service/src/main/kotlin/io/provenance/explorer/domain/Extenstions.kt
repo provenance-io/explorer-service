@@ -1,5 +1,8 @@
 package io.provenance.explorer.domain;
 
+import com.fasterxml.jackson.databind.JavaType
+import io.provenance.explorer.OBJECT_MAPPER
+import org.springframework.boot.configurationprocessor.json.JSONObject
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
@@ -20,3 +23,9 @@ fun List<BlockMeta>.minHeight() = this.sortedByDescending { it.header.height.toI
 fun TxResult.fee(minGasPrice: BigDecimal) = this.gasUsed.toBigDecimal().multiply(minGasPrice).setScale(2, RoundingMode.CEILING)
 
 fun BlockResponse.height() = this.block.header.height.toInt()
+
+fun SigningInfo.uptime(currentHeight : Int) = let {
+    BigDecimal(currentHeight - this.startHeight.toInt() - this.missedBlocksCounter.toInt())
+            .divide(BigDecimal(currentHeight - this.startHeight.toInt())).setScale(2, RoundingMode.CEILING)
+            .multiply(BigDecimal(100.00))
+}

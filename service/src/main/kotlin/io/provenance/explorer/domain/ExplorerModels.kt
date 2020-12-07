@@ -11,7 +11,7 @@ data class RecentBlock(val height: Int, val txs_count: Int, val time: String)
 
 data class Validators(val totalVotingPower: Int, val blockHeight: Int, val validators: List<ValidatorDetail>)
 
-data class ValidatorDetail(val votingPower: Int, val moniker: String, val addressId: String, val uptime: Int)
+data class ValidatorDetail(val votingPower: Int, val moniker: String, val addressId: String, val uptime: BigDecimal)
 
 data class BlockDetail(val height: Int, val time: String, val proposerAddress: String, val moniker: String, val icon: String,
                        val votingPower: Int, val numValidators: Int, val txNum: Int, val bondedTokenPercent: Int, val bondedTokenAmount: Int,
