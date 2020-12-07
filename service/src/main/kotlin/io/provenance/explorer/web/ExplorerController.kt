@@ -62,14 +62,6 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     @ApiOperation(value = "Returns recent validators")
     @GetMapping(value = ["/recent/validators"],
             produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun validators(@RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
-                   @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-                   @RequestParam(required = false, defaultValue = "desc") sort: String):
-            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getRecentValidators(count, page - 1, sort))
-
-    @ApiOperation(value = "Returns recent validators")
-    @GetMapping(value = ["/v2/recent/validators"],
-            produces = [MediaType.APPLICATION_JSON_VALUE])
     fun validatorsV2(@RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
                      @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
                      @RequestParam(required = false, defaultValue = "desc") sort: String,
@@ -80,7 +72,7 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     @GetMapping(value = ["/validator"],
             produces = [MediaType.APPLICATION_JSON_VALUE])
     fun validator(@RequestParam(required = true) id: String):
-            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getValidator(id))
+            ResponseEntity<Any> = ResponseEntity.ok("{}")
 
     @ApiOperation(value = "Returns set of validators at block height")
     @GetMapping(value = ["/validators"],
@@ -89,7 +81,7 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
                            @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
                            @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
                            @RequestParam(required = false, defaultValue = "desc") sort: String):
-            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getValidatorsAtHeight(blockHeight, count, page - 1, sort))
+            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getValidatorsAtHeight(blockHeight, count, page - 1, sort, "bonded"))
 
     @ApiOperation(value = "Returns sportlight statistics")
     @GetMapping(value = ["/spotlight"],

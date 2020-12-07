@@ -1,11 +1,7 @@
 package io.provenance.explorer.service
 
 import com.fasterxml.jackson.core.type.TypeReference
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import feign.Param
 import io.provenance.core.extensions.logger
-import io.provenance.core.extensions.toJsonString
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.client.PbClient
 import io.provenance.explorer.client.TendermintClient
@@ -20,9 +16,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
-import org.springframework.http.HttpHeaders
-import org.springframework.http.HttpStatus
-import org.springframework.http.MediaType
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
@@ -103,18 +96,18 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     fun getBlockAtHeight(height: Int?) = runBlocking(Dispatchers.IO) {
         val queryHeight = if (height == null) getLatestBlockHeightIndex() else height
         val blockResponse = async { getBlock(queryHeight) }
-        val validatorsResponse = async { getValidators(queryHeight) }
+        val validatorsResponse = async { getValidatorsV2(queryHeight) }
         hydrateBlock(blockResponse.await(), validatorsResponse.await())
     }
 
-    fun hydrateBlock(blockResponse: BlockMeta, validatorsResponse: ValidatorsResponse) = let {
+    fun hydrateBlock(blockResponse: BlockMeta, validatorsResponse: PbResponse<PbValidatorsResponse>) = let {
         BlockDetail(blockResponse.header.height.toInt(),
                 blockResponse.header.time,
                 blockResponse.header.proposerAddress,
                 "",
                 "",
-                validatorsResponse.validators.sumBy { v -> v.votingPower.toInt() },
-                validatorsResponse.count.toInt(),
+                validatorsResponse.result.validators.sumBy { v -> v.votingPower.toInt() },
+                validatorsResponse.result.validators.size,
                 blockResponse.numTxs.toInt(),
                 0,
                 0,
@@ -136,32 +129,6 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         OBJECT_MAPPER.readValue(block.toString(), BlockMeta::class.java)
     }
 
-    fun getValidators(blockHeight: Int) = let {
-        var validators = cacheService.getValidatorsByHeight(blockHeight)
-        if (validators == null) {
-            logger.info("cache miss for validators height $blockHeight")
-            validators = tendermintClient.getValidators(blockHeight).let { node ->
-                cacheService.addValidatorsToCache(blockHeight, node)
-                node
-            }
-        }
-        OBJECT_MAPPER.readValue(validators.toString(), ValidatorsResponse::class.java)
-    }
-
-    fun getValidator(addressId: String) = getValidators(getLatestBlockHeightIndex()).validators
-            .filter { v -> addressId == v.address }
-            .map { v -> ValidatorDetail(v.votingPower.toInt(), "TODO Moniker", v.address, BigDecimal(100.00)) }
-            .firstOrNull()
-
-    fun getRecentValidators(count: Int, page: Int, sort: String) = getValidatorsAtHeight(getLatestBlockHeightIndex(), count, page, sort)
-
-    fun getValidatorsAtHeight(blockHeight: Int, count: Int, page: Int, sort: String) = let {
-        val validatorsResponse = getValidators(blockHeight)
-        val validators = if ("asc" == sort.toLowerCase()) validatorsResponse.validators.sortedBy { it.votingPower }
-        else validatorsResponse.validators.sortedByDescending { it.votingPower }
-        hydrateValidatorResponse(validators, (count * page), count)
-    }
-
     fun hydrateValidatorResponse(validators: List<Validator>, startIndex: Int, perPage: Int) = let {
         val endIndex = if (perPage + startIndex >= validators.size) validators.size else perPage + startIndex
         if (startIndex > validators.size)
@@ -170,15 +137,20 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                 .map { v -> ValidatorDetail(v.votingPower.toInt(), "", v.address, BigDecimal(100.00)) })
     }
 
-    fun getRecentValidatorsV2(count: Int, page: Int, sort: String, status: String) = let {
-        var validators = aggregateValidators(getLatestBlockHeight(), count, page, status)
+
+    fun getRecentValidatorsV2(count: Int, page: Int, sort: String, status: String) =
+            getValidatorsAtHeight(getLatestBlockHeightIndex(), count, page, sort, status)
+
+
+    fun getValidatorsAtHeight(height: Int, count: Int, page: Int, sort: String, status: String) = let {
+        var validators = aggregateValidators(height, count, page, status)
         validators = if ("asc" == sort.toLowerCase()) validators.sortedBy { it.votingPower }
         else validators.sortedByDescending { it.votingPower }
         PagedResults<ValidatorDetail>(validators.size / count, validators)
     }
 
     fun aggregateValidators(blockHeight: Int, count: Int, page: Int, status: String) = let {
-        val validators = getValidatorsV2(getLatestBlockHeight())
+        val validators = getValidatorsV2(blockHeight)
         val stakingValidators = getRecentStakingValidators(count, page, status)
         hydrateValidatorsV2(validators.result.validators, stakingValidators.result)
     }
