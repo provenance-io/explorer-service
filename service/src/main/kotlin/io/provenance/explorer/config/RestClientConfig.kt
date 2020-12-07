@@ -55,7 +55,7 @@ class RestClientConfig(val explorerProperties: ExplorerProperties) {
 
 
     @Bean
-    fun bpClient() = Feign.Builder()
+    fun pbClient() = Feign.Builder()
             .options(Request.Options(5000, 5000, false))
             .encoder(JacksonEncoder(OBJECT_MAPPER))
             .decoder(JacksonDecoder(OBJECT_MAPPER))
@@ -69,5 +69,4 @@ class RestClientConfig(val explorerProperties: ExplorerProperties) {
                 val body = r.body()?.asReader()?.readLines()?.joinToString("\n")
                 throw CosmosRemoteInvocationException(method, httpMethod, url, status, body)
             }.target(PbClient::class.java, explorerProperties.pbUrl)
-
 }

@@ -171,10 +171,16 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     }
 
     fun getRecentValidatorsV2(count: Int, page: Int, sort: String, status: String) = let {
+        var validators = aggregateValidators(getLatestBlockHeight(), count, page, status)
+        validators = if ("asc" == sort.toLowerCase()) validators.sortedBy { it.votingPower }
+        else validators.sortedByDescending { it.votingPower }
+        PagedResults<ValidatorDetail>(validators.size / count, validators)
+    }
+
+    fun aggregateValidators(blockHeight: Int, count: Int, page: Int, status: String) = let {
         val validators = getValidatorsV2(getLatestBlockHeight())
         val stakingValidators = getRecentStakingValidators(count, page, status)
-        val validatorsDetails = hydrateValidatorsV2(validators.result.validators, stakingValidators.result)
-        PagedResults<ValidatorDetail>(validators.result.validators.size / count, validatorsDetails)
+        hydrateValidatorsV2(validators.result.validators, stakingValidators.result)
     }
 
     fun getRecentStakingValidators(count: Int, page: Int, status: String) =
