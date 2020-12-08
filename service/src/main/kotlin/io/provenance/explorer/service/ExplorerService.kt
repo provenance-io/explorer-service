@@ -100,14 +100,14 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         hydrateBlock(blockResponse.await(), validatorsResponse.await())
     }
 
-    fun hydrateBlock(blockResponse: BlockMeta, validatorsResponse: PbResponse<PbValidatorsResponse>) = let {
+    fun hydrateBlock(blockResponse: BlockMeta, validatorsResponse: PbValidatorsResponse) = let {
         BlockDetail(blockResponse.header.height.toInt(),
                 blockResponse.header.time,
                 blockResponse.header.proposerAddress,
                 "",
                 "",
-                validatorsResponse.result.validators.sumBy { v -> v.votingPower.toInt() },
-                validatorsResponse.result.validators.size,
+                validatorsResponse.validators.sumBy { v -> v.votingPower.toInt() },
+                validatorsResponse.validators.size,
                 blockResponse.numTxs.toInt(),
                 0,
                 0,
@@ -152,7 +152,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     fun aggregateValidators(blockHeight: Int, count: Int, page: Int, status: String) = let {
         val validators = getValidatorsV2(blockHeight)
         val stakingValidators = getRecentStakingValidators(count, page, status)
-        hydrateValidatorsV2(validators.result.validators, stakingValidators.result)
+        hydrateValidatorsV2(validators.validators, stakingValidators.result)
     }
 
     fun getRecentStakingValidators(count: Int, page: Int, status: String) =
@@ -167,7 +167,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                 it
             }
         }
-        OBJECT_MAPPER.readValue(validators.toString(), object : TypeReference<PbResponse<PbValidatorsResponse>>() {})
+        OBJECT_MAPPER.readValue(validators.toString(), PbValidatorsResponse::class.java)
     }
 
     fun hydrateValidatorsV2(validators: List<PbValidator>, stakingValidators: List<PbStakingValidator>) = let {
