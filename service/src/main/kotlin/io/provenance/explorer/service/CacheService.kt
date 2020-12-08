@@ -1,9 +1,11 @@
 package io.provenance.explorer.service
 
 import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.node.ObjectNode
 import io.provenance.core.extensions.logger
+import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.*
+import io.provenance.explorer.domain.SpotlightCacheTable.lastHit
+import io.provenance.explorer.domain.SpotlightCacheTable.spotlight
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -12,7 +14,7 @@ import org.springframework.stereotype.Service
 import java.math.BigDecimal
 
 @Service
-class CacheService() {
+class CacheService(private val explorerProperties: ExplorerProperties) {
 
     protected val logger = logger(CacheService::class)
 
@@ -203,6 +205,23 @@ class CacheService() {
             results.add(Pair(resultSet.getInt(1), resultSet.getBigDecimal(2)))
         }
         results
+    }
+
+    fun addSpotlightToCache(spotlightResponse: Spotlight) = transaction {
+        SpotlightCacheTable.insertIgnore {
+            it[id] = 1
+            it[spotlight] = spotlightResponse
+            it[lastHit] = DateTime.now()
+        }
+    }
+
+    fun getSpotlight() = transaction {
+        var spotlightRecord = SpotlightCacheTable.select { (SpotlightCacheTable.id eq 1) }.firstOrNull()
+        if (spotlightRecord != null && DateTime.now().millis - spotlightRecord[lastHit].millis > explorerProperties.spotlightTtlMs()) {
+            SpotlightCacheTable.deleteWhere { (SpotlightCacheTable.id eq 1) }
+            spotlightRecord = null
+        }
+        if (spotlightRecord != null) spotlightRecord[spotlight] else spotlightRecord
     }
 
 }

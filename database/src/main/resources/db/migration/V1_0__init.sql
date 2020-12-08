@@ -47,3 +47,9 @@ CREATE TABLE transaction_cache
     hit_count INT NOT NULL
 );
 
+CREATE TABLE spotlight_cache
+(
+    id int PRIMARY KEY,
+    spotlight JSONB NOT NULL,
+    last_hit TIMESTAMP NOT NULL
+);

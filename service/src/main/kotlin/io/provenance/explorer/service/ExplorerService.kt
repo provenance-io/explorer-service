@@ -259,7 +259,12 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     }
 
     fun getSpotlightStatistics() = let {
-        Spotlight(getBlockAtHeight(null), getAverageBlockCreationTime())
+        var spotlight = cacheService.getSpotlight()
+        if (spotlight == null) {
+            logger.info("cache miss for spotlight")
+            spotlight = Spotlight(getBlockAtHeight(null), getAverageBlockCreationTime())
+            cacheService.addSpotlightToCache(spotlight)
+        }
+        spotlight
     }
-
 }

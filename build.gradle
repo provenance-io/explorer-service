@@ -76,6 +76,20 @@ subprojects {
 
         implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
 
+        testCompileOnly(
+                'junit:junit:4.12'
+        )
+        testRuntimeOnly "org.junit.vintage:junit-vintage-engine:$test_jupiter"
+        testImplementation(
+                "org.junit.jupiter:junit-jupiter-api:$test_jupiter"
+        )
+        testRuntimeOnly(
+                "org.junit.jupiter:junit-jupiter-engine:$test_jupiter",
+                "org.junit.vintage:junit-vintage-engine:$test_jupiter"
+        )
+        testCompile 'org.mockito:mockito-core:2.23.4'
+        testCompile "org.jetbrains.kotlin:kotlin-test"
+
     }
 
     test {

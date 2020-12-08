@@ -20,10 +20,14 @@ class ExplorerProperties {
     @NotNull
     lateinit var minimumGasPrice: String
 
+    @NotNull
+    lateinit var spotlightTtlMs: String
+
     fun initialHistoryicalDays() = initialHistoryicalDayCount.toInt()
 
     fun minGasPrice() = minimumGasPrice.toBigDecimal()
 
+    fun spotlightTtlMs() = spotlightTtlMs.toLong()
 }
 
 @ConfigurationProperties(prefix = "service")

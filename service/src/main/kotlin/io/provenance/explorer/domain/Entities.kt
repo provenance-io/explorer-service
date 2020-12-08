@@ -49,3 +49,9 @@ object TransactionCacheTable : Table(name = "transaction_cache") {
     val hitCount = integer("hit_count")
 
 }
+
+object SpotlightCacheTable : Table(name = "spotlight_cache") {
+    val id = integer("id").primaryKey()
+    val spotlight = jsonb<SpotlightCacheTable, Spotlight>("spotlight", OBJECT_MAPPER)
+    val lastHit = datetime("last_hit")
+}
