@@ -165,7 +165,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
             validators = pbClient.getValidatorsAtHeight(getLatestBlockHeightIndex()).let {
                 cacheService.addValidatorsToCache(blockHeight, it.get("result"))
                 it
-            }
+            }.get("result")
         }
         OBJECT_MAPPER.readValue(validators.toString(), PbValidatorsResponse::class.java)
     }
