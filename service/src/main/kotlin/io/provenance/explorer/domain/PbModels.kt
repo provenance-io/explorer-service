@@ -1,16 +1,17 @@
 package io.provenance.explorer.domain
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.databind.JsonNode
 
-data class PbTransaction(val height: String, val txhash: String, val gasWanted: String, val gasUsed: String, val tx: Tx, val timestamp: String)
+data class PbTxSearchResponse(val totalCount: String, val count: String, val pageNumber: String, val limit: String, val txs: List<PbTransaction>)
+
+data class PbTransaction(val height: String, val txhash: String, val logs: List<TxLog>, val gasWanted: String, val gasUsed: String, val tx: Tx, val timestamp: String)
 
 data class Tx(val type: String, val value: TxValue)
 
 data class TxValue(val msg: List<TxMsg>, val fee: TxFee, val signatures: List<TxSignature>, val memo: String)
 
-data class TxMsg(val type: String, val value: TxMsgValue)
-
-data class TxMsgValue(@JsonProperty("scopeID") val scopeID: String, @JsonProperty("groupID") val groupID: String, @JsonProperty("executionID") val executionID: String, val contract: String, val signatures: String, @JsonProperty("scopeRefID") val scopeRefID: String, val notary: String)
+data class TxMsg(val type: String, val value: JsonNode)
 
 data class TxFee(val gas: String, val amount: List<TxAmount>)
 

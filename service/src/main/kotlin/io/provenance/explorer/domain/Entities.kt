@@ -44,7 +44,12 @@ object ValidatorCacheTable : Table(name = "validator_cache") {
 
 object TransactionCacheTable : Table(name = "transaction_cache") {
     val hash = varchar("hash", 64).primaryKey()
-    val tx = jsonb<TransactionCacheTable, JsonNode>("tx", OBJECT_MAPPER)
+    val height = integer("height")
+    val txType = varchar("tx_type", 64)
+    val gasWanted = integer("gas_wanted")
+    val gasUsed = integer("gas_used")
+    val txTimestamp = datetime("tx_timestamp")
+    val tx = jsonb<TransactionCacheTable, PbTransaction>("tx", OBJECT_MAPPER)
     val lastHit = datetime("last_hit")
     val hitCount = integer("hit_count")
 

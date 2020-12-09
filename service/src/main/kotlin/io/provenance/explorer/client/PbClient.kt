@@ -4,12 +4,17 @@ import com.fasterxml.jackson.databind.JsonNode
 import feign.Headers
 import feign.Param
 import feign.RequestLine
+import io.provenance.explorer.domain.PbTransaction
+import io.provenance.explorer.domain.PbTxSearchResponse
 import io.provenance.pbc.clients.JsonRPC
 
 interface PbClient {
 
     @RequestLine("GET /txs/{hash}")
-    fun getTx(@Param("hash") hash: String): JsonNode
+    fun getTx(@Param("hash") hash: String): PbTransaction
+
+    @RequestLine("GET /txs?tx.maxheight={maxHeight}&tx.minheight={minHeight}&page={page}&limit={limit}")
+    fun getTxsByHeights(@Param("maxHeight") maxHeight: Int, @Param("minHeight") minHeight: Int, @Param("page") page: Int, @Param("limit") limit: Int): PbTxSearchResponse
 
     @RequestLine("GET /validatorsets/{height}")
     fun getValidatorsAtHeight(@Param("height") height: Int): JsonNode

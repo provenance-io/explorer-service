@@ -42,6 +42,11 @@ CREATE TABLE validator_cache
 CREATE TABLE transaction_cache
 (
     hash VARCHAR(64) PRIMARY KEY,
+    height INT NOT NULL,
+    tx_type VARCHAR(64) NOT NULL,
+    gas_wanted INT NOT NULL,
+    gas_used INT NOT NULL,
+    tx_timestamp TIMESTAMP NOT NULL,
     tx JSONB NOT NULL,
     last_hit TIMESTAMP NOT NULL,
     hit_count INT NOT NULL

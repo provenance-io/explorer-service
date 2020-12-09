@@ -123,7 +123,6 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
     }
 
     fun getTransactionByHash(hash: String) = transaction {
-        var jsonNode: JsonNode? = null
         var tx = TransactionCacheTable.select { (TransactionCacheTable.hash eq hash) }.firstOrNull()?.let {
             it
         }
@@ -132,21 +131,34 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
                 it[hitCount] = tx[hitCount] + 1
                 it[lastHit] = DateTime.now()
             }
-            jsonNode = tx[TransactionCacheTable.tx]
         }
-        jsonNode
+        if (tx == null) null else tx[TransactionCacheTable.tx]
     }
 
-    fun addTransactionToCache(txHash: String, json: JsonNode) = transaction {
-        if (shouldCacheTransaction(txHash, json)) TransactionCacheTable.insertIgnore {
-            it[hash] = txHash
-            it[tx] = json
+    fun addTransactionToCache(pbTransaction: PbTransaction) = transaction {
+        TransactionCacheTable.insertIgnore {
+            it[hash] = pbTransaction.txhash
+            it[height] = pbTransaction.height.toInt()
+            it[txType] = pbTransaction.type()!!
+            it[gasUsed] = pbTransaction.gasUsed.toInt()
+            it[gasWanted] = pbTransaction.gasWanted.toInt()
+            it[txTimestamp] = DateTime.parse(pbTransaction.timestamp)
+            it[tx] = pbTransaction
             it[hitCount] = 0
             it[lastHit] = DateTime.now()
         }
     }
 
-    fun shouldCacheTransaction(txHash: String, json: JsonNode) = json.get("hash").asText()!! == txHash
+    fun transactionCount() = transaction {
+        TransactionCacheTable.selectAll().count()
+    }
+
+    fun getTransactions(count: Int, offset: Int) = transaction {
+        TransactionCacheTable.selectAll()
+                .orderBy(TransactionCacheTable.height, SortOrder.DESC)
+                .limit(count, offset)
+                .map { it[TransactionCacheTable.tx] }
+    }
 
     fun getBlockIndex() = transaction {
         BlockIndexTable.select { (BlockIndexTable.id eq 1) }.firstOrNull()

@@ -20,12 +20,17 @@ fun List<BlockMeta>.maxHeight() = this.sortedByDescending { it.header.height.toI
 
 fun List<BlockMeta>.minHeight() = this.sortedByDescending { it.header.height.toInt() }.last().height()
 
+fun PbTransaction.type() = this.logs.flatMap { it.events }.firstOrNull { it.type == "message" }?.attributes?.firstOrNull { it.key == "action" }?.value
+
 fun TxResult.fee(minGasPrice: BigDecimal) = this.gasUsed.toBigDecimal().multiply(minGasPrice).setScale(2, RoundingMode.CEILING)
+
+fun PbTransaction.fee(minGasPrice: BigDecimal) = this.gasUsed.toBigDecimal().multiply(minGasPrice).setScale(2, RoundingMode.CEILING)
 
 fun BlockResponse.height() = this.block.header.height.toInt()
 
-fun SigningInfo.uptime(currentHeight : Int) = let {
+fun SigningInfo.uptime(currentHeight: Int) = let {
     BigDecimal(currentHeight - this.startHeight.toInt() - this.missedBlocksCounter.toInt())
             .divide(BigDecimal(currentHeight - this.startHeight.toInt())).setScale(2, RoundingMode.CEILING)
             .multiply(BigDecimal(100.00))
+
 }
