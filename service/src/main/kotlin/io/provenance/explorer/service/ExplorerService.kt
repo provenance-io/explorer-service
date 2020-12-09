@@ -219,10 +219,17 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
             tx = pbClient.getTx(hash)
             cacheService.addTransactionToCache(tx)
         }
-        TxDetails(tx.height.toInt(), tx.gasUsed.toInt(), tx.gasWanted.toInt(), 0, 0, tx.timestamp, "TODO Status",
-                tx.fee(explorerProperties.minGasPrice()), tx.tx.value.fee.amount[0].denom,
-                tx.tx.value.signatures[0].signature, tx.tx.value.memo, tx.type()!!, "TODO from", tx.tx.value.fee.amount[0].amount.toInt(),
-                tx.tx.value.fee.amount[0].denom, "TODO to")
+        TxDetails(tx.height.toInt(),
+                tx.gasUsed.toInt(), tx.gasWanted.toInt(), tx.tx.value.fee.gas.toInt(),
+                explorerProperties.minGasPrice(), tx.timestamp, "TODO Status",
+                tx.fee(explorerProperties.minGasPrice()),
+                tx.tx.value.fee.amount[0].denom,
+                tx.tx.value.signatures[0].signature,
+                tx.tx.value.memo, tx.type()!!,
+                if (tx.type() == "send") tx.tx.value.msg[0].value.get("from_address").textValue() else "",
+                if (tx.type() == "send") tx.tx.value.msg[0].value.get("amount").get(0).get("amount").asInt() else 0,
+                if (tx.type() == "send") tx.tx.value.msg[0].value.get("amount").get(0).get("denom").textValue() else "",
+                if (tx.type() == "send") tx.tx.value.msg[0].value.get("to_address").textValue() else "")
     }
 
     fun getTransactionHistory(fromDate: DateTime, toDate: DateTime, granularity: String) = cacheService.getTransactionCountsForDates(fromDate.toString("yyyy-MM-dd"), toDate.plusDays(1).toString("yyyy-MM-dd"), granularity)
