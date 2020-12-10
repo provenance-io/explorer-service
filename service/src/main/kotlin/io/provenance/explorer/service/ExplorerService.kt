@@ -44,7 +44,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                     days.add(block.day())
                     indexHeight = block.height() - 1
                     if (block.numTxs.toInt() > 0) {
-                        addTransactionsToCache(block.height())
+                        addTransactionsToCache(block.height(), block.numTxs.toInt())
                     }
                 }
             }
@@ -55,7 +55,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                     cacheService.addBlockToCache(block.height(), block.numTxs.toInt(), DateTime.parse(block.header.time), it)
                     indexHeight = block.height() - 1
                     if (block.numTxs.toInt() > 0) {
-                        addTransactionsToCache(block.height())
+                        addTransactionsToCache(block.height(), block.numTxs.toInt())
                     }
                 }
             }
@@ -63,13 +63,17 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         cacheService.updateBlockMinHeightIndex(indexHeight + 1)
     }
 
-    fun addTransactionsToCache(blockHeight: Int) {
-        logger.info("Searching for transactions at height $blockHeight")
-        val searchResult = pbClient.getTxsByHeights(blockHeight, blockHeight, 1, 20)
-        searchResult.txs.forEach {
-            cacheService.addTransactionToCache(it)
-        }
-    }
+    fun addTransactionsToCache(blockHeight: Int, numTxs: Int) =
+            if (cacheService.transactionCountForHeight(blockHeight) == numTxs)
+                logger.info("Cache hit for transaction at height $blockHeight with $numTxs transactions")
+            else {
+                logger.info("Searching for $numTxs transactions at height $blockHeight")
+                val searchResult = pbClient.getTxsByHeights(blockHeight, blockHeight, 1, 20)
+                searchResult.txs.forEach {
+                    cacheService.addTransactionToCache(it)
+                }
+            }
+
 
     fun getLatestBlockHeightIndex(): Int = cacheService.getBlockIndex()!![BlockIndexTable.maxHeightRead]
 
