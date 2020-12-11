@@ -29,6 +29,11 @@ buildscript {
     }
 }
 
+configurations.all {
+    resolutionStrategy.cacheDynamicVersionsFor 0, 'seconds'
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
 subprojects {
     apply plugin: 'java-library'
     apply plugin: 'idea'
@@ -75,6 +80,8 @@ subprojects {
     dependencies {
 
         implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+
+        testCompile "org.jetbrains.kotlin:kotlin-test-js:$kotlin_version"
 
         testCompileOnly(
                 'junit:junit:4.12'

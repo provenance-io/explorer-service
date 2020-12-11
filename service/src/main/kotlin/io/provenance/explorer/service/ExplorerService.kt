@@ -1,6 +1,7 @@
 package io.provenance.explorer.service
 
 import com.fasterxml.jackson.core.type.TypeReference
+import io.p8e.crypto.Bech32
 import io.provenance.core.extensions.logger
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.client.PbClient
@@ -8,10 +9,8 @@ import io.provenance.explorer.client.TendermintClient
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.*
 import io.provenance.explorer.domain.Blockchain
-import io.provenance.pbc.clients.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -37,7 +36,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         cacheService.updateBlockMaxHeightIndex(indexHeight)
         if (index == null || index[BlockIndexTable.minHeightRead] == null) {
             val days = mutableSetOf<String>()
-            while (days.count() <= explorerProperties.initialHistoryicalDays()) {
+            while (days.count() <= explorerProperties.initialHistoricalDays()) {
                 getBlockchain(indexHeight).blockMetas.forEach {
                     val block = OBJECT_MAPPER.readValue(it.toString(), BlockMeta::class.java)
                     cacheService.addBlockToCache(block.height(), block.numTxs.toInt(), DateTime.parse(block.header.time), it)
@@ -228,7 +227,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                 explorerProperties.minGasPrice(), tx.timestamp, "TODO Status",
                 tx.fee(explorerProperties.minGasPrice()),
                 tx.tx.value.fee.amount[0].denom,
-                tx.tx.value.signatures[0].signature,
+                tx.tx.value.signatures[0].pubKey.value.pubKeyToBech32(explorerProperties.provenancePrefix()),
                 tx.tx.value.memo, tx.type()!!,
                 if (tx.type() == "send") tx.tx.value.msg[0].value.get("from_address").textValue() else "",
                 if (tx.type() == "send") tx.tx.value.msg[0].value.get("amount").get(0).get("amount").asInt() else 0,

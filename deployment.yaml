@@ -97,8 +97,11 @@ spec:
         configMap:
           test:
             SERVICE_ENVIRONMENT: apis
-            PROVENANCE_EXPLORER_PB_URL: https://test.provenance.io/explorer/sentinel/
+            PROVENANCE_EXPLORER_TENDERMINT_URL: https://test.provenance.io/explorer/sentinel/
             PROVENANCE_EXPLORER_INITIAL_HISTORYICAL_DAY_COUNT: 60
+            PROVENANCE_EXPLORER_MAINNET: false
+          common:
+            PROVENANCE_EXPLORER_PB_URL: http://blockchain-gateway.apis
         readinessProbe:
           path: /actuator/health
           periodSeconds: 3

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode
 
 data class PbTxSearchResponse(val totalCount: String, val count: String, val pageNumber: String, val limit: String, val txs: List<PbTransaction>)
 
-data class PbTransaction(val height: String, val txhash: String, val logs: List<TxLog>, val gasWanted: String, val gasUsed: String, val tx: Tx, val timestamp: String)
+data class PbTransaction(val height: String, val txhash: String, val logs: List<TxLog>?, val gasWanted: String, val gasUsed: String, val tx: Tx, val timestamp: String)
 
 data class Tx(val type: String, val value: TxValue)
 
