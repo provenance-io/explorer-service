@@ -81,7 +81,7 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
                            @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
                            @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
                            @RequestParam(required = false, defaultValue = "desc") sort: String):
-            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getValidatorsAtHeight(blockHeight, count, page - 1, sort, "bonded"))
+            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getValidatorsAtHeight(blockHeight, count, page, sort, "bonded"))
 
     @ApiOperation(value = "Returns sportlight statistics")
     @GetMapping(value = ["/spotlight"],
