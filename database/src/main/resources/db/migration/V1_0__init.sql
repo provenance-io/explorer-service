@@ -47,6 +47,8 @@ CREATE TABLE transaction_cache
     gas_wanted INT NOT NULL,
     gas_used INT NOT NULL,
     tx_timestamp TIMESTAMP NOT NULL,
+    error_code INT DEFAULT NULL,
+    codespace VARCHAR(16) DEFAULT NULL,
     tx JSONB NOT NULL,
     last_hit TIMESTAMP NOT NULL,
     hit_count INT NOT NULL

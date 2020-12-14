@@ -62,7 +62,7 @@ dependencies {
     api group: 'io.provenance.pbc', name: 'simple-client', version: "$provenance_core", changing: true
     api group: 'io.p8e', name: 'p8e-util', version: "$provenance_core", changing: true
 
-    implementation ("io.provenance.sdk:provenance-sdk-signer:$provenance_sdk") {
+    implementation("io.provenance.sdk:provenance-sdk-signer:$provenance_sdk") {
         exclude group: 'io.provenance.pbc'
         exclude group: 'io.provenance', module: 'core-client'
         exclude group: 'io.provenance', module: 'core-domain'

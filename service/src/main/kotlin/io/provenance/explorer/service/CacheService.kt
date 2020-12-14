@@ -139,6 +139,8 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
         TransactionCacheTable.insertIgnore {
             it[hash] = pbTransaction.txhash
             it[height] = pbTransaction.height.toInt()
+            if (pbTransaction.code != null) it[errorCode] = pbTransaction.code
+            if (pbTransaction.codespace != null) it[codespace] = pbTransaction.codespace
             it[txType] = pbTransaction.type()!!
             it[gasUsed] = pbTransaction.gasUsed.toInt()
             it[gasWanted] = pbTransaction.gasWanted.toInt()
@@ -156,7 +158,6 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
     fun transactionCountForHeight(blockHeight: Int) = transaction {
         TransactionCacheTable.select { (TransactionCacheTable.height eq blockHeight) }.count()
     }
-
 
     fun getTransactions(count: Int, offset: Int) = transaction {
         TransactionCacheTable.selectAll()

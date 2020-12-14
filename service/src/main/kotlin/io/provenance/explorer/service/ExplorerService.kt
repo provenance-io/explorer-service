@@ -41,16 +41,18 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                     val block = OBJECT_MAPPER.readValue(it.toString(), BlockMeta::class.java)
                     cacheService.addBlockToCache(block.height(), block.numTxs.toInt(), DateTime.parse(block.header.time), it)
                     days.add(block.day())
-                    indexHeight = block.height() - 1
                     if (block.numTxs.toInt() > 0) {
                         addTransactionsToCache(block.height(), block.numTxs.toInt())
                     }
+                    indexHeight = block.height() - 1
                 }
+                cacheService.updateBlockMinHeightIndex(indexHeight + 1)
             }
         } else {
             while (indexHeight > index[BlockIndexTable.maxHeightRead]) {
                 getBlockchain(indexHeight).blockMetas.forEach {
                     val block = OBJECT_MAPPER.readValue(it.toString(), BlockMeta::class.java)
+                    if (block.height() == index[BlockIndexTable.maxHeightRead]) return@forEach
                     cacheService.addBlockToCache(block.height(), block.numTxs.toInt(), DateTime.parse(block.header.time), it)
                     indexHeight = block.height() - 1
                     if (block.numTxs.toInt() > 0) {
@@ -59,7 +61,6 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                 }
             }
         }
-        cacheService.updateBlockMinHeightIndex(indexHeight + 1)
     }
 
     fun addTransactionsToCache(blockHeight: Int, numTxs: Int) =
@@ -209,7 +210,8 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                     tx.tx.value.fee.amount[0].denom,
                     tx.type()!!,
                     tx.height.toInt(),
-                    tx.tx.value.signatures[0].signature, "TODO status?")
+                    tx.feePayer().pubKey.value.pubKeyToBech32(explorerProperties.provenancePrefix()),
+                    if (tx.code != null) "failed" else "success", tx.code, tx.codespace)
         }
         if (!sort.isNullOrEmpty() && sort.toLowerCase() == "asc") result.reversed()
         PagedResults((cacheService.transactionCount() / count) + 1, result)
@@ -224,7 +226,8 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         }
         TxDetails(tx.height.toInt(),
                 tx.gasUsed.toInt(), tx.gasWanted.toInt(), tx.tx.value.fee.gas.toInt(),
-                explorerProperties.minGasPrice(), tx.timestamp, "TODO Status",
+                explorerProperties.minGasPrice(), tx.timestamp,
+                if (tx.code != null) "failed" else "success", tx.code, tx.codespace,
                 tx.fee(explorerProperties.minGasPrice()),
                 tx.tx.value.fee.amount[0].denom,
                 tx.tx.value.signatures[0].pubKey.value.pubKeyToBech32(explorerProperties.provenancePrefix()),

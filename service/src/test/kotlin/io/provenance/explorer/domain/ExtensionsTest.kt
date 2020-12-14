@@ -38,4 +38,13 @@ class ExtensionsTest {
         kotlin.test.assertEquals("tp14neg0whj7puhwks6536a8lqp7msvd9p04wu287", result)
     }
 
+    @Test(expected = IllegalArgumentException::class)
+    fun `should throw illegal argument exception for base 64 size for pub key to bech32 extension`() {
+        "BAleJRNPlfbtGwfU7IybTJyzY1kM19ajg3LEUBEasttBe".pubKeyToBech32(Bech32.PROVENANCE_TESTNET_PREFIX)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `should throw illegal argument exception for base 64 not having a 2 or 3 as first byte for bech32 extension`() {
+        "00000000000000000000000000000000000000000000".pubKeyToBech32(Bech32.PROVENANCE_TESTNET_PREFIX)
+    }
 }
