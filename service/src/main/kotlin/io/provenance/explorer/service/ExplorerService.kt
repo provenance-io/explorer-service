@@ -1,7 +1,6 @@
 package io.provenance.explorer.service
 
 import com.fasterxml.jackson.core.type.TypeReference
-import io.p8e.crypto.Bech32
 import io.provenance.core.extensions.logger
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.client.PbClient
@@ -63,11 +62,11 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         }
     }
 
-    fun addTransactionsToCache(blockHeight: Int, numTxs: Int) =
-            if (cacheService.transactionCountForHeight(blockHeight) == numTxs)
-                logger.info("Cache hit for transaction at height $blockHeight with $numTxs transactions")
+    fun addTransactionsToCache(blockHeight: Int, expectedNumTxs: Int) =
+            if (cacheService.transactionCountForHeight(blockHeight) == expectedNumTxs)
+                logger.info("Cache hit for transaction at height $blockHeight with $expectedNumTxs transactions")
             else {
-                logger.info("Searching for $numTxs transactions at height $blockHeight")
+                logger.info("Searching for $expectedNumTxs transactions at height $blockHeight")
                 val searchResult = pbClient.getTxsByHeights(blockHeight, blockHeight, 1, 20)
                 searchResult.txs.forEach {
                     cacheService.addTransactionToCache(it)
@@ -192,15 +191,13 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     fun hydrateValidator(validator: PbValidator, stakingValidator: PbStakingValidator, signingInfo: SigningInfo, height: Int) =
             ValidatorDetail(moniker = stakingValidator.description.moniker,
                     votingPower = validator.votingPower.toInt(),
-                    addressId = validator.address,
-                    uptime = signingInfo.uptime(height))
+                    addressId = stakingValidator.operatorAddress,
+                    uptime = signingInfo.uptime(height)
+            )
 
 
     //TODO: add caching
-    fun getSigningInfos() = let {
-        val signingInfos = pbClient.getSlashingSigningInfo()
-        OBJECT_MAPPER.readValue(signingInfos.toString(), object : TypeReference<PbResponse<List<SigningInfo>>>() {})
-    }
+    fun getSigningInfos() = pbClient.getSlashingSigningInfo()
 
     fun getRecentTransactions(count: Int, page: Int, sort: String) = let {
         val result = cacheService.getTransactions(count, count * (page - 1)).map { tx ->
@@ -224,6 +221,13 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
             tx = pbClient.getTx(hash)
             cacheService.addTransactionToCache(tx)
         }
+        hydrateTxDetails(tx)
+    }
+
+    fun getTransactionsByHeight(height: Int) = cacheService.getTransactionsAtHeight(height)?.map { hydrateTxDetails(it) }
+
+
+    fun hydrateTxDetails(tx: PbTransaction) = let {
         TxDetails(tx.height.toInt(),
                 tx.gasUsed.toInt(), tx.gasWanted.toInt(), tx.tx.value.fee.gas.toInt(),
                 explorerProperties.minGasPrice(), tx.timestamp,

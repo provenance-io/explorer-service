@@ -159,6 +159,10 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
         TransactionCacheTable.select { (TransactionCacheTable.height eq blockHeight) }.count()
     }
 
+    fun getTransactionsAtHeight(blockHeight: Int) = transaction {
+        TransactionCacheTable.select { (TransactionCacheTable.height eq blockHeight) }.map { it[TransactionCacheTable.tx] }
+    }
+
     fun getTransactions(count: Int, offset: Int) = transaction {
         TransactionCacheTable.selectAll()
                 .orderBy(TransactionCacheTable.height, SortOrder.DESC)

@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode
 import feign.Headers
 import feign.Param
 import feign.RequestLine
+import io.provenance.explorer.domain.PbResponse
 import io.provenance.explorer.domain.PbTransaction
 import io.provenance.explorer.domain.PbTxSearchResponse
+import io.provenance.explorer.domain.SigningInfo
 import io.provenance.pbc.clients.JsonRPC
 
 interface PbClient {
@@ -29,6 +31,6 @@ interface PbClient {
     fun getStakingValidator(@Param("validatorAddress") validatorAddress: String): JsonNode
 
     @RequestLine("GET /slashing/signing_infos")
-    fun getSlashingSigningInfo(): JsonNode
+    fun getSlashingSigningInfo(): PbResponse<List<SigningInfo>>
 
 }
