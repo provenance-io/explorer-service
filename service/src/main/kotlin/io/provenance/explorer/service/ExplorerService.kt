@@ -118,6 +118,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
 
     fun hydrateBlock(blockResponse: BlockMeta, validatorsResponse: PbValidatorsResponse) = let {
         BlockDetail(blockResponse.header.height.toInt(),
+                blockResponse.blockId.hash,
                 blockResponse.header.time,
                 blockResponse.header.proposerAddress,
                 "",
