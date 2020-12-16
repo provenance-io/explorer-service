@@ -34,6 +34,8 @@ class ExplorerProperties {
     fun spotlightTtlMs() = spotlightTtlMs.toLong()
 
     fun provenancePrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_PREFIX else Bech32.PROVENANCE_TESTNET_PREFIX
+
+    fun provenanceValidatorAccountPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_CONSENSUS_ACCOUNT_PREFIX else Bech32.PROVENANCE_TESTNET_CONSENSUS_ACCOUNT_PREFIX
 }
 
 @ConfigurationProperties(prefix = "service")

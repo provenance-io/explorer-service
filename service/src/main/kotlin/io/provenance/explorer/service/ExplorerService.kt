@@ -89,9 +89,14 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         val result = mutableListOf<RecentBlock>()
         while (result.size < count) {
             var blockMeta = getBlock(blockHeight)
+            var validators = getValidators(blockHeight)
             result.add(RecentBlock(blockMeta.header.height.toInt(),
                     blockMeta.numTxs.toInt(),
-                    blockMeta.header.time))
+                    blockMeta.header.time,
+                    blockMeta.header.proposerAddress.addressToBech32(explorerProperties.provenanceValidatorAccountPrefix()),
+                    BigDecimal("100.0000000"), //TODO WIP need to figure out how to calc this
+                    "${validators.validators.size}/${validators.validators.size}" //TODO WIP need to figure out how to calc this
+            ))
             blockHeight = blockMeta.header.height.toInt()
             blockHeight--
         }

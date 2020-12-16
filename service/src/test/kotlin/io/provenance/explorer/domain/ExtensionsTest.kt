@@ -47,4 +47,10 @@ class ExtensionsTest {
     fun `should throw illegal argument exception for base 64 not having a 2 or 3 as first byte for bech32 extension`() {
         "00000000000000000000000000000000000000000000".pubKeyToBech32(Bech32.PROVENANCE_TESTNET_PREFIX)
     }
+
+    @Test
+    fun `should return a bech32 address from a hex validator consensus address`() {
+        val result = "685EDA8451FE32FCD9C58A7EA5299B6E66400EA2".addressToBech32(Bech32.PROVENANCE_TESTNET_CONSENSUS_ACCOUNT_PREFIX)
+        kotlin.test.assertEquals("tpvalcons1dp0d4pz3lce0ekw93fl222vmdenyqr4zlxa7re", result)
+    }
 }

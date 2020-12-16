@@ -3,6 +3,7 @@ package io.provenance.explorer.domain;
 import io.p8e.crypto.Bech32
 import io.provenance.sdk.crypto.Hash
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
+import org.bouncycastle.util.encoders.Hex
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
@@ -17,11 +18,11 @@ fun String.fromBase64() = Base64.getDecoder().decode(this)
 
 fun String.pubKeyToBech32(hrpPrefix: String) = let {
     val base64 = this.fromBase64()
-    require(base64.size == 33) {"Invalid Base 64 pub key byte length must be 33 not ${base64.size}"}
-    require(base64[0] == 0x02.toByte()|| base64[0] == 0x03.toByte()) {"Invalid first byte must be 2 or 3 not  ${base64[0]}"}
+    require(base64.size == 33) { "Invalid Base 64 pub key byte length must be 33 not ${base64.size}" }
+    require(base64[0] == 0x02.toByte() || base64[0] == 0x03.toByte()) { "Invalid first byte must be 2 or 3 not  ${base64[0]}" }
     val shah256 = base64.toSha256()
     val ripemd = shah256.toRIPEMD160()
-    require(ripemd.size == 20) {"RipeMD size must be 20 not ${ripemd.size}"}
+    require(ripemd.size == 20) { "RipeMD size must be 20 not ${ripemd.size}" }
     Bech32.encode(hrpPrefix, Bech32.convertBits(ripemd, 8, 5, true))
 }
 
@@ -32,6 +33,11 @@ fun ByteArray.toRIPEMD160() = RIPEMD160Digest().let {
     val buffer = ByteArray(it.getDigestSize())
     it.doFinal(buffer, 0)
     buffer
+}
+
+fun String.addressToBech32(hrpPrefix: String) = let {
+    val bytes = Hex.decode(this)
+    Bech32.encode(hrpPrefix, Bech32.convertBits(bytes, 8, 5, true))
 }
 
 fun BlockMeta.height() = this.header.height.toInt()
