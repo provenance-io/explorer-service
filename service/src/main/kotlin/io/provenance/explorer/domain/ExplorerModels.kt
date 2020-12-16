@@ -7,7 +7,7 @@ data class PagedResults<T>(val pages: Int, val results: List<T>)
 
 data class RecentTx(val txHash: String, val time: String, val fee: BigDecimal, val denomination: String, val type: String, val blockHeight: Int, val signer: String, val status: String, val errorCode: Int?, val codespace: String?)
 
-data class RecentBlock(val height: Int, val txNum: Int, val time: String, val proposerAddress: String, val votingPower: BigDecimal, val validators: String)
+data class RecentBlock(val height: Int, val txNum: Int, val time: String, val proposerAddress: String, val votingPower: BigDecimal, val validatorsNum: Int, val validatorsTotal: Int)
 
 data class Validators(val totalVotingPower: Int, val blockHeight: Int, val validators: List<ValidatorDetail>)
 

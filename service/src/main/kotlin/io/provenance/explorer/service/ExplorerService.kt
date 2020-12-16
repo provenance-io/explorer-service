@@ -95,7 +95,8 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                     blockMeta.header.time,
                     blockMeta.header.proposerAddress.addressToBech32(explorerProperties.provenanceValidatorAccountPrefix()),
                     BigDecimal("100.0000000"), //TODO WIP need to figure out how to calc this
-                    "${validators.validators.size}/${validators.validators.size}" //TODO WIP need to figure out how to calc this
+                    validators.validators.size,
+                    validators.validators.size
             ))
             blockHeight = blockMeta.header.height.toInt()
             blockHeight--
