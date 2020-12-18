@@ -78,7 +78,7 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     @GetMapping(value = ["/validator"],
             produces = [MediaType.APPLICATION_JSON_VALUE])
     fun validator(@RequestParam(required = true) id: String):
-            ResponseEntity<Any> = ResponseEntity.ok("{}")
+            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getValidator(id))
 
     @ApiOperation(value = "Returns set of validators at block height")
     @GetMapping(value = ["/validators"],

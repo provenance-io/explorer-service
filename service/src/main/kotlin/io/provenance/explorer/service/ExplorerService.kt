@@ -137,7 +137,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                 block
             }
         }
-        OBJECT_MAPPER.readValue(block.toString(), BlockMeta::class.java)
+        block!!
     }
 
     fun getValidator(address: String) = let {
