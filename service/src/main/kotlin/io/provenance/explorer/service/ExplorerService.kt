@@ -6,9 +6,7 @@ import io.provenance.explorer.client.PbClient
 import io.provenance.explorer.client.TendermintClient
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.scheduling.annotation.Scheduled
@@ -27,6 +25,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
 
     protected val logger = logger(ExplorerService::class)
 
+    //TODO this needs be able to handle interruptions and resets when retrieving historical blocks
     fun updateCache() {
         val index = cacheService.getBlockIndex()
         val startHeight = getLatestBlockHeight()
@@ -59,16 +58,17 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         }
     }
 
-    fun addTransactionsToCache(blockHeight: Int, expectedNumTxs: Int) =
-            if (cacheService.transactionCountForHeight(blockHeight) == expectedNumTxs)
-                logger.info("Cache hit for transaction at height $blockHeight with $expectedNumTxs transactions")
-            else {
-                logger.info("Searching for $expectedNumTxs transactions at height $blockHeight")
-                val searchResult = pbClient.getTxsByHeights(blockHeight, blockHeight, 1, 20)
-                searchResult.txs.forEach {
-                    cacheService.addTransactionToCache(it)
-                }
+    fun addTransactionsToCache(blockHeight: Int, expectedNumTxs: Int) = GlobalScope.launch(Dispatchers.IO) {
+        if (cacheService.transactionCountForHeight(blockHeight) == expectedNumTxs)
+            logger.info("Cache hit for transaction at height $blockHeight with $expectedNumTxs transactions")
+        else {
+            logger.info("Searching for $expectedNumTxs transactions at height $blockHeight")
+            val searchResult = pbClient.getTxsByHeights(blockHeight, blockHeight, 1, 20)
+            searchResult.txs.forEach {
+                cacheService.addTransactionToCache(it)
             }
+        }
+    }
 
 
     fun getLatestBlockHeightIndex(): Int = cacheService.getBlockIndex()!![BlockIndexTable.maxHeightRead]
@@ -112,10 +112,12 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     }
 
     fun hydrateBlock(blockResponse: BlockMeta, validatorsResponse: PbValidatorsResponse) = let {
+        val proposerConsAddress = blockResponse.header.proposerAddress.addressToBech32(explorerProperties.provenanceValidatorConsensusPrefix())
+        val validatorAddresses = validatorAddressService.findAddressesByConsensusAddress(proposerConsAddress)
         BlockDetail(blockResponse.header.height.toInt(),
                 blockResponse.blockId.hash,
                 blockResponse.header.time,
-                blockResponse.header.proposerAddress.addressToBech32(explorerProperties.provenanceValidatorConsensusPrefix()),
+                validatorAddresses!!.operatorAddress,
                 "",
                 "",
                 validatorsResponse.validators.sumBy { v -> v.votingPower.toInt() },
@@ -126,7 +128,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                 0)
     }
 
-    fun getBlock(blockHeight: Int) = transaction {
+    fun getBlock(blockHeight: Int) = let {
         var block = cacheService.getBlockByHeight(blockHeight)
         if (block == null) {
             logger.info("cache miss for block height $blockHeight")

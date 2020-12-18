@@ -2,6 +2,7 @@ package io.provenance.explorer.config
 
 import com.fasterxml.jackson.databind.JsonNode
 import feign.Feign
+import feign.Logger
 import feign.Request
 import feign.jackson.JacksonDecoder
 import feign.jackson.JacksonEncoder
@@ -30,6 +31,8 @@ class RestClientConfig(val explorerProperties: ExplorerProperties) {
     @Bean
     fun tendermintClient() = Feign.Builder()
             .options(Request.Options(5000, 5000, false))
+            .logger(ExplorerFeignLogger(TendermintClient::class.java.name))
+            .logLevel(Logger.Level.BASIC)
             .encoder(JacksonEncoder(OBJECT_MAPPER))
             .decoder(JacksonDecoder(OBJECT_MAPPER)) //TODO figure out why this hates me
 //            .decoder { r, x ->
@@ -60,6 +63,8 @@ class RestClientConfig(val explorerProperties: ExplorerProperties) {
     @Bean
     fun pbClient() = Feign.Builder()
             .options(Request.Options(5000, 5000, false))
+            .logger(ExplorerFeignLogger(PbClient::class.java.name))
+            .logLevel(Logger.Level.BASIC)
             .encoder(JacksonEncoder(OBJECT_MAPPER))
             .decoder(JacksonDecoder(OBJECT_MAPPER))
             .errorDecoder { method, r ->
@@ -72,4 +77,19 @@ class RestClientConfig(val explorerProperties: ExplorerProperties) {
                 val body = r.body()?.asReader()?.readLines()?.joinToString("\n")
                 throw CosmosRemoteInvocationException(method, httpMethod, url, status, body)
             }.target(PbClient::class.java, explorerProperties.pbUrl)
+
+
+    class ExplorerFeignLogger constructor(val clazz: String) : Logger() {
+
+        val log = LoggerFactory.getLogger(clazz)
+
+        override fun log(configKey: String?, format: String?, vararg args: Any?) {
+            //no op
+        }
+
+        override fun logRequest(configKey: String?, logLevel: Level, request: Request) {
+            if (!request.url().endsWith("/status")) log.info("Requesting external api method: ${request.httpMethod()} url: ${request.url()}")
+        }
+
+    }
 }

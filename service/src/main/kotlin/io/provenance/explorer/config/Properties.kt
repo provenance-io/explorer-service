@@ -41,7 +41,8 @@ class ExplorerProperties {
 
     //valconspub
     fun provenanceValidatorConsensusPubKeyPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_CONSENSUS_PUBKEY_PREFIX else Bech32.PROVENANCE_TESTNET_CONSENSUS_PUBKEY_PREFIX
-//TODO fix once shared lib is updated
+
+    //TODO fix once provenance-sdk is fixed and on master
     //valoper
 //    fun provenanceValidatorOperatorPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_VALIDATOR_ACCOUNT_PREFIX else Bech32.PROVENANCE_TESTNET_VALIDATOR_ACCOUNT_PREFIX
     fun provenanceValidatorOperatorPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_PREFIX + "valoper" else Bech32.PROVENANCE_TESTNET_PREFIX + "valoper"
