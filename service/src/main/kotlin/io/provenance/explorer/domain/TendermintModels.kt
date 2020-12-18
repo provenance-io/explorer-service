@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import javax.json.JsonArray
 import javax.json.JsonObject
 
+data class JsonRpc<T>(val jsonrpc: String, val id: Int, val result: T)
 
 //Status Api Models
 data class StatusResult(val nodeInfo: NodeInfo?, val syncInfo: SyncInfo, val validatorInfo: ValidatorInfo)
@@ -61,11 +62,11 @@ data class Evidence(val evidence: EvidenceDetail?)
 data class EvidenceDetail(val type: String?, val height: Long, val time: Int, val totalVotingPower: Int, val validator: Validator)
 
 //validator
-data class ValidatorsResponse(val blockHeight: String, val validators: List<Validator>, val count: String, val total: String)
+data class TendermintValidatorsResponse(val blockHeight: String, val validators: List<Validator>, val count: String, val total: String)
 
 data class Validator(val address: String, val pubKey: PubKey, val votingPower: String, val proposerPriority: String)
 
 //Blockchain result
-data class Blockchain(val lastHeight: String, val blockMetas: List<JsonNode>)
+data class TendermintBlockchainResponse(val lastHeight: String, val blockMetas: List<BlockMeta>)
 
-data class BlockMeta(val blockId: BlockId, val header: BlockHeader, val numTxs: String)
+data class BlockMeta(val blockId: BlockId, val header: BlockHeader, val blockSize: String, val numTxs: String)

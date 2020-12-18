@@ -35,7 +35,7 @@ class ExtensionsTest {
     @Test
     fun `should convert pub key string to bech32`() {
         val result = "Al+JRNPlfbtGwfU7IybTJyzY1kM19ajg3LEUBEasttBe".pubKeyToBech32(Bech32.PROVENANCE_TESTNET_PREFIX)
-        kotlin.test.assertEquals("tp14neg0whj7puhwks6536a8lqp7msvd9p04wu287", result)
+        assertEquals("tp14neg0whj7puhwks6536a8lqp7msvd9p04wu287", result)
     }
 
     @Test(expected = IllegalArgumentException::class)
@@ -51,6 +51,6 @@ class ExtensionsTest {
     @Test
     fun `should return a bech32 address from a hex validator consensus address`() {
         val result = "685EDA8451FE32FCD9C58A7EA5299B6E66400EA2".addressToBech32(Bech32.PROVENANCE_TESTNET_CONSENSUS_ACCOUNT_PREFIX)
-        kotlin.test.assertEquals("tpvalcons1dp0d4pz3lce0ekw93fl222vmdenyqr4zlxa7re", result)
+        assertEquals("tpvalcons1dp0d4pz3lce0ekw93fl222vmdenyqr4zlxa7re", result)
     }
 }

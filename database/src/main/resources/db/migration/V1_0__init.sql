@@ -16,13 +16,6 @@ CREATE TABLE block_index
     last_update TIMESTAMP NOT NULL
 );
 
-CREATE TABLE blockchain_cache (
-    max_height INT PRIMARY KEY,
-    blocks JSONB NOT NULL,
-    last_hit TIMESTAMP NOT NULL,
-    hit_count INT NOT NULL
-);
-
 CREATE TABLE validators_cache
 (
     height   INT PRIMARY KEY,
@@ -60,3 +53,9 @@ CREATE TABLE spotlight_cache
     spotlight JSONB NOT NULL,
     last_hit TIMESTAMP NOT NULL
 );
+
+CREATE TABLE validator_addresses (
+    consensus_address VARCHAR(96) NOT NULL UNIQUE,
+    consensus_pubkey_address VARCHAR(96) NOT NULL UNIQUE,
+    operator_address VARCHAR(96) NOT NULL UNIQUE
+)

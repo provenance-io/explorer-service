@@ -1,6 +1,5 @@
 package io.provenance.explorer.domain
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.JsonNode
 
 data class PbTxSearchResponse(val totalCount: String, val count: String, val pageNumber: String, val limit: String, val txs: List<PbTransaction>)
@@ -13,9 +12,9 @@ data class TxValue(val msg: List<TxMsg>, val fee: TxFee, val signatures: List<Tx
 
 data class TxMsg(val type: String, val value: JsonNode)
 
-data class TxFee(val gas: String, val amount: List<TxAmount>)
+data class TxFee(val gas: String, val amount: List<DenomAmount>)
 
-data class TxAmount(val denom: String, val amount: String)
+data class DenomAmount(val denom: String, val amount: String)
 
 data class TxSignature(val pubKey: PubKey, val signature: String)
 
@@ -26,9 +25,11 @@ data class PbValidator(val address: String, val pubKey: String, val proposerPrio
 data class PbResponse<T>(val height: String, val result: T)
 
 data class PbStakingValidator(val operatorAddress: String, val consensusPubkey: String, val jailed: Boolean, val status: Int, val tokens: String, val delegatorShares: String, val description: ValidatorDescription,
-                              val unbondingHeight: String, val unbondingTime: String, val commission: Commission, val minSelfDelegation: String)
+                              val bondHeight: String?, val bondIntraTxCounter: String?, val unbondingHeight: String, val unbondingTime: String, val commission: Commission, val minSelfDelegation: String)
 
 data class ValidatorDescription(val moniker: String, val identity: String, val website: String, val securityContact: String, val details: String)
+
+data class ValidatorDistribution(val operatorAddress: String, val selfBondRewards: DenomAmount, val valCommission: DenomAmount)
 
 data class Commission(val commissionRates: CommissionRates, val updateTime: String)
 

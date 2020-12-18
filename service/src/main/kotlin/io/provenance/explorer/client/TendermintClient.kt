@@ -3,6 +3,9 @@ package io.provenance.explorer.client
 import com.fasterxml.jackson.databind.JsonNode
 import feign.Param
 import feign.RequestLine
+import io.provenance.explorer.domain.JsonRpc
+import io.provenance.explorer.domain.StatusResult
+import io.provenance.explorer.domain.TendermintBlockchainResponse
 
 interface TendermintClient {
 
@@ -10,7 +13,7 @@ interface TendermintClient {
     fun getRecentTransactions(@Param("height") height: Int, @Param("page") page: Int, @Param("count") count: Int): JsonNode
 
     @RequestLine("GET /blockchain?maxHeight={maxHeight}")
-    fun getBlockchain(@Param("maxHeight") maxHeight: Int): JsonNode
+    fun getBlockchain(@Param("maxHeight") maxHeight: Int): JsonRpc<TendermintBlockchainResponse>
 
     @RequestLine("GET /validators?height={height}")
     fun getValidators(@Param("height") height: Int): JsonNode
@@ -19,5 +22,5 @@ interface TendermintClient {
     fun getTransaction(@Param("hash") hash: String): JsonNode
 
     @RequestLine("GET /status")
-    fun getStatus(): JsonNode
+    fun getStatus(): JsonRpc<StatusResult>
 }

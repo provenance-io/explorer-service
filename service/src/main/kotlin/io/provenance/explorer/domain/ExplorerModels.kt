@@ -1,7 +1,6 @@
 package io.provenance.explorer.domain
 
 import java.math.BigDecimal
-import java.util.*
 
 data class PagedResults<T>(val pages: Int, val results: List<T>)
 
@@ -9,9 +8,11 @@ data class RecentTx(val txHash: String, val time: String, val fee: BigDecimal, v
 
 data class RecentBlock(val height: Int, val txNum: Int, val time: String, val proposerAddress: String, val votingPower: BigDecimal, val validatorsNum: Int, val validatorsTotal: Int)
 
-data class Validators(val totalVotingPower: Int, val blockHeight: Int, val validators: List<ValidatorDetail>)
+data class Validators(val totalVotingPower: Int, val blockHeight: Int, val validators: List<ValidatorDetails>)
 
-data class ValidatorDetail(val votingPower: Int, val moniker: String, val addressId: String, val uptime: BigDecimal)
+data class ValidatorSummary(val votingPower: Int, val moniker: String, val addressId: String, val uptime: BigDecimal)
+
+data class ValidatorDetails(val votingPower: Int, val moniker: String, val operatorAddress: String, val ownerAddress: String, val consensusPubKey: String, val missedBlocks: Int, val totalBlocks: Int, val boundHeight: Int, val uptime: BigDecimal)
 
 data class BlockDetail(val height: Int, val hash: String, val time: String, val proposerAddress: String, val moniker: String, val icon: String,
                        val votingPower: Int, val numValidators: Int, val txNum: Int, val bondedTokenPercent: Int, val bondedTokenAmount: Int,

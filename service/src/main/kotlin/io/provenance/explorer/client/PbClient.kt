@@ -4,10 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import feign.Headers
 import feign.Param
 import feign.RequestLine
-import io.provenance.explorer.domain.PbResponse
-import io.provenance.explorer.domain.PbTransaction
-import io.provenance.explorer.domain.PbTxSearchResponse
-import io.provenance.explorer.domain.SigningInfo
+import io.provenance.explorer.domain.*
 import io.provenance.pbc.clients.JsonRPC
 
 interface PbClient {
@@ -21,16 +18,22 @@ interface PbClient {
     @RequestLine("GET /validatorsets/{height}")
     fun getValidatorsAtHeight(@Param("height") height: Int): JsonNode
 
+    @RequestLine("GET /validatorsets/latest")
+    fun getLatestValidators(): PbResponse<PbValidatorsResponse>
+
     @RequestLine("GET /staking/pool")
     fun getStakingPool(): JsonNode
 
     @RequestLine("GET /staking/validators?status={status}&page={page}&limit={limit}")
-    fun getStakingValidators(@Param("status") status: String, @Param("page") page: Int, @Param("limit") limit: Int): JsonNode
+    fun getStakingValidators(@Param("status") status: String, @Param("page") page: Int, @Param("limit") limit: Int): PbResponse<List<PbStakingValidator>>
 
     @RequestLine("GET /staking/validators/{validatorAddress}")
-    fun getStakingValidator(@Param("validatorAddress") validatorAddress: String): JsonNode
+    fun getStakingValidator(@Param("validatorAddress") validatorAddress: String): PbResponse<PbStakingValidator>
 
     @RequestLine("GET /slashing/signing_infos")
     fun getSlashingSigningInfo(): PbResponse<List<SigningInfo>>
+
+    @RequestLine("GET /distribution/validators/{validatorAddress}")
+    fun getValidatorDistribution(@Param("validatorAddress") validatorAddress: String): ValidatorDistribution
 
 }

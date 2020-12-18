@@ -19,7 +19,7 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
     protected val logger = logger(CacheService::class)
 
     fun getBlockByHeight(blockHeight: Int) = transaction {
-        var jsonNode: JsonNode? = null
+        var blockMeta: BlockMeta? = null
         var block = BlockCacheTable.select { (BlockCacheTable.height eq blockHeight) }.firstOrNull()?.let {
             it
         }
@@ -28,15 +28,15 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
                 it[hitCount] = block[hitCount] + 1
                 it[lastHit] = DateTime.now()
             }
-            jsonNode = block[BlockCacheTable.block]
+            blockMeta = block[BlockCacheTable.block]
         }
-        jsonNode
+        blockMeta
     }
 
-    fun addBlockToCache(blockHeight: Int, transactionCount: Int, timestamp: DateTime, json: JsonNode) = transaction {
-        if (shouldCacheBlock(blockHeight, json)) BlockCacheTable.insertIgnore {
+    fun addBlockToCache(blockHeight: Int, transactionCount: Int, timestamp: DateTime, blockMe: BlockMeta) = transaction {
+        if (shouldCacheBlock(blockHeight, blockMe)) BlockCacheTable.insertIgnore {
             it[height] = blockHeight
-            it[block] = json
+            it[this.block] = blockMe
             it[txCount] = transactionCount
             it[blockTimestamp] = timestamp
             it[hitCount] = 0
@@ -44,35 +44,7 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
         }
     }
 
-    fun shouldCacheBlock(blockHeight: Int, json: JsonNode) = json.get("header").get("height").asInt() == blockHeight
-
-    fun getBlockchainFromMaxHeight(maxHeight: Int) = transaction {
-        var jsonNode: JsonNode? = null
-        var block = BlockchainCacheTable.select { (BlockchainCacheTable.maxHeight eq maxHeight) }.firstOrNull()?.let {
-            it
-        }
-        if (block != null) {
-            BlockchainCacheTable.update({ BlockchainCacheTable.maxHeight eq maxHeight }) {
-                it[hitCount] = block[hitCount] + 1
-                it[lastHit] = DateTime.now()
-            }
-            jsonNode = block[BlockchainCacheTable.blocks]
-        }
-        jsonNode
-    }
-
-    fun addBlockchainToCache(maxHeight: Int, json: JsonNode) = transaction {
-        if (shouldCacheBlockchain(maxHeight, json)) BlockchainCacheTable.insertIgnore {
-            it[BlockchainCacheTable.maxHeight] = maxHeight
-            it[blocks] = json
-            it[hitCount] = 0
-            it[lastHit] = DateTime.now()
-        }
-    }
-
-    fun shouldCacheBlockchain(maxHeight: Int, json: JsonNode) =
-            json.get("block_metas")[0].get("header").get("height").asInt() == maxHeight
-                    && json.get("block_metas").size() == 20
+    fun shouldCacheBlock(blockHeight: Int, blockMeta: BlockMeta) = blockMeta.height() == blockHeight
 
     fun getValidatorsByHeight(blockHeight: Int) = transaction {
         var jsonNode: JsonNode? = null

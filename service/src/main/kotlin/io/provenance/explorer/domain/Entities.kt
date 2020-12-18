@@ -7,7 +7,7 @@ import io.provenance.explorer.OBJECT_MAPPER
 
 object BlockCacheTable : Table(name = "block_cache") {
     val height = integer("height").primaryKey()
-    val block = jsonb<BlockCacheTable, JsonNode>("block", OBJECT_MAPPER)
+    val block = jsonb<BlockCacheTable, BlockMeta>("block", OBJECT_MAPPER)
     val blockTimestamp = datetime("block_timestamp")
     val txCount = integer("tx_count")
     val lastHit = datetime("last_hit")
@@ -19,13 +19,6 @@ object BlockIndexTable : Table(name = "block_index") {
     val maxHeightRead = integer("max_height_read")
     val minHeightRead = integer("min_height_read")
     val lastUpdate = datetime("last_update")
-}
-
-object BlockchainCacheTable : Table(name = "blockchain_cache") {
-    val maxHeight = integer("max_height").primaryKey()
-    val blocks = jsonb<BlockchainCacheTable, JsonNode>("blocks", OBJECT_MAPPER)
-    val lastHit = datetime("last_hit")
-    val hitCount = integer("hit_count")
 }
 
 object ValidatorsCacheTable : Table(name = "validators_cache") {
@@ -62,3 +55,11 @@ object SpotlightCacheTable : Table(name = "spotlight_cache") {
     val spotlight = jsonb<SpotlightCacheTable, Spotlight>("spotlight", OBJECT_MAPPER)
     val lastHit = datetime("last_hit")
 }
+
+object ValidatorAdressesTable : Table(name = "validator_addresses") {
+    val consensusAddress = varchar("consensus_address", 96)
+    val consensusPubKeyAddress = varchar("consensus_pubkey_address", 96)
+    val operatorAddress = varchar("operator_address", 96)
+}
+
+data class ValidatorAddresses(val consensusAddress: String, val consensusPubKeyAddress: String, val operatorAddress: String)

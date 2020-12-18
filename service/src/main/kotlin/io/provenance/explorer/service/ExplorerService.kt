@@ -1,13 +1,11 @@
 package io.provenance.explorer.service
 
-import com.fasterxml.jackson.core.type.TypeReference
 import io.provenance.core.extensions.logger
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.client.PbClient
 import io.provenance.explorer.client.TendermintClient
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.*
-import io.provenance.explorer.domain.Blockchain
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
@@ -22,6 +20,7 @@ import java.math.RoundingMode
 @Service
 class ExplorerService(private val explorerProperties: ExplorerProperties,
                       private val cacheService: CacheService,
+                      private val validatorAddressService: ValidatorAddressService,
                       private val pbClient: PbClient,
                       private val tendermintClient: TendermintClient
 ) {
@@ -35,27 +34,25 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         cacheService.updateBlockMaxHeightIndex(indexHeight)
         if (index == null || index[BlockIndexTable.minHeightRead] == null) {
             val days = mutableSetOf<String>()
-            while (days.count() <= explorerProperties.initialHistoricalDays()) {
-                getBlockchain(indexHeight).blockMetas.forEach {
-                    val block = OBJECT_MAPPER.readValue(it.toString(), BlockMeta::class.java)
-                    cacheService.addBlockToCache(block.height(), block.numTxs.toInt(), DateTime.parse(block.header.time), it)
-                    days.add(block.day())
-                    if (block.numTxs.toInt() > 0) {
-                        addTransactionsToCache(block.height(), block.numTxs.toInt())
+            while (days.count() <= explorerProperties.initialHistoricalDays() || indexHeight < 0) {
+                getBlockchain(indexHeight).result.blockMetas.forEach { blockMeta ->
+                    cacheService.addBlockToCache(blockMeta.height(), blockMeta.numTxs.toInt(), DateTime.parse(blockMeta.header.time), blockMeta)
+                    days.add(blockMeta.day())
+                    if (blockMeta.numTxs.toInt() > 0) {
+                        addTransactionsToCache(blockMeta.height(), blockMeta.numTxs.toInt())
                     }
-                    indexHeight = block.height() - 1
+                    indexHeight = blockMeta.height() - 1
                 }
                 cacheService.updateBlockMinHeightIndex(indexHeight + 1)
             }
         } else {
             while (indexHeight > index[BlockIndexTable.maxHeightRead]) {
-                getBlockchain(indexHeight).blockMetas.forEach {
-                    val block = OBJECT_MAPPER.readValue(it.toString(), BlockMeta::class.java)
-                    if (block.height() == index[BlockIndexTable.maxHeightRead]) return@forEach
-                    cacheService.addBlockToCache(block.height(), block.numTxs.toInt(), DateTime.parse(block.header.time), it)
-                    indexHeight = block.height() - 1
-                    if (block.numTxs.toInt() > 0) {
-                        addTransactionsToCache(block.height(), block.numTxs.toInt())
+                getBlockchain(indexHeight).result.blockMetas.forEach { blockMeta ->
+                    if (blockMeta.height() == index[BlockIndexTable.maxHeightRead]) return@forEach
+                    cacheService.addBlockToCache(blockMeta.height(), blockMeta.numTxs.toInt(), DateTime.parse(blockMeta.header.time), blockMeta)
+                    indexHeight = blockMeta.height() - 1
+                    if (blockMeta.numTxs.toInt() > 0) {
+                        addTransactionsToCache(blockMeta.height(), blockMeta.numTxs.toInt())
                     }
                 }
             }
@@ -78,7 +75,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
 
     fun getLatestBlockHeight(): Int = getStatus().syncInfo.latestBlockHeight.toInt()
 
-    fun getStatus() = OBJECT_MAPPER.readValue(tendermintClient.getStatus().toString(), StatusResult::class.java)
+    fun getStatus() = tendermintClient.getStatus().result
 
     @Scheduled(initialDelay = 0L, fixedDelay = 1000L)
     fun updateLatestBlockHeightJob() = updateCache()
@@ -93,7 +90,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
             result.add(RecentBlock(blockMeta.header.height.toInt(),
                     blockMeta.numTxs.toInt(),
                     blockMeta.header.time,
-                    blockMeta.header.proposerAddress.addressToBech32(explorerProperties.provenanceValidatorAccountPrefix()),
+                    blockMeta.header.proposerAddress.addressToBech32(explorerProperties.provenanceValidatorConsensusPrefix()),
                     BigDecimal("100.0000000"), //TODO WIP need to figure out how to calc this
                     validators.validators.size,
                     validators.validators.size
@@ -105,15 +102,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         PagedResults((currentHeight / count) + 1, result)
     }
 
-    private fun getBlockchain(maxHeight: Int) = let {
-        var blocks = cacheService.getBlockchainFromMaxHeight(maxHeight)
-        if (blocks == null) {
-            logger.info("cache miss for blockchain max height $maxHeight")
-            blocks = tendermintClient.getBlockchain(maxHeight)
-            cacheService.addBlockchainToCache(maxHeight, blocks)
-        }
-        OBJECT_MAPPER.readValue(blocks.toString(), Blockchain::class.java)
-    }
+    private fun getBlockchain(maxHeight: Int) = tendermintClient.getBlockchain(maxHeight)
 
     fun getBlockAtHeight(height: Int?) = runBlocking(Dispatchers.IO) {
         val queryHeight = if (height == null) getLatestBlockHeightIndex() else height
@@ -126,7 +115,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         BlockDetail(blockResponse.header.height.toInt(),
                 blockResponse.blockId.hash,
                 blockResponse.header.time,
-                blockResponse.header.proposerAddress.addressToBech32(explorerProperties.provenanceValidatorAccountPrefix()),
+                blockResponse.header.proposerAddress.addressToBech32(explorerProperties.provenanceValidatorConsensusPrefix()),
                 "",
                 "",
                 validatorsResponse.validators.sumBy { v -> v.votingPower.toInt() },
@@ -141,16 +130,40 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         var block = cacheService.getBlockByHeight(blockHeight)
         if (block == null) {
             logger.info("cache miss for block height $blockHeight")
-            getBlockchain(blockHeight).blockMetas.filter {
-                it.get("header").get("height").asInt() == blockHeight
+            getBlockchain(blockHeight).result.blockMetas.filter {
+                it.header.height.toInt() == blockHeight
             }.map {
-                val block = OBJECT_MAPPER.readValue(it.toString(), BlockMeta::class.java)
-                cacheService.addBlockToCache(block.height(), block.numTxs.toInt(), DateTime.parse(block.header.time), it)
+                cacheService.addBlockToCache(it.height(), it.numTxs.toInt(), DateTime.parse(it.header.time), it)
                 block
             }
         }
         OBJECT_MAPPER.readValue(block.toString(), BlockMeta::class.java)
     }
+
+    fun getValidator(address: String) = let {
+        var validatorAddresses: ValidatorAddresses? = getValidatorOperatorAddress(address)
+        var validatorDetails: ValidatorDetails? = null
+        if (validatorAddresses != null) {
+            val currentHeight = getLatestBlockHeightIndex()
+            //TODO make async and add caching
+            val stakingValidator = pbClient.getStakingValidator(validatorAddresses.operatorAddress)
+//            val distribution = pbClient.getValidatorDistribution(validatorAddresses.operatorAddress)
+            val signingInfo = pbClient.getSlashingSigningInfo().result.firstOrNull { it.address == validatorAddresses.consensusAddress }
+            val latestValidator = pbClient.getLatestValidators().result.validators.firstOrNull { it.address == validatorAddresses.consensusAddress }
+            validatorDetails = ValidatorDetails(latestValidator!!.votingPower.toInt(), stakingValidator.result.description.moniker, validatorAddresses.operatorAddress, validatorAddresses.operatorAddress,
+                    validatorAddresses.consensusPubKeyAddress, signingInfo!!.missedBlocksCounter.toInt(), currentHeight - signingInfo!!.startHeight.toInt(),
+                    if (stakingValidator.result.bondHeight != null) stakingValidator.result.bondHeight.toInt() else 0, signingInfo.uptime(getLatestBlockHeightIndex()))
+        }
+        validatorDetails
+    }
+
+    fun getValidatorOperatorAddress(address: String) = if (address.startsWith(explorerProperties.provenanceValidatorConsensusPubKeyPrefix())) {
+        validatorAddressService.findAddressesByConsensusPubKeyAddress(address)
+    } else if (address.startsWith(explorerProperties.provenanceValidatorConsensusPrefix())) {
+        validatorAddressService.findAddressesByConsensusAddress(address)
+    } else if (address.startsWith(explorerProperties.provenanceValidatorOperatorPrefix())) {
+        validatorAddressService.findAddressesByOperatorAddress(address)
+    } else null
 
     fun getRecentValidators(count: Int, page: Int, sort: String, status: String) =
             getValidatorsAtHeight(getLatestBlockHeightIndex(), count, page, sort, status)
@@ -160,17 +173,14 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         var validators = aggregateValidators(height, count, page, status)
         validators = if ("asc" == sort.toLowerCase()) validators.sortedBy { it.votingPower }
         else validators.sortedByDescending { it.votingPower }
-        PagedResults<ValidatorDetail>(validators.size / count, validators)
+        PagedResults<ValidatorSummary>(validators.size / count, validators)
     }
 
     fun aggregateValidators(blockHeight: Int, count: Int, page: Int, status: String) = let {
         val validators = getValidators(blockHeight)
-        val stakingValidators = getRecentStakingValidators(count, page, status)
+        val stakingValidators = pbClient.getStakingValidators(status, page, count)
         hydrateValidators(validators.validators, stakingValidators.result)
     }
-
-    fun getRecentStakingValidators(count: Int, page: Int, status: String) =
-            OBJECT_MAPPER.readValue(pbClient.getStakingValidators(status, page, count).toString(), object : TypeReference<PbResponse<List<PbStakingValidator>>>() {})
 
     fun getValidators(blockHeight: Int) = let {
         var validators = cacheService.getValidatorsByHeight(blockHeight)
@@ -196,7 +206,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     }
 
     fun hydrateValidator(validator: PbValidator, stakingValidator: PbStakingValidator, signingInfo: SigningInfo, height: Int) =
-            ValidatorDetail(moniker = stakingValidator.description.moniker,
+            ValidatorSummary(moniker = stakingValidator.description.moniker,
                     votingPower = validator.votingPower.toInt(),
                     addressId = stakingValidator.operatorAddress,
                     uptime = signingInfo.uptime(height)
@@ -214,7 +224,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                     tx.tx.value.fee.amount[0].denom,
                     tx.type()!!,
                     tx.height.toInt(),
-                    tx.feePayer().pubKey.value.pubKeyToBech32(explorerProperties.provenancePrefix()),
+                    tx.feePayer().pubKey.value.pubKeyToBech32(explorerProperties.provenanceAccountPrefix()),
                     if (tx.code != null) "failed" else "success", tx.code, tx.codespace)
         }
         if (!sort.isNullOrEmpty() && sort.toLowerCase() == "asc") result.reversed()
@@ -241,7 +251,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                 if (tx.code != null) "failed" else "success", tx.code, tx.codespace,
                 tx.fee(explorerProperties.minGasPrice()),
                 tx.tx.value.fee.amount[0].denom,
-                tx.tx.value.signatures[0].pubKey.value.pubKeyToBech32(explorerProperties.provenancePrefix()),
+                tx.tx.value.signatures[0].pubKey.value.pubKeyToBech32(explorerProperties.provenanceAccountPrefix()),
                 tx.tx.value.memo, tx.type()!!,
                 if (tx.type() == "send") tx.tx.value.msg[0].value.get("from_address").textValue() else "",
                 if (tx.type() == "send") tx.tx.value.msg[0].value.get("amount").get(0).get("amount").asInt() else 0,

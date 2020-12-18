@@ -31,19 +31,22 @@ class RestClientConfig(val explorerProperties: ExplorerProperties) {
     fun tendermintClient() = Feign.Builder()
             .options(Request.Options(5000, 5000, false))
             .encoder(JacksonEncoder(OBJECT_MAPPER))
-            .decoder { r, x ->
-                val log = LoggerFactory.getLogger(this::class.java)
-                if (r.status() != 200) {
-                    log.error("Response code of: ${r.status()} calling url: ${r.request().url()} reason: ${r.reason()}")
-                    throw TendermintApiException(r.toString())
-                }
-                val response = OBJECT_MAPPER.readValue(r.body().asReader(), JsonNode::class.java)
-                if (response.has("error") || !response.has("result")) {
-                    log.error("Error response from tender mint calling url: ${r.request().url()} response: ${response.toString()}")
-                    throw TendermintApiException(response.toString())
-                }
-                response.get("result")
-            }.errorDecoder { method, r ->
+            .decoder(JacksonDecoder(OBJECT_MAPPER)) //TODO figure out why this hates me
+//            .decoder { r, x ->
+//                val log = LoggerFactory.getLogger(this::class.java)
+//                val json = r.body().toString()
+//                if (r.status() != 200) {
+//                    log.error("Response code of: ${r.status()} calling url: ${r.request().url()} reason: ${r.reason()}")
+//                    throw TendermintApiException(r.toString())
+//                }
+//                val response = OBJECT_MAPPER.readValue(json, JsonNode::class.java)
+//                if (response.has("error") || !response.has("result")) {
+//                    log.error("Error response from tender mint calling url: ${r.request().url()} response: ${response.toString()}")
+//                    throw TendermintApiException(response.toString())
+//                }
+//                response.get("result")
+//            }
+            .errorDecoder { method, r ->
                 val log = LoggerFactory.getLogger(this::class.java)
                 val status = r.status()
                 val url = r.request().url()

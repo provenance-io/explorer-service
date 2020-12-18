@@ -33,9 +33,22 @@ class ExplorerProperties {
 
     fun spotlightTtlMs() = spotlightTtlMs.toLong()
 
-    fun provenancePrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_PREFIX else Bech32.PROVENANCE_TESTNET_PREFIX
+    //tp or pb
+    fun provenanceAccountPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_ACCOUNT_PREFIX else Bech32.PROVENANCE_TESTNET_ACCOUNT_PREFIX
 
-    fun provenanceValidatorAccountPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_CONSENSUS_ACCOUNT_PREFIX else Bech32.PROVENANCE_TESTNET_CONSENSUS_ACCOUNT_PREFIX
+    //valcons
+    fun provenanceValidatorConsensusPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_CONSENSUS_ACCOUNT_PREFIX else Bech32.PROVENANCE_TESTNET_CONSENSUS_ACCOUNT_PREFIX
+
+    //valconspub
+    fun provenanceValidatorConsensusPubKeyPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_CONSENSUS_PUBKEY_PREFIX else Bech32.PROVENANCE_TESTNET_CONSENSUS_PUBKEY_PREFIX
+//TODO fix once shared lib is updated
+    //valoper
+//    fun provenanceValidatorOperatorPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_VALIDATOR_ACCOUNT_PREFIX else Bech32.PROVENANCE_TESTNET_VALIDATOR_ACCOUNT_PREFIX
+    fun provenanceValidatorOperatorPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_PREFIX + "valoper" else Bech32.PROVENANCE_TESTNET_PREFIX + "valoper"
+
+    //valoperpub
+//    fun provenanceValidatorOperatorPubKeyPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_VALIDATOR_PUBKEY_PREFIX else Bech32.PROVENANCE_TESTNET_VALIDATOR_PUBKEY_PREFIX
+    fun provenanceValidatorOperatorPubKeyPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_PREFIX + "valoperpub" else Bech32.PROVENANCE_TESTNET_PREFIX + "valoperpub"
 }
 
 @ConfigurationProperties(prefix = "service")
