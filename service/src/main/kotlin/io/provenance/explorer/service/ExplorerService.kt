@@ -147,7 +147,6 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
             val currentHeight = getLatestBlockHeightIndex()
             //TODO make async and add caching
             val stakingValidator = pbClient.getStakingValidator(validatorAddresses.operatorAddress)
-//            val distribution = pbClient.getValidatorDistribution(validatorAddresses.operatorAddress)
             val signingInfo = pbClient.getSlashingSigningInfo().result.firstOrNull { it.address == validatorAddresses.consensusAddress }
             val latestValidator = pbClient.getLatestValidators().result.validators.firstOrNull { it.address == validatorAddresses.consensusAddress }
             validatorDetails = ValidatorDetails(latestValidator!!.votingPower.toInt(), stakingValidator.result.description.moniker, validatorAddresses.operatorAddress, validatorAddresses.operatorAddress,
@@ -206,9 +205,12 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     }
 
     fun hydrateValidator(validator: PbValidator, stakingValidator: PbStakingValidator, signingInfo: SigningInfo, height: Int) =
-            ValidatorSummary(moniker = stakingValidator.description.moniker,
-                    votingPower = validator.votingPower.toInt(),
+            ValidatorSummary(
+                    moniker = stakingValidator.description.moniker,
                     addressId = stakingValidator.operatorAddress,
+                    consensusAddress = validator.address,
+                    proposerPriority = validator.proposerPriority.toInt(),
+                    votingPower = validator.votingPower.toInt(),
                     uptime = signingInfo.uptime(height)
             )
 

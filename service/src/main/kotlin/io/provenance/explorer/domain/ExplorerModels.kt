@@ -10,7 +10,7 @@ data class RecentBlock(val height: Int, val txNum: Int, val time: String, val pr
 
 data class Validators(val totalVotingPower: Int, val blockHeight: Int, val validators: List<ValidatorDetails>)
 
-data class ValidatorSummary(val votingPower: Int, val moniker: String, val addressId: String, val uptime: BigDecimal)
+data class ValidatorSummary(val moniker: String, val addressId: String, val consensusAddress:String, val proposerPriority: Int, val uptime: BigDecimal, val votingPower: Int )
 
 data class ValidatorDetails(val votingPower: Int, val moniker: String, val operatorAddress: String, val ownerAddress: String, val consensusPubKey: String, val missedBlocks: Int, val totalBlocks: Int, val boundHeight: Int, val uptime: BigDecimal)
 
