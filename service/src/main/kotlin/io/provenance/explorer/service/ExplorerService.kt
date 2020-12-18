@@ -58,17 +58,16 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         }
     }
 
-    fun addTransactionsToCache(blockHeight: Int, expectedNumTxs: Int) = GlobalScope.launch(Dispatchers.IO) {
-        if (cacheService.transactionCountForHeight(blockHeight) == expectedNumTxs)
-            logger.info("Cache hit for transaction at height $blockHeight with $expectedNumTxs transactions")
-        else {
-            logger.info("Searching for $expectedNumTxs transactions at height $blockHeight")
-            val searchResult = pbClient.getTxsByHeights(blockHeight, blockHeight, 1, 20)
-            searchResult.txs.forEach {
-                cacheService.addTransactionToCache(it)
+    fun addTransactionsToCache(blockHeight: Int, expectedNumTxs: Int) =
+            if (cacheService.transactionCountForHeight(blockHeight) == expectedNumTxs)
+                logger.info("Cache hit for transaction at height $blockHeight with $expectedNumTxs transactions")
+            else {
+                logger.info("Searching for $expectedNumTxs transactions at height $blockHeight")
+                val searchResult = pbClient.getTxsByHeights(blockHeight, blockHeight, 1, 20)
+                searchResult.txs.forEach {
+                    cacheService.addTransactionToCache(it)
+                }
             }
-        }
-    }
 
 
     fun getLatestBlockHeightIndex(): Int = cacheService.getBlockIndex()!![BlockIndexTable.maxHeightRead]
