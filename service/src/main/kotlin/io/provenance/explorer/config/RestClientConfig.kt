@@ -30,7 +30,7 @@ class RestClientConfig(val explorerProperties: ExplorerProperties) {
 
     @Bean
     fun tendermintClient() = Feign.Builder()
-            .options(Request.Options(5000, 5000, false))
+            .options(Request.Options(10000, 10000, false))
             .logger(ExplorerFeignLogger(TendermintClient::class.java.name))
             .logLevel(Logger.Level.BASIC)
             .encoder(JacksonEncoder(OBJECT_MAPPER))
@@ -62,7 +62,7 @@ class RestClientConfig(val explorerProperties: ExplorerProperties) {
 
     @Bean
     fun pbClient() = Feign.Builder()
-            .options(Request.Options(5000, 5000, false))
+            .options(Request.Options(10000, 10000, false))
             .logger(ExplorerFeignLogger(PbClient::class.java.name))
             .logLevel(Logger.Level.BASIC)
             .encoder(JacksonEncoder(OBJECT_MAPPER))

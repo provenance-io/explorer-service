@@ -13,6 +13,7 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.net.SocketTimeoutException
 
 
 @Service
@@ -63,12 +64,18 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                 logger.info("Cache hit for transaction at height $blockHeight with $expectedNumTxs transactions")
             else {
                 logger.info("Searching for $expectedNumTxs transactions at height $blockHeight")
-                val searchResult = pbClient.getTxsByHeights(blockHeight, blockHeight, 1, 20)
-                searchResult.txs.forEach {
-                    cacheService.addTransactionToCache(it)
-                }
+                tryAddTxs(blockHeight)
             }
 
+    //TODO page through results for cases more than 20
+    fun tryAddTxs(blockHeight: Int) = try {
+        val searchResult = pbClient.getTxsByHeights(blockHeight, blockHeight, 1, 20)
+        searchResult.txs.forEach {
+            cacheService.addTransactionToCache(it)
+        }
+    } catch (e: SocketTimeoutException) { //TODO think of something smart to do here...
+        logger.error("Failed to retrieve transactions at block: $blockHeight", e)
+    }
 
     fun getLatestBlockHeightIndex(): Int = cacheService.getBlockIndex()!![BlockIndexTable.maxHeightRead]
 
