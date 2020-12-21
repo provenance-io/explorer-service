@@ -33,9 +33,6 @@ class ExplorerProperties {
     @NotNull
     lateinit var spotlightTtlMs: String
 
-    @NotNull
-    lateinit var slashingValidatorTtlMs: String
-
     fun tendermintClientTimeoutMs() = tendermintClientTimeoutMs.toInt()
 
     fun pbClientTimeoutMs() = pbClientTimeoutMs.toInt()
@@ -45,8 +42,6 @@ class ExplorerProperties {
     fun minGasPrice() = minimumGasPrice.toBigDecimal()
 
     fun spotlightTtlMs() = spotlightTtlMs.toLong()
-
-    fun slashingValidatorTtlMs() = slashingValidatorTtlMs.toLong()
 
     //tp or pb
     fun provenanceAccountPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_ACCOUNT_PREFIX else Bech32.PROVENANCE_TESTNET_ACCOUNT_PREFIX
