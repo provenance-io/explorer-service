@@ -11,9 +11,11 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
+import java.lang.Exception
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.net.SocketTimeoutException
+import kotlin.system.measureTimeMillis
 
 
 @Service
@@ -69,11 +71,15 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
 
     //TODO page through results for cases more than 20
     fun tryAddTxs(blockHeight: Int) = try {
-        val searchResult = pbClient.getTxsByHeights(blockHeight, blockHeight, 1, 20)
-        searchResult.txs.forEach {
+        var searchResult: PbTxSearchResponse? = null
+        val elapsedTime = measureTimeMillis {
+           searchResult = pbClient.getTxsByHeights(blockHeight, blockHeight, 1, 20)
+        }
+        logger.info("Search for transaction by height at $blockHeight took $elapsedTime")
+        searchResult!!.txs.forEach {
             cacheService.addTransactionToCache(it)
         }
-    } catch (e: SocketTimeoutException) { //TODO think of something smart to do here...
+    } catch (e: Exception) {
         logger.error("Failed to retrieve transactions at block: $blockHeight", e)
     }
 
