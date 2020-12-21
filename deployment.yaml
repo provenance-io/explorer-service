@@ -101,7 +101,9 @@ spec:
             PROVENANCE_EXPLORER_INITIAL_HISTORICAL_DAY_COUNT: 14
             PROVENANCE_EXPLORER_MAINNET: false
           common:
+            PROVENANCE_EXPLORER_TENDERMINT_CLIENT_TIMEOUT_MS: 60000
             PROVENANCE_EXPLORER_PB_URL: http://blockchain-gateway.apis
+            PROVENANCE_EXPLORER_PB_CLIENT_TIMEOUT_MS: 120000
         readinessProbe:
           path: /actuator/health
           periodSeconds: 3

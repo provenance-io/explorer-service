@@ -13,10 +13,16 @@ class ExplorerProperties {
     lateinit var mainnet: String
 
     @NotNull
+    lateinit var tendermintClientTimeoutMs: String
+
+    @NotNull
     lateinit var tendermintUrl: String
 
     @NotNull
     lateinit var pbUrl: String
+
+    @NotNull
+    lateinit var pbClientTimeoutMs: String
 
     @NotNull
     lateinit var initialHistoricalDayCount: String
@@ -27,11 +33,20 @@ class ExplorerProperties {
     @NotNull
     lateinit var spotlightTtlMs: String
 
+    @NotNull
+    lateinit var slashingValidatorTtlMs: String
+
+    fun tendermintClientTimeoutMs() = tendermintClientTimeoutMs.toInt()
+
+    fun pbClientTimeoutMs() = pbClientTimeoutMs.toInt()
+
     fun initialHistoricalDays() = initialHistoricalDayCount.toInt()
 
     fun minGasPrice() = minimumGasPrice.toBigDecimal()
 
     fun spotlightTtlMs() = spotlightTtlMs.toLong()
+
+    fun slashingValidatorTtlMs() = slashingValidatorTtlMs.toLong()
 
     //tp or pb
     fun provenanceAccountPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_ACCOUNT_PREFIX else Bech32.PROVENANCE_TESTNET_ACCOUNT_PREFIX
