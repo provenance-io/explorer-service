@@ -48,7 +48,7 @@ fun List<BlockMeta>.maxHeight() = this.sortedByDescending { it.header.height.toI
 
 fun List<BlockMeta>.minHeight() = this.sortedByDescending { it.header.height.toInt() }.last().height()
 
-fun PbTransaction.type() = this.logs?.flatMap { it.events }?.firstOrNull { it.type == "message" }?.attributes?.firstOrNull { it.key == "action" }?.value
+fun PbTransaction.type() = if(this.logs!= null) this.logs?.flatMap { it.events }?.firstOrNull { it.type == "message" }?.attributes?.firstOrNull { it.key == "action" }?.value else ""
 
 fun PbTransaction.feePayer() = this.tx.value.signatures[0]
 

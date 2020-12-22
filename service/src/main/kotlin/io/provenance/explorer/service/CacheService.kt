@@ -113,7 +113,7 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
             it[height] = pbTransaction.height.toInt()
             if (pbTransaction.code != null) it[errorCode] = pbTransaction.code
             if (pbTransaction.codespace != null) it[codespace] = pbTransaction.codespace
-            it[txType] = pbTransaction.type()!!
+            it[txType] = if (pbTransaction.code != null) pbTransaction.type()!! else "ERROR"
             it[gasUsed] = pbTransaction.gasUsed.toInt()
             it[gasWanted] = pbTransaction.gasWanted.toInt()
             it[txTimestamp] = DateTime.parse(pbTransaction.timestamp)
@@ -210,6 +210,15 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
     }
 
     fun getSpotlight() = transaction {
+        var spotlightRecord = SpotlightCacheTable.select { (SpotlightCacheTable.id eq 1) }.firstOrNull()
+        if (spotlightRecord != null && DateTime.now().millis - spotlightRecord[lastHit].millis > explorerProperties.spotlightTtlMs()) {
+            SpotlightCacheTable.deleteWhere { (SpotlightCacheTable.id eq 1) }
+            spotlightRecord = null
+        }
+        if (spotlightRecord != null) spotlightRecord[spotlight] else spotlightRecord
+    }
+
+    fun getStakingValidator() = transaction {
         var spotlightRecord = SpotlightCacheTable.select { (SpotlightCacheTable.id eq 1) }.firstOrNull()
         if (spotlightRecord != null && DateTime.now().millis - spotlightRecord[lastHit].millis > explorerProperties.spotlightTtlMs()) {
             SpotlightCacheTable.deleteWhere { (SpotlightCacheTable.id eq 1) }
