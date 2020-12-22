@@ -66,14 +66,13 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                 logger.info("Cache hit for transaction at height $blockHeight with $expectedNumTxs transactions")
             else {
                 logger.info("Searching for $expectedNumTxs transactions at height $blockHeight")
-                tryAddTxs(blockHeight)
+                tryAddTxs(blockHeight, expectedNumTxs)
             }
 
-    //TODO page through results for cases more than 20
-    fun tryAddTxs(blockHeight: Int) = try {
+    fun tryAddTxs(blockHeight: Int, txCount: Int) = try {
         var searchResult: PbTxSearchResponse? = null
         val elapsedTime = measureTimeMillis {
-           searchResult = pbClient.getTxsByHeights(blockHeight, blockHeight, 1, 20)
+            searchResult = pbClient.getTxsByHeights(blockHeight, blockHeight, 1, txCount)
         }
         logger.info("Search for transaction by height at $blockHeight took $elapsedTime")
         searchResult!!.txs.forEach {
