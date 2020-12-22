@@ -113,7 +113,7 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
             it[height] = pbTransaction.height.toInt()
             if (pbTransaction.code != null) it[errorCode] = pbTransaction.code
             if (pbTransaction.codespace != null) it[codespace] = pbTransaction.codespace
-            it[txType] = if (pbTransaction.code != null) pbTransaction.type()!! else "ERROR"
+            it[txType] = if (pbTransaction.code == null) pbTransaction.type()!! else "ERROR"
             it[gasUsed] = pbTransaction.gasUsed.toInt()
             it[gasWanted] = pbTransaction.gasWanted.toInt()
             it[txTimestamp] = DateTime.parse(pbTransaction.timestamp)
