@@ -5,9 +5,11 @@ import io.provenance.explorer.client.PbClient
 import io.provenance.explorer.client.TendermintClient
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.PbTxSearchResponse
+import org.springframework.stereotype.Service
 import java.lang.Exception
 import kotlin.system.measureTimeMillis
 
+@Service
 class TransactionService(private val explorerProperties: ExplorerProperties,
                          private val cacheService: CacheService,
                          private val pbClient: PbClient,
@@ -27,7 +29,7 @@ class TransactionService(private val explorerProperties: ExplorerProperties,
         tx
     }
 
-    fun getTransactionsByHeight(height: Int) = cacheService.getTransactionsAtHeight(height)
+    fun getTransactionsAtHeight(height: Int) = cacheService.getTransactionsAtHeight(height)
 
     fun addTransactionsToCache(blockHeight: Int, expectedNumTxs: Int) =
             if (cacheService.transactionCountForHeight(blockHeight) == expectedNumTxs)

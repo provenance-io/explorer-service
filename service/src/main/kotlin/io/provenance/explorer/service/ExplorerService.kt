@@ -50,7 +50,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         PagedResults((currentHeight / count) + 1, result)
     }
 
-    private fun getBlockAtHeight(height: Int?) = runBlocking(Dispatchers.IO) {
+    fun getBlockAtHeight(height: Int?) = runBlocking(Dispatchers.IO) {
         val queryHeight = if (height == null) blockService.getLatestBlockHeightIndex() else height
         val blockResponse = async { blockService.getBlock(queryHeight) }
         val validatorsResponse = async { validatorService.getValidators(queryHeight) }
@@ -127,10 +127,14 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         PagedResults((cacheService.transactionCount() / count) + 1, result)
     }
 
+    fun getTransactionsByHeight(height: Int) = transactionService.getTransactionsAtHeight(height).map { hydrateTxDetails(it) }
+
     fun getTransactionByHash(hash: String) = let {
         var tx = transactionService.getTxByHash(hash)
         if (tx != null) hydrateTxDetails(tx!!) else null
     }
+
+    fun getValidator(address: String) = validatorService.getValidator(address)
 
     private fun hydrateTxDetails(tx: PbTransaction) = let {
         TxDetails(tx.height.toInt(),
