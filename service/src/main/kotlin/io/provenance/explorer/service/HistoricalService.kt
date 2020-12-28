@@ -1,19 +1,15 @@
 package io.provenance.explorer.service
 
 import io.provenance.core.extensions.logger
-import io.provenance.explorer.client.PbClient
-import io.provenance.explorer.client.TendermintClient
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.BlockIndexTable
-import io.provenance.explorer.domain.PbTxSearchResponse
+import io.provenance.explorer.domain.BlockMeta
 import io.provenance.explorer.domain.day
 import io.provenance.explorer.domain.height
 import org.joda.time.DateTime
+import org.joda.time.LocalDate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
-import java.lang.Exception
-import java.net.SocketTimeoutException
-import kotlin.system.measureTimeMillis
 
 @Service
 class HistoricalService(private val explorerProperties: ExplorerProperties,
@@ -26,16 +22,21 @@ class HistoricalService(private val explorerProperties: ExplorerProperties,
     protected val logger = logger(ExplorerService::class)
 
     fun updateCache() {
-        val index = cacheService.getBlockIndex()
+        val index = getBlockIndex()
         val startHeight = blockService.getLatestBlockHeight()
         var indexHeight = startHeight
-        cacheService.updateBlockMaxHeightIndex(indexHeight)
-        if (index == null || index[BlockIndexTable.minHeightRead] == null) {
-            val days = mutableSetOf<String>()
-            while (days.count() <= explorerProperties.initialHistoricalDays() || indexHeight < 0) {
+        if (startCollectingHistoricalBlocks(index) || continueCollectingHistoricalBlocks(index!!.first, index!!.second)) {
+            val endDate = getEndDate()
+            var shouldContinue = true
+            if(index?.first == null) cacheService.updateBlockMaxHeightIndex(startHeight)
+            indexHeight = if (index != null && index.second != null) index.second - 1 else indexHeight
+            while (shouldContinue && indexHeight >= 0) {
                 blockService.getBlockchain(indexHeight).result.blockMetas.forEach { blockMeta ->
+                    if (endDate >= DateTime(blockMeta.day())) {
+                        shouldContinue = false
+                        return@forEach
+                    }
                     cacheService.addBlockToCache(blockMeta.height(), blockMeta.numTxs.toInt(), DateTime.parse(blockMeta.header.time), blockMeta)
-                    days.add(blockMeta.day())
                     if (blockMeta.numTxs.toInt() > 0) {
                         transactionService.addTransactionsToCache(blockMeta.height(), blockMeta.numTxs.toInt())
                     }
@@ -44,9 +45,9 @@ class HistoricalService(private val explorerProperties: ExplorerProperties,
                 cacheService.updateBlockMinHeightIndex(indexHeight + 1)
             }
         } else {
-            while (indexHeight > index[BlockIndexTable.maxHeightRead]) {
+            while (indexHeight > index.first) {
                 blockService.getBlockchain(indexHeight).result.blockMetas.forEach { blockMeta ->
-                    if (blockMeta.height() <= index[BlockIndexTable.maxHeightRead]) return@forEach
+                    if (blockMeta.height() <= index.first) return@forEach
                     cacheService.addBlockToCache(blockMeta.height(), blockMeta.numTxs.toInt(), DateTime.parse(blockMeta.header.time), blockMeta)
                     indexHeight = blockMeta.height() - 1
                     if (blockMeta.numTxs.toInt() > 0) {
@@ -54,8 +55,37 @@ class HistoricalService(private val explorerProperties: ExplorerProperties,
                     }
                 }
             }
+            cacheService.updateBlockMaxHeightIndex(startHeight)
         }
     }
+
+    fun processBlocks(blockMetas: List<BlockMeta>, shouldContinue: () -> Boolean) = {
+        for (blockMeta in blockMetas) {
+            if (!shouldContinue()) {
+                break;
+            }
+            cacheService.addBlockToCache(blockMeta.height(), blockMeta.numTxs.toInt(), DateTime.parse(blockMeta.header.time), blockMeta)
+            if (blockMeta.numTxs.toInt() > 0) {
+                transactionService.addTransactionsToCache(blockMeta.height(), blockMeta.numTxs.toInt())
+            }
+            blockMeta.height() - 1
+        }
+    }
+
+    fun getBlockIndex() = cacheService.getBlockIndex().let {
+        if (it == null) null
+        else Pair<Int, Int>(it!![BlockIndexTable.maxHeightRead], it!![BlockIndexTable.minHeightRead])
+    }
+
+    fun startCollectingHistoricalBlocks(blockIndex: Pair<Int, Int>?)  = blockIndex == null || blockIndex.second == null || blockIndex.first == null
+
+    fun continueCollectingHistoricalBlocks(maxRead: Int, minRead: Int): Boolean {
+        val historicalDays = cacheService.getHistoricalDaysBetweenHeights(maxRead, minRead)
+        val date = getEndDate()
+        return !historicalDays.contains(date)
+    }
+
+    fun getEndDate() = LocalDate().toDateTimeAtStartOfDay().minusDays(explorerProperties.initialHistoricalDays() + 1)
 
     @Scheduled(initialDelay = 0L, fixedDelay = 1000L)
     fun updateLatestBlockHeightJob() = updateCache()

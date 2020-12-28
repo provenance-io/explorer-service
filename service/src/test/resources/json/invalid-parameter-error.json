@@ -1,9 +1,0 @@
-{
-  "jsonrpc": "2.0",
-  "id": -1,
-  "error": {
-    "code": -32602,
-    "message": "Invalid params",
-    "data": "error converting http params to arguments: invalid character 'p' looking for beginning of value"
-  }
-}

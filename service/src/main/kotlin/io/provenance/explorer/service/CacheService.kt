@@ -10,6 +10,7 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormatter
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 
@@ -166,6 +167,22 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
                 it[lastUpdate] = DateTime.now()
             }
         }
+    }
+
+    fun getHistoricalDaysBetweenHeights(maxHeightRead: Int, minHeightRead: Int) = transaction {
+        val connection = TransactionManager.current().connection
+        val query = "SELECT date_trunc('day', block_timestamp) " +
+                "FROM block_cache WHERE height <= ? and height >= ? " +
+                " GROUP BY 1 ORDER BY 1 DESC"
+        val statement = connection.prepareStatement(query)
+        statement.setObject(1, maxHeightRead)
+        statement.setObject(2, minHeightRead)
+        val resultSet = statement.executeQuery()
+        val days = mutableListOf<DateTime>()
+        while (resultSet.next()) {
+            days.add(DateTime(resultSet.getDate(1)))
+        }
+        days
     }
 
     fun getTransactionCountsForDates(startDate: String, endDate: String, granularity: String) = transaction {
