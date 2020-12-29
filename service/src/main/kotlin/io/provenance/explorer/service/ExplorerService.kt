@@ -60,12 +60,13 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     private fun hydrateBlock(blockResponse: BlockMeta, validatorsResponse: PbValidatorsResponse) = let {
         val proposerConsAddress = blockResponse.header.proposerAddress.addressToBech32(explorerProperties.provenanceValidatorConsensusPrefix())
         val validatorAddresses = validatorService.findAddressesByConsensusAddress(proposerConsAddress)
+        val stakingValidator = validatorService.getStakingValidator(validatorAddresses!!.operatorAddress)
         BlockDetail(blockResponse.header.height.toInt(),
                 blockResponse.blockId.hash,
                 blockResponse.header.time,
                 validatorAddresses!!.operatorAddress,
-                "",
-                "",
+                stakingValidator.description.moniker,
+                "", //TODO Add icon
                 validatorsResponse.validators.sumBy { v -> v.votingPower.toInt() },
                 validatorsResponse.validators.size,
                 blockResponse.numTxs.toInt(),
