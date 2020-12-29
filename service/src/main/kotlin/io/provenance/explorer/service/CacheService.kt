@@ -4,8 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode
 import io.provenance.core.extensions.logger
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.*
-import io.provenance.explorer.domain.SpotlightCacheTable.lastHit
-import io.provenance.explorer.domain.SpotlightCacheTable.spotlight
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -227,16 +225,16 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
 
     fun getSpotlight() = transaction {
         var spotlightRecord = SpotlightCacheTable.select { (SpotlightCacheTable.id eq 1) }.firstOrNull()
-        if (spotlightRecord != null && DateTime.now().millis - spotlightRecord[lastHit].millis > explorerProperties.spotlightTtlMs()) {
+        if (spotlightRecord != null && DateTime.now().millis - spotlightRecord[SpotlightCacheTable.lastHit].millis > explorerProperties.spotlightTtlMs()) {
             SpotlightCacheTable.deleteWhere { (SpotlightCacheTable.id eq 1) }
             spotlightRecord = null
         }
-        if (spotlightRecord != null) spotlightRecord[spotlight] else spotlightRecord
+        if (spotlightRecord != null) spotlightRecord[SpotlightCacheTable.spotlight] else spotlightRecord
     }
 
     fun getStakingValidator(operatorAddress: String) = transaction {
         var stakingValidator = StakingValidatorCacheTable.select { (StakingValidatorCacheTable.operatorAddress eq operatorAddress) }.firstOrNull()
-        if (stakingValidator != null && DateTime.now().millis - stakingValidator[lastHit].millis > explorerProperties.stakingValidatorTtlMs()) {
+        if (stakingValidator != null && DateTime.now().millis - stakingValidator[StakingValidatorCacheTable.lastHit].millis > explorerProperties.stakingValidatorTtlMs()) {
             StakingValidatorCacheTable.deleteWhere { (StakingValidatorCacheTable.operatorAddress eq operatorAddress) }
             stakingValidator = null
         }
