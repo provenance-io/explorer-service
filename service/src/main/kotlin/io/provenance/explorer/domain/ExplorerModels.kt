@@ -13,7 +13,7 @@ data class Validators(val totalVotingPower: Int, val blockHeight: Int, val valid
 
 data class ValidatorSummary(val moniker: String, val addressId: String, val consensusAddress:String, val proposerPriority: Int, val uptime: BigDecimal, val votingPower: Int )
 
-data class ValidatorDetails(val votingPower: Int, val moniker: String, val operatorAddress: String, val ownerAddress: String, val consensusPubKey: String, val missedBlocks: Int, val totalBlocks: Int, val boundHeight: Int, val uptime: BigDecimal)
+data class ValidatorDetails(val votingPower: Int, val moniker: String, val operatorAddress: String, val ownerAddress: String, val consensusPubKey: String, val missedBlocks: Int, val totalBlocks: Int, val bondHeight: Int, val uptime: BigDecimal)
 
 data class BlockDetail(val height: Int, val hash: String, val time: String, val proposerAddress: String, val moniker: String, val icon: String,
                        val votingPower: Int, val numValidators: Int, val txNum: Int)
