@@ -243,7 +243,7 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
         if (stakingValidator != null) stakingValidator[StakingValidatorCacheTable.stakingValidator] else null
     }
 
-    fun addStakingValidatorToCache(operatorAddress: String, stakingValidator: PbResponse<PbStakingValidator>) = transaction {
+    fun addStakingValidatorToCache(operatorAddress: String, stakingValidator: PbStakingValidator) = transaction {
         StakingValidatorCacheTable.insertIgnore {
             it[StakingValidatorCacheTable.operatorAddress] = operatorAddress
             it[StakingValidatorCacheTable.stakingValidator] = stakingValidator

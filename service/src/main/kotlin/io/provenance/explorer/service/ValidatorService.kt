@@ -42,11 +42,11 @@ class ValidatorService(private val explorerProperties: ExplorerProperties,
             val currentHeight = blockService.getLatestBlockHeightIndex()
             //TODO make async and add caching
             val stakingValidator = getStakingValidator(validatorAddresses.operatorAddress)
-            val signingInfo = pbClient.getSlashingSigningInfo().result.firstOrNull { it.address == validatorAddresses.consensusAddress }
+            val signingInfo = getSigningInfos().result.firstOrNull { it.address == validatorAddresses.consensusAddress }
             val latestValidator = pbClient.getLatestValidators().result.validators.firstOrNull { it.address == validatorAddresses.consensusAddress }
-            validatorDetails = ValidatorDetails(latestValidator!!.votingPower.toInt(), stakingValidator.result.description.moniker, validatorAddresses.operatorAddress, validatorAddresses.operatorAddress,
+            validatorDetails = ValidatorDetails(latestValidator!!.votingPower.toInt(), stakingValidator.description.moniker, validatorAddresses.operatorAddress, validatorAddresses.operatorAddress,
                     validatorAddresses.consensusPubKeyAddress, signingInfo!!.missedBlocksCounter.toInt(), currentHeight - signingInfo!!.startHeight.toInt(),
-                    if (stakingValidator.result.bondHeight != null) stakingValidator.result.bondHeight.toInt() else stakingValidator.height.toInt(), signingInfo.uptime(currentHeight))
+                    if (stakingValidator.bondHeight != null) stakingValidator.bondHeight.toInt() else 0, signingInfo.uptime(currentHeight))
         }
         validatorDetails
     }
@@ -56,8 +56,8 @@ class ValidatorService(private val explorerProperties: ExplorerProperties,
         if (stakingValidator == null) {
             logger.info("cache miss for staking validator operator address $operatorAddress")
             stakingValidator = pbClient.getStakingValidator(operatorAddress).let {
-                cacheService.addStakingValidatorToCache(operatorAddress, it)
-                it
+                cacheService.addStakingValidatorToCache(operatorAddress, it.result)
+                it.result
             }
         }
         stakingValidator!!
