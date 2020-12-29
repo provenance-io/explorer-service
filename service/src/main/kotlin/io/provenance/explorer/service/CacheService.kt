@@ -237,13 +237,13 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
     fun getStakingValidator(operatorAddress: String) = transaction {
         var stakingValidator = StakingValidatorCacheTable.select { (StakingValidatorCacheTable.operatorAddress eq operatorAddress) }.firstOrNull()
         if (stakingValidator != null && DateTime.now().millis - stakingValidator[lastHit].millis > explorerProperties.stakingValidatorTtlMs()) {
-            SpotlightCacheTable.deleteWhere { (StakingValidatorCacheTable.operatorAddress eq operatorAddress) }
+            StakingValidatorCacheTable.deleteWhere { (StakingValidatorCacheTable.operatorAddress eq operatorAddress) }
             stakingValidator = null
         }
         if (stakingValidator != null) stakingValidator[StakingValidatorCacheTable.stakingValidator] else null
     }
 
-    fun addStakingValidatorToCache(operatorAddress: String, stakingValidator: PbStakingValidator) = transaction {
+    fun addStakingValidatorToCache(operatorAddress: String, stakingValidator: PbResponse<PbStakingValidator>) = transaction {
         StakingValidatorCacheTable.insertIgnore {
             it[StakingValidatorCacheTable.operatorAddress] = operatorAddress
             it[StakingValidatorCacheTable.stakingValidator] = stakingValidator

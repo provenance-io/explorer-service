@@ -37,7 +37,7 @@ object ValidatorCacheTable : Table(name = "validator_cache") {
 
 object StakingValidatorCacheTable : Table(name = "staking_validator_cache") {
     val operatorAddress = varchar("operator_address", 128).primaryKey()
-    val stakingValidator = jsonb<StakingValidatorCacheTable, PbStakingValidator>("staking_validator", OBJECT_MAPPER)
+    val stakingValidator = jsonb<StakingValidatorCacheTable, PbResponse<PbStakingValidator>>("staking_validator", OBJECT_MAPPER)
     val lastHit = datetime("last_hit")
     val hitCount = integer("hit_count")
 }
