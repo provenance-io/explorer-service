@@ -36,4 +36,7 @@ interface PbClient {
     @RequestLine("GET /distribution/validators/{validatorAddress}")
     fun getValidatorDistribution(@Param("validatorAddress") validatorAddress: String): ValidatorDistribution
 
+    @RequestLine("GET /supply/total/{denomination}")
+    fun getSupplyTotalByDenomination(@Param("denomination") denomination: String) : DenomSupply
+
 }

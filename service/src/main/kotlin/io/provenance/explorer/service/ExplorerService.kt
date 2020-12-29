@@ -1,21 +1,14 @@
 package io.provenance.explorer.service
 
 import io.provenance.core.extensions.logger
-import io.provenance.explorer.OBJECT_MAPPER
-import io.provenance.explorer.client.PbClient
-import io.provenance.explorer.client.TendermintClient
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.*
 import kotlinx.coroutines.*
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
-import java.lang.Exception
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.math.RoundingMode
-import java.net.SocketTimeoutException
-import kotlin.system.measureTimeMillis
 
 
 @Service
@@ -69,10 +62,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                 "", //TODO Add icon
                 validatorsResponse.validators.sumBy { v -> v.votingPower.toInt() },
                 validatorsResponse.validators.size,
-                blockResponse.numTxs.toInt(),
-                0,
-                0,
-                0)
+                blockResponse.numTxs.toInt())
     }
 
     fun getRecentValidators(count: Int, page: Int, sort: String, status: String) =
@@ -165,9 +155,30 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         var spotlight = cacheService.getSpotlight()
         if (spotlight == null) {
             logger.info("cache miss for spotlight")
-            spotlight = Spotlight(getBlockAtHeight(null), getAverageBlockCreationTime())
+            val bondedTokens = getBondedTokenRatio()
+            spotlight = Spotlight(
+                    latestBlock = getBlockAtHeight(null),
+                    avgBlockTime = getAverageBlockCreationTime(),
+                    bondedTokenPercent = BigDecimal(bondedTokens.first).divide(bondedTokens.second,6, RoundingMode.HALF_UP),
+                    bondedTokenAmount = bondedTokens.first,
+                    bondedTokenTotal = bondedTokens.second
+            )
             cacheService.addSpotlightToCache(spotlight)
         }
         spotlight
+    }
+
+    fun getBondedTokenRatio() = let {
+        val limit = 10
+        var page = 1
+        var totalBondedTokens = 0L
+        val response = blockService.getTotalSupply("nhash").result
+        val totalBlockChainTokens = response.toBigDecimal()
+        do {
+            var result = validatorService.getStakingValidators("bonded", page, limit)
+            totalBondedTokens += result.result.map { it.tokens.toLong()}.sum()
+            page++
+        } while (result.result.size == limit)
+        Pair<Long, BigDecimal>(totalBondedTokens, totalBlockChainTokens)
     }
 }

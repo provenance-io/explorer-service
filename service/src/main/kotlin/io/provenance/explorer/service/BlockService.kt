@@ -40,4 +40,5 @@ class BlockService(private val explorerProperties: ExplorerProperties,
         block!!
     }
 
+    fun getTotalSupply(denom: String) = pbClient.getSupplyTotalByDenomination(denom)
 }

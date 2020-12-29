@@ -1,6 +1,7 @@
 package io.provenance.explorer.domain
 
 import java.math.BigDecimal
+import java.math.BigInteger
 
 data class PagedResults<T>(val pages: Int, val results: List<T>)
 
@@ -15,8 +16,7 @@ data class ValidatorSummary(val moniker: String, val addressId: String, val cons
 data class ValidatorDetails(val votingPower: Int, val moniker: String, val operatorAddress: String, val ownerAddress: String, val consensusPubKey: String, val missedBlocks: Int, val totalBlocks: Int, val boundHeight: Int, val uptime: BigDecimal)
 
 data class BlockDetail(val height: Int, val hash: String, val time: String, val proposerAddress: String, val moniker: String, val icon: String,
-                       val votingPower: Int, val numValidators: Int, val txNum: Int, val bondedTokenPercent: Int, val bondedTokenAmount: Int,
-                       val bondedTokenTotal: Int)
+                       val votingPower: Int, val numValidators: Int, val txNum: Int)
 
 data class TxDetails(val height: Int, val gasUsed: Int, val gasWanted: Int, val gasLimit: Int, val gasPrice: BigDecimal, val time: String,
                      val status: String, val errorCode: Int?, val codespace: String?, val fee: BigDecimal, val feeDenomination: String, val signer: String,
@@ -24,4 +24,5 @@ data class TxDetails(val height: Int, val gasUsed: Int, val gasWanted: Int, val 
 
 data class TxHistory(val date: String, var numberTxs: Int)
 
-data class Spotlight(val latestBlock: BlockDetail, val avgBlockTime: BigDecimal)
+data class Spotlight(val latestBlock: BlockDetail, val avgBlockTime: BigDecimal, val bondedTokenPercent: BigDecimal, val bondedTokenAmount: Long,
+val bondedTokenTotal: BigDecimal)

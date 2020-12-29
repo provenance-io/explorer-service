@@ -36,3 +36,5 @@ data class Commission(val commissionRates: CommissionRates, val updateTime: Stri
 data class CommissionRates(val rate: String, val maxRate: String, val maxChangeRate: String)
 
 data class SigningInfo(val address: String, val startHeight: String, val indexOffset: String, val jailedUntil: String, val tombstoned: Boolean, val missedBlocksCounter: String)
+
+data class DenomSupply(val height: String, val result: String)
