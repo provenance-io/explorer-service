@@ -32,6 +32,14 @@ CREATE TABLE validator_cache
     hit_count INT NOT NULL
 );
 
+CREATE TABLE staking_validator_cache
+(
+    operator_address VARCHAR(128) PRIMARY KEY,
+    staking_validator JSONB NOT NULL,
+    last_hit TIMESTAMP NOT NULL,
+    hit_count INT NOT NULL
+);
+
 CREATE TABLE transaction_cache
 (
     hash VARCHAR(64) PRIMARY KEY,

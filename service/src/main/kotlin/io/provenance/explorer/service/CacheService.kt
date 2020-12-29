@@ -10,7 +10,6 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormatter
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 
@@ -235,13 +234,22 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
         if (spotlightRecord != null) spotlightRecord[spotlight] else spotlightRecord
     }
 
-    fun getStakingValidator() = transaction {
-        var spotlightRecord = SpotlightCacheTable.select { (SpotlightCacheTable.id eq 1) }.firstOrNull()
-        if (spotlightRecord != null && DateTime.now().millis - spotlightRecord[lastHit].millis > explorerProperties.spotlightTtlMs()) {
-            SpotlightCacheTable.deleteWhere { (SpotlightCacheTable.id eq 1) }
-            spotlightRecord = null
+    fun getStakingValidator(operatorAddress: String) = transaction {
+        var stakingValidator = StakingValidatorCacheTable.select { (StakingValidatorCacheTable.operatorAddress eq operatorAddress) }.firstOrNull()
+        if (stakingValidator != null && DateTime.now().millis - stakingValidator[lastHit].millis > explorerProperties.stakingValidatorTtlMs()) {
+            SpotlightCacheTable.deleteWhere { (StakingValidatorCacheTable.operatorAddress eq operatorAddress) }
+            stakingValidator = null
         }
-        if (spotlightRecord != null) spotlightRecord[spotlight] else spotlightRecord
+        if (stakingValidator != null) stakingValidator[StakingValidatorCacheTable.stakingValidator] else null
+    }
+
+    fun addStakingValidatorToCache(operatorAddress: String, stakingValidator: PbStakingValidator) = transaction {
+        StakingValidatorCacheTable.insertIgnore {
+            it[StakingValidatorCacheTable.operatorAddress] = operatorAddress
+            it[StakingValidatorCacheTable.stakingValidator] = stakingValidator
+            it[hitCount] = 0
+            it[lastHit] = DateTime.now()
+        }
     }
 
 }

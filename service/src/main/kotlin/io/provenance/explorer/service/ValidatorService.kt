@@ -7,7 +7,6 @@ import io.provenance.explorer.client.TendermintClient
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.*
 import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
@@ -42,14 +41,26 @@ class ValidatorService(private val explorerProperties: ExplorerProperties,
         if (validatorAddresses != null) {
             val currentHeight = blockService.getLatestBlockHeightIndex()
             //TODO make async and add caching
-            val stakingValidator = pbClient.getStakingValidator(validatorAddresses.operatorAddress)
+            val stakingValidator = getStakingValidator(validatorAddresses.operatorAddress)
             val signingInfo = pbClient.getSlashingSigningInfo().result.firstOrNull { it.address == validatorAddresses.consensusAddress }
             val latestValidator = pbClient.getLatestValidators().result.validators.firstOrNull { it.address == validatorAddresses.consensusAddress }
-            validatorDetails = ValidatorDetails(latestValidator!!.votingPower.toInt(), stakingValidator.result.description.moniker, validatorAddresses.operatorAddress, validatorAddresses.operatorAddress,
+            validatorDetails = ValidatorDetails(latestValidator!!.votingPower.toInt(), stakingValidator.description.moniker, validatorAddresses.operatorAddress, validatorAddresses.operatorAddress,
                     validatorAddresses.consensusPubKeyAddress, signingInfo!!.missedBlocksCounter.toInt(), currentHeight - signingInfo!!.startHeight.toInt(),
-                    if (stakingValidator.result.bondHeight != null) stakingValidator.result.bondHeight.toInt() else 0, signingInfo.uptime(currentHeight))
+                    if (stakingValidator.bondHeight != null) stakingValidator.bondHeight.toInt() else 0, signingInfo.uptime(currentHeight))
         }
         validatorDetails
+    }
+
+    fun getStakingValidator(operatorAddress: String) = let {
+        var stakingValidator = cacheService.getStakingValidator(operatorAddress)
+        if (stakingValidator == null) {
+            logger.info("cache miss for staking validator operator address $operatorAddress")
+            stakingValidator = pbClient.getStakingValidator(operatorAddress).let {
+                cacheService.addStakingValidatorToCache(operatorAddress, it.result)
+                it.result
+            }
+        }
+        stakingValidator!!
     }
 
     fun getValidatorOperatorAddress(address: String) = if (address.startsWith(explorerProperties.provenanceValidatorConsensusPubKeyPrefix())) {
