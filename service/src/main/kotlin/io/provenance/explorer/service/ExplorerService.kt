@@ -104,7 +104,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                 consensusAddress = validator.address,
                 proposerPriority = validator.proposerPriority.toInt(),
                 votingPower = validator.votingPower.toInt(),
-                votingPowerPercent = validator.votingPower.toBigDecimal().divide(totalVotingPower.toBigDecimal()).multiply(BigDecimal(100)),
+                votingPowerPercent = validator.votingPower.toBigDecimal().divide(totalVotingPower.toBigDecimal(), 6, RoundingMode.HALF_UP).multiply(BigDecimal(100)),
                 uptime = signingInfo.uptime(height),
                 commission = BigDecimal(stakingValidator.commission.commissionRates.rate),
                 bondedTokens = stakingValidator.tokens.toLong(),
@@ -171,7 +171,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         val laggedCreationInter = cacheService.getLatestBlockCreationIntervals(100).filter { it.second != null }.map { it.second }
         var sum = BigDecimal(0.00)
         laggedCreationInter.forEach { sum = sum.add(it!!) }
-        sum.divide(BigDecimal(laggedCreationInter.size), 3, RoundingMode.CEILING)
+        sum.divide(laggedCreationInter.size.toBigDecimal(), 3, RoundingMode.CEILING)
     }
 
     fun getSpotlightStatistics() = let {

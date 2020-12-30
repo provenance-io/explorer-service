@@ -13,6 +13,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
+import java.math.RoundingMode
 
 @Service
 class ValidatorService(private val explorerProperties: ExplorerProperties,
@@ -46,7 +47,7 @@ class ValidatorService(private val explorerProperties: ExplorerProperties,
             val signingInfo = getSigningInfos().result.firstOrNull { it.address == validatorAddresses.consensusAddress }
             val validatorSet = pbClient.getLatestValidators().result.validators
             val latestValidator = validatorSet.firstOrNull { it.address == validatorAddresses.consensusAddress }!!
-            val votingPowerPercent = BigDecimal(validatorSet.sumBy { it.votingPower.toInt() }).divide(BigDecimal(latestValidator.votingPower.toInt())).multiply(BigDecimal(100))
+            val votingPowerPercent = BigDecimal(validatorSet.sumBy { it.votingPower.toInt() }).divide(latestValidator.votingPower.toBigDecimal(), 6, RoundingMode.HALF_UP).multiply(BigDecimal(100))
             validatorDetails = ValidatorDetails(latestValidator.votingPower.toInt(), votingPowerPercent, stakingValidator.description.moniker, validatorAddresses.operatorAddress, validatorAddresses.operatorAddress,
                     validatorAddresses.consensusPubKeyAddress, signingInfo!!.missedBlocksCounter.toInt(), currentHeight - signingInfo!!.startHeight.toInt(),
                     if (stakingValidator.bondHeight != null) stakingValidator.bondHeight.toInt() else 0, signingInfo.uptime(currentHeight))
