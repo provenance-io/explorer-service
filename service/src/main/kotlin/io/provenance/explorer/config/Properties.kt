@@ -36,6 +36,9 @@ class ExplorerProperties {
     @NotNull
     lateinit var stakingValidatorTtlMs: String
 
+    @NotNull
+    lateinit var stakingValidatorDelegationsTtlMs: String
+
     fun tendermintClientTimeoutMs() = tendermintClientTimeoutMs.toInt()
 
     fun pbClientTimeoutMs() = pbClientTimeoutMs.toInt()
@@ -47,6 +50,8 @@ class ExplorerProperties {
     fun spotlightTtlMs() = spotlightTtlMs.toLong()
 
     fun stakingValidatorTtlMs() = stakingValidatorTtlMs.toLong()
+
+    fun stakingValidatorDelegationsTtlMs() = stakingValidatorDelegationsTtlMs.toLong()
 
     //tp or pb
     fun provenanceAccountPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_ACCOUNT_PREFIX else Bech32.PROVENANCE_TESTNET_ACCOUNT_PREFIX

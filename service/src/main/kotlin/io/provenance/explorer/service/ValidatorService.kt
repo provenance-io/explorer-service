@@ -12,6 +12,7 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
+import java.math.BigDecimal
 
 @Service
 class ValidatorService(private val explorerProperties: ExplorerProperties,
@@ -43,8 +44,10 @@ class ValidatorService(private val explorerProperties: ExplorerProperties,
             //TODO make async and add caching
             val stakingValidator = getStakingValidator(validatorAddresses.operatorAddress)
             val signingInfo = getSigningInfos().result.firstOrNull { it.address == validatorAddresses.consensusAddress }
-            val latestValidator = pbClient.getLatestValidators().result.validators.firstOrNull { it.address == validatorAddresses.consensusAddress }
-            validatorDetails = ValidatorDetails(latestValidator!!.votingPower.toInt(), stakingValidator.description.moniker, validatorAddresses.operatorAddress, validatorAddresses.operatorAddress,
+            val validatorSet = pbClient.getLatestValidators().result.validators
+            val latestValidator = validatorSet.firstOrNull { it.address == validatorAddresses.consensusAddress }!!
+            val votingPowerPercent = BigDecimal(validatorSet.sumBy { it.votingPower.toInt() }).divide(BigDecimal(latestValidator.votingPower.toInt())).multiply(BigDecimal(100))
+            validatorDetails = ValidatorDetails(latestValidator.votingPower.toInt(), votingPowerPercent, stakingValidator.description.moniker, validatorAddresses.operatorAddress, validatorAddresses.operatorAddress,
                     validatorAddresses.consensusPubKeyAddress, signingInfo!!.missedBlocksCounter.toInt(), currentHeight - signingInfo!!.startHeight.toInt(),
                     if (stakingValidator.bondHeight != null) stakingValidator.bondHeight.toInt() else 0, signingInfo.uptime(currentHeight))
         }
@@ -61,6 +64,19 @@ class ValidatorService(private val explorerProperties: ExplorerProperties,
             }
         }
         stakingValidator!!
+    }
+
+    fun getStakingValidatorDelegations(operatorAddress: String) = let {
+        var stakingValidatorDelegations = cacheService.getStakingValidatorDelegations(operatorAddress)
+        if (stakingValidatorDelegations == null) {
+            logger.info("cache miss staking validator delegations for operator address $operatorAddress")
+            stakingValidatorDelegations = pbClient.getStakingValidatorDelegations(operatorAddress).let {
+                val pbDelegations = PbDelegations(it.result)
+                cacheService.addStakingValidatorDelegations(operatorAddress, pbDelegations)
+                pbDelegations
+            }
+        }
+        stakingValidatorDelegations!!
     }
 
     fun getValidatorOperatorAddress(address: String) = if (address.startsWith(explorerProperties.provenanceValidatorConsensusPubKeyPrefix())) {
