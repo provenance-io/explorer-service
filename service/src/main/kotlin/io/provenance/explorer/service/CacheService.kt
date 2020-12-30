@@ -2,6 +2,7 @@ package io.provenance.explorer.service
 
 import com.fasterxml.jackson.databind.JsonNode
 import io.provenance.core.extensions.logger
+import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.*
 import org.jetbrains.exposed.sql.*
@@ -15,6 +16,8 @@ import java.math.BigDecimal
 class CacheService(private val explorerProperties: ExplorerProperties) {
 
     protected val logger = logger(CacheService::class)
+
+    private val granularities = mutableListOf<String>("second", "minute", "hour", "day", "year")
 
     fun getBlockByHeight(blockHeight: Int) = transaction {
         var blockMeta: BlockMeta? = null
@@ -188,7 +191,7 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
                 "from block_cache where block_timestamp >= ?::timestamp and block_timestamp <=?::timestamp " +
                 "GROUP BY 1 ORDER BY 1 DESC"
         val statement = connection.prepareStatement(query)
-        statement.setObject(1, granularity)
+        statement.setObject(1, if (granularity.contains(granularity)) granularity else "day")
         statement.setObject(2, startDate)
         statement.setObject(3, endDate)
         val resultSet = statement.executeQuery()
@@ -211,6 +214,23 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
         val results = mutableListOf<Pair<Int, BigDecimal?>>()
         while (resultSet.next()) {
             results.add(Pair(resultSet.getInt(1), resultSet.getBigDecimal(2)))
+        }
+        results
+    }
+
+    fun getGasStatistics(startDate: String, endDate: String, granularity: String) = transaction {
+        val connection = TransactionManager.current().connection
+        val query = "date_trunc(?, tx_timestamp), tx_type, min(gas_used), max(gas_used), avg(gas_used) " +
+                "FROM block_cache where tx_timestamp >= ?::timestamp and tx_timestamp <=?::timestamp " +
+                "GROUP BY 1, 2 ORDER BY 1 DESC"
+        val statement = connection.prepareStatement(query)
+        statement.setObject(1, if (granularity.contains(granularity)) granularity else "day")
+        statement.setObject(2, startDate)
+        statement.setObject(3, endDate)
+        val resultSet = statement.executeQuery()
+        val results = mutableListOf<GasStatistics>()
+        while (resultSet.next()) {
+            results.add(GasStatistics(resultSet.getString(1), resultSet.getString(2), resultSet.getLong(3), resultSet.getLong(4), resultSet.getBigDecimal(5)))
         }
         results
     }
@@ -249,5 +269,24 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
             it[lastHit] = DateTime.now()
         }
     }
+
+    fun getStakingValidatorDelegations(operatorAddress: String) = transaction {
+        var delegations = ValidatorDelegationCacheTable.select { (ValidatorDelegationCacheTable.operatorAddress eq operatorAddress) }.firstOrNull()
+        if (delegations != null && DateTime.now().millis - delegations[ValidatorDelegationCacheTable.lastHit].millis > explorerProperties.stakingValidatorDelegationsTtlMs()) {
+            ValidatorDelegationCacheTable.deleteWhere { (ValidatorDelegationCacheTable.operatorAddress eq operatorAddress) }
+            delegations = null
+        }
+        if (delegations != null) delegations[ValidatorDelegationCacheTable.validatorDelegations] else null
+    }
+
+    fun addStakingValidatorDelegations(operatorAddress: String, delegations: PbDelegations) = transaction {
+        ValidatorDelegationCacheTable.insertIgnore {
+            it[ValidatorDelegationCacheTable.operatorAddress] = operatorAddress
+            it[ValidatorDelegationCacheTable.validatorDelegations] = delegations
+            it[hitCount] = 0
+            it[lastHit] = DateTime.now()
+        }
+    }
+
 
 }

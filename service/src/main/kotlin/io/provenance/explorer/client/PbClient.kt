@@ -1,11 +1,9 @@
 package io.provenance.explorer.client
 
 import com.fasterxml.jackson.databind.JsonNode
-import feign.Headers
 import feign.Param
 import feign.RequestLine
 import io.provenance.explorer.domain.*
-import io.provenance.pbc.clients.JsonRPC
 
 interface PbClient {
 
@@ -30,6 +28,9 @@ interface PbClient {
     @RequestLine("GET /staking/validators/{validatorAddress}")
     fun getStakingValidator(@Param("validatorAddress") validatorAddress: String): PbResponse<PbStakingValidator>
 
+    @RequestLine("GET /staking/validators/{validatorAddress}/delegations")
+    fun getStakingValidatorDelegations(@Param("validatorAddress") validatorAddress: String): PbResponse<List<PbDelegation>>
+
     @RequestLine("GET /slashing/signing_infos")
     fun getSlashingSigningInfo(): PbResponse<List<SigningInfo>>
 
@@ -37,6 +38,6 @@ interface PbClient {
     fun getValidatorDistribution(@Param("validatorAddress") validatorAddress: String): ValidatorDistribution
 
     @RequestLine("GET /supply/total/{denomination}")
-    fun getSupplyTotalByDenomination(@Param("denomination") denomination: String) : DenomSupply
+    fun getSupplyTotalByDenomination(@Param("denomination") denomination: String): DenomSupply
 
 }

@@ -27,6 +27,10 @@ data class PbResponse<T>(val height: String, val result: T)
 data class PbStakingValidator(val operatorAddress: String, val consensusPubkey: String, val jailed: Boolean, val status: Int, val tokens: String, val delegatorShares: String, val description: ValidatorDescription,
                               val bondHeight: String?, val bondIntraTxCounter: String?, val unbondingHeight: String, val unbondingTime: String, val commission: Commission, val minSelfDelegation: String)
 
+data class PbDelegations(val delegations: List<PbDelegation>)
+
+data class PbDelegation(val delegatorAddress: String, val validatorAddress: String, val shares: String, val balance: DenomAmount)
+
 data class ValidatorDescription(val moniker: String, val identity: String, val website: String, val securityContact: String, val details: String)
 
 data class ValidatorDistribution(val operatorAddress: String, val selfBondRewards: DenomAmount, val valCommission: DenomAmount)

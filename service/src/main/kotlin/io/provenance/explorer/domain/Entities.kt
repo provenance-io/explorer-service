@@ -42,6 +42,13 @@ object StakingValidatorCacheTable : Table(name = "staking_validator_cache") {
     val hitCount = integer("hit_count")
 }
 
+object ValidatorDelegationCacheTable : Table(name = "validator_delegations_cache") {
+    val operatorAddress = varchar("operator_address", 128).primaryKey()
+    val validatorDelegations = jsonb<ValidatorDelegationCacheTable, PbDelegations>("validator_delegations", OBJECT_MAPPER)
+    val lastHit = datetime("last_hit")
+    val hitCount = integer("hit_count")
+}
+
 object TransactionCacheTable : Table(name = "transaction_cache") {
     val hash = varchar("hash", 64).primaryKey()
     val height = integer("height")

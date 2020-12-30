@@ -7,7 +7,6 @@ import kotlinx.coroutines.*
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
-import java.math.BigInteger
 import java.math.RoundingMode
 
 
@@ -28,20 +27,23 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         while (result.size < count) {
             var blockMeta = blockService.getBlock(blockHeight)
             var validators = validatorService.getValidators(blockHeight)
-            result.add(RecentBlock(blockMeta.header.height.toInt(),
-                    blockMeta.numTxs.toInt(),
-                    blockMeta.header.time,
-                    blockMeta.header.proposerAddress.addressToBech32(explorerProperties.provenanceValidatorConsensusPrefix()),
-                    BigDecimal("100.0000000"), //TODO Pre-commit voting power / voting power
-                    validators.validators.size,
-                    validators.validators.size
-            ))
+            result.add(hydrateRecentBlock(blockMeta, validators))
             blockHeight = blockMeta.header.height.toInt()
             blockHeight--
         }
         if ("asc" == sort.toLowerCase()) result.reverse()
         PagedResults((currentHeight / count) + 1, result)
     }
+
+    fun hydrateRecentBlock(blockMeta: BlockMeta, validators: PbValidatorsResponse) = RecentBlock(
+            height = blockMeta.header.height.toInt(),
+            txNum = blockMeta.numTxs.toInt(),
+            time = blockMeta.header.time,
+            proposerAddress = blockMeta.header.proposerAddress.addressToBech32(explorerProperties.provenanceValidatorConsensusPrefix()),
+            votingPower = BigDecimal("100.0000000"), //TODO Pre-commit voting power / voting power
+            validatorsNum = validators.validators.size,
+            validatorsTotal = validators.validators.size
+    )
 
     fun getBlockAtHeight(height: Int?) = runBlocking(Dispatchers.IO) {
         val queryHeight = if (height == null) blockService.getLatestBlockHeightIndex() else height
@@ -54,15 +56,16 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         val proposerConsAddress = blockResponse.header.proposerAddress.addressToBech32(explorerProperties.provenanceValidatorConsensusPrefix())
         val validatorAddresses = validatorService.findAddressesByConsensusAddress(proposerConsAddress)
         val stakingValidator = validatorService.getStakingValidator(validatorAddresses!!.operatorAddress)
-        BlockDetail(blockResponse.header.height.toInt(),
-                blockResponse.blockId.hash,
-                blockResponse.header.time,
-                validatorAddresses!!.operatorAddress,
-                stakingValidator.description.moniker,
-                "", //TODO Add icon
-                validatorsResponse.validators.sumBy { v -> v.votingPower.toInt() },
-                validatorsResponse.validators.size,
-                blockResponse.numTxs.toInt())
+        BlockDetail(
+                height = blockResponse.header.height.toInt(),
+                hash = blockResponse.blockId.hash,
+                time = blockResponse.header.time,
+                proposerAddress = validatorAddresses!!.operatorAddress,
+                moniker = stakingValidator.description.moniker,
+                icon = "", //TODO Add icon
+                votingPower = validatorsResponse.validators.sumBy { v -> v.votingPower.toInt() },
+                numValidators = validatorsResponse.validators.size,
+                txNum = blockResponse.numTxs.toInt())
     }
 
     fun getRecentValidators(count: Int, page: Int, sort: String, status: String) =
@@ -85,34 +88,47 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         val stakingPubKeys = stakingValidators.map { it.consensusPubkey }
         val signingInfos = validatorService.getSigningInfos()
         val height = signingInfos.height
+        val totalVotingPower = validators.sumBy { it.votingPower.toInt() }
         validators.filter { stakingPubKeys.contains(it.pubKey) }.map { validator ->
             val stakingValidator = stakingValidators.find { it.consensusPubkey == validator.pubKey }
             val signingInfo = signingInfos.result.find { it.address == validator.address }
-            hydrateValidator(validator, stakingValidator!!, signingInfo!!, height.toInt())
+            hydrateValidator(validator, stakingValidator!!, signingInfo!!, height.toInt(), totalVotingPower)
         }
     }
 
-    private fun hydrateValidator(validator: PbValidator, stakingValidator: PbStakingValidator, signingInfo: SigningInfo, height: Int) =
-            ValidatorSummary(
-                    moniker = stakingValidator.description.moniker,
-                    addressId = stakingValidator.operatorAddress,
-                    consensusAddress = validator.address,
-                    proposerPriority = validator.proposerPriority.toInt(),
-                    votingPower = validator.votingPower.toInt(),
-                    uptime = signingInfo.uptime(height)
-            )
-
+    private fun hydrateValidator(validator: PbValidator, stakingValidator: PbStakingValidator, signingInfo: SigningInfo, height: Int, totalVotingPower: Int) = let {
+        val validatorDelegations = validatorService.getStakingValidatorDelegations(stakingValidator.operatorAddress)
+        ValidatorSummary(
+                moniker = stakingValidator.description.moniker,
+                addressId = stakingValidator.operatorAddress,
+                consensusAddress = validator.address,
+                proposerPriority = validator.proposerPriority.toInt(),
+                votingPower = validator.votingPower.toInt(),
+                votingPowerPercent = validator.votingPower.toBigDecimal().divide(totalVotingPower.toBigDecimal()).multiply(BigDecimal(100)),
+                uptime = signingInfo.uptime(height),
+                commission = BigDecimal(stakingValidator.commission.commissionRates.rate),
+                bondedTokens = stakingValidator.tokens.toLong(),
+                bondedTokensDenomination = "nhash",
+                selfBonded = BigDecimal(0.0),
+                selfBondedDenomination = "nhash",
+                delegators = validatorDelegations.delegations.size,
+                bondHeight = if (stakingValidator.bondHeight == null) 0 else stakingValidator.bondHeight.toInt()
+        )
+    }
 
     fun getRecentTransactions(count: Int, page: Int, sort: String) = let {
         val result = cacheService.getTransactions(count, count * (page - 1)).map { tx ->
-            RecentTx(tx.txhash,
-                    tx.timestamp,
-                    tx.fee(explorerProperties.minGasPrice()),
-                    tx.tx.value.fee.amount[0].denom,
-                    tx.type()!!,
-                    tx.height.toInt(),
-                    tx.feePayer().pubKey.value.pubKeyToBech32(explorerProperties.provenanceAccountPrefix()),
-                    if (tx.code != null) "failed" else "success", tx.code, tx.codespace)
+            RecentTx(
+                    txHash = tx.txhash,
+                    time = tx.timestamp,
+                    fee = tx.fee(explorerProperties.minGasPrice()),
+                    denomination = tx.tx.value.fee.amount[0].denom,
+                    type = tx.type()!!,
+                    blockHeight = tx.height.toInt(),
+                    signer = tx.feePayer().pubKey.value.pubKeyToBech32(explorerProperties.provenanceAccountPrefix()),
+                    status = if (tx.code != null) "failed" else "success",
+                    errorCode = tx.code,
+                    codespace = tx.codespace)
         }
         if (!sort.isNullOrEmpty() && sort.toLowerCase() == "asc") result.reversed()
         PagedResults((cacheService.transactionCount() / count) + 1, result)
@@ -128,18 +144,25 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     fun getValidator(address: String) = validatorService.getValidator(address)
 
     private fun hydrateTxDetails(tx: PbTransaction) = let {
-        TxDetails(tx.height.toInt(),
-                tx.gasUsed.toInt(), tx.gasWanted.toInt(), tx.tx.value.fee.gas.toInt(),
-                explorerProperties.minGasPrice(), tx.timestamp,
-                if (tx.code != null) "failed" else "success", tx.code, tx.codespace,
-                tx.fee(explorerProperties.minGasPrice()),
-                tx.tx.value.fee.amount[0].denom,
-                tx.tx.value.signatures[0].pubKey.value.pubKeyToBech32(explorerProperties.provenanceAccountPrefix()),
-                tx.tx.value.memo, tx.type()!!,
-                if (tx.type() == "send") tx.tx.value.msg[0].value.get("from_address").textValue() else "",
-                if (tx.type() == "send") tx.tx.value.msg[0].value.get("amount").get(0).get("amount").asInt() else 0,
-                if (tx.type() == "send") tx.tx.value.msg[0].value.get("amount").get(0).get("denom").textValue() else "",
-                if (tx.type() == "send") tx.tx.value.msg[0].value.get("to_address").textValue() else "")
+        TxDetails(
+                height = tx.height.toInt(),
+                gasUsed = tx.gasUsed.toInt(),
+                gasWanted = tx.gasWanted.toInt(),
+                gasLimit = tx.tx.value.fee.gas.toInt(),
+                gasPrice = explorerProperties.minGasPrice(),
+                time = tx.timestamp,
+                status = if (tx.code != null) "failed" else "success",
+                errorCode = tx.code,
+                codespace = tx.codespace,
+                fee = tx.fee(explorerProperties.minGasPrice()),
+                feeDenomination = tx.tx.value.fee.amount[0].denom,
+                signer = tx.tx.value.signatures[0].pubKey.value.pubKeyToBech32(explorerProperties.provenanceAccountPrefix()),
+                memo = tx.tx.value.memo,
+                txType = tx.type()!!,
+                from = if (tx.type() == "send") tx.tx.value.msg[0].value.get("from_address").textValue() else "",
+                amount = if (tx.type() == "send") tx.tx.value.msg[0].value.get("amount").get(0).get("amount").asInt() else 0,
+                denomination = if (tx.type() == "send") tx.tx.value.msg[0].value.get("amount").get(0).get("denom").textValue() else "",
+                to = if (tx.type() == "send") tx.tx.value.msg[0].value.get("to_address").textValue() else "")
     }
 
     fun getTransactionHistory(fromDate: DateTime, toDate: DateTime, granularity: String) = cacheService.getTransactionCountsForDates(fromDate.toString("yyyy-MM-dd"), toDate.plusDays(1).toString("yyyy-MM-dd"), granularity)
@@ -159,7 +182,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
             spotlight = Spotlight(
                     latestBlock = getBlockAtHeight(null),
                     avgBlockTime = getAverageBlockCreationTime(),
-                    bondedTokenPercent = BigDecimal(bondedTokens.first).divide(bondedTokens.second,6, RoundingMode.HALF_UP),
+                    bondedTokenPercent = BigDecimal(bondedTokens.first).divide(bondedTokens.second, 6, RoundingMode.HALF_UP),
                     bondedTokenAmount = bondedTokens.first,
                     bondedTokenTotal = bondedTokens.second
             )
@@ -176,9 +199,12 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         val totalBlockChainTokens = response.toBigDecimal()
         do {
             var result = validatorService.getStakingValidators("bonded", page, limit)
-            totalBondedTokens += result.result.map { it.tokens.toLong()}.sum()
+            totalBondedTokens += result.result.map { it.tokens.toLong() }.sum()
             page++
         } while (result.result.size == limit)
         Pair<Long, BigDecimal>(totalBondedTokens, totalBlockChainTokens)
     }
+
+    fun getGasStatistics(fromDate: DateTime, toDate: DateTime, granularity: String) = cacheService.getGasStatistics(fromDate.toString("yyyy-MM-dd"), toDate.toString("yyyy-MM-dd"), granularity)
+
 }

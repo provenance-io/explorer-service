@@ -28,7 +28,7 @@ class HistoricalService(private val explorerProperties: ExplorerProperties,
         if (startCollectingHistoricalBlocks(index) || continueCollectingHistoricalBlocks(index!!.first, index!!.second)) {
             val endDate = getEndDate()
             var shouldContinue = true
-            if(index?.first == null) cacheService.updateBlockMaxHeightIndex(startHeight)
+            if (index?.first == null) cacheService.updateBlockMaxHeightIndex(startHeight)
             indexHeight = if (index != null && index.second != null) index.second - 1 else indexHeight
             while (shouldContinue && indexHeight >= 0) {
                 blockService.getBlockchain(indexHeight).result.blockMetas.forEach { blockMeta ->
@@ -77,7 +77,7 @@ class HistoricalService(private val explorerProperties: ExplorerProperties,
         else Pair<Int, Int>(it!![BlockIndexTable.maxHeightRead], it!![BlockIndexTable.minHeightRead])
     }
 
-    fun startCollectingHistoricalBlocks(blockIndex: Pair<Int, Int>?)  = blockIndex == null || blockIndex.second == null || blockIndex.first == null
+    fun startCollectingHistoricalBlocks(blockIndex: Pair<Int?, Int?>?) = blockIndex == null || blockIndex.second == null || blockIndex.first == null
 
     fun continueCollectingHistoricalBlocks(maxRead: Int, minRead: Int): Boolean {
         val historicalDays = cacheService.getHistoricalDaysBetweenHeights(maxRead, minRead)
