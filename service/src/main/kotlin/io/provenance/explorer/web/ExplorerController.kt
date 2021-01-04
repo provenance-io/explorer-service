@@ -25,7 +25,7 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     fun txsRecent(@RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
                   @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
                   @RequestParam(required = false, defaultValue = "desc") sort: String = "desc"):
-            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getRecentTransactions(count, page - 1, sort))
+            ResponseEntity<Any> = ResponseEntity.ok(explorerService.getRecentTransactions(count, page, sort))
 
     @ApiOperation(value = "Return transaction by hash value")
     @GetMapping(value = ["/tx"],
