@@ -221,8 +221,8 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
 
     fun getGasStatistics(startDate: String, endDate: String, granularity: String) = transaction {
         val connection = TransactionManager.current().connection
-        val query = "date_trunc(?, tx_timestamp), tx_type, min(gas_used), max(gas_used), avg(gas_used) " +
-                "FROM block_cache where tx_timestamp >= ?::timestamp and tx_timestamp <=?::timestamp " +
+        val query = "SELECT date_trunc(?, tx_timestamp), tx_type, min(gas_used), max(gas_used), avg(gas_used) " +
+                "FROM transaction_cache where tx_timestamp >= ?::timestamp and tx_timestamp <=?::timestamp " +
                 "GROUP BY 1, 2 ORDER BY 1 DESC"
         val statement = connection.prepareStatement(query)
         statement.setObject(1, if (granularity.contains(granularity)) granularity else "day")
