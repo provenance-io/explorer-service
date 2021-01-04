@@ -35,7 +35,7 @@ interface PbClient {
     fun getSlashingSigningInfo(): PbResponse<List<SigningInfo>>
 
     @RequestLine("GET /distribution/validators/{validatorAddress}")
-    fun getValidatorDistribution(@Param("validatorAddress") validatorAddress: String): ValidatorDistribution
+    fun getValidatorDistribution(@Param("validatorAddress") validatorAddress: String): PbResponse<ValidatorDistribution>
 
     @RequestLine("GET /supply/total/{denomination}")
     fun getSupplyTotalByDenomination(@Param("denomination") denomination: String): DenomSupply

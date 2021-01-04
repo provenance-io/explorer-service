@@ -80,6 +80,8 @@ class ValidatorService(private val explorerProperties: ExplorerProperties,
         stakingValidatorDelegations!!
     }
 
+    fun getValidatorDistribution(operatorAddress: String) = pbClient.getValidatorDistribution(operatorAddress).result
+
     fun getValidatorOperatorAddress(address: String) = if (address.startsWith(explorerProperties.provenanceValidatorConsensusPubKeyPrefix())) {
         findAddressesByConsensusPubKeyAddress(address)
     } else if (address.startsWith(explorerProperties.provenanceValidatorConsensusPrefix())) {

@@ -33,7 +33,7 @@ data class PbDelegation(val delegatorAddress: String, val validatorAddress: Stri
 
 data class ValidatorDescription(val moniker: String, val identity: String, val website: String, val securityContact: String, val details: String)
 
-data class ValidatorDistribution(val operatorAddress: String, val selfBondRewards: DenomAmount, val valCommission: DenomAmount)
+data class ValidatorDistribution(val operatorAddress: String, val selfBondRewards: List<DenomAmount>, val valCommission: List<DenomAmount>)
 
 data class Commission(val commissionRates: CommissionRates, val updateTime: String)
 

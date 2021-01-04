@@ -98,6 +98,8 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
 
     private fun hydrateValidator(validator: PbValidator, stakingValidator: PbStakingValidator, signingInfo: SigningInfo, height: Int, totalVotingPower: Int) = let {
         val validatorDelegations = validatorService.getStakingValidatorDelegations(stakingValidator.operatorAddress)
+        val distributions = validatorService.getValidatorDistribution(stakingValidator.operatorAddress)
+        val selfBondedAmount = validatorDelegations.delegations.find { it.delegatorAddress == distributions.operatorAddress }!!.balance
         ValidatorSummary(
                 moniker = stakingValidator.description.moniker,
                 addressId = stakingValidator.operatorAddress,
@@ -109,8 +111,8 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                 commission = BigDecimal(stakingValidator.commission.commissionRates.rate),
                 bondedTokens = stakingValidator.tokens.toLong(),
                 bondedTokensDenomination = "nhash",
-                selfBonded = BigDecimal(0.0),
-                selfBondedDenomination = "nhash",
+                selfBonded = BigDecimal(selfBondedAmount.amount),
+                selfBondedDenomination = selfBondedAmount.denom,
                 delegators = validatorDelegations.delegations.size,
                 bondHeight = if (stakingValidator.bondHeight == null) 0 else stakingValidator.bondHeight.toInt()
         )
