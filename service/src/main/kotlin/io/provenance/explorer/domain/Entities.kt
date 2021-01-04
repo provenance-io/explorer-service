@@ -53,6 +53,7 @@ object TransactionCacheTable : Table(name = "transaction_cache") {
     val hash = varchar("hash", 64).primaryKey()
     val height = integer("height")
     val txType = varchar("tx_type", 64)
+    val signer = varchar("signer", 128)
     val gasWanted = integer("gas_wanted")
     val gasUsed = integer("gas_used")
     val txTimestamp = datetime("tx_timestamp")

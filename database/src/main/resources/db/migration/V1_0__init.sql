@@ -53,6 +53,7 @@ CREATE TABLE transaction_cache
     hash VARCHAR(64) PRIMARY KEY,
     height INT NOT NULL,
     tx_type VARCHAR(64) NOT NULL,
+    signer VARCHAR(128),
     gas_wanted INT NOT NULL,
     gas_used INT NOT NULL,
     tx_timestamp TIMESTAMP NOT NULL,
