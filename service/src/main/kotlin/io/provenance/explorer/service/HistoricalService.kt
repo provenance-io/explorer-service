@@ -59,19 +59,6 @@ class HistoricalService(private val explorerProperties: ExplorerProperties,
         }
     }
 
-    fun processBlocks(blockMetas: List<BlockMeta>, shouldContinue: () -> Boolean) = {
-        for (blockMeta in blockMetas) {
-            if (!shouldContinue()) {
-                break;
-            }
-            cacheService.addBlockToCache(blockMeta.height(), blockMeta.numTxs.toInt(), DateTime.parse(blockMeta.header.time), blockMeta)
-            if (blockMeta.numTxs.toInt() > 0) {
-                transactionService.addTransactionsToCache(blockMeta.height(), blockMeta.numTxs.toInt())
-            }
-            blockMeta.height() - 1
-        }
-    }
-
     fun getBlockIndex() = cacheService.getBlockIndex().let {
         if (it == null) null
         else Pair<Int, Int>(it!![BlockIndexTable.maxHeightRead], it!![BlockIndexTable.minHeightRead])
@@ -81,8 +68,7 @@ class HistoricalService(private val explorerProperties: ExplorerProperties,
 
     fun continueCollectingHistoricalBlocks(maxRead: Int, minRead: Int): Boolean {
         val historicalDays = cacheService.getHistoricalDaysBetweenHeights(maxRead, minRead)
-        val date = getEndDate()
-        return !historicalDays.contains(date)
+        return historicalDays.size < explorerProperties.initialHistoricalDays()
     }
 
     fun getEndDate() = LocalDate().toDateTimeAtStartOfDay().minusDays(explorerProperties.initialHistoricalDays() + 1)
