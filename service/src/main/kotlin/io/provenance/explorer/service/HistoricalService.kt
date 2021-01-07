@@ -68,7 +68,7 @@ class HistoricalService(private val explorerProperties: ExplorerProperties,
 
     fun continueCollectingHistoricalBlocks(maxRead: Int, minRead: Int): Boolean {
         val historicalDays = cacheService.getHistoricalDaysBetweenHeights(maxRead, minRead)
-        return historicalDays.size < explorerProperties.initialHistoricalDays()
+        return historicalDays.size < explorerProperties.initialHistoricalDays() && minRead != 0
     }
 
     fun getEndDate() = LocalDate().toDateTimeAtStartOfDay().minusDays(explorerProperties.initialHistoricalDays() + 1)

@@ -42,6 +42,7 @@ class TransactionService(private val explorerProperties: ExplorerProperties,
     fun tryAddTxs(blockHeight: Int, txCount: Int) = try {
         var searchResult: PbTxSearchResponse? = null
         val elapsedTime = measureTimeMillis {
+            //endpoint handles much faster when called with exact number of transactions.
             searchResult = getBlocksByHeights(blockHeight, blockHeight, 1, txCount)
         }
         logger.info("Search for transaction by height at $blockHeight took $elapsedTime")
