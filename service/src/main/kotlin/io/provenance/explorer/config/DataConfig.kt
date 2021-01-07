@@ -1,24 +1,14 @@
 package io.provenance.explorer.config
 
-import feign.Feign
-import feign.Request
-import feign.jackson.JacksonDecoder
-import feign.jackson.JacksonEncoder
-import io.provenance.core.extensions.logger
-import io.provenance.explorer.OBJECT_MAPPER
-import io.provenance.explorer.client.PbClient
-import io.provenance.pbc.clients.CosmosRemoteInvocationException
+import io.provenance.explorer.domain.logger
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.configuration.FluentConfiguration
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.TransactionManager
-import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.flyway.FlywayMigrationInitializer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory
-import org.springframework.web.client.RestTemplate
 import java.sql.Connection
 import javax.sql.DataSource
 

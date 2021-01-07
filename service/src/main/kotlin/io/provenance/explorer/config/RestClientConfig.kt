@@ -1,25 +1,20 @@
 package io.provenance.explorer.config
 
-import com.fasterxml.jackson.databind.JsonNode
 import feign.Feign
 import feign.Logger
 import feign.Request
 import feign.jackson.JacksonDecoder
 import feign.jackson.JacksonEncoder
-import io.provenance.core.extensions.logger
-import io.provenance.core.extensions.toJsonString
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.client.PbClient
 import io.provenance.explorer.client.TendermintClient
+import io.provenance.explorer.domain.TendermintApiCustomException
 import io.provenance.explorer.domain.TendermintApiException
-import io.provenance.pbc.clients.CosmosRemoteInvocationException
+import io.provenance.explorer.domain.logger
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.http.HttpStatus
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory
-import org.springframework.web.client.RestTemplate
 
 @EnableConfigurationProperties(
         value = [ExplorerProperties::class]
@@ -75,13 +70,13 @@ class RestClientConfig(val explorerProperties: ExplorerProperties) {
                 log.warn("$method: $status $httpMethod $url")
 
                 val body = r.body()?.asReader()?.readLines()?.joinToString("\n")
-                throw CosmosRemoteInvocationException(method, httpMethod, url, status, body)
+                throw TendermintApiCustomException(method, httpMethod, url, status, body)
             }.target(PbClient::class.java, explorerProperties.pbUrl)
 
 
     class ExplorerFeignLogger constructor(val clazz: String) : Logger() {
 
-        val log = LoggerFactory.getLogger(clazz)
+        val log = logger(clazz)
 
         override fun log(configKey: String?, format: String?, vararg args: Any?) {
             //no op

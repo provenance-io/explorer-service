@@ -1,6 +1,5 @@
 package io.provenance.explorer.service
 
-import io.provenance.core.extensions.logger
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.client.PbClient
 import io.provenance.explorer.client.TendermintClient

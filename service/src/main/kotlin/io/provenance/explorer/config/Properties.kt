@@ -1,6 +1,6 @@
 package io.provenance.explorer.config
 
-import io.p8e.crypto.Bech32
+import io.provenance.explorer.domain.Bech32
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.validation.annotation.Validated
 import javax.validation.constraints.NotNull
@@ -62,14 +62,8 @@ class ExplorerProperties {
     //valconspub
     fun provenanceValidatorConsensusPubKeyPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_CONSENSUS_PUBKEY_PREFIX else Bech32.PROVENANCE_TESTNET_CONSENSUS_PUBKEY_PREFIX
 
-    //TODO fix once provenance-sdk is fixed and on master
     //valoper
-//    fun provenanceValidatorOperatorPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_VALIDATOR_ACCOUNT_PREFIX else Bech32.PROVENANCE_TESTNET_VALIDATOR_ACCOUNT_PREFIX
-    fun provenanceValidatorOperatorPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_PREFIX + "valoper" else Bech32.PROVENANCE_TESTNET_PREFIX + "valoper"
-
-    //valoperpub
-//    fun provenanceValidatorOperatorPubKeyPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_VALIDATOR_PUBKEY_PREFIX else Bech32.PROVENANCE_TESTNET_VALIDATOR_PUBKEY_PREFIX
-    fun provenanceValidatorOperatorPubKeyPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_PREFIX + "valoperpub" else Bech32.PROVENANCE_TESTNET_PREFIX + "valoperpub"
+    fun provenanceValidatorOperatorPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_VALIDATOR_ACCOUNT_PREFIX else Bech32.PROVENANCE_TESTNET_VALIDATOR_ACCOUNT_PREFIX
 }
 
 @ConfigurationProperties(prefix = "service")

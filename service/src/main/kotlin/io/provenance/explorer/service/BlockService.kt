@@ -1,11 +1,11 @@
 package io.provenance.explorer.service
 
-import io.provenance.core.extensions.logger
 import io.provenance.explorer.client.PbClient
 import io.provenance.explorer.client.TendermintClient
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.BlockIndexTable
 import io.provenance.explorer.domain.height
+import io.provenance.explorer.domain.logger
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 

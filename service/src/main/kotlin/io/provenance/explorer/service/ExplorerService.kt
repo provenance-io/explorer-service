@@ -1,6 +1,5 @@
 package io.provenance.explorer.service
 
-import io.provenance.core.extensions.logger
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.*
 import kotlinx.coroutines.*
@@ -25,8 +24,8 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         var blockHeight = if (page < 0) currentHeight else currentHeight - (count * page)
         val result = mutableListOf<RecentBlock>()
         while (result.size < count) {
-            var blockMeta = blockService.getBlock(blockHeight)
-            var validators = validatorService.getValidators(blockHeight)
+            val blockMeta = blockService.getBlock(blockHeight)
+            val validators = validatorService.getValidators(blockHeight)
             result.add(hydrateRecentBlock(blockMeta, validators))
             blockHeight = blockMeta.header.height.toInt()
             blockHeight--

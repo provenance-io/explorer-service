@@ -1,6 +1,5 @@
 package io.provenance.explorer.domain
 
-import io.p8e.crypto.Bech32
 import org.junit.Test
 import org.junit.jupiter.api.Assertions.assertEquals
 import java.math.BigDecimal

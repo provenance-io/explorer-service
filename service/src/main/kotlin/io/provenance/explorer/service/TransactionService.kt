@@ -1,10 +1,10 @@
 package io.provenance.explorer.service
 
-import io.provenance.core.extensions.logger
 import io.provenance.explorer.client.PbClient
 import io.provenance.explorer.client.TendermintClient
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.PbTxSearchResponse
+import io.provenance.explorer.domain.logger
 import org.springframework.stereotype.Service
 import java.lang.Exception
 import kotlin.system.measureTimeMillis
