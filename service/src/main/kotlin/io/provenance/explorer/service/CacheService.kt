@@ -1,7 +1,6 @@
 package io.provenance.explorer.service
 
 import com.fasterxml.jackson.databind.JsonNode
-import io.provenance.core.extensions.logger
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.*

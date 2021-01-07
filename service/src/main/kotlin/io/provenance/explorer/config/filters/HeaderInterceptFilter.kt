@@ -1,7 +1,7 @@
 package io.provenance.explorer.config.filters
 
-import io.provenance.core.extensions.logger
 import io.provenance.explorer.config.ExplorerAuthentication
+import io.provenance.explorer.domain.logger
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.filter.OncePerRequestFilter
 import java.util.*

@@ -54,27 +54,6 @@ dependencies {
 
     api project(":database")
 
-    api group: 'io.provenance', name: 'core-encryption', version: "$provenance_core", changing: true
-    api group: 'io.provenance', name: 'core-proto', version: "$provenance_core", changing: true
-    api group: 'io.provenance', name: 'core-db-exposed', version: "$provenance_core", changing: true, force: true
-    api group: 'io.provenance', name: 'core-domain', version: "$provenance_core", changing: true
-    api group: 'io.provenance', name: 'core-extensions', version: "$provenance_core", changing: true
-    api group: 'io.provenance.pbc', name: 'simple-client', version: "$provenance_core", changing: true
-    api group: 'io.p8e', name: 'p8e-util', version: "$provenance_core", changing: true
-
-    implementation("io.provenance.sdk:provenance-sdk-signer:$provenance_sdk") {
-        exclude group: 'io.provenance.pbc'
-        exclude group: 'io.provenance', module: 'core-client'
-        exclude group: 'io.provenance', module: 'core-domain'
-        exclude group: 'io.provenance', module: 'core-encryption'
-        exclude group: 'io.provenance', module: 'core-extensions'
-        exclude group: 'io.provenance', module: 'core-kafka'
-        exclude group: 'io.provenance', module: 'core-kafka-retry'
-        exclude group: 'io.provenance', module: 'core-kcache'
-        exclude group: 'io.provenance', module: 'core-proto'
-        exclude group: 'io.provenance', module: 'core-topics'
-    }
-
     // kethereum
     implementation "com.github.komputing.kethereum:bip39:$kethereum_version"
 
@@ -123,6 +102,9 @@ dependencies {
 
     // jetbrains exposed
     api group: 'org.jetbrains.exposed', name: 'exposed', version: "$exposed_version"
+
+    // hash stuff
+    api group: 'org.bouncycastle', name: 'bcprov-jdk15on', version: "$bouncy_castle"
 
     testImplementation group: "org.springframework.boot", name: "spring-boot-starter-test", version: "$springboot_version"
 }

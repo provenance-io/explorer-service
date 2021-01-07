@@ -1,9 +1,6 @@
 package io.provenance.explorer.domain
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.databind.JsonNode
-import javax.json.JsonArray
-import javax.json.JsonObject
 
 data class JsonRpc<T>(val jsonrpc: String, val id: Int, val result: T)
 

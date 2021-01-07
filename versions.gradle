@@ -1,4 +1,5 @@
 ext {
+    bouncy_castle = '1.63'
     exposed_version = '0.17.7'
     fabric_gateway_version = 'release-1.4-pio-12'
     fabric_sdk_java_version = 'release-1.4-pio-4'

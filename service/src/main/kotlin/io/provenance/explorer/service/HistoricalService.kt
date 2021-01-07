@@ -1,11 +1,10 @@
 package io.provenance.explorer.service
 
-import io.provenance.core.extensions.logger
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.BlockIndexTable
-import io.provenance.explorer.domain.BlockMeta
 import io.provenance.explorer.domain.day
 import io.provenance.explorer.domain.height
+import io.provenance.explorer.domain.logger
 import org.joda.time.DateTime
 import org.joda.time.LocalDate
 import org.springframework.scheduling.annotation.Scheduled
@@ -19,7 +18,7 @@ class HistoricalService(private val explorerProperties: ExplorerProperties,
 ) {
 
 
-    protected val logger = logger(ExplorerService::class)
+    protected val logger = logger(HistoricalService::class)
 
     fun updateCache() {
         val index = getBlockIndex()
