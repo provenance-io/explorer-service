@@ -107,7 +107,7 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     ): ResponseEntity<Any> = ResponseEntity.ok(explorerService.getGasStatistics(fromDate, toDate, granularity))
 
     @ApiOperation(value = "Returns transaction json")
-    @GetMapping(value = ["/tx/json/{txnHash}"],
+    @GetMapping(value = ["/tx/{txnHash}/json"],
         produces = [MediaType.APPLICATION_JSON_VALUE])
     fun transactionJson(@PathVariable txnHash: String): ResponseEntity<Any> = ResponseEntity.ok(explorerService.getTransactionJson(txnHash))
 }
