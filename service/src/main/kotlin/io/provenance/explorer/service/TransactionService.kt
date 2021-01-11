@@ -19,15 +19,7 @@ class TransactionService(private val explorerProperties: ExplorerProperties,
 
     fun getBlocksByHeights(maxHeight: Int, minHeight: Int, page: Int, count: Int) = pbClient.getTxsByHeights(maxHeight, minHeight, page, count)
 
-    fun getTxByHash(hash: String) = let {
-        var tx = cacheService.getTransactionByHash(hash)
-        if (tx == null) {
-            logger.info("cache miss for transaction hash $hash")
-            tx = pbClient.getTx(hash)
-            cacheService.addTransactionToCache(tx)
-        }
-        tx
-    }
+    fun getTxByHash(hash: String) = cacheService.getTransactionByHash(hash) ?: cacheService.addTransactionToCache(pbClient.getTx(hash))
 
     fun getTransactionsAtHeight(height: Int) = cacheService.getTransactionsAtHeight(height)
 

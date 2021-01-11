@@ -1,12 +1,35 @@
 package io.provenance.explorer.service
 
 import com.fasterxml.jackson.databind.JsonNode
-import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
-import io.provenance.explorer.domain.*
-import org.jetbrains.exposed.sql.*
+import io.provenance.explorer.domain.BlockCacheTable
+import io.provenance.explorer.domain.BlockIndexTable
+import io.provenance.explorer.domain.BlockMeta
+import io.provenance.explorer.domain.GasStatistics
+import io.provenance.explorer.domain.PbDelegations
+import io.provenance.explorer.domain.PbStakingValidator
+import io.provenance.explorer.domain.PbTransaction
+import io.provenance.explorer.domain.Spotlight
+import io.provenance.explorer.domain.SpotlightCacheTable
+import io.provenance.explorer.domain.StakingValidatorCacheTable
+import io.provenance.explorer.domain.TransactionCacheTable
+import io.provenance.explorer.domain.TxHistory
+import io.provenance.explorer.domain.ValidatorCacheTable
+import io.provenance.explorer.domain.ValidatorDelegationCacheTable
+import io.provenance.explorer.domain.ValidatorsCacheTable
+import io.provenance.explorer.domain.height
+import io.provenance.explorer.domain.logger
+import io.provenance.explorer.domain.pubKeyToBech32
+import io.provenance.explorer.domain.type
+import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.insertIgnore
+import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
@@ -122,6 +145,7 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
             it[hitCount] = 0
             it[lastHit] = DateTime.now()
         }
+        pbTransaction
     }
 
     fun transactionCount() = transaction {
@@ -187,9 +211,8 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
 
     fun getTransactionCountsForDates(startDate: String, endDate: String, granularity: String) = transaction {
         val connection = TransactionManager.current().connection
-        val query = "select date_trunc(?, block_timestamp), sum(tx_count) " +
-                "from block_cache where block_timestamp >= ?::timestamp and block_timestamp <=?::timestamp " +
-                "GROUP BY 1 ORDER BY 1 DESC"
+        val query = """select date_trunc(?, block_timestamp), sum(tx_count) from block_cache 
+            |where block_timestamp >= ?::timestamp and block_timestamp <=?::timestamp GROUP BY 1 ORDER BY 1 DESC""".trimMargin()
         val statement = connection.prepareStatement(query)
         statement.setObject(1, if (granularity.contains(granularity)) granularity else "day")
         statement.setObject(2, startDate)

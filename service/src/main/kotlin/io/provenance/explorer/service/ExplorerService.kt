@@ -45,7 +45,7 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     )
 
     fun getBlockAtHeight(height: Int?) = runBlocking(Dispatchers.IO) {
-        val queryHeight = if (height == null) blockService.getLatestBlockHeightIndex() else height
+        val queryHeight = height ?: blockService.getLatestBlockHeightIndex()
         val blockResponse = async { blockService.getBlock(queryHeight) }
         val validatorsResponse = async { validatorService.getValidators(queryHeight) }
         hydrateBlock(blockResponse.await(), validatorsResponse.await())
@@ -70,12 +70,13 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
     fun getRecentValidators(count: Int, page: Int, sort: String, status: String) =
             getValidatorsAtHeight(blockService.getLatestBlockHeightIndex(), count, page, sort, status)
 
-    fun getValidatorsAtHeight(height: Int, count: Int, page: Int, sort: String, status: String) = let {
-        var validators = aggregateValidators(height, count, page, status)
-        validators = if ("asc" == sort.toLowerCase()) validators.sortedBy { it.votingPower }
-        else validators.sortedByDescending { it.votingPower }
-        PagedResults<ValidatorSummary>(validators.size / count, validators)
-    }
+    fun getValidatorsAtHeight(height: Int, count: Int, page: Int, sort: String, status: String) =
+        aggregateValidators(height, count, page, status).let { vals ->
+            if ("asc" == sort.toLowerCase()) vals.sortedBy { it.votingPower }
+            else vals.sortedByDescending { it.votingPower }
+        }.let {
+            PagedResults<ValidatorSummary>(it.size / count, it)
+        }
 
     private fun aggregateValidators(blockHeight: Int, count: Int, page: Int, status: String) = let {
         val validators = validatorService.getValidators(blockHeight)
@@ -117,8 +118,8 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         )
     }
 
-    fun getRecentTransactions(count: Int, page: Int, sort: String) = let {
-        val result = cacheService.getTransactions(count, count * (page - 1)).map { tx ->
+    fun getRecentTransactions(count: Int, page: Int, sort: String) =
+        cacheService.getTransactions(count, count * (page - 1)).map { tx ->
             RecentTx(
                     txHash = tx.txhash,
                     time = tx.timestamp,
@@ -130,49 +131,48 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
                     status = if (tx.code != null) "failed" else "success",
                     errorCode = tx.code,
                     codespace = tx.codespace)
+        }.let {
+            if (sort.isNotEmpty() && sort.toLowerCase() == "asc") it.reversed()
+            PagedResults((cacheService.transactionCount() / count) + 1, it)
         }
-        if (!sort.isNullOrEmpty() && sort.toLowerCase() == "asc") result.reversed()
-        PagedResults((cacheService.transactionCount() / count) + 1, result)
-    }
 
     fun getTransactionsByHeight(height: Int) = transactionService.getTransactionsAtHeight(height).map { hydrateTxDetails(it) }
 
-    fun getTransactionByHash(hash: String) = let {
-        var tx = transactionService.getTxByHash(hash)
-        if (tx != null) hydrateTxDetails(tx!!) else null
-    }
+    fun getTransactionByHash(hash: String) = hydrateTxDetails(transactionService.getTxByHash(hash))
 
     fun getValidator(address: String) = validatorService.getValidator(address)
 
-    private fun hydrateTxDetails(tx: PbTransaction) = let {
+    private fun hydrateTxDetails(tx: PbTransaction) =
         TxDetails(
-                height = tx.height.toInt(),
-                gasUsed = tx.gasUsed.toInt(),
-                gasWanted = tx.gasWanted.toInt(),
-                gasLimit = tx.tx.value.fee.gas.toInt(),
-                gasPrice = explorerProperties.minGasPrice(),
-                time = tx.timestamp,
-                status = if (tx.code != null) "failed" else "success",
-                errorCode = tx.code,
-                codespace = tx.codespace,
-                fee = tx.fee(explorerProperties.minGasPrice()),
-                feeDenomination = tx.tx.value.fee.amount[0].denom,
-                signer = tx.tx.value.signatures[0].pubKey.value.pubKeyToBech32(explorerProperties.provenanceAccountPrefix()),
-                memo = tx.tx.value.memo,
-                txType = tx.type()!!,
-                from = if (tx.type() == "send") tx.tx.value.msg[0].value.get("from_address").textValue() else "",
-                amount = if (tx.type() == "send") tx.tx.value.msg[0].value.get("amount").get(0).get("amount").asInt() else 0,
-                denomination = if (tx.type() == "send") tx.tx.value.msg[0].value.get("amount").get(0).get("denom").textValue() else "",
-                to = if (tx.type() == "send") tx.tx.value.msg[0].value.get("to_address").textValue() else "")
-    }
+            height = tx.height.toInt(),
+            gasUsed = tx.gasUsed.toInt(),
+            gasWanted = tx.gasWanted.toInt(),
+            gasLimit = tx.tx.value.fee.gas.toInt(),
+            gasPrice = explorerProperties.minGasPrice(),
+            time = tx.timestamp,
+            status = if (tx.code != null) "failed" else "success",
+            errorCode = tx.code,
+            codespace = tx.codespace,
+            fee = tx.fee(explorerProperties.minGasPrice()),
+            feeDenomination = tx.tx.value.fee.amount[0].denom,
+            signer = tx.tx.value.signatures[0].pubKey.value.pubKeyToBech32(explorerProperties.provenanceAccountPrefix()),
+            memo = tx.tx.value.memo,
+            txType = tx.type()!!,
+            from = if (tx.type() == "send") tx.tx.value.msg[0].value.get("from_address").textValue() else "",
+            amount = if (tx.type() == "send") tx.tx.value.msg[0].value.get("amount").get(0).get("amount").asInt() else 0,
+            denomination = if (tx.type() == "send") tx.tx.value.msg[0].value.get("amount").get(0).get("denom").textValue() else "",
+            to = if (tx.type() == "send") tx.tx.value.msg[0].value.get("to_address").textValue() else "")
 
-    fun getTransactionHistory(fromDate: DateTime, toDate: DateTime, granularity: String) = cacheService.getTransactionCountsForDates(fromDate.toString("yyyy-MM-dd"), toDate.plusDays(1).toString("yyyy-MM-dd"), granularity)
+    fun getTransactionHistory(fromDate: DateTime, toDate: DateTime, granularity: String) =
+        cacheService.getTransactionCountsForDates(
+            fromDate.toString("yyyy-MM-dd"),
+            toDate.plusDays(1).toString("yyyy-MM-dd"),
+            granularity)
 
     private fun getAverageBlockCreationTime() = let {
         val laggedCreationInter = cacheService.getLatestBlockCreationIntervals(100).filter { it.second != null }.map { it.second }
-        var sum = BigDecimal(0.00)
-        laggedCreationInter.forEach { sum = sum.add(it!!) }
-        sum.divide(laggedCreationInter.size.toBigDecimal(), 3, RoundingMode.CEILING)
+        laggedCreationInter.fold(BigDecimal.ZERO, BigDecimal::add)
+            .divide(laggedCreationInter.size.toBigDecimal(), 3, RoundingMode.CEILING)
     }
 
     fun getSpotlightStatistics() = let {
@@ -199,13 +199,15 @@ class ExplorerService(private val explorerProperties: ExplorerProperties,
         val response = blockService.getTotalSupply("nhash").result
         val totalBlockChainTokens = response.toBigDecimal()
         do {
-            var result = validatorService.getStakingValidators("bonded", page, limit)
+            val result = validatorService.getStakingValidators("bonded", page, limit)
             totalBondedTokens += result.result.map { it.tokens.toLong() }.sum()
             page++
         } while (result.result.size == limit)
         Pair<Long, BigDecimal>(totalBondedTokens, totalBlockChainTokens)
     }
 
-    fun getGasStatistics(fromDate: DateTime, toDate: DateTime, granularity: String) = cacheService.getGasStatistics(fromDate.toString("yyyy-MM-dd"), toDate.toString("yyyy-MM-dd"), granularity)
+    fun getGasStatistics(fromDate: DateTime, toDate: DateTime, granularity: String) =
+        cacheService.getGasStatistics(fromDate.toString("yyyy-MM-dd"), toDate.toString("yyyy-MM-dd"), granularity)
 
+    fun getTransactionJson(txnHash: String) = transactionService.getTxByHash(txnHash)
 }
