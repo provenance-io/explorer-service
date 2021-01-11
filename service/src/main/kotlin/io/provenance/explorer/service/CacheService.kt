@@ -18,7 +18,7 @@ import io.provenance.explorer.domain.ValidatorCacheTable
 import io.provenance.explorer.domain.ValidatorDelegationCacheTable
 import io.provenance.explorer.domain.ValidatorsCacheTable
 import io.provenance.explorer.domain.height
-import io.provenance.explorer.domain.logger
+import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.pubKeyToBech32
 import io.provenance.explorer.domain.type
 import org.jetbrains.exposed.sql.SortOrder

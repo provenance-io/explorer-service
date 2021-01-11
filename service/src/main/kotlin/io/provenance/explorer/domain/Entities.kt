@@ -3,7 +3,7 @@ package io.provenance.explorer.domain
 import com.fasterxml.jackson.databind.JsonNode
 import org.jetbrains.exposed.sql.Table
 import io.provenance.explorer.OBJECT_MAPPER
-import io.provenance.explorer.domain.sql.jsonb
+import io.provenance.explorer.domain.core.sql.jsonb
 
 object BlockCacheTable : Table(name = "block_cache") {
     val height = integer("height").primaryKey()

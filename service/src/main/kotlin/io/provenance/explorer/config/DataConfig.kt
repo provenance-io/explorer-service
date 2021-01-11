@@ -1,6 +1,6 @@
 package io.provenance.explorer.config
 
-import io.provenance.explorer.domain.logger
+import io.provenance.explorer.domain.core.logger
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.configuration.FluentConfiguration
 import org.jetbrains.exposed.sql.Database

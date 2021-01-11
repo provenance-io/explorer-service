@@ -1,4 +1,4 @@
-package io.provenance.explorer.domain
+package io.provenance.explorer.domain.core
 
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
 import org.bouncycastle.crypto.digests.SHA512Digest

@@ -10,7 +10,7 @@ import io.provenance.explorer.client.PbClient
 import io.provenance.explorer.client.TendermintClient
 import io.provenance.explorer.domain.TendermintApiCustomException
 import io.provenance.explorer.domain.TendermintApiException
-import io.provenance.explorer.domain.logger
+import io.provenance.explorer.domain.core.logger
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean

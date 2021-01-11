@@ -4,7 +4,7 @@ import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.BlockIndexTable
 import io.provenance.explorer.domain.day
 import io.provenance.explorer.domain.height
-import io.provenance.explorer.domain.logger
+import io.provenance.explorer.domain.core.logger
 import org.joda.time.DateTime
 import org.joda.time.LocalDate
 import org.springframework.scheduling.annotation.Scheduled
@@ -24,11 +24,11 @@ class HistoricalService(private val explorerProperties: ExplorerProperties,
         val index = getBlockIndex()
         val startHeight = blockService.getLatestBlockHeight()
         var indexHeight = startHeight
-        if (startCollectingHistoricalBlocks(index) || continueCollectingHistoricalBlocks(index!!.first, index!!.second)) {
+        if (startCollectingHistoricalBlocks(index) || continueCollectingHistoricalBlocks(index!!.first, index.second)) {
             val endDate = getEndDate()
             var shouldContinue = true
             if (index?.first == null) cacheService.updateBlockMaxHeightIndex(startHeight)
-            indexHeight = if (index != null && index.second != null) index.second - 1 else indexHeight
+            indexHeight = if (index?.second != null) index.second - 1 else indexHeight
             while (shouldContinue && indexHeight >= 0) {
                 blockService.getBlockchain(indexHeight).result.blockMetas.forEach { blockMeta ->
                     if (endDate >= DateTime(blockMeta.day())) {
@@ -58,9 +58,8 @@ class HistoricalService(private val explorerProperties: ExplorerProperties,
         }
     }
 
-    fun getBlockIndex() = cacheService.getBlockIndex().let {
-        if (it == null) null
-        else Pair<Int, Int>(it!![BlockIndexTable.maxHeightRead], it!![BlockIndexTable.minHeightRead])
+    fun getBlockIndex() = cacheService.getBlockIndex()?.let {
+        Pair<Int, Int>(it[BlockIndexTable.maxHeightRead], it[BlockIndexTable.minHeightRead])
     }
 
     fun startCollectingHistoricalBlocks(blockIndex: Pair<Int?, Int?>?) = blockIndex == null || blockIndex.second == null || blockIndex.first == null

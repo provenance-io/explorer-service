@@ -2,8 +2,8 @@ package io.provenance.explorer
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.PropertyNamingStrategy
-import io.provenance.core.json.configureProvenance
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.domain.configureProvenance
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
 import org.springframework.boot.builder.SpringApplicationBuilder

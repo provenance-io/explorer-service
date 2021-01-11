@@ -1,4 +1,4 @@
-package io.provenance.explorer.domain
+package io.provenance.explorer.domain.core
 
 /** String utility functions.  */
 object Strings {

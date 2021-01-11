@@ -5,6 +5,7 @@ import io.provenance.explorer.client.PbClient
 import io.provenance.explorer.client.TendermintClient
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.*
+import io.provenance.explorer.domain.core.logger
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.select

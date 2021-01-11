@@ -2,6 +2,7 @@ package io.provenance.explorer.service
 
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.*
+import io.provenance.explorer.domain.core.logger
 import kotlinx.coroutines.*
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service

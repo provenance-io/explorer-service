@@ -1,24 +1,20 @@
 package io.provenance.explorer.domain
 
-import ch.qos.logback.classic.Level
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.hubspot.jackson.datatype.protobuf.ProtobufModule
+import io.provenance.explorer.domain.core.Hash
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
 import org.bouncycastle.util.encoders.Hex
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Base64
-import kotlin.reflect.KClass
-import kotlin.reflect.KProperty
-import kotlin.reflect.jvm.jvmName
 
 fun String.dayPart() = this.substring(0, 10)
 
@@ -75,30 +71,6 @@ fun SigningInfo.uptime(currentHeight: Int) = let {
 
 }
 
-// Logger Extensions
-fun logger(name: String = pkgName()): Logger = LoggerFactory.getLogger(name)
-inline fun <reified T : Any> logger(clazz: KClass<T>): Logger = logger(clazz.jvmName)
-inline fun <reified T : Any> T.logger(): Logger = logger(T::class)
-fun pkgName(): String = object {}::class.java.`package`.name
-
-var Logger.level by object {
-    operator fun getValue(thisRef: Logger, property: KProperty<*>): Level {
-        if (thisRef is ch.qos.logback.classic.Logger) {
-            return thisRef.level
-        }
-        throw RuntimeException("Invalid reference type ${thisRef.javaClass}")
-    }
-
-    operator fun setValue(thisRef: Logger, property: KProperty<*>, value: Level) {
-        if (thisRef is ch.qos.logback.classic.Logger) {
-            thisRef.level = value
-            return
-        }
-        throw RuntimeException("Invalid reference type ${thisRef.javaClass}")
-    }
-}
-
-
 // Json Extensions
 private object jackson {
     val om = ObjectMapper()
@@ -108,5 +80,17 @@ private object jackson {
         .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
 }
 
-private val omWrite get() = jackson.om.writer()
-//fun <T> T.toJsonString() = omWrite.writeValueAsString(this)
+/**
+ * ObjectMapper extension for getting the ObjectMapper configured
+ * Attach to Spring Boot via @Bean and @Primary:
+ *  @Primary
+ *  @Bean
+ *  fun mapper(): ObjectMapper = ObjectMapper().configureFigure()
+ */
+fun ObjectMapper.configureProvenance(): ObjectMapper = registerKotlinModule()
+    .registerModule(JavaTimeModule())
+//    .registerModule(JodaMoneyModule())
+    .registerModule(ProtobufModule())
+    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+    .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+    .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)

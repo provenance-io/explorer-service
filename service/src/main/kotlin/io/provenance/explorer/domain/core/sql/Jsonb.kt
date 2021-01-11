@@ -1,4 +1,4 @@
-package io.provenance.explorer.domain.sql
+package io.provenance.explorer.domain.core.sql
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.jetbrains.exposed.sql.*
