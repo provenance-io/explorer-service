@@ -1,3 +1,5 @@
+
+
 CREATE TABLE block_cache
 (
     height   INT PRIMARY KEY,
@@ -16,20 +18,20 @@ CREATE TABLE block_index
     last_update TIMESTAMP NOT NULL
 );
 
+CREATE TABLE validator_addresses (
+    id SERIAL PRIMARY KEY,
+    consensus_address VARCHAR(96) NOT NULL UNIQUE,
+    consensus_pubkey_address VARCHAR(96) NOT NULL UNIQUE,
+    operator_address VARCHAR(96) NOT NULL UNIQUE
+);
+
 CREATE TABLE validators_cache
 (
     height   INT PRIMARY KEY,
     validators JSONB NOT NULL,
     last_hit TIMESTAMP NOT NULL,
-    hit_count INT NOT NULL
-);
-
-CREATE TABLE validator_cache
-(
-    addressId   VARCHAR(64) PRIMARY KEY,
-    validator JSONB NOT NULL,
-    last_hit TIMESTAMP NOT NULL,
-    hit_count INT NOT NULL
+    hit_count INT NOT NULL,
+    CONSTRAINT validators_cache_block_height_fk FOREIGN KEY (height) REFERENCES block_cache (height)
 );
 
 CREATE TABLE staking_validator_cache
@@ -37,7 +39,9 @@ CREATE TABLE staking_validator_cache
     operator_address VARCHAR(128) PRIMARY KEY,
     staking_validator JSONB NOT NULL,
     last_hit TIMESTAMP NOT NULL,
-    hit_count INT NOT NULL
+    hit_count INT NOT NULL,
+    CONSTRAINT staking_validator_cache_operator_address_fk
+        FOREIGN KEY (operator_address) REFERENCES validator_addresses (operator_address)
 );
 
 CREATE TABLE validator_delegations_cache
@@ -45,7 +49,9 @@ CREATE TABLE validator_delegations_cache
     operator_address VARCHAR(128) PRIMARY KEY,
     validator_delegations JSONB NOT NULL,
     last_hit TIMESTAMP NOT NULL,
-    hit_count INT NOT NULL
+    hit_count INT NOT NULL,
+    CONSTRAINT validator_delegations_cache_operator_address_fk
+        FOREIGN KEY (operator_address) REFERENCES validator_addresses (operator_address)
 );
 
 CREATE TABLE transaction_cache
@@ -61,7 +67,8 @@ CREATE TABLE transaction_cache
     codespace VARCHAR(16) DEFAULT NULL,
     tx JSONB NOT NULL,
     last_hit TIMESTAMP NOT NULL,
-    hit_count INT NOT NULL
+    hit_count INT NOT NULL,
+    CONSTRAINT transaction_cache_block_height_fk FOREIGN KEY (height) REFERENCES block_cache (height)
 );
 
 CREATE TABLE spotlight_cache
@@ -70,9 +77,3 @@ CREATE TABLE spotlight_cache
     spotlight JSONB NOT NULL,
     last_hit TIMESTAMP NOT NULL
 );
-
-CREATE TABLE validator_addresses (
-    consensus_address VARCHAR(96) NOT NULL UNIQUE,
-    consensus_pubkey_address VARCHAR(96) NOT NULL UNIQUE,
-    operator_address VARCHAR(96) NOT NULL UNIQUE
-)

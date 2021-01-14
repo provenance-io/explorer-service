@@ -65,7 +65,7 @@ spec:
           test: 1
         image:
           prod: us.gcr.io/figure-production/provenance-service-explorer:latest
-          test: us.gcr.io/figure-development/provenance-service-explorer:feature-fe-endpoint-aggregator-84
+          test: us.gcr.io/figure-development/provenance-service-explorer:latest
         db:
           enabled: true
           separateDbInstance:

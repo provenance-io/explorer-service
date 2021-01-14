@@ -3,7 +3,7 @@ package io.provenance.explorer
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.PropertyNamingStrategy
 import io.provenance.explorer.config.ExplorerProperties
-import io.provenance.explorer.domain.configureProvenance
+import io.provenance.explorer.domain.extensions.configureProvenance
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
 import org.springframework.boot.builder.SpringApplicationBuilder
@@ -11,7 +11,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.scheduling.annotation.EnableScheduling
 import springfox.documentation.swagger2.annotations.EnableSwagger2
-import java.util.*
+import java.util.TimeZone
 
 @ComponentScan(basePackages = ["io.provenance.explorer" ])
 @EnableSwagger2

@@ -24,26 +24,26 @@ open class ValidatorServiceTest{
     @Test(expected=KotlinNullPointerException::class)
     @Ignore("TODO turn into integration tests")
     fun `should throw KotlinNullPointerException error when searching with invalid consensus address`() {
-        validatorService.findAddressesByConsensusAddress("I'm not match worthy")
+        validatorService.findAddressByConsensus("I'm not match worthy")
     }
 
     @Test(expected=KotlinNullPointerException::class)
     @Ignore("TODO turn into integration tests")
     fun `should throw KotlinNullPointerException error when searching with invalid consensus pub key address`() {
-        validatorService.findAddressesByConsensusPubKeyAddress("I'm not match worthy either")
+        validatorService.findAddressByConsensusPubKey("I'm not match worthy either")
     }
 
     @Test
     @Ignore("TODO turn into integration tests")
     fun `should return matching operator address from consesus address`(){
-        val result = validatorService.findAddressesByConsensusAddress("tpvalcons1pkj6cy0a6acmm3q2augsgkj27h79k6ywqj35gu")
+        val result = validatorService.findAddressByConsensus("tpvalcons1pkj6cy0a6acmm3q2augsgkj27h79k6ywqj35gu")
         Assert.assertEquals("tpvaloper14neg0whj7puhwks6536a8lqp7msvd9p028p7jm", result)
     }
 
     @Test
     @Ignore("TODO turn into integration tests")
     fun `should return matching operator address from consesus pubkey address`(){
-        val result = validatorService.findAddressesByConsensusPubKeyAddress("tpvalconspub1zcjduepq2hs3lwp8d0u4j0389knqaer4j97quc8v9updrz4yecgkm3uy46ls6rm7ph")
+        val result = validatorService.findAddressByConsensusPubKey("tpvalconspub1zcjduepq2hs3lwp8d0u4j0389knqaer4j97quc8v9updrz4yecgkm3uy46ls6rm7ph")
         Assert.assertEquals("tpvaloper1y3n8quzwm480v3yqsjwezplrj2ts0s9wlyfwup", result)
     }
 }

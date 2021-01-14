@@ -1,4 +1,4 @@
-package io.provenance.explorer.domain
+package io.provenance.explorer.domain.extensions
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.DeserializationFeature
@@ -7,9 +7,16 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.hubspot.jackson.datatype.protobuf.ProtobufModule
+import io.provenance.explorer.domain.Bech32
+import io.provenance.explorer.domain.BlockMeta
+import io.provenance.explorer.domain.BlockResponse
+import io.provenance.explorer.domain.PbTransaction
+import io.provenance.explorer.domain.SigningInfo
+import io.provenance.explorer.domain.TxResult
 import io.provenance.explorer.domain.core.Hash
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
 import org.bouncycastle.util.encoders.Hex
+import org.joda.time.DateTime
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
@@ -17,8 +24,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Base64
 
 fun String.dayPart() = this.substring(0, 10)
-
-fun String.asDay() = LocalDate.parse(this.dayPart(), DateTimeFormatter.ISO_DATE)
 
 fun String.fromBase64() = Base64.getDecoder().decode(this)
 
@@ -50,15 +55,9 @@ fun BlockMeta.height() = this.header.height.toInt()
 
 fun BlockMeta.day() = this.header.time.dayPart()
 
-fun List<BlockMeta>.maxHeight() = this.sortedByDescending { it.header.height.toInt() }.first().height()
-
-fun List<BlockMeta>.minHeight() = this.sortedByDescending { it.header.height.toInt() }.last().height()
-
 fun PbTransaction.type() = if(this.logs!= null) this.logs?.flatMap { it.events }?.firstOrNull { it.type == "message" }?.attributes?.firstOrNull { it.key == "action" }?.value else null
 
 fun PbTransaction.feePayer() = this.tx.value.signatures[0]
-
-fun TxResult.fee(minGasPrice: BigDecimal) = this.gasUsed.toBigDecimal().multiply(minGasPrice).setScale(2, RoundingMode.CEILING)
 
 fun PbTransaction.fee(minGasPrice: BigDecimal) = this.gasUsed.toBigDecimal().multiply(minGasPrice).setScale(2, RoundingMode.CEILING)
 
@@ -66,10 +65,12 @@ fun BlockResponse.height() = this.block.header.height.toInt()
 
 fun SigningInfo.uptime(currentHeight: Int) = let {
     BigDecimal(currentHeight - this.startHeight.toInt() - this.missedBlocksCounter.toInt())
-            .divide(BigDecimal(currentHeight - this.startHeight.toInt())).setScale(2, RoundingMode.CEILING)
+            .divide(BigDecimal(currentHeight - this.startHeight.toInt()), 2, RoundingMode.CEILING)
             .multiply(BigDecimal(100.00))
 
 }
+
+fun Long.isPastDue(currentMillis: Long) = DateTime.now().millis - this > currentMillis
 
 // Json Extensions
 private object jackson {
@@ -89,7 +90,6 @@ private object jackson {
  */
 fun ObjectMapper.configureProvenance(): ObjectMapper = registerKotlinModule()
     .registerModule(JavaTimeModule())
-//    .registerModule(JodaMoneyModule())
     .registerModule(ProtobufModule())
     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     .setSerializationInclusion(JsonInclude.Include.NON_NULL)

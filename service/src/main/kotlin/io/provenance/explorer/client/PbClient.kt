@@ -14,7 +14,7 @@ interface PbClient {
     fun getTxsByHeights(@Param("maxHeight") maxHeight: Int, @Param("minHeight") minHeight: Int, @Param("page") page: Int, @Param("limit") limit: Int): PbTxSearchResponse
 
     @RequestLine("GET /validatorsets/{height}")
-    fun getValidatorsAtHeight(@Param("height") height: Int): JsonNode
+    fun getValidatorsAtHeight(@Param("height") height: Int): PbResponse<PbValidatorsResponse>
 
     @RequestLine("GET /validatorsets/latest")
     fun getLatestValidators(): PbResponse<PbValidatorsResponse>

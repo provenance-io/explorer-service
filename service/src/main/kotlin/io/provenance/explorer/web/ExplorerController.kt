@@ -37,7 +37,7 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     fun txByHash(@RequestParam(required = true) hash: String):
         ResponseEntity<Any> = ResponseEntity.ok(explorerService.getTransactionByHash(hash))
 
-    @ApiOperation(value = "Return transaction by hash value")
+    @ApiOperation(value = "Return transaction by block height")
     @GetMapping(value = ["/txs"],
         produces = [MediaType.APPLICATION_JSON_VALUE])
     fun txByBlockHeight(@RequestParam(required = true) height: Int):
