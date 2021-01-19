@@ -1,6 +1,7 @@
 package io.provenance.explorer.web
 
 import io.provenance.explorer.config.ServiceProperties
+import io.provenance.explorer.domain.ValidatorDetails
 import io.provenance.explorer.service.ExplorerService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -80,7 +81,7 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     @ApiOperation(value = "Returns validator by address id")
     @GetMapping(value = ["/validator"],
         produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun validator(@RequestParam(required = true) id: String): ResponseEntity<Any> = ResponseEntity.ok(explorerService.getValidator(id))
+    fun validator(@RequestParam(required = true) id: String): ResponseEntity<ValidatorDetails?> = ResponseEntity.ok(explorerService.getValidator(id))
 
     @ApiOperation(value = "Returns set of validators at block height")
     @GetMapping(value = ["/validators"],
@@ -110,4 +111,9 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     @GetMapping(value = ["/tx/{txnHash}/json"],
         produces = [MediaType.APPLICATION_JSON_VALUE])
     fun transactionJson(@PathVariable txnHash: String): ResponseEntity<Any> = ResponseEntity.ok(explorerService.getTransactionJson(txnHash))
+
+    @ApiOperation(value = "Returns the ID of the chain associated with the explorer instance")
+    @GetMapping(value = ["/chain/id"],
+        produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getChainId(): ResponseEntity<String> = ResponseEntity.ok(explorerService.getChainId())
 }

@@ -12,15 +12,12 @@ import io.provenance.explorer.domain.BlockMeta
 import io.provenance.explorer.domain.BlockResponse
 import io.provenance.explorer.domain.PbTransaction
 import io.provenance.explorer.domain.SigningInfo
-import io.provenance.explorer.domain.TxResult
 import io.provenance.explorer.domain.core.Hash
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
 import org.bouncycastle.util.encoders.Hex
 import org.joda.time.DateTime
 import java.math.BigDecimal
 import java.math.RoundingMode
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.util.Base64
 
 fun String.dayPart() = this.substring(0, 10)
@@ -55,7 +52,11 @@ fun BlockMeta.height() = this.header.height.toInt()
 
 fun BlockMeta.day() = this.header.time.dayPart()
 
-fun PbTransaction.type() = if(this.logs!= null) this.logs?.flatMap { it.events }?.firstOrNull { it.type == "message" }?.attributes?.firstOrNull { it.key == "action" }?.value else null
+fun PbTransaction.type() = this.logs?.flatMap { it.events }
+    ?.firstOrNull { it.type == "message" }
+    ?.attributes
+    ?.firstOrNull { it.key == "action" }
+    ?.value
 
 fun PbTransaction.feePayer() = this.tx.value.signatures[0]
 

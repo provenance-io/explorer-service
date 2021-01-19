@@ -238,4 +238,6 @@ class ExplorerService(
         cacheService.getGasStatistics(fromDate.toString("yyyy-MM-dd"), toDate.toString("yyyy-MM-dd"), granularity)
 
     fun getTransactionJson(txnHash: String) = transactionService.getTxByHash(txnHash)
+
+    fun getChainId() = blockService.getChainIdString()
 }

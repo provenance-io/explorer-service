@@ -13,8 +13,9 @@ class BlockService(
     private val pbClient: PbClient,
     private val tendermintClient: TendermintClient
 ) {
-
     protected val logger = logger(BlockService::class)
+
+    protected var chainId: String = ""
 
     fun getLatestBlockHeightIndex(): Int = cacheService.getBlockIndex()!!.maxHeightRead!!
 
@@ -30,4 +31,10 @@ class BlockService(
             ?.let { cacheService.addBlockToCache(it.height(), it.numTxs.toInt(), DateTime.parse(it.header.time), it) }
 
     fun getTotalSupply(denom: String) = pbClient.getSupplyTotalByDenomination(denom)
+
+    fun getChainIdString() =
+        if (chainId.isEmpty())
+            getBlock(getLatestBlockHeightIndex())!!.header.chainId.also { this.chainId = it }
+        else
+            this.chainId
 }
