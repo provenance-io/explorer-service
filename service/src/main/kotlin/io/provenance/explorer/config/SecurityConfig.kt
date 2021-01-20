@@ -28,6 +28,7 @@ class SecurityConfig(val serviceProperties: ServiceProperties) : WebSecurityConf
     override fun configure(http: HttpSecurity) {
         http.authorizeRequests()
                 .antMatchers("/api/v1/**").authenticated()
+                .antMatchers("/api/v2/**").authenticated()
                 .antMatchers("/swagger*/**").permitAll()
                 .antMatchers("/webjars/**").permitAll()
                 .antMatchers("/v2/api-docs").permitAll()
@@ -87,7 +88,7 @@ class ExplorerAuthenticationManager(private val serviceProperties: ServiceProper
         return try {
             val explorerAuthentication = authentication as ExplorerAuthentication
 
-            if (explorerAuthentication.uuid.toString().isNullOrEmpty()) {
+            if (explorerAuthentication.uuid.toString().isEmpty()) {
                 throw BadCredentialsException("Invalid authentication object")
             }
             explorerAuthentication.isAuthenticated = true

@@ -1,8 +1,9 @@
-package io.provenance.explorer.web
+package io.provenance.explorer.web.v1
 
 import io.provenance.explorer.config.ServiceProperties
 import io.provenance.explorer.domain.ValidatorDetails
 import io.provenance.explorer.service.ExplorerService
+import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import org.joda.time.DateTime
@@ -20,7 +21,11 @@ import javax.validation.constraints.Min
 @Validated
 @RestController
 @RequestMapping(value = ["/api/v1"])
-@Api(value = "explorer", description = "Provenance Explorer")
+@Api(value = "Explorer controller",
+    produces = "application/json",
+    consumes = "application/json",
+    tags = ["General V1"],
+    hidden = true)
 class ExplorerController(private val serviceProperties: ServiceProperties,
                          private val explorerService: ExplorerService) : BaseController() {
 
@@ -81,7 +86,8 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     @ApiOperation(value = "Returns validator by address id")
     @GetMapping(value = ["/validator"],
         produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun validator(@RequestParam(required = true) id: String): ResponseEntity<ValidatorDetails?> = ResponseEntity.ok(explorerService.getValidator(id))
+    fun validator(@RequestParam(required = true) id: String): ResponseEntity<ValidatorDetails?> =
+        ResponseEntity.ok(explorerService.getValidator(id))
 
     @ApiOperation(value = "Returns set of validators at block height")
     @GetMapping(value = ["/validators"],
@@ -90,7 +96,8 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
                            @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
                            @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
                            @RequestParam(required = false, defaultValue = "desc") sort: String):
-        ResponseEntity<Any> = ResponseEntity.ok(explorerService.getValidatorsAtHeight(blockHeight, count, page, sort, "bonded"))
+        ResponseEntity<Any> =
+        ResponseEntity.ok(explorerService.getValidatorsAtHeight(blockHeight, count, page, sort, "bonded"))
 
     @ApiOperation(value = "Returns sportlight statistics")
     @GetMapping(value = ["/spotlight"],
@@ -110,7 +117,8 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     @ApiOperation(value = "Returns transaction json")
     @GetMapping(value = ["/tx/{txnHash}/json"],
         produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun transactionJson(@PathVariable txnHash: String): ResponseEntity<Any> = ResponseEntity.ok(explorerService.getTransactionJson(txnHash))
+    fun transactionJson(@PathVariable txnHash: String): ResponseEntity<Any> =
+        ResponseEntity.ok(explorerService.getTransactionJson(txnHash))
 
     @ApiOperation(value = "Returns the ID of the chain associated with the explorer instance")
     @GetMapping(value = ["/chain/id"],

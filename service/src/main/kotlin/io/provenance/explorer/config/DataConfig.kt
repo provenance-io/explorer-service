@@ -23,8 +23,7 @@ class DataConfig {
 
     @Bean
     fun flyway(dataSource: DataSource): Flyway {
-        val flyway = Flyway(FluentConfiguration().dataSource(dataSource))
-        return flyway
+        return Flyway(FluentConfiguration().dataSource(dataSource))
     }
 
     @Bean

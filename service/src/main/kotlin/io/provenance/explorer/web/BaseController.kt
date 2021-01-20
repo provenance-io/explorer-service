@@ -6,9 +6,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.ExceptionHandler
-import org.springframework.web.context.request.WebRequest
-import java.util.*
-import javax.servlet.http.HttpServletRequest
+import java.util.UUID
 
 open class BaseController {
     fun user() = SecurityContextHolder.getContext().authentication.details as UUID
