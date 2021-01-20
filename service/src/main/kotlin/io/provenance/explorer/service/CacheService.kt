@@ -74,7 +74,7 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
 
     fun getTransactions(count: Int, offset: Int) = transaction {
         TransactionCacheRecord.getAllWithOffset(SortOrder.DESC, count, offset)
-            .map { it.tx }
+            .map { it.tx to it.txType }
     }
 
     fun getBlockIndex() = BlockIndexRecord.getIndex()

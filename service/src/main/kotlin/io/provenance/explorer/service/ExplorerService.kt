@@ -151,13 +151,13 @@ class ExplorerService(
         }
 
     fun getRecentTransactions(count: Int, page: Int, sort: String) =
-        cacheService.getTransactions(count, count * (page - 1)).map { tx ->
+        cacheService.getTransactions(count, count * (page - 1)).map { (tx, type) ->
             RecentTx(
                 txHash = tx.txhash,
                 time = tx.timestamp,
                 fee = tx.fee(explorerProperties.minGasPrice()),
                 denomination = tx.tx.value.fee.amount[0].denom,
-                type = tx.type()!!,
+                type = type,
                 blockHeight = tx.height.toInt(),
                 signer = tx.feePayer().pubKey.value.pubKeyToBech32(explorerProperties.provenanceAccountPrefix()),
                 status = if (tx.code != null) "failed" else "success",
