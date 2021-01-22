@@ -19,7 +19,8 @@ class DataConfig {
 
     @Bean("databaseConnect")
     fun dataConnect(dataSource: DataSource): Database =
-            Database.connect(dataSource).also { TransactionManager.manager.defaultIsolationLevel = Connection.TRANSACTION_READ_COMMITTED }
+        Database.connect(dataSource)
+            .also { TransactionManager.manager.defaultIsolationLevel = Connection.TRANSACTION_READ_COMMITTED }
 
     @Bean
     fun flyway(dataSource: DataSource): Flyway {

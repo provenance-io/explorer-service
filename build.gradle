@@ -57,13 +57,6 @@ subprojects {
 
     repositories {
         mavenLocal()
-        maven {
-            url "https://nexus.figure.com/repository/figure"
-            credentials {
-                username = project.hasProperty("nexusUser") ? nexusUser : System.getenv("NEXUS_USER")
-                password = project.hasProperty("nexusPass") ? nexusPass : System.getenv("NEXUS_PASS")
-            }
-        }
         mavenCentral()
         // For KEthereum library
         maven { url 'https://jitpack.io' }

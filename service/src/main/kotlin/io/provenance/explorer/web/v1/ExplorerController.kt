@@ -1,6 +1,5 @@
 package io.provenance.explorer.web.v1
 
-import io.provenance.explorer.config.ServiceProperties
 import io.provenance.explorer.domain.models.explorer.ValidatorDetails
 import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.web.BaseController
@@ -26,8 +25,7 @@ import javax.validation.constraints.Min
     consumes = "application/json",
     tags = ["General V1"],
     hidden = true)
-class ExplorerController(private val serviceProperties: ServiceProperties,
-                         private val explorerService: ExplorerService) : BaseController() {
+class ExplorerController(private val explorerService: ExplorerService) : BaseController() {
 
     @ApiOperation(value = "Return the latest block transactions")
     @GetMapping(value = ["/recent/txs"],

@@ -16,11 +16,11 @@ dependencies {
 }
 
 flyway {
-    url = 'jdbc:postgresql://127.0.0.1:5432/provenanceexplorer'
+    url = 'jdbc:postgresql://127.0.0.1:5432/explorer'
     driver = 'org.postgresql.Driver'
     user = 'postgres'
     password = 'password1'
-    schemas = ['provenancekeystone']
+    schemas = ['explorer']
     locations = ["filesystem:${projectDir}/src/main/resources/db/migration"]
     validateOnMigrate = false
     outOfOrder = false

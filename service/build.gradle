@@ -66,7 +66,6 @@ dependencies {
     api group: 'org.springframework.boot', name: 'spring-boot-starter-web', version: "$springboot_version"
     api group: 'org.springframework.boot', name: 'spring-boot-devtools', version: "$springboot_version"
     api group: 'org.springframework.boot', name: 'spring-boot-starter-jdbc', version: "$springboot_version"
-    api group: 'org.springframework.boot', name: 'spring-boot-starter-security', version: "$springboot_version"
     api group: 'org.springframework.boot', name: 'spring-boot-starter-aop', version: "$springboot_version"
     api group: 'org.springframework.boot', name: 'spring-boot-starter-actuator', version: "$springboot_version"
     api group: 'org.springframework.boot', name: 'spring-boot-starter-validation', version: "$springboot_version"

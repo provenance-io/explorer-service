@@ -65,17 +65,3 @@ class ExplorerProperties {
     //valoper
     fun provenanceValidatorOperatorPrefix() = if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_VALIDATOR_ACCOUNT_PREFIX else Bech32.PROVENANCE_TESTNET_VALIDATOR_ACCOUNT_PREFIX
 }
-
-@ConfigurationProperties(prefix = "service")
-@Validated
-class ServiceProperties {
-
-    @NotNull
-    lateinit var name: String
-
-    @NotNull
-    lateinit var environment: String
-
-    @NotNull
-    lateinit var adminUUID: String
-}

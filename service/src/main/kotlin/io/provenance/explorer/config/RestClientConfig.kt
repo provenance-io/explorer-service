@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @EnableConfigurationProperties(
-        value = [ExplorerProperties::class]
+    value = [ExplorerProperties::class]
 )
 @Configuration
 class RestClientConfig(val explorerProperties: ExplorerProperties) {
@@ -25,39 +25,43 @@ class RestClientConfig(val explorerProperties: ExplorerProperties) {
 
     @Bean
     fun tendermintClient() = Feign.Builder()
-            .options(Request.Options(explorerProperties.tendermintClientTimeoutMs(), explorerProperties.tendermintClientTimeoutMs(), false))
-            .logger(ExplorerFeignLogger(TendermintClient::class.java.name))
-            .logLevel(Logger.Level.BASIC)
-            .encoder(JacksonEncoder(OBJECT_MAPPER))
-            .decoder(JacksonDecoder(OBJECT_MAPPER)) //TODO figure out why this hates me
-            .errorDecoder { method, r ->
-                val log = LoggerFactory.getLogger(this::class.java)
-                val status = r.status()
-                val url = r.request().url()
-                val httpMethod = r.request().httpMethod().name
-                log.warn("$method: $status $httpMethod $url")
-                val body = r.body()?.asReader()?.readLines()?.joinToString("\n")
-                throw TendermintApiException(body.toString())
-            }.target(TendermintClient::class.java, explorerProperties.tendermintUrl)
+        .options(
+            Request.Options(
+                explorerProperties.tendermintClientTimeoutMs(),
+                explorerProperties.tendermintClientTimeoutMs(),
+                false))
+        .logger(ExplorerFeignLogger(TendermintClient::class.java.name))
+        .logLevel(Logger.Level.BASIC)
+        .encoder(JacksonEncoder(OBJECT_MAPPER))
+        .decoder(JacksonDecoder(OBJECT_MAPPER)) //TODO figure out why this hates me
+        .errorDecoder { method, r ->
+            val log = LoggerFactory.getLogger(this::class.java)
+            val status = r.status()
+            val url = r.request().url()
+            val httpMethod = r.request().httpMethod().name
+            log.warn("$method: $status $httpMethod $url")
+            val body = r.body()?.asReader()?.readLines()?.joinToString("\n")
+            throw TendermintApiException(body.toString())
+        }.target(TendermintClient::class.java, explorerProperties.tendermintUrl)
 
 
     @Bean
     fun pbClient() = Feign.Builder()
-            .options(Request.Options(explorerProperties.pbClientTimeoutMs(), explorerProperties.pbClientTimeoutMs(), false))
-            .logger(ExplorerFeignLogger(PbClient::class.java.name))
-            .logLevel(Logger.Level.BASIC)
-            .encoder(JacksonEncoder(OBJECT_MAPPER))
-            .decoder(JacksonDecoder(OBJECT_MAPPER))
-            .errorDecoder { method, r ->
-                val log = LoggerFactory.getLogger(this::class.java)
-                val status = r.status()
-                val url = r.request().url()
-                val httpMethod = r.request().httpMethod().name
-                log.warn("$method: $status $httpMethod $url")
+        .options(Request.Options(explorerProperties.pbClientTimeoutMs(), explorerProperties.pbClientTimeoutMs(), false))
+        .logger(ExplorerFeignLogger(PbClient::class.java.name))
+        .logLevel(Logger.Level.BASIC)
+        .encoder(JacksonEncoder(OBJECT_MAPPER))
+        .decoder(JacksonDecoder(OBJECT_MAPPER))
+        .errorDecoder { method, r ->
+            val log = LoggerFactory.getLogger(this::class.java)
+            val status = r.status()
+            val url = r.request().url()
+            val httpMethod = r.request().httpMethod().name
+            log.warn("$method: $status $httpMethod $url")
 
-                val body = r.body()?.asReader()?.readLines()?.joinToString("\n")
-                throw TendermintApiCustomException(method, httpMethod, url, status, body)
-            }.target(PbClient::class.java, explorerProperties.pbUrl)
+            val body = r.body()?.asReader()?.readLines()?.joinToString("\n")
+            throw TendermintApiCustomException(method, httpMethod, url, status, body)
+        }.target(PbClient::class.java, explorerProperties.pbUrl)
 
 
     class ExplorerFeignLogger constructor(val clazz: String) : Logger() {
