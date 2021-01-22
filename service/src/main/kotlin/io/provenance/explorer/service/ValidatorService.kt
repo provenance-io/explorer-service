@@ -6,6 +6,7 @@ import io.provenance.explorer.domain.PbDelegations
 import io.provenance.explorer.domain.ValidatorDetails
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.ValidatorAddressesRecord
+import io.provenance.explorer.domain.extensions.edPubKeyToBech32
 import io.provenance.explorer.domain.extensions.uptime
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
@@ -45,8 +46,8 @@ class ValidatorService(
                 addr.operatorAddress,
                 addr.operatorAddress,
                 addr.consensusPubKeyAddress,
-                signingInfo!!.missedBlocksCounter.toInt(),
-                currentHeight - signingInfo.startHeight.toInt(),
+                signingInfo!!.missedBlocksCounter?.toInt() ?: 0,
+                currentHeight - signingInfo.startHeight?.toInt()!! ?: 0,
                 if (stakingValidator.bondHeight != null) stakingValidator.bondHeight.toInt() else 0,
                 signingInfo.uptime(currentHeight))
         }
@@ -91,14 +92,14 @@ class ValidatorService(
         val currentValidators = findAllConsensusAddresses()
         val latestValidators = pbClient.getLatestValidators()
         //TODO make this loop through all validators for the case of more than the limit
-        val pairedAddresses = pbClient.getStakingValidators("bonded", 1, 100)
+        val pairedAddresses = pbClient.getStakingValidators("BOND_STATUS_BONDED", 1, 100)
             .result
-            .map { Pair<String, String>(it.consensusPubkey, it.operatorAddress) }
+            .map { Pair<String, String>(it.consensusPubkey.value.edPubKeyToBech32(explorerProperties.provenanceValidatorConsensusPubKeyPrefix()), it.operatorAddress) }
         latestValidators.result.validators
             .filter { !currentValidators.contains(it.address) }
             .forEach { validator ->
-                pairedAddresses.firstOrNull { validator.pubKey == it.first }?.let {
-                    ValidatorAddressesRecord.insertIgnore(validator.address, validator.pubKey, it.second)
+                pairedAddresses.firstOrNull { validator.pubKey.value.edPubKeyToBech32(explorerProperties.provenanceValidatorConsensusPubKeyPrefix()) == it.first }?.let {
+                    ValidatorAddressesRecord.insertIgnore(validator.address, validator.pubKey.value.edPubKeyToBech32(explorerProperties.provenanceValidatorConsensusPubKeyPrefix()), it.second)
                 }
             }
     }

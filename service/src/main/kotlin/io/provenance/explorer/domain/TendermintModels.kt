@@ -46,7 +46,7 @@ data class Block(val header: BlockHeader, val data: BlockData, val evidence: Evi
 
 data class BlockHeader(val version: Version, val chainId: String, val height: String, val time: String, val lastBlockId: BlockId, val lastCommitHash: String, val dataHash: String, val validatorsHash: String, val nextValidatorsHash: String, val consensusHash: String, val appHash: String, val lastResultsHash: String, val evidenceHash: String, val proposerAddress: String)
 
-data class Version(val block: String, val app: String)
+data class Version(val block: String, val app: String?)
 
 data class BlockData(val txs: List<String>?)
 

@@ -227,7 +227,7 @@ class ExplorerService(
         val response = blockService.getTotalSupply("nhash").result
         val totalBlockChainTokens = response.toBigDecimal()
         do {
-            val result = validatorService.getStakingValidators("bonded", page, limit)
+            val result = validatorService.getStakingValidators("BOND_STATUS_BONDED", page, limit)
             totalBondedTokens += result.result.map { it.tokens.toLong() }.sum()
             page++
         } while (result.result.size == limit)

@@ -2,6 +2,7 @@ package io.provenance.explorer.domain
 
 import io.provenance.explorer.domain.extensions.addressToBech32
 import io.provenance.explorer.domain.extensions.dayPart
+import io.provenance.explorer.domain.extensions.edPubKeyToBech32
 import io.provenance.explorer.domain.extensions.pubKeyToBech32
 import org.junit.Test
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -33,5 +34,11 @@ class ExtensionsTest {
     fun `should return a bech32 address from a hex validator consensus address`() {
         val result = "685EDA8451FE32FCD9C58A7EA5299B6E66400EA2".addressToBech32(Bech32.PROVENANCE_TESTNET_CONSENSUS_ACCOUNT_PREFIX)
         assertEquals("tpvalcons1dp0d4pz3lce0ekw93fl222vmdenyqr4zlxa7re", result)
+    }
+
+    @Test
+    fun `should return a bech32 address from a PubKeyEd25519 pub key validator consensus address`() {
+        val result = "GX1/l9SIO/QZsy6oBKg8rBkKAZ51wOt1IBaD4amSLGg=".edPubKeyToBech32(Bech32.PROVENANCE_MAINNET_CONSENSUS_ACCOUNT_PREFIX)
+        assertEquals("pbvalcons196s9wzks8q4hqc3fnx8crmt9cnlfr24ra6l44f", result)
     }
 }

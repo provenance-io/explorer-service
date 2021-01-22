@@ -24,6 +24,7 @@ fun String.dayPart() = this.substring(0, 10)
 
 fun String.fromBase64() = Base64.getDecoder().decode(this)
 
+//PubKeySecp256k1
 fun String.pubKeyToBech32(hrpPrefix: String) = let {
     val base64 = this.fromBase64()
     require(base64.size == 33) { "Invalid Base 64 pub key byte length must be 33 not ${base64.size}" }
@@ -32,6 +33,16 @@ fun String.pubKeyToBech32(hrpPrefix: String) = let {
     val ripemd = shah256.toRIPEMD160()
     require(ripemd.size == 20) { "RipeMD size must be 20 not ${ripemd.size}" }
     Bech32.encode(hrpPrefix, Bech32.convertBits(ripemd, 8, 5, true))
+}
+
+//PubKeyEd25519
+fun String.edPubKeyToBech32(hrpPrefix: String) = this.edPubKeyToAddress().addressToBech32(hrpPrefix)
+
+fun String.edPubKeyToAddress() = let {
+    val base64 = this.fromBase64()
+    require(base64.size == 32) { "Invalid Base 64 pub key byte length must be 32 not ${base64.size}" }
+    val truncated = base64.toSha256().copyOfRange(0, 20)
+    Hex.toHexString(truncated)
 }
 
 fun ByteArray.toSha256() = Hash.sha256(this)
@@ -65,8 +76,10 @@ fun PbTransaction.fee(minGasPrice: BigDecimal) = this.gasUsed.toBigDecimal().mul
 fun BlockResponse.height() = this.block.header.height.toInt()
 
 fun SigningInfo.uptime(currentHeight: Int) = let {
-    BigDecimal(currentHeight - this.startHeight.toInt() - this.missedBlocksCounter.toInt())
-            .divide(BigDecimal(currentHeight - this.startHeight.toInt()), 2, RoundingMode.CEILING)
+    val startHeight = this.startHeight?.toInt() ?: 0
+    val missingBlockCounter = this.missedBlocksCounter?.toInt() ?: 0
+    BigDecimal(currentHeight - startHeight - missingBlockCounter)
+            .divide(BigDecimal(currentHeight - startHeight), 2, RoundingMode.CEILING)
             .multiply(BigDecimal(100.00))
 
 }

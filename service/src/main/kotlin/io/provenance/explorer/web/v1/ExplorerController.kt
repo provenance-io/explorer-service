@@ -80,7 +80,7 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
     fun validatorsV2(@RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
                      @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
                      @RequestParam(required = false, defaultValue = "desc") sort: String,
-                     @RequestParam(required = false, defaultValue = "bonded") status: String):
+                     @RequestParam(required = false, defaultValue = "BOND_STATUS_BONDED") status: String):
         ResponseEntity<Any> = ResponseEntity.ok(explorerService.getRecentValidators(count, page, sort, status))
 
     @ApiOperation(value = "Returns validator by address id")
@@ -97,7 +97,7 @@ class ExplorerController(private val serviceProperties: ServiceProperties,
                            @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
                            @RequestParam(required = false, defaultValue = "desc") sort: String):
         ResponseEntity<Any> =
-        ResponseEntity.ok(explorerService.getValidatorsAtHeight(blockHeight, count, page, sort, "bonded"))
+        ResponseEntity.ok(explorerService.getValidatorsAtHeight(blockHeight, count, page, sort, "BOND_STATUS_BONDED"))
 
     @ApiOperation(value = "Returns sportlight statistics")
     @GetMapping(value = ["/spotlight"],

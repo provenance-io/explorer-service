@@ -29,7 +29,7 @@ class HistoricalService(
             if (index?.first == null)
                 cacheService.updateBlockMaxHeightIndex(startHeight)
             indexHeight = index?.second?.minus(1) ?: indexHeight
-            while (shouldContinue && indexHeight >= 0) {
+            while (shouldContinue && indexHeight > 0) {
                 blockService.getBlockchain(indexHeight).result.blockMetas
                     .forEach { blockMeta ->
                         if (endDate >= DateTime(blockMeta.day())) {
@@ -69,7 +69,7 @@ class HistoricalService(
 
     fun continueCollectingHistoricalBlocks(maxRead: Int, minRead: Int): Boolean {
         val historicalDays = cacheService.getHistoricalDaysBetweenHeights(maxRead, minRead)
-        return historicalDays.size < explorerProperties.initialHistoricalDays() && minRead != 0
+        return historicalDays.size < explorerProperties.initialHistoricalDays() && minRead > 1
     }
 
     fun getEndDate() = LocalDate().toDateTimeAtStartOfDay().minusDays(explorerProperties.initialHistoricalDays() + 1)

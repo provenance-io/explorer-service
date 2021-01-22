@@ -28,7 +28,7 @@ class ValidatorController(private val explorerService: ExplorerService) : BaseCo
     fun validatorsV2(@RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
                      @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
                      @RequestParam(required = false, defaultValue = "desc") sort: String,
-                     @RequestParam(required = false, defaultValue = "bonded") status: String):
+                     @RequestParam(required = false, defaultValue = "BOND_STATUS_BONDED") status: String):
         ResponseEntity<PagedResults<ValidatorSummary>> =
         ResponseEntity.ok(explorerService.getRecentValidators(count, page, sort, status))
 
@@ -44,6 +44,6 @@ class ValidatorController(private val explorerService: ExplorerService) : BaseCo
                            @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
                            @RequestParam(required = false, defaultValue = "desc") sort: String):
         ResponseEntity<PagedResults<ValidatorSummary>> =
-        ResponseEntity.ok(explorerService.getValidatorsAtHeight(blockHeight, count, page, sort, "bonded"))
+        ResponseEntity.ok(explorerService.getValidatorsAtHeight(blockHeight, count, page, sort, "BOND_STATUS_BONDED"))
 
 }

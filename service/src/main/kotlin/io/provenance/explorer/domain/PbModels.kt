@@ -20,18 +20,18 @@ data class TxSignature(val pubKey: PubKey, val signature: String)
 
 data class PbValidatorsResponse(val blockHeight: String, val validators: List<PbValidator>)
 
-data class PbValidator(val address: String, val pubKey: String, val proposerPriority: String, val votingPower: String)
+data class PbValidator(val address: String, val pubKey: PubKey, val proposerPriority: String, val votingPower: String)
 
 data class PbResponse<T>(val height: String, val result: T)
 
-data class PbStakingValidator(val operatorAddress: String, val consensusPubkey: String, val jailed: Boolean, val status: Int, val tokens: String, val delegatorShares: String, val description: ValidatorDescription,
-                              val bondHeight: String?, val bondIntraTxCounter: String?, val unbondingHeight: String, val unbondingTime: String, val commission: Commission, val minSelfDelegation: String)
+data class PbStakingValidator(val operatorAddress: String, val consensusPubkey: PubKey, val jailed: Boolean, val status: Int, val tokens: String, val delegatorShares: String, val description: ValidatorDescription,
+                              val bondHeight: String?, val bondIntraTxCounter: String?, val unbondingHeight: String?, val unbondingTime: String, val commission: Commission, val minSelfDelegation: String)
 
 data class PbDelegations(val delegations: List<PbDelegation>)
 
-data class PbDelegation(val delegatorAddress: String, val validatorAddress: String, val shares: String, val balance: DenomAmount)
+data class PbDelegation(val delegatorAddress: String?, val validatorAddress: String, val shares: String, val balance: DenomAmount)
 
-data class ValidatorDescription(val moniker: String, val identity: String, val website: String, val securityContact: String, val details: String)
+data class ValidatorDescription(val moniker: String, val identity: String?, val website: String?, val securityContact: String?, val details: String?)
 
 data class ValidatorDistribution(val operatorAddress: String, val selfBondRewards: List<DenomAmount>, val valCommission: List<DenomAmount>)
 
@@ -39,6 +39,6 @@ data class Commission(val commissionRates: CommissionRates, val updateTime: Stri
 
 data class CommissionRates(val rate: String, val maxRate: String, val maxChangeRate: String)
 
-data class SigningInfo(val address: String, val startHeight: String, val indexOffset: String, val jailedUntil: String, val tombstoned: Boolean, val missedBlocksCounter: String)
+data class SigningInfo(val address: String, val startHeight: String?, val indexOffset: String, val jailedUntil: String, val tombstoned: Boolean, val missedBlocksCounter: String?)
 
 data class DenomSupply(val height: String, val result: String)
