@@ -2,12 +2,12 @@ package io.provenance.explorer.service
 
 import io.provenance.explorer.client.PbClient
 import io.provenance.explorer.config.ExplorerProperties
-import io.provenance.explorer.domain.PbDelegations
-import io.provenance.explorer.domain.ValidatorDetails
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.ValidatorAddressesRecord
 import io.provenance.explorer.domain.extensions.edPubKeyToBech32
 import io.provenance.explorer.domain.extensions.uptime
+import io.provenance.explorer.domain.models.clients.pb.PbDelegations
+import io.provenance.explorer.domain.models.explorer.ValidatorDetails
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal

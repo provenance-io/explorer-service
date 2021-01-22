@@ -1,14 +1,6 @@
 package io.provenance.explorer.service
 
 import io.provenance.explorer.config.ExplorerProperties
-import io.provenance.explorer.domain.BlockMeta
-import io.provenance.explorer.domain.GasStatistics
-import io.provenance.explorer.domain.PbDelegations
-import io.provenance.explorer.domain.PbStakingValidator
-import io.provenance.explorer.domain.PbTransaction
-import io.provenance.explorer.domain.PbValidatorsResponse
-import io.provenance.explorer.domain.Spotlight
-import io.provenance.explorer.domain.TxHistory
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockIndexRecord
@@ -19,6 +11,14 @@ import io.provenance.explorer.domain.entities.ValidatorDelegationCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.isPastDue
+import io.provenance.explorer.domain.models.clients.pb.PbDelegations
+import io.provenance.explorer.domain.models.clients.pb.PbStakingValidator
+import io.provenance.explorer.domain.models.clients.pb.PbTransaction
+import io.provenance.explorer.domain.models.clients.pb.PbValidatorsResponse
+import io.provenance.explorer.domain.models.clients.tendermint.BlockMeta
+import io.provenance.explorer.domain.models.explorer.GasStatistics
+import io.provenance.explorer.domain.models.explorer.Spotlight
+import io.provenance.explorer.domain.models.explorer.TxHistory
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction

@@ -1,8 +1,8 @@
 package io.provenance.explorer.web.v2
 
-import io.provenance.explorer.domain.PagedResults
-import io.provenance.explorer.domain.ValidatorDetails
-import io.provenance.explorer.domain.ValidatorSummary
+import io.provenance.explorer.domain.models.explorer.PagedResults
+import io.provenance.explorer.domain.models.explorer.ValidatorDetails
+import io.provenance.explorer.domain.models.explorer.ValidatorSummary
 import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
@@ -20,15 +20,21 @@ import javax.validation.constraints.Min
 @Validated
 @RestController
 @RequestMapping(path = ["/api/v2/validators"], produces = [MediaType.APPLICATION_JSON_VALUE])
-@Api(value = "Validator controller", produces = "application/json", consumes = "application/json", tags = ["Validators"])
+@Api(
+    value = "Validator controller",
+    produces = "application/json",
+    consumes = "application/json",
+    tags = ["Validators"])
 class ValidatorController(private val explorerService: ExplorerService) : BaseController() {
 
     @ApiOperation("Returns recent validators")
     @GetMapping("/recent")
-    fun validatorsV2(@RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
-                     @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-                     @RequestParam(required = false, defaultValue = "desc") sort: String,
-                     @RequestParam(required = false, defaultValue = "BOND_STATUS_BONDED") status: String):
+    fun validatorsV2(
+        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
+        @RequestParam(required = false, defaultValue = "desc") sort: String,
+        @RequestParam(required = false, defaultValue = "BOND_STATUS_BONDED") status: String
+    ):
         ResponseEntity<PagedResults<ValidatorSummary>> =
         ResponseEntity.ok(explorerService.getRecentValidators(count, page, sort, status))
 
@@ -39,10 +45,12 @@ class ValidatorController(private val explorerService: ExplorerService) : BaseCo
 
     @ApiOperation("Returns set of validators at block height")
     @GetMapping("/height/{blockHeight}")
-    fun validatorsAtHeight(@PathVariable blockHeight: Int,
-                           @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
-                           @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-                           @RequestParam(required = false, defaultValue = "desc") sort: String):
+    fun validatorsAtHeight(
+        @PathVariable blockHeight: Int,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
+        @RequestParam(required = false, defaultValue = "desc") sort: String
+    ):
         ResponseEntity<PagedResults<ValidatorSummary>> =
         ResponseEntity.ok(explorerService.getValidatorsAtHeight(blockHeight, count, page, sort, "BOND_STATUS_BONDED"))
 

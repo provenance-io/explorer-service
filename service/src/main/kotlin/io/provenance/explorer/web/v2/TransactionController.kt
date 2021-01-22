@@ -1,10 +1,10 @@
 package io.provenance.explorer.web.v2
 
-import io.provenance.explorer.domain.PagedResults
-import io.provenance.explorer.domain.PbTransaction
-import io.provenance.explorer.domain.RecentTx
-import io.provenance.explorer.domain.TxDetails
-import io.provenance.explorer.domain.TxHistory
+import io.provenance.explorer.domain.models.clients.pb.PbTransaction
+import io.provenance.explorer.domain.models.explorer.PagedResults
+import io.provenance.explorer.domain.models.explorer.RecentTx
+import io.provenance.explorer.domain.models.explorer.TxDetails
+import io.provenance.explorer.domain.models.explorer.TxHistory
 import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api

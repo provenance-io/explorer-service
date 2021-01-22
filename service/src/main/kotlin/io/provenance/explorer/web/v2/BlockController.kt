@@ -1,8 +1,8 @@
 package io.provenance.explorer.web.v2
 
-import io.provenance.explorer.domain.BlockDetail
-import io.provenance.explorer.domain.PagedResults
-import io.provenance.explorer.domain.RecentBlock
+import io.provenance.explorer.domain.models.explorer.BlockDetail
+import io.provenance.explorer.domain.models.explorer.PagedResults
+import io.provenance.explorer.domain.models.explorer.RecentBlock
 import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api

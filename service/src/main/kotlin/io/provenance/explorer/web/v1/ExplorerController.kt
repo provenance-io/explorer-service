@@ -1,7 +1,7 @@
 package io.provenance.explorer.web.v1
 
 import io.provenance.explorer.config.ServiceProperties
-import io.provenance.explorer.domain.ValidatorDetails
+import io.provenance.explorer.domain.models.explorer.ValidatorDetails
 import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api

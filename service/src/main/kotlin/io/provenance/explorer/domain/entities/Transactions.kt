@@ -1,10 +1,10 @@
 package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.OBJECT_MAPPER
-import io.provenance.explorer.domain.PbTransaction
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.pubKeyToBech32
 import io.provenance.explorer.domain.extensions.type
+import io.provenance.explorer.domain.models.clients.pb.PbTransaction
 import org.jetbrains.exposed.dao.EntityID
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.insertIgnore

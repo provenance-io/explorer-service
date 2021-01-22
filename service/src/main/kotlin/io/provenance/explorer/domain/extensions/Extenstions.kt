@@ -8,11 +8,10 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.hubspot.jackson.datatype.protobuf.ProtobufModule
 import io.provenance.explorer.domain.Bech32
-import io.provenance.explorer.domain.BlockMeta
-import io.provenance.explorer.domain.BlockResponse
-import io.provenance.explorer.domain.PbTransaction
-import io.provenance.explorer.domain.SigningInfo
 import io.provenance.explorer.domain.core.Hash
+import io.provenance.explorer.domain.models.clients.pb.PbTransaction
+import io.provenance.explorer.domain.models.clients.pb.SigningInfo
+import io.provenance.explorer.domain.models.clients.tendermint.BlockMeta
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
 import org.bouncycastle.util.encoders.Hex
 import org.joda.time.DateTime
@@ -72,8 +71,6 @@ fun PbTransaction.type() = this.logs?.flatMap { it.events }
 fun PbTransaction.feePayer() = this.tx.value.signatures[0]
 
 fun PbTransaction.fee(minGasPrice: BigDecimal) = this.gasUsed.toBigDecimal().multiply(minGasPrice).setScale(2, RoundingMode.CEILING)
-
-fun BlockResponse.height() = this.block.header.height.toInt()
 
 fun SigningInfo.uptime(currentHeight: Int) = let {
     val startHeight = this.startHeight?.toInt() ?: 0

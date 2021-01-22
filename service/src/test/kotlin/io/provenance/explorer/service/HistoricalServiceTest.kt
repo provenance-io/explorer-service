@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.*
+import io.provenance.explorer.domain.models.clients.tendermint.JsonRpc
+import io.provenance.explorer.domain.models.clients.tendermint.TendermintBlockchainResponse
 import org.joda.time.DateTime
 import org.joda.time.LocalDate
 import org.junit.Test

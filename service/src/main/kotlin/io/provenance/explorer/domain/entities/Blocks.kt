@@ -1,8 +1,8 @@
 package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.OBJECT_MAPPER
-import io.provenance.explorer.domain.BlockMeta
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.models.clients.tendermint.BlockMeta
 import org.jetbrains.exposed.dao.EntityID
 import org.jetbrains.exposed.dao.IdTable
 import org.jetbrains.exposed.dao.IntEntity
@@ -42,7 +42,6 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
     override var lastHit by BlockCacheTable.lastHit
     override var hitCount by BlockCacheTable.hitCount
 }
-
 
 
 object BlockIndexTable : IdTable<Int>(name = "block_index") {

@@ -1,8 +1,8 @@
 package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.OBJECT_MAPPER
-import io.provenance.explorer.domain.Spotlight
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.models.explorer.Spotlight
 import org.jetbrains.exposed.dao.EntityID
 import org.jetbrains.exposed.dao.IdTable
 import org.jetbrains.exposed.dao.IntEntity

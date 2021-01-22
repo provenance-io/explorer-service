@@ -1,7 +1,7 @@
 package io.provenance.explorer.web.v2
 
-import io.provenance.explorer.domain.GasStatistics
-import io.provenance.explorer.domain.Spotlight
+import io.provenance.explorer.domain.models.explorer.GasStatistics
+import io.provenance.explorer.domain.models.explorer.Spotlight
 import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api

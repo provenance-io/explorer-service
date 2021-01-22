@@ -1,11 +1,10 @@
 package io.provenance.explorer.domain.entities
 
-import com.fasterxml.jackson.databind.JsonNode
 import io.provenance.explorer.OBJECT_MAPPER
-import io.provenance.explorer.domain.PbDelegations
-import io.provenance.explorer.domain.PbStakingValidator
-import io.provenance.explorer.domain.PbValidatorsResponse
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.models.clients.pb.PbDelegations
+import io.provenance.explorer.domain.models.clients.pb.PbStakingValidator
+import io.provenance.explorer.domain.models.clients.pb.PbValidatorsResponse
 import org.jetbrains.exposed.dao.EntityID
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
@@ -49,8 +48,6 @@ class ValidatorAddressesRecord(id: EntityID<Int>) : IntEntity(id) {
 }
 
 
-
-
 object ValidatorsCacheTable : CacheIdTable<Int>(name = "validators_cache") {
     val height = reference("height", BlockCacheTable.height).primaryKey()
     override val id = height.entityId()
@@ -75,7 +72,6 @@ class ValidatorsCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
     override var lastHit by ValidatorsCacheTable.lastHit
     override var hitCount by ValidatorsCacheTable.hitCount
 }
-
 
 
 object StakingValidatorCacheTable : CacheIdTable<String>(name = "staking_validator_cache") {
@@ -104,11 +100,11 @@ class StakingValidatorCacheRecord(id: EntityID<String>) : CacheEntity<String>(id
 }
 
 
-
 object ValidatorDelegationCacheTable : CacheIdTable<String>(name = "validator_delegations_cache") {
     val operatorAddress = reference("operator_address", ValidatorAddressesTable.operatorAddress).primaryKey()
     override val id = operatorAddress.entityId()
-    val validatorDelegations = jsonb<ValidatorDelegationCacheTable, PbDelegations>("validator_delegations", OBJECT_MAPPER)
+    val validatorDelegations =
+        jsonb<ValidatorDelegationCacheTable, PbDelegations>("validator_delegations", OBJECT_MAPPER)
 }
 
 class ValidatorDelegationCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
@@ -130,5 +126,3 @@ class ValidatorDelegationCacheRecord(id: EntityID<String>) : CacheEntity<String>
     override var hitCount by ValidatorDelegationCacheTable.hitCount
 }
 
-
-data class ValidatorAddresses(val consensusAddress: String, val consensusPubKeyAddress: String, val operatorAddress: String)
