@@ -1,4 +1,4 @@
-rootProject.name = 'provenance-service-explorer'
+rootProject.name = 'explorer-service'
 
 include "service"
 include "database"
