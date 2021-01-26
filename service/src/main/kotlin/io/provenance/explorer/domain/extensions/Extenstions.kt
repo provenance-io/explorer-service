@@ -9,6 +9,8 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.hubspot.jackson.datatype.protobuf.ProtobufModule
 import io.provenance.explorer.domain.Bech32
 import io.provenance.explorer.domain.core.Hash
+import io.provenance.explorer.domain.models.clients.CustomPubKey
+import io.provenance.explorer.domain.models.clients.PubKey
 import io.provenance.explorer.domain.models.clients.pb.PbTransaction
 import io.provenance.explorer.domain.models.clients.pb.SigningInfo
 import io.provenance.explorer.domain.models.clients.tendermint.BlockMeta
@@ -73,8 +75,8 @@ fun PbTransaction.feePayer() = this.tx.value.signatures[0]
 fun PbTransaction.fee(minGasPrice: BigDecimal) = this.gasUsed.toBigDecimal().multiply(minGasPrice).setScale(2, RoundingMode.CEILING)
 
 fun SigningInfo.uptime(currentHeight: Int) = let {
-    val startHeight = this.startHeight?.toInt() ?: 0
-    val missingBlockCounter = this.missedBlocksCounter?.toInt() ?: 0
+    val startHeight = this.startHeight.toInt()
+    val missingBlockCounter = this.missedBlocksCounter.toInt()
     BigDecimal(currentHeight - startHeight - missingBlockCounter)
             .divide(BigDecimal(currentHeight - startHeight), 2, RoundingMode.CEILING)
             .multiply(BigDecimal(100.00))
@@ -82,6 +84,11 @@ fun SigningInfo.uptime(currentHeight: Int) = let {
 }
 
 fun Long.isPastDue(currentMillis: Long) = DateTime.now().millis - this > currentMillis
+
+// translates page (this) to offset
+fun Int.toOffset(count: Int) = (this - 1) * count
+
+fun CustomPubKey.toPubKey() = PubKey(this.type, this.key)
 
 // Json Extensions
 private object jackson {

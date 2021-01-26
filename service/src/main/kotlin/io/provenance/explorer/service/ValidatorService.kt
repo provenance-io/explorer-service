@@ -33,7 +33,7 @@ class ValidatorService(
             val currentHeight = blockService.getLatestBlockHeightIndex()
             //TODO make async and add caching
             val stakingValidator = getStakingValidator(addr.operatorAddress)
-            val signingInfo = getSigningInfos().result.firstOrNull { it.address == addr.consensusAddress }
+            val signingInfo = getSigningInfos().info.firstOrNull { it.address == addr.consensusAddress }
             val validatorSet = pbClient.getLatestValidators().result.validators
             val latestValidator = validatorSet.firstOrNull { it.address == addr.consensusAddress }!!
             val votingPowerPercent = BigDecimal(validatorSet.sumBy { it.votingPower.toInt() })
@@ -46,20 +46,21 @@ class ValidatorService(
                 addr.operatorAddress,
                 addr.operatorAddress,
                 addr.consensusPubKeyAddress,
-                signingInfo!!.missedBlocksCounter?.toInt() ?: 0,
-                currentHeight - signingInfo.startHeight?.toInt()!! ?: 0,
-                if (stakingValidator.bondHeight != null) stakingValidator.bondHeight.toInt() else 0,
+                signingInfo!!.missedBlocksCounter.toInt(),
+                currentHeight - signingInfo.startHeight.toInt(),
+                0,
                 signingInfo.uptime(currentHeight))
         }
 
     fun getStakingValidator(operatorAddress: String) =
         cacheService.getStakingValidator(operatorAddress)
-            ?: pbClient.getStakingValidator(operatorAddress).let { cacheService.addStakingValidatorToCache(operatorAddress, it.result) }
+            ?: pbClient.getStakingValidator(operatorAddress)
+                .let { cacheService.addStakingValidatorToCache(operatorAddress, it.validator) }
 
     fun getStakingValidatorDelegations(operatorAddress: String) =
         cacheService.getStakingValidatorDelegations(operatorAddress)
             ?: pbClient.getStakingValidatorDelegations(operatorAddress)
-                .let { cacheService.addStakingValidatorDelegations(operatorAddress, PbDelegations(it.result)) }
+                .let { cacheService.addStakingValidatorDelegations(operatorAddress, PbDelegations(it.delegationResponse)) }
 
     fun getValidatorDistribution(operatorAddress: String) = pbClient.getValidatorDistribution(operatorAddress).result
 
@@ -70,7 +71,7 @@ class ValidatorService(
         else -> null
     }
 
-    fun getStakingValidators(status: String, page: Int, count: Int) = pbClient.getStakingValidators(status, page, count)
+    fun getStakingValidators(status: String, offset: Int, count: Int) = pbClient.getStakingValidators(status, offset, count)
 
     fun getSigningInfos() = pbClient.getSlashingSigningInfo()
 
@@ -92,9 +93,10 @@ class ValidatorService(
         val currentValidators = findAllConsensusAddresses()
         val latestValidators = pbClient.getLatestValidators()
         //TODO make this loop through all validators for the case of more than the limit
-        val pairedAddresses = pbClient.getStakingValidators("BOND_STATUS_BONDED", 1, 100)
-            .result
-            .map { Pair<String, String>(it.consensusPubkey.value.edPubKeyToBech32(explorerProperties.provenanceValidatorConsensusPubKeyPrefix()), it.operatorAddress) }
+        val pairedAddresses = pbClient.getStakingValidators("BOND_STATUS_BONDED", 0, 100)
+            .validators
+            .map { Pair<String, String>(it.consensusPubkey.key.edPubKeyToBech32(explorerProperties
+                .provenanceValidatorConsensusPubKeyPrefix()), it.operatorAddress) }
         latestValidators.result.validators
             .filter { !currentValidators.contains(it.address) }
             .forEach { validator ->
