@@ -60,7 +60,7 @@ class ValidatorService(
     fun getStakingValidatorDelegations(operatorAddress: String) =
         cacheService.getStakingValidatorDelegations(operatorAddress)
             ?: pbClient.getStakingValidatorDelegations(operatorAddress)
-                .let { cacheService.addStakingValidatorDelegations(operatorAddress, PbDelegations(it.delegationResponse)) }
+                .let { cacheService.addStakingValidatorDelegations(operatorAddress, PbDelegations(it.delegationResponses)) }
 
     fun getValidatorDistribution(operatorAddress: String) = pbClient.getValidatorDistribution(operatorAddress).result
 

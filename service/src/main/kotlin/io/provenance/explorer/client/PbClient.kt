@@ -58,7 +58,7 @@ interface PbClient {
     fun getSlashingSigningInfo(): SigningInfoPaged
 
 
-    @RequestLine("GET /distribution/validators/{validatorAddr}")
+    @RequestLine("GET /distribution/validators/{validatorAddress}")
     fun getValidatorDistribution(@Param("validatorAddress") validatorAddress: String): PbResponse<ValidatorDistribution>
 
 

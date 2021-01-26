@@ -5,9 +5,11 @@ import io.provenance.explorer.domain.models.clients.Pagination
 
 data class ValidatorDistribution(
     val operatorAddress: String,
-    val selfBondRewards: List<DenomAmount>,
-    val valCommission: List<DenomAmount>
+    val selfBondRewards: List<DenomAmount>?,
+    val valCommission: ValCommission
 )
+
+data class ValCommission(val commission: Commission?)
 
 data class Commission(val commissionRates: CommissionRates, val updateTime: String)
 

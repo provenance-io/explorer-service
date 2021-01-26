@@ -94,7 +94,9 @@ class ExplorerService(
     }
 
     fun getRecentValidators(count: Int, page: Int, sort: String, status: String) =
-        getValidatorsAtHeight(blockService.getLatestBlockHeightIndex(), count, page.toOffset(count), sort, status)
+        getValidatorsAtHeight(
+            blockService.getLatestBlockHeightIndex().also { println("Block Height: $it") }, count,
+            page.toOffset(count), sort, status)
 
     fun getValidatorsAtHeight(height: Int, count: Int, offset: Int, sort: String, status: String) =
         aggregateValidators(height, count, offset, status).let { vals ->
@@ -111,13 +113,13 @@ class ExplorerService(
     }
 
     private fun hydrateValidators(validators: List<PbValidator>, stakingValidators: List<PbStakingValidator>) = let {
-        val stakingPubKeys = stakingValidators.map { it.consensusPubkey.toPubKey() }
+        val stakingPubKeys = stakingValidators.map { it.consensusPubkey.toPubKey().value }
         val signingInfos = validatorService.getSigningInfos()
         val height = signingInfos.info.first().indexOffset
         val totalVotingPower = validators.sumBy { it.votingPower.toInt() }
-        validators.filter { stakingPubKeys.contains(it.pubKey) }
+        validators.filter { stakingPubKeys.contains(it.pubKey.value) }
             .map { validator ->
-                val stakingValidator = stakingValidators.find { it.consensusPubkey.toPubKey() == validator.pubKey }
+                val stakingValidator = stakingValidators.find { it.consensusPubkey.toPubKey().value == validator.pubKey.value }
                 val signingInfo = signingInfos.info.find { it.address == validator.address }
                 hydrateValidator(validator, stakingValidator!!, signingInfo!!, height.toInt(), totalVotingPower)
             }

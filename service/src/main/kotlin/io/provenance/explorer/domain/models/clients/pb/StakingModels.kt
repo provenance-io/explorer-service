@@ -29,7 +29,7 @@ data class PbStakingValidator(
 data class PbDelegations(val delegations: List<PbDelegationResponse>)
 
 data class PbDelegationsPaged(
-    val delegationResponse: List<PbDelegationResponse>,
+    val delegationResponses: List<PbDelegationResponse>,
     val pagination: Pagination
 )
 

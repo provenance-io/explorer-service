@@ -15,6 +15,8 @@ import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.web.servlet.config.annotation.CorsRegistry
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
 @EnableConfigurationProperties(
     value = [ExplorerProperties::class]
@@ -62,6 +64,21 @@ class RestClientConfig(val explorerProperties: ExplorerProperties) {
             val body = r.body()?.asReader()?.readLines()?.joinToString("\n")
             throw TendermintApiCustomException(method, httpMethod, url, status, body)
         }.target(PbClient::class.java, explorerProperties.pbUrl)
+
+
+    @Bean
+    fun corsConfigurer(): WebMvcConfigurer {
+        return object : WebMvcConfigurer {
+            @Override
+            override fun addCorsMappings(registry: CorsRegistry) {
+                registry.addMapping("/api/**")
+                    .allowedMethods("*")
+                    .allowedOrigins("*")
+                    .allowCredentials(true)
+                    .maxAge(3600)
+            }
+        }
+    }
 
 
     class ExplorerFeignLogger constructor(val clazz: String) : Logger() {
