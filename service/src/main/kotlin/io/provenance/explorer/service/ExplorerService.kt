@@ -79,7 +79,9 @@ class ExplorerService(
     private fun hydrateBlock(blockResponse: BlockMeta, validatorsResponse: PbValidatorsResponse) = let {
         val proposerConsAddress =
             blockResponse.header.proposerAddress.addressToBech32(explorerProperties.provenanceValidatorConsensusPrefix())
+        logger.info("proposerAddr : $proposerConsAddress")
         val validatorAddresses = validatorService.findAddressByConsensus(proposerConsAddress)
+        logger.info("validatorAddressObj : $validatorAddresses")
         val stakingValidator = validatorService.getStakingValidator(validatorAddresses!!.operatorAddress)
         BlockDetail(
             height = blockResponse.header.height.toInt(),
@@ -94,9 +96,7 @@ class ExplorerService(
     }
 
     fun getRecentValidators(count: Int, page: Int, sort: String, status: String) =
-        getValidatorsAtHeight(
-            blockService.getLatestBlockHeightIndex().also { println("Block Height: $it") }, count,
-            page.toOffset(count), sort, status)
+        getValidatorsAtHeight(blockService.getLatestBlockHeightIndex(), count, page.toOffset(count), sort, status)
 
     fun getValidatorsAtHeight(height: Int, count: Int, offset: Int, sort: String, status: String) =
         aggregateValidators(height, count, offset, status).let { vals ->

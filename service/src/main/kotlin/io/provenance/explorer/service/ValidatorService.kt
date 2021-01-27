@@ -95,14 +95,24 @@ class ValidatorService(
         //TODO make this loop through all validators for the case of more than the limit
         val pairedAddresses = pbClient.getStakingValidators("BOND_STATUS_BONDED", 0, 100)
             .validators
-            .map { Pair<String, String>(it.consensusPubkey.key.edPubKeyToBech32(explorerProperties
-                .provenanceValidatorConsensusPubKeyPrefix()), it.operatorAddress) }
+            .map {
+                Pair<String, String>(
+                    it.consensusPubkey.key.edPubKeyToBech32(
+                        explorerProperties
+                            .provenanceValidatorConsensusPubKeyPrefix()), it.operatorAddress)
+            }
         latestValidators.result.validators
             .filter { !currentValidators.contains(it.address) }
             .forEach { validator ->
-                pairedAddresses.firstOrNull { validator.pubKey.value.edPubKeyToBech32(explorerProperties.provenanceValidatorConsensusPubKeyPrefix()) == it.first }?.let {
-                    ValidatorAddressesRecord.insertIgnore(validator.address, validator.pubKey.value.edPubKeyToBech32(explorerProperties.provenanceValidatorConsensusPubKeyPrefix()), it.second)
-                }
+                pairedAddresses.firstOrNull {
+                    validator.pubKey.value
+                        .edPubKeyToBech32(explorerProperties.provenanceValidatorConsensusPubKeyPrefix()) == it.first }
+                    ?.let {
+                        ValidatorAddressesRecord.insertIgnore(
+                            validator.address,
+                            validator.pubKey.value.edPubKeyToBech32(explorerProperties.provenanceValidatorConsensusPubKeyPrefix()),
+                            it.second)
+                    }
             }
     }
 }

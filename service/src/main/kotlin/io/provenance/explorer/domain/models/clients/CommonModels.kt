@@ -20,8 +20,7 @@ data class Pagination(
 )
 
 
-
 data class CustomPubKey(
     @JsonProperty("@type") val type: String,
     val key: String
-    )
+)
