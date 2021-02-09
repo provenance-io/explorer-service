@@ -39,10 +39,4 @@ class BlockController(private val explorerService: ExplorerService) : BaseContro
                      @RequestParam(required = false, defaultValue = "desc") sort: String):
         ResponseEntity<PagedResults<RecentBlock>> =
         ResponseEntity.ok(explorerService.getRecentBlocks(count, page - 1, sort))
-
-    @ApiOperation("Return block at specified height")
-    @GetMapping("/pb/{height}")
-    fun getBlockPb(@PathVariable height: Int):
-        ResponseEntity<Any> = ResponseEntity.ok(explorerService.getBlockPb(height.toString()))
-
 }

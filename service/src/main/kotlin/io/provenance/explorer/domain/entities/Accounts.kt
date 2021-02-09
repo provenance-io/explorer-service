@@ -60,14 +60,14 @@ class AccountRecord(id: EntityID<String>) : Entity<String>(id) {
             baseAccount: MarkerBaseAccount,
             data: T
         ) = transaction {
-                AccountTable.insertIgnore {
-                    it[this.accountAddress] = address
-                    it[this.type] = type
-                    it[this.accountNumber] = number
-                    it[this.baseAccount] = baseAccount
-                    it[this.data] = data
-                }
+            AccountTable.insertIgnore {
+                it[this.accountAddress] = address
+                it[this.type] = type
+                it[this.accountNumber] = number
+                it[this.baseAccount] = baseAccount
+                it[this.data] = data
             }.let { findById(address) }
+        }
     }
 
     var accountAddress by AccountTable.accountAddress

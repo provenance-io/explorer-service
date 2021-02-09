@@ -28,7 +28,7 @@ data class AssetDetail(
 data class AssetHolder(
     val ownerAddress: String,
     val balance: BigDecimal,
-    val percentage: Double
+    val percentage: BigDecimal
 )
 
 data class AccountDetail(

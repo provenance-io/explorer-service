@@ -3,6 +3,7 @@ package io.provenance.explorer.domain.entities
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.models.clients.pb.MarkerDetail
+import io.provenance.explorer.service.getMarkerType
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.EntityClass
 import org.jetbrains.exposed.dao.EntityID
@@ -28,7 +29,7 @@ class MarkerCacheRecord(id: EntityID<String>) : Entity<String>(id) {
             transaction {
                 MarkerCacheTable.insertIgnore {
                     it[this.markerAddress] = marker.baseAccount.address
-                    it[this.markerType] = marker.type
+                    it[this.markerType] = marker.type.getMarkerType()
                     it[this.denom] = marker.denom
                     it[this.status] = marker.status
                     it[this.totalSupply] = marker.supply.toBigDecimal()

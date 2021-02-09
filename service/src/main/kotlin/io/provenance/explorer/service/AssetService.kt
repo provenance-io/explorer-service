@@ -49,7 +49,9 @@ class AssetService(private val pbClient: PbClient, private val blockService: Blo
         pbClient.getMarkerHolders(denom).balances
             .map { bal ->
                 val balance = bal.coins.first { coin -> coin.denom == denom }.amount.toBigDecimal()
-                AssetHolder(bal.address, balance, balance.divide(supply, 8, RoundingMode.CEILING).toDouble())
+                AssetHolder(bal.address, balance, balance.divide(supply, 6, RoundingMode.HALF_UP))
             }
     }
 }
+
+fun String.getMarkerType() = this.split(".").last()
