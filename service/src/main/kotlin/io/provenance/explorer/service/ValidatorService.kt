@@ -26,7 +26,7 @@ class ValidatorService(
     fun getValidators(blockHeight: Int) =
         cacheService.getValidatorsByHeight(blockHeight)
             ?: pbClient.getValidatorsAtHeight(blockService.getLatestBlockHeightIndex())
-                .let { cacheService.addValidatorsToCache(blockHeight, it.result) }
+                .let { cacheService.addValidatorsToCache(blockHeight, it) }
 
     fun getValidator(address: String) =
         getValidatorOperatorAddress(address)?.let { addr ->
@@ -34,7 +34,7 @@ class ValidatorService(
             //TODO make async and add caching
             val stakingValidator = getStakingValidator(addr.operatorAddress)
             val signingInfo = getSigningInfos().info.firstOrNull { it.address == addr.consensusAddress }
-            val validatorSet = pbClient.getLatestValidators().result.validators
+            val validatorSet = pbClient.getLatestValidators().validators
             val latestValidator = validatorSet.firstOrNull { it.address == addr.consensusAddress }!!
             val votingPowerPercent = BigDecimal(validatorSet.sumBy { it.votingPower.toInt() })
                 .divide(latestValidator.votingPower.toBigDecimal(), 6, RoundingMode.HALF_UP)
@@ -101,16 +101,16 @@ class ValidatorService(
                         explorerProperties
                             .provenanceValidatorConsensusPubKeyPrefix()), it.operatorAddress)
             }
-        latestValidators.result.validators
+        latestValidators.validators
             .filter { !currentValidators.contains(it.address) }
             .forEach { validator ->
                 pairedAddresses.firstOrNull {
-                    validator.pubKey.value
+                    validator.pubKey.key
                         .edPubKeyToBech32(explorerProperties.provenanceValidatorConsensusPubKeyPrefix()) == it.first }
                     ?.let {
                         ValidatorAddressesRecord.insertIgnore(
                             validator.address,
-                            validator.pubKey.value.edPubKeyToBech32(explorerProperties.provenanceValidatorConsensusPubKeyPrefix()),
+                            validator.pubKey.key.edPubKeyToBech32(explorerProperties.provenanceValidatorConsensusPubKeyPrefix()),
                             it.second)
                     }
             }

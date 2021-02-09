@@ -1,6 +1,5 @@
 package io.provenance.explorer.domain.models.explorer
 
-import io.provenance.explorer.domain.models.clients.DenomAmount
 import java.math.BigDecimal
 
 data class PagedResults<T>(val pages: Int, val results: List<T>)
@@ -12,7 +11,7 @@ data class RecentTx(
     val denomination: String,
     val type: String,
     val blockHeight: Int,
-    val signer: String,
+    val signer: String?,
     val status: String,
     val errorCode: Int?,
     val codespace: String?
@@ -82,7 +81,7 @@ data class TxDetails(
     val codespace: String?,
     val fee: BigDecimal,
     val feeDenomination: String,
-    val signer: String,
+    val signer: String?,
     val memo: String,
     val txType: String,
     val from: String,

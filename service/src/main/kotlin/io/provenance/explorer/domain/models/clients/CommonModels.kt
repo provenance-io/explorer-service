@@ -8,12 +8,6 @@ data class PbResponse<T>(val height: String, val result: T)
 
 data class PubKey(val type: String, val value: String)
 
-data class TxEvent(val type: String, val attributes: List<TxEvenAttribute>)
-
-data class TxEvenAttribute(val key: String, val value: String)
-
-data class TxLog(val msgIndex: Int, val log: String, val events: List<TxEvent>)
-
 data class Pagination(
     val nextKey: String?,
     val total: String

@@ -1,6 +1,6 @@
 package io.provenance.explorer.web
 
-import io.provenance.explorer.domain.TendermintApiException
+import io.provenance.explorer.domain.exceptions.TendermintApiException
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity

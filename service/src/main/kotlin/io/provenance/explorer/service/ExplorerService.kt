@@ -1,12 +1,16 @@
 package io.provenance.explorer.service
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.extensions.addressToBech32
 import io.provenance.explorer.domain.extensions.fee
-import io.provenance.explorer.domain.extensions.feePayer
+import io.provenance.explorer.domain.extensions.fromBase64
+import io.provenance.explorer.domain.extensions.signatureKey
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.pubKeyToBech32
+import io.provenance.explorer.domain.extensions.sendMsg
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toPubKey
 import io.provenance.explorer.domain.extensions.type
@@ -16,6 +20,7 @@ import io.provenance.explorer.domain.models.clients.pb.PbTransaction
 import io.provenance.explorer.domain.models.clients.pb.PbValidator
 import io.provenance.explorer.domain.models.clients.pb.PbValidatorsResponse
 import io.provenance.explorer.domain.models.clients.pb.SigningInfo
+import io.provenance.explorer.domain.models.clients.pb.TxMessage
 import io.provenance.explorer.domain.models.clients.tendermint.BlockMeta
 import io.provenance.explorer.domain.models.explorer.BlockDetail
 import io.provenance.explorer.domain.models.explorer.PagedResults
@@ -39,7 +44,8 @@ class ExplorerService(
     private val cacheService: CacheService,
     private val blockService: BlockService,
     private val transactionService: TransactionService,
-    private val validatorService: ValidatorService
+    private val validatorService: ValidatorService,
+    private val txnV2Service: TransactionV2Service
 ) {
 
     protected val logger = logger(ExplorerService::class)
@@ -117,9 +123,9 @@ class ExplorerService(
         val signingInfos = validatorService.getSigningInfos()
         val height = signingInfos.info.first().indexOffset
         val totalVotingPower = validators.sumBy { it.votingPower.toInt() }
-        validators.filter { stakingPubKeys.contains(it.pubKey.value) }
+        validators.filter { stakingPubKeys.contains(it.pubKey.key) }
             .map { validator ->
-                val stakingValidator = stakingValidators.find { it.consensusPubkey.toPubKey().value == validator.pubKey.value }
+                val stakingValidator = stakingValidators.find { it.consensusPubkey.toPubKey().value == validator.pubKey.key }
                 val signingInfo = signingInfos.info.find { it.address == validator.address }
                 hydrateValidator(validator, stakingValidator!!, signingInfo!!, height.toInt(), totalVotingPower)
             }
@@ -158,7 +164,7 @@ class ExplorerService(
     }
 
     fun getRecentTransactions(count: Int, page: Int, sort: String) =
-        cacheService.getTransactions(count, count * (page - 1)).map { (tx, type) ->
+        cacheService.getTransactions(count, page.toOffset(count)).map { (tx, type, signer) ->
             RecentTx(
                 txHash = tx.txhash,
                 time = tx.timestamp,
@@ -166,7 +172,7 @@ class ExplorerService(
                 denomination = tx.tx.value.fee.amount[0].denom,
                 type = type,
                 blockHeight = tx.height.toInt(),
-                signer = tx.feePayer().pubKey.value.pubKeyToBech32(explorerProperties.provenanceAccountPrefix()),
+                signer = signer,
                 status = if (tx.code != null) "failed" else "success",
                 errorCode = tx.code,
                 codespace = tx.codespace)
@@ -182,7 +188,8 @@ class ExplorerService(
 
     fun getValidator(address: String) = validatorService.getValidator(address)
 
-    private fun hydrateTxDetails(tx: PbTransaction) =
+    private fun hydrateTxDetails(tx: PbTransaction) = let {
+        val signer = txnV2Service.getSignaturesForTx(tx.txhash).signatureKey()
         TxDetails(
             height = tx.height.toInt(),
             gasUsed = tx.gasUsed.toInt(),
@@ -195,19 +202,14 @@ class ExplorerService(
             codespace = tx.codespace,
             fee = tx.fee(explorerProperties.minGasPrice()),
             feeDenomination = tx.tx.value.fee.amount[0].denom,
-            signer = tx.tx.value.signatures[0].pubKey.value.pubKeyToBech32(explorerProperties.provenanceAccountPrefix()),
+            signer = signer?.pubKeyToBech32(explorerProperties.provenanceAccountPrefix()),
             memo = tx.tx.value.memo,
             txType = tx.type()!!,
-            from = if (tx.type() == "send") tx.tx.value.msg[0].value.get("from_address").textValue() else "",
-            amount = if (tx.type() == "send") tx.tx.value.msg[0].value.get("amount")
-                .get(0)
-                .get("amount")
-                .asInt() else 0,
-            denomination = if (tx.type() == "send") tx.tx.value.msg[0].value.get("amount")
-                .get(0)
-                .get("denom")
-                .textValue() else "",
-            to = if (tx.type() == "send") tx.tx.value.msg[0].value.get("to_address").textValue() else "")
+            from = if (tx.type() == "send") tx.sendMsg().get("from_address").textValue() else "",
+            amount = if (tx.type() == "send") tx.sendMsg().get("amount").get(0).get("amount").asInt() else 0,
+            denomination = if (tx.type() == "send") tx.sendMsg().get("amount").get(0).get("denom").textValue() else "",
+            to = if (tx.type() == "send") tx.sendMsg().get("to_address").textValue() else "")
+    }
 
     fun getTransactionHistory(fromDate: DateTime, toDate: DateTime, granularity: String) =
         cacheService.getTransactionCountsForDates(
@@ -238,8 +240,7 @@ class ExplorerService(
         val limit = 10
         var page = 1
         var totalBondedTokens = 0L
-        val response = blockService.getTotalSupply("nhash").amount.amount
-        val totalBlockChainTokens = response.toBigDecimal()
+        val totalBlockChainTokens = blockService.getTotalSupply("nhash")
         do {
             val result = validatorService.getStakingValidators("BOND_STATUS_BONDED", page.toOffset(limit), limit)
             totalBondedTokens += result.validators.map { it.tokens.toLong() }.sum()
@@ -254,4 +255,10 @@ class ExplorerService(
     fun getTransactionJson(txnHash: String) = transactionService.getTxByHash(txnHash)
 
     fun getChainId() = blockService.getChainIdString()
+
+    val mapper = jacksonObjectMapper()
+
+    fun getBlockPb(blockInt: String) = blockService.getBlockPb(blockInt).block.data.txs.map {
+        mapper.readValue<TxMessage>(it.fromBase64())
+    }
 }

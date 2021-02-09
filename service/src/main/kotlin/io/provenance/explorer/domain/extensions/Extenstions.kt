@@ -13,7 +13,10 @@ import io.provenance.explorer.domain.models.clients.CustomPubKey
 import io.provenance.explorer.domain.models.clients.PubKey
 import io.provenance.explorer.domain.models.clients.pb.PbTransaction
 import io.provenance.explorer.domain.models.clients.pb.SigningInfo
+import io.provenance.explorer.domain.models.clients.pb.TxAuthInfoSigner
 import io.provenance.explorer.domain.models.clients.tendermint.BlockMeta
+import io.provenance.explorer.jackson.AccountModule
+import io.provenance.explorer.jackson.TxMessageModule
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
 import org.bouncycastle.util.encoders.Hex
 import org.joda.time.DateTime
@@ -70,7 +73,10 @@ fun PbTransaction.type() = this.logs?.flatMap { it.events }
     ?.firstOrNull { it.key == "action" }
     ?.value
 
-fun PbTransaction.feePayer() = this.tx.value.signatures[0]
+
+fun List<TxAuthInfoSigner>.signatureKey() = if (this.isNotEmpty()) this[0].publicKey.key else null
+
+fun PbTransaction.sendMsg() = this.tx.value.msg[0].value
 
 fun PbTransaction.fee(minGasPrice: BigDecimal) = this.gasUsed.toBigDecimal().multiply(minGasPrice).setScale(2, RoundingMode.CEILING)
 
@@ -90,14 +96,6 @@ fun Int.toOffset(count: Int) = (this - 1) * count
 
 fun CustomPubKey.toPubKey() = PubKey(this.type, this.key)
 
-// Json Extensions
-private object jackson {
-    val om = ObjectMapper()
-        .registerModules(ProtobufModule(), JavaTimeModule())
-        .registerKotlinModule()
-        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-        .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
-}
 
 /**
  * ObjectMapper extension for getting the ObjectMapper configured
@@ -109,6 +107,8 @@ private object jackson {
 fun ObjectMapper.configureProvenance(): ObjectMapper = registerKotlinModule()
     .registerModule(JavaTimeModule())
     .registerModule(ProtobufModule())
+    .registerModule(AccountModule())
+    .registerModule(TxMessageModule())
     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     .setSerializationInclusion(JsonInclude.Include.NON_NULL)
     .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)

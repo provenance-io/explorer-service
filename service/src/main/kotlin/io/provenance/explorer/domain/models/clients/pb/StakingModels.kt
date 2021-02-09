@@ -3,7 +3,6 @@ package io.provenance.explorer.domain.models.clients.pb
 import io.provenance.explorer.domain.models.clients.CustomPubKey
 import io.provenance.explorer.domain.models.clients.DenomAmount
 import io.provenance.explorer.domain.models.clients.Pagination
-import io.provenance.explorer.domain.models.clients.PubKey
 
 data class PbStakingPaged(
     val validators: List<PbStakingValidator>,
@@ -25,6 +24,10 @@ data class PbStakingValidator(
     val commission: Commission,
     val minSelfDelegation: String
 )
+
+data class Commission(val commissionRates: CommissionRates, val updateTime: String)
+
+data class CommissionRates(val rate: String, val maxRate: String, val maxChangeRate: String)
 
 data class PbDelegations(val delegations: List<PbDelegationResponse>)
 
@@ -52,5 +55,12 @@ data class ValidatorDescription(
     val details: String
 )
 
+data class ValidatorDistribution(
+    val operatorAddress: String,
+    val selfBondRewards: List<DenomAmount>?,
+    val valCommission: ValCommission
+)
+
+data class ValCommission(val commission: List<DenomAmount>?)
 
 

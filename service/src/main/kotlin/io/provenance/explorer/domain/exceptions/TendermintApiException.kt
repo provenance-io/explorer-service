@@ -1,4 +1,4 @@
-package io.provenance.explorer.domain
+package io.provenance.explorer.domain.exceptions
 
 class TendermintApiException(message: String) : Exception(message)
 

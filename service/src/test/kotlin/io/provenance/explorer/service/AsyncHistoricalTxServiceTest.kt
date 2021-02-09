@@ -5,6 +5,7 @@ import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.models.clients.tendermint.JsonRpc
 import io.provenance.explorer.domain.models.clients.tendermint.TendermintBlockchainResponse
+import io.provenance.explorer.service.async.AsyncHistoricalTxService
 import org.joda.time.DateTime
 import org.joda.time.LocalDate
 import org.junit.Test
@@ -19,7 +20,7 @@ import org.springframework.test.context.junit4.SpringRunner
 
 
 @RunWith(SpringRunner::class)
-class HistoricalServiceTest {
+class AsyncHistoricalTxServiceTest {
 
 
     @MockBean
@@ -40,7 +41,7 @@ class HistoricalServiceTest {
 
         val explorerProperties = ExplorerProperties()
         explorerProperties.initialHistoricalDayCount = "2"
-        val historicalService = object : HistoricalService(explorerProperties, cacheService, blockService, transactionService) {
+        val historicalService = object : AsyncHistoricalTxService(explorerProperties, cacheService, blockService, transactionService) {
             override fun getEndDate(): DateTime {
                 return LocalDate.parse("2020-05-10").toDateTimeAtStartOfDay()
             }
@@ -61,7 +62,7 @@ class HistoricalServiceTest {
 
         val explorerProperties = ExplorerProperties()
         explorerProperties.initialHistoricalDayCount = "2"
-        val historicalService = object : HistoricalService(explorerProperties, cacheService, blockService, transactionService) {
+        val historicalService = object : AsyncHistoricalTxService(explorerProperties, cacheService, blockService, transactionService) {
             override fun getBlockIndex(): Pair<Int, Int>? {
                 return Pair<Int, Int>(80, 61)
             }
@@ -83,7 +84,7 @@ class HistoricalServiceTest {
 
         val explorerProperties = ExplorerProperties()
         explorerProperties.initialHistoricalDayCount = "2"
-        val historicalService = object : HistoricalService(explorerProperties, cacheService, blockService, transactionService) {
+        val historicalService = object : AsyncHistoricalTxService(explorerProperties, cacheService, blockService, transactionService) {
             override fun getBlockIndex(): Pair<Int, Int>? {
                 return Pair<Int, Int>(70, 20)
             }

@@ -3,8 +3,11 @@ package io.provenance.explorer.domain.entities
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.pubKeyToBech32
+import io.provenance.explorer.domain.extensions.signatureKey
 import io.provenance.explorer.domain.extensions.type
 import io.provenance.explorer.domain.models.clients.pb.PbTransaction
+import io.provenance.explorer.domain.models.clients.pb.TxAuthInfoSigner
+import io.provenance.explorer.domain.models.clients.pb.TxSingle
 import org.jetbrains.exposed.dao.EntityID
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.insertIgnore
@@ -23,11 +26,12 @@ object TransactionCacheTable : CacheIdTable<String>(name = "transaction_cache") 
     val errorCode = integer("error_code").nullable()
     val codespace = varchar("codespace", 16).nullable()
     val tx = jsonb<TransactionCacheTable, PbTransaction>("tx", OBJECT_MAPPER)
+    val txV2 = jsonb<TransactionCacheTable, TxSingle>("tx_v2", OBJECT_MAPPER)
 }
 
 class TransactionCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
     companion object : CacheEntityClass<String, TransactionCacheRecord>(TransactionCacheTable) {
-        fun insertIgnore(txn: PbTransaction, accountPrefix: String) =
+        fun insertIgnore(txn: PbTransaction, accountPrefix: String, txnV2: TxSingle) =
             transaction {
                 TransactionCacheTable.insertIgnore {
                     it[hash] = txn.txhash
@@ -35,11 +39,12 @@ class TransactionCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
                     if (txn.code != null) it[errorCode] = txn.code
                     if (txn.codespace != null) it[codespace] = txn.codespace
                     it[txType] = if (txn.code == null) txn.type()!! else "ERROR"
-                    it[signer] = txn.tx.value.signatures[0].pubKey.value.pubKeyToBech32(accountPrefix)
+                    it[signer] = txnV2.tx.authInfo.signerInfos.signatureKey()?.pubKeyToBech32(accountPrefix)
                     it[gasUsed] = txn.gasUsed.toInt()
                     it[gasWanted] = txn.gasWanted.toInt()
                     it[txTimestamp] = DateTime.parse(txn.timestamp)
                     it[tx] = txn
+                    it[txV2] = txnV2
                     it[hitCount] = 0
                     it[lastHit] = DateTime.now()
                 }
@@ -64,6 +69,7 @@ class TransactionCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
     var errorCode by TransactionCacheTable.errorCode
     var codespace by TransactionCacheTable.codespace
     var tx by TransactionCacheTable.tx
+    var txV2 by TransactionCacheTable.txV2
     override var lastHit by TransactionCacheTable.lastHit
     override var hitCount by TransactionCacheTable.hitCount
 }

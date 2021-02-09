@@ -1,41 +1,6 @@
 package io.provenance.explorer.domain.models.clients.tendermint
 
-import io.provenance.explorer.domain.models.clients.PubKey
-
 data class JsonRpc<T>(val jsonrpc: String, val id: Int, val result: T)
-
-//Status Api Models
-data class StatusResult(val nodeInfo: NodeInfo?, val syncInfo: SyncInfo, val validatorInfo: ValidatorInfo)
-
-data class NodeInfo(
-    val protocolVersion: ProtocolVersion,
-    val id: String,
-    val listenAddr: String,
-    val network: String,
-    val version: String,
-    val channels: String,
-    val moniker: String,
-    val other: Other
-)
-
-data class Other(val txIndex: String, val rpcAddress: String)
-
-data class ProtocolVersion(val p2p: String, val block: String, val app: String)
-
-data class SyncInfo(
-    val latestBlockHash: String,
-    val latestAppHash: String,
-    val latestBlockHeight: String,
-    val latestBlockTime: String,
-    val earliestBlockHash: String,
-    val earliestAppHash: String,
-    val earliestBlockHeight: String,
-    val earliestBlockTime: String,
-    val catchingUp: Boolean
-)
-
-data class ValidatorInfo(val address: String, val pubKey: PubKey, val votingPower: String)
-
 
 //Block Result
 data class BlockId(val hash: String, val parts: Parts)
