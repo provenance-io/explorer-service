@@ -25,8 +25,12 @@ class BlockController(private val explorerService: ExplorerService) : BaseContro
 
     @ApiOperation("Return block at specified height")
     @GetMapping("/height/{height}")
-    fun blockHeight(@PathVariable(required = false) height: Int?):
+    fun blockHeight(@PathVariable height: Int):
         ResponseEntity<BlockDetail> = ResponseEntity.ok(explorerService.getBlockAtHeight(height))
+
+    @ApiOperation("Return block at current height")
+    @GetMapping("/height")
+    fun blockHeight(): ResponseEntity<BlockDetail> = ResponseEntity.ok(explorerService.getBlockAtHeight(null))
 
     @ApiOperation("Returns most recent blocks")
     @GetMapping("/recent")
@@ -35,5 +39,4 @@ class BlockController(private val explorerService: ExplorerService) : BaseContro
                      @RequestParam(required = false, defaultValue = "desc") sort: String):
         ResponseEntity<PagedResults<RecentBlock>> =
         ResponseEntity.ok(explorerService.getRecentBlocks(count, page - 1, sort))
-
 }

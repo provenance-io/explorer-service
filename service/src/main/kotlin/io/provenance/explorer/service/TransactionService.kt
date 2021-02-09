@@ -7,7 +7,8 @@ import org.springframework.stereotype.Service
 @Service
 class TransactionService(
     private val cacheService: CacheService,
-    private val pbClient: PbClient
+    private val pbClient: PbClient,
+    private val txnV2Service: TransactionV2Service
 ) {
 
     protected val logger = logger(TransactionService::class)
@@ -16,7 +17,7 @@ class TransactionService(
         pbClient.getTxsByHeights(maxHeight, minHeight, page, count)
 
     fun getTxByHash(hash: String) = cacheService.getTransactionByHash(hash)
-        ?: cacheService.addTransactionToCache(pbClient.getTx(hash))
+        ?: cacheService.addTransactionToCache(pbClient.getTx(hash), txnV2Service.getTxByHash(hash))
 
     fun getTransactionsAtHeight(height: Int) = cacheService.getTransactionsAtHeight(height)
 
@@ -31,7 +32,7 @@ class TransactionService(
     fun tryAddTxs(blockHeight: Int, txCount: Int) = try {
         //endpoint handles much faster when called with exact number of transactions.
         getBlocksByHeights(blockHeight, blockHeight, 1, txCount)
-            .txs.forEach { cacheService.addTransactionToCache(it) }
+            .txs.forEach { cacheService.addTransactionToCache(it, txnV2Service.getTxByHash(it.txhash)) }
     } catch (e: Exception) {
         logger.error("Failed to retrieve transactions at block: $blockHeight", e)
     }

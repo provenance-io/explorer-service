@@ -15,6 +15,7 @@ import io.provenance.explorer.domain.models.clients.pb.PbDelegations
 import io.provenance.explorer.domain.models.clients.pb.PbStakingValidator
 import io.provenance.explorer.domain.models.clients.pb.PbTransaction
 import io.provenance.explorer.domain.models.clients.pb.PbValidatorsResponse
+import io.provenance.explorer.domain.models.clients.pb.TxSingle
 import io.provenance.explorer.domain.models.clients.tendermint.BlockMeta
 import io.provenance.explorer.domain.models.explorer.GasStatistics
 import io.provenance.explorer.domain.models.explorer.Spotlight
@@ -56,8 +57,8 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
         }?.tx
     }
 
-    fun addTransactionToCache(pbTransaction: PbTransaction) =
-        TransactionCacheRecord.insertIgnore(pbTransaction, explorerProperties.provenanceAccountPrefix())
+    fun addTransactionToCache(pbTransaction: PbTransaction, txnV2 : TxSingle) =
+        TransactionCacheRecord.insertIgnore(pbTransaction, explorerProperties.provenanceAccountPrefix(), txnV2)
             .let { pbTransaction }
 
     fun transactionCount() = transaction {
@@ -74,7 +75,7 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
 
     fun getTransactions(count: Int, offset: Int) = transaction {
         TransactionCacheRecord.getAllWithOffset(SortOrder.DESC, count, offset)
-            .map { it.tx to it.txType }
+            .map { Triple(it.tx, it.txType, it.signer) }
     }
 
     fun getBlockIndex() = BlockIndexRecord.getIndex()

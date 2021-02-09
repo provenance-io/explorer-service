@@ -20,7 +20,17 @@ data class MarkerDetail (
     val markerType: String,
     val supplyFixed : Boolean,
     val allowGovernanceControl : Boolean
-)
+) {
+    companion object {
+        fun MarkerDetail.isMintable() = this.accessControl.any { it.permissions.contains(MarkerPermissions.MINT_ROLE) }
+
+        fun MarkerDetail.getManagingAccounts() = if (this.manager.isBlank()) {
+            this.accessControl.filter { it.permissions.contains(MarkerPermissions.ADMIN_ROLE) }.map { it.address }
+        } else {
+            listOf(this.manager)
+        }
+    }
+}
 
 data class MarkerBaseAccount(
     val address: String,
@@ -29,7 +39,13 @@ data class MarkerBaseAccount(
     val sequence: String
 )
 
-data class MarkerPermissions(val permissions: List<String>, val address: String)
+data class MarkerPermissions(val permissions: List<String>, val address: String) {
+    companion object {
+        const val MINT_ROLE = "ACCESS_MINT"
+        const val ADMIN_ROLE = "ACCESS_ADMIN"
+    }
+}
+
 
 data class MarkerHolderPaged(val balances: List<MarkerHolder>, val pagination: Pagination)
 

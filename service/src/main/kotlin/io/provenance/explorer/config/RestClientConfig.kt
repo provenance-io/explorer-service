@@ -8,8 +8,8 @@ import feign.jackson.JacksonEncoder
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.client.PbClient
 import io.provenance.explorer.client.TendermintClient
-import io.provenance.explorer.domain.TendermintApiCustomException
-import io.provenance.explorer.domain.TendermintApiException
+import io.provenance.explorer.domain.exceptions.TendermintApiCustomException
+import io.provenance.explorer.domain.exceptions.TendermintApiException
 import io.provenance.explorer.domain.core.logger
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.EnableConfigurationProperties

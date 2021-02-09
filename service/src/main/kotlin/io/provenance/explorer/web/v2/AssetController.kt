@@ -1,5 +1,8 @@
 package io.provenance.explorer.web.v2
 
+import io.provenance.explorer.domain.models.explorer.AssetDetail
+import io.provenance.explorer.domain.models.explorer.AssetHolder
+import io.provenance.explorer.domain.models.explorer.AssetListed
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
@@ -20,14 +23,15 @@ class AssetController(private val assetService: AssetService) : BaseController()
 
     @ApiOperation("Returns all assets")
     @GetMapping("/all")
-    fun getMarkers(): ResponseEntity<Any> = ResponseEntity.ok(assetService.getAllAssets())
+    fun getMarkers(): ResponseEntity<List<AssetListed>> = ResponseEntity.ok(assetService.getAllAssets())
 
     @ApiOperation("Returns asset detail for denom or address")
     @GetMapping("/{id}/detail")
-    fun getMarkerDetail(@PathVariable id: String): ResponseEntity<Any> = ResponseEntity.ok(assetService.getAssetDetail(id))
+    fun getMarkerDetail(@PathVariable id: String): ResponseEntity<AssetDetail> =
+        ResponseEntity.ok(assetService.getAssetDetail(id))
 
     @ApiOperation("Returns asset holders for denom or address")
     @GetMapping("/{id}/holders")
-    fun getMarkerHolders(@PathVariable id: String): ResponseEntity<Any> = ResponseEntity.ok(assetService.getAssetHolders(id))
-
+    fun getMarkerHolders(@PathVariable id: String): ResponseEntity<List<AssetHolder>> =
+        ResponseEntity.ok(assetService.getAssetHolders(id))
 }

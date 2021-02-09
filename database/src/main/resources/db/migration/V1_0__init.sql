@@ -30,8 +30,7 @@ CREATE TABLE validators_cache
     height   INT PRIMARY KEY,
     validators JSONB NOT NULL,
     last_hit TIMESTAMP NOT NULL,
-    hit_count INT NOT NULL,
-    CONSTRAINT validators_cache_block_height_fk FOREIGN KEY (height) REFERENCES block_cache (height)
+    hit_count INT NOT NULL
 );
 
 CREATE TABLE staking_validator_cache
@@ -39,9 +38,7 @@ CREATE TABLE staking_validator_cache
     operator_address VARCHAR(128) PRIMARY KEY,
     staking_validator JSONB NOT NULL,
     last_hit TIMESTAMP NOT NULL,
-    hit_count INT NOT NULL,
-    CONSTRAINT staking_validator_cache_operator_address_fk
-        FOREIGN KEY (operator_address) REFERENCES validator_addresses (operator_address)
+    hit_count INT NOT NULL
 );
 
 CREATE TABLE validator_delegations_cache
@@ -49,9 +46,7 @@ CREATE TABLE validator_delegations_cache
     operator_address VARCHAR(128) PRIMARY KEY,
     validator_delegations JSONB NOT NULL,
     last_hit TIMESTAMP NOT NULL,
-    hit_count INT NOT NULL,
-    CONSTRAINT validator_delegations_cache_operator_address_fk
-        FOREIGN KEY (operator_address) REFERENCES validator_addresses (operator_address)
+    hit_count INT NOT NULL
 );
 
 CREATE TABLE transaction_cache
@@ -66,14 +61,32 @@ CREATE TABLE transaction_cache
     error_code INT DEFAULT NULL,
     codespace VARCHAR(16) DEFAULT NULL,
     tx JSONB NOT NULL,
+    tx_v2 JSONB NOT NULL,
     last_hit TIMESTAMP NOT NULL,
-    hit_count INT NOT NULL,
-    CONSTRAINT transaction_cache_block_height_fk FOREIGN KEY (height) REFERENCES block_cache (height)
+    hit_count INT NOT NULL
 );
 
 CREATE TABLE spotlight_cache
 (
-    id int PRIMARY KEY,
+    id SMALLINT PRIMARY KEY,
     spotlight JSONB NOT NULL,
     last_hit TIMESTAMP NOT NULL
 );
+
+CREATE TABLE marker_cache
+(
+    marker_address VARCHAR(128) NOT NULL PRIMARY KEY,
+    marker_type VARCHAR(128) NOT NULL,
+    denom VARCHAR(64) NOT NULL,
+    status VARCHAR(128) NOT NULL,
+    total_supply DECIMAL NOT NULL,
+    data JSONB NOT NULL
+);
+
+CREATE TABLE account (
+    account_address VARCHAR(128) NOT NULL,
+    type VARCHAR(128) NOT NULL,
+    account_number BIGINT NOT NULL,
+    base_account JSONB NOT NULL,
+    data JSONB NOT NULL
+)

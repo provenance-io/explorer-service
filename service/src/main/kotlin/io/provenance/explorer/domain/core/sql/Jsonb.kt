@@ -1,7 +1,8 @@
 package io.provenance.explorer.domain.core.sql
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.ColumnType
+import org.jetbrains.exposed.sql.Table
 import org.postgresql.util.PGobject
 import java.lang.reflect.ParameterizedType
 import java.sql.PreparedStatement

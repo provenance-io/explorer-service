@@ -1,23 +1,28 @@
-package io.provenance.explorer.service
+package io.provenance.explorer.service.async
 
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
-import io.provenance.explorer.domain.extensions.day
 import io.provenance.explorer.domain.extensions.height
+import io.provenance.explorer.service.BlockService
+import io.provenance.explorer.service.CacheService
+import io.provenance.explorer.service.TransactionService
 import org.joda.time.DateTime
 import org.joda.time.LocalDate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 
 @Service
-class HistoricalService(
+class AsyncHistoricalTxService(
     private val explorerProperties: ExplorerProperties,
     private val cacheService: CacheService,
     private val blockService: BlockService,
     private val transactionService: TransactionService
 ) {
 
-    protected val logger = logger(HistoricalService::class)
+    protected val logger = logger(AsyncHistoricalTxService::class)
+
+    @Scheduled(initialDelay = 0L, fixedDelay = 1000L)
+    fun updateLatestBlockHeightJob() = updateCache()
 
     fun updateCache() {
         val index = getBlockIndex()
@@ -32,10 +37,10 @@ class HistoricalService(
             while (shouldContinue && indexHeight > 0) {
                 blockService.getBlockchain(indexHeight).result.blockMetas
                     .forEach { blockMeta ->
-                        if (endDate >= DateTime(blockMeta.day())) {
-                            shouldContinue = false
-                            return@forEach
-                        }
+//                        if (endDate >= DateTime(blockMeta.day())) {
+//                            shouldContinue = false
+//                            return@forEach
+//                        }
                         cacheService.addBlockToCache(blockMeta.height(), blockMeta.numTxs.toInt(), DateTime.parse(blockMeta.header.time), blockMeta)
                         if (blockMeta.numTxs.toInt() > 0) {
                             transactionService.addTransactionsToCache(blockMeta.height(), blockMeta.numTxs.toInt())
@@ -73,8 +78,5 @@ class HistoricalService(
     }
 
     fun getEndDate() = LocalDate().toDateTimeAtStartOfDay().minusDays(explorerProperties.initialHistoricalDays() + 1)
-
-    @Scheduled(initialDelay = 0L, fixedDelay = 1000L)
-    fun updateLatestBlockHeightJob() = updateCache()
 
 }
