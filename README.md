@@ -1,5 +1,7 @@
-# provenance-service-explorer
-The purpose of this api backend is to provide a single API for the Provenance Blockchain Explorer frontend, aggregate and cache information needed by the front end (e.g. simplify multiple block/transaction calls into a single call), and provide Provenance Blockchain specific endpoints.
+# Provenance Explorer
+The purpose of this api backend is to provide a single API for the Provenance Blockchain Explorer frontend, 
+aggregate and cache information needed by the front end (e.g. simplify multiple block/transaction calls into a 
+single call), and provide Provenance Blockchain specific endpoints.
 
 
 ##How to run testnet and explorer locally
@@ -8,6 +10,7 @@ Necessary tools
 - Git
 - GO lang
     - comes with Make
+- LevelDB
 - NPM
 - Docker
 
