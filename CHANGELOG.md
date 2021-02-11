@@ -34,11 +34,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
-## [v0.1.0](https://github.com/provenance-io/explorer-service/releases/tag/v0.1.0) - 2021-01-26
-
-
-### Features
-
+### Improvements
+* Added templates and build workflow
 
 
 ## PRE-HISTORY
