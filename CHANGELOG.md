@@ -36,6 +36,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Improvements
 * Added templates and build workflow
+* Updated `/api/v2/validators/height/{blockHeight}` to translate page to offset for proper searching
 
 
 ## PRE-HISTORY

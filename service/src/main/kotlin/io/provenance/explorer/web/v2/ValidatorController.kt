@@ -1,5 +1,6 @@
 package io.provenance.explorer.web.v2
 
+import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.ValidatorDetails
 import io.provenance.explorer.domain.models.explorer.ValidatorSummary
@@ -52,6 +53,7 @@ class ValidatorController(private val explorerService: ExplorerService) : BaseCo
         @RequestParam(required = false, defaultValue = "desc") sort: String
     ):
         ResponseEntity<PagedResults<ValidatorSummary>> =
-        ResponseEntity.ok(explorerService.getValidatorsAtHeight(blockHeight, count, page, sort, "BOND_STATUS_BONDED"))
+        ResponseEntity.ok(
+            explorerService.getValidatorsAtHeight(blockHeight, count, page.toOffset(count), sort, "BOND_STATUS_BONDED"))
 
 }
