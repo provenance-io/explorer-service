@@ -4,7 +4,7 @@ aggregate and cache information needed by the front end (e.g. simplify multiple 
 single call), and provide Provenance Blockchain specific endpoints.
 
 
-##How to run testnet and explorer locally
+## How to run testnet and explorer locally
 
 Necessary tools
 - Git
@@ -15,7 +15,7 @@ Necessary tools
 - Docker
 
 
-###To get testnet up
+### To get testnet up
 - Clone provenance public repo -> https://github.com/provenance-io/provenance
 - Navigate to the repo folder
 - Run `make clean ; make build; make localnet-start`
@@ -32,14 +32,14 @@ Necessary tools
 </br></br>
 - To stop the cluster, run `make localnet-stop`
 
-###To get Explorer up
+### To get Explorer up
 - Clone explorer-service public repo -> https://github.com/provenance-io/explorer-service
 - Navigate to the repo folder
 
-####To get the explorer database up FIRST
+#### To get the explorer database up FIRST
 - Run `./dc.sh up`
 
-####To get the explorer API up SECOND
+#### To get the explorer API up SECOND
 - Go to `service/src/main/resources/application.properties`
 - Make sure the following properties are as follows:
     ```
@@ -51,10 +51,11 @@ Necessary tools
 - Run from command line
     ```
     sh ./gradlew -------------> Installs the gradlew stuff
+    ./gradlew build
     ./gradlew bootRun -Dspring.profiles.active=development
     ```
 
-####To get the explorer UI up THIRD
+#### To get the explorer UI up THIRD
 - Clone explorer-frontend public repo -> https://github.com/provenance-io/explorer-frontend
 - Navigate to the repo folder
 - Run `npm install`
@@ -62,7 +63,7 @@ Necessary tools
 - Navigate to http://localhost:3000/explorer
 
 
-###Swagger URLs
+### Swagger URLs
 Useful to hit the respective APIs directly
 
 Swagger for Explorer : http://localhost:8612/swagger-ui.html#/ <br/>
