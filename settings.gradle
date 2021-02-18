@@ -2,3 +2,6 @@ rootProject.name = 'explorer-service'
 
 include "service"
 include "database"
+include "exp-proto"
+
+project(":exp-proto").projectDir = new File(rootDir, "proto")

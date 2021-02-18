@@ -34,10 +34,13 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Added a script to pull in protos used in the client #5
+* Added a `build.gradle` to allow the protos to be compiled to java on build task #5
+
 ### Improvements
 * Added templates and build workflow
 * Updated `/api/v2/validators/height/{blockHeight}` to translate page to offset for proper searching
-
 
 ## PRE-HISTORY
 

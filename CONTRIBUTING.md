@@ -130,8 +130,8 @@ only pull requests targeted directly against main.
 - On the `RC` branch, prepare a new version section in the `CHANGELOG.md`
   - All links must be link-ified: `$ python ./scripts/linkify_changelog.py CHANGELOG.md`
   - Copy the entries into a `RELEASE_CHANGELOG.md`, this is needed so the bot knows which entries to add to the release page on github.
-- Kick off a large round of simulation testing (e.g. 400 seeds for 2k blocks)
-- If errors are found during the simulation testing, commit the fixes to `main`
+- Kick off a large round of testing
+- If errors are found during testing, commit the fixes to `main`
   and create a new `RC` branch (making sure to increment the `rcN`)
 - After simulation has successfully completed, create the release branch
   (`release/vX.XX.X`) from the `RC` branch
