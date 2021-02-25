@@ -1,14 +1,17 @@
-package io.provenance.explorer.domain
+package io.provenance.explorer.domain.core
 
 import com.google.common.io.BaseEncoding
 
 infix fun Int.min(b: Int): Int = b.takeIf { this > b } ?: this
+@ExperimentalUnsignedTypes
 infix fun UByte.shl(bitCount: Int) = ((this.toInt() shl bitCount) and 0xff).toUByte()
+@ExperimentalUnsignedTypes
 infix fun UByte.shr(bitCount: Int) = (this.toInt() shr bitCount).toUByte()
 
 /**
  * Given an array of bytes, associate an HRP and return a Bech32Data instance.
  */
+@ExperimentalUnsignedTypes
 fun ByteArray.toBech32Data(hrp: String = Bech32.PROVENANCE_MAINNET_ACCOUNT_PREFIX) =
     Bech32Data(hrp, Bech32.convertBits(this, 8, 5, true))
 
@@ -25,11 +28,13 @@ data class Bech32Data(val hrp: String, val fiveBitData: ByteArray) {
     /**
      * The encapsulated data as typical 8bit bytes.
      */
+    @ExperimentalUnsignedTypes
     val data = Bech32.convertBits(fiveBitData, 5, 8, false)
 
     /**
      * The encapsulated data returned as a Hexadecimal string
      */
+    @ExperimentalUnsignedTypes
     val hexData = BaseEncoding.base16().encode(this.data)
 
     /**
@@ -47,6 +52,7 @@ data class Bech32Data(val hrp: String, val fiveBitData: ByteArray) {
      * The Bech32 Address toString prints state information for debugging purposes.
      * @see address() for the bech32 encoded address string output.
      */
+    @ExperimentalUnsignedTypes
     override fun toString(): String {
         return "bech32 : ${this.address}\nhuman: ${this.hrp} \nbytes: ${this.hexData}"
         /*
@@ -74,33 +80,27 @@ class Bech32 {
 
         const val PROVENANCE_MAINNET_PREFIX                             = "pb"
         const val PROVENANCE_MAINNET_ACCOUNT_PREFIX           = PROVENANCE_MAINNET_PREFIX
-        const val PROVENANCE_MAINNET_PUBKEY_PREFIX            = PROVENANCE_MAINNET_PREFIX + "pub"
         const val PROVENANCE_MAINNET_VALIDATOR_ACCOUNT_PREFIX = PROVENANCE_MAINNET_PREFIX + "valoper"
-        const val PROVENANCE_MAINNET_VALIDATOR_PUBKEY_PREFIX  = PROVENANCE_MAINNET_PREFIX + "valoprpub"
         const val PROVENANCE_MAINNET_CONSENSUS_ACCOUNT_PREFIX = PROVENANCE_MAINNET_PREFIX + "valcons"
-        const val PROVENANCE_MAINNET_CONSENSUS_PUBKEY_PREFIX  = PROVENANCE_MAINNET_PREFIX + "valconspub"
 
-        // Test net account prefixes are broken out seperately so keys/accounts used for test can be easily identified
+        // Test net account prefixes are broken out separately so keys/accounts used for test can be easily identified
 
         const val PROVENANCE_TESTNET_PREFIX                             = "tp"
         const val PROVENANCE_TESTNET_ACCOUNT_PREFIX           = PROVENANCE_TESTNET_PREFIX
-        const val PROVENANCE_TESTNET_PUBKEY_PREFIX            = PROVENANCE_TESTNET_PREFIX + "pub"
         const val PROVENANCE_TESTNET_VALIDATOR_ACCOUNT_PREFIX = PROVENANCE_TESTNET_PREFIX + "valoper"
-        const val PROVENANCE_TESTNET_VALIDATOR_PUBKEY_PREFIX  = PROVENANCE_TESTNET_PREFIX + "valoprpub"
         const val PROVENANCE_TESTNET_CONSENSUS_ACCOUNT_PREFIX = PROVENANCE_TESTNET_PREFIX + "valcons"
-        const val PROVENANCE_TESTNET_CONSENSUS_PUBKEY_PREFIX  = PROVENANCE_TESTNET_PREFIX + "valconspub"
 
 
         /**
          * Decodes a Bech32 String
          */
         fun decode(bech32: String): Bech32Data {
-            require(bech32.length >= MIN_VALID_LENGTH && bech32.length <= MAX_VALID_LENGTH) { "invalid bech32 string length" }
+            require(bech32.length in MIN_VALID_LENGTH..MAX_VALID_LENGTH) { "invalid bech32 string length" }
             require(bech32.toCharArray().none { c -> c.toInt() < MIN_VALID_CODEPOINT || c.toInt() > MAX_VALID_CODEPOINT })
             { "invalid character in bech32: ${bech32.toCharArray().map { c -> c.toInt() }
-                .filter { c -> c.toInt() < MIN_VALID_CODEPOINT || c.toInt() > MAX_VALID_CODEPOINT }}" }
+                .filter { c -> c < MIN_VALID_CODEPOINT || c > MAX_VALID_CODEPOINT }}" }
 
-            require(bech32.equals(bech32.toLowerCase()) || bech32.equals(bech32.toUpperCase()))
+            require(bech32 == bech32.toLowerCase() || bech32 == bech32.toUpperCase())
             { "bech32 must be either all upper or lower case" }
             require(bech32.substring(1).dropLast(CHECKSUM_SIZE).contains('1')) { "invalid index of '1'" }
 
@@ -122,11 +122,12 @@ class Bech32 {
          * ConvertBits regroups bytes with toBits set based on reading groups of bits as a continuous stream group by fromBits.
          * This process is used to convert from base64 (from 8) to base32 (to 5) or the inverse.
          */
+        @ExperimentalUnsignedTypes
         fun convertBits(data: ByteArray, fromBits: Int, toBits: Int, pad: Boolean): ByteArray {
             require (fromBits in 1..8 && toBits in 1..8) { "only bit groups between 1 and 8 are supported"}
 
             // resulting bytes with each containing the toBits bits from the input set.
-            var regrouped = arrayListOf<Byte>()
+            val regrouped = arrayListOf<Byte>()
 
             var nextByte = 0.toUByte()
             var filledBits = 0
@@ -190,11 +191,11 @@ class Bech32 {
          * Calculates a bech32 checksum based on BIP 173 specification
          */
         fun checksum(hrp: String, data: Array<Byte>): ByteArray {
-            var values = expandHrp(hrp)
+            val values = expandHrp(hrp)
                 .plus(data.map { d -> d.toInt() })
                 .plus(Array<Int>(6){ _ -> 0}.toIntArray())
 
-            var poly = polymod(values) xor 1
+            val poly = polymod(values) xor 1
 
             return (0..5).map {
                 ((poly shr (5 * (5-it))) and 31).toByte()
@@ -216,7 +217,7 @@ class Bech32 {
         fun polymod(values: IntArray): Int {
             var chk = 1
             return values.map {
-                var b = chk shr 25
+                val b = chk shr 25
                 chk = ((chk and 0x1ffffff) shl 5) xor it
                 (0..4).map {
                     if (((b shr it) and 1) == 1) {

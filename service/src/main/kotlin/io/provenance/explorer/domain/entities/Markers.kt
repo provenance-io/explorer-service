@@ -2,8 +2,7 @@ package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
-import io.provenance.explorer.domain.models.clients.pb.MarkerDetail
-import io.provenance.explorer.service.getMarkerType
+import io.provenance.marker.v1.MarkerAccount
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.EntityClass
 import org.jetbrains.exposed.dao.EntityID
@@ -19,19 +18,19 @@ object MarkerCacheTable : IdTable<String>(name = "marker_cache") {
     val denom = varchar("denom", 64)
     val status = varchar("status", 128)
     val totalSupply = decimal("total_supply", 30, 10)
-    val data = jsonb<MarkerCacheTable, MarkerDetail>("data", OBJECT_MAPPER)
+    val data = jsonb<MarkerCacheTable, MarkerAccount>("data", OBJECT_MAPPER)
 }
 
 class MarkerCacheRecord(id: EntityID<String>) : Entity<String>(id) {
     companion object : EntityClass<String, MarkerCacheRecord>(MarkerCacheTable) {
 
-        fun insertIgnore(marker: MarkerDetail) =
+        fun insertIgnore(marker: MarkerAccount) =
             transaction {
                 MarkerCacheTable.insertIgnore {
                     it[this.markerAddress] = marker.baseAccount.address
-                    it[this.markerType] = marker.type.getMarkerType()
+                    it[this.markerType] = marker.markerType.name
                     it[this.denom] = marker.denom
-                    it[this.status] = marker.status
+                    it[this.status] = marker.status.toString()
                     it[this.totalSupply] = marker.supply.toBigDecimal()
                     it[this.data] = marker
                 }.let { marker }

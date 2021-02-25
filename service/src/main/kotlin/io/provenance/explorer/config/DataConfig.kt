@@ -34,7 +34,7 @@ class DataConfig {
     @Profile("!test")
     fun flywayMigration(dataSource: DataSource, flyway: Flyway): Int {
         flyway.info().all().forEach { logger.info("Flyway migration: ${it.script}") }
-        return flyway.migrate()
+        return flyway.migrate().migrationsExecuted
     }
 
     @Bean("flywayMigration")
@@ -42,7 +42,7 @@ class DataConfig {
     fun flywayMigrationTest(dataSource: DataSource, flyway: Flyway): Int {
         flyway.info().all().forEach { logger.info("Flyway migration: ${it.script}") }
         flyway.clean()
-        return flyway.migrate()
+        return flyway.migrate().migrationsExecuted
     }
 
 }

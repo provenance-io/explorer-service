@@ -1,13 +1,13 @@
 package io.provenance.explorer.domain.entities
 
+import com.google.protobuf.Timestamp
+import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
-import io.provenance.explorer.domain.extensions.pubKeyToBech32
 import io.provenance.explorer.domain.extensions.signatureKey
+import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.type
-import io.provenance.explorer.domain.models.clients.pb.PbTransaction
-import io.provenance.explorer.domain.models.clients.pb.TxAuthInfoSigner
-import io.provenance.explorer.domain.models.clients.pb.TxSingle
+import io.provenance.explorer.grpc.toKeyValue
 import org.jetbrains.exposed.dao.EntityID
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.insertIgnore
@@ -25,26 +25,24 @@ object TransactionCacheTable : CacheIdTable<String>(name = "transaction_cache") 
     val txTimestamp = datetime("tx_timestamp")
     val errorCode = integer("error_code").nullable()
     val codespace = varchar("codespace", 16).nullable()
-    val tx = jsonb<TransactionCacheTable, PbTransaction>("tx", OBJECT_MAPPER)
-    val txV2 = jsonb<TransactionCacheTable, TxSingle>("tx_v2", OBJECT_MAPPER)
+    val txV2 = jsonb<TransactionCacheTable, ServiceOuterClass.GetTxResponse>("tx_v2", OBJECT_MAPPER)
 }
 
 class TransactionCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
     companion object : CacheEntityClass<String, TransactionCacheRecord>(TransactionCacheTable) {
-        fun insertIgnore(txn: PbTransaction, accountPrefix: String, txnV2: TxSingle) =
+        fun insertIgnore(tx: ServiceOuterClass.GetTxResponse, txTime: Timestamp) =
             transaction {
                 TransactionCacheTable.insertIgnore {
-                    it[hash] = txn.txhash
-                    it[height] = txn.height.toInt()
-                    if (txn.code != null) it[errorCode] = txn.code
-                    if (txn.codespace != null) it[codespace] = txn.codespace
-                    it[txType] = if (txn.code == null) txn.type()!! else "ERROR"
-                    it[signer] = txnV2.tx.authInfo.signerInfos.signatureKey()?.pubKeyToBech32(accountPrefix)
-                    it[gasUsed] = txn.gasUsed.toInt()
-                    it[gasWanted] = txn.gasWanted.toInt()
-                    it[txTimestamp] = DateTime.parse(txn.timestamp)
-                    it[tx] = txn
-                    it[txV2] = txnV2
+                    it[hash] = tx.txResponse.txhash
+                    it[height] = tx.txResponse.height.toInt()
+                    if (tx.txResponse.code > 0) it[errorCode] = tx.txResponse.code
+                    if (tx.txResponse.codespace.isNotBlank()) it[codespace] = tx.txResponse.codespace
+                    it[txType] = if (tx.txResponse.code == 0) tx.txResponse.type()!! else "ERROR"
+                    it[signer] = tx.tx.authInfo.signerInfosList.signatureKey()?.toKeyValue()
+                    it[gasUsed] = tx.txResponse.gasUsed.toInt()
+                    it[gasWanted] = tx.txResponse.gasWanted.toInt()
+                    it[txTimestamp] = txTime.toDateTime()
+                    it[txV2] = tx
                     it[hitCount] = 0
                     it[lastHit] = DateTime.now()
                 }
@@ -68,7 +66,6 @@ class TransactionCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
     var txTimestamp by TransactionCacheTable.txTimestamp
     var errorCode by TransactionCacheTable.errorCode
     var codespace by TransactionCacheTable.codespace
-    var tx by TransactionCacheTable.tx
     var txV2 by TransactionCacheTable.txV2
     override var lastHit by TransactionCacheTable.lastHit
     override var hitCount by TransactionCacheTable.hitCount

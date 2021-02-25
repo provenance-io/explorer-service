@@ -1,10 +1,10 @@
 package io.provenance.explorer.domain.entities
 
+import cosmos.base.tendermint.v1beta1.Query
+import cosmos.staking.v1beta1.QueryOuterClass
+import cosmos.staking.v1beta1.Staking
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
-import io.provenance.explorer.domain.models.clients.pb.PbDelegations
-import io.provenance.explorer.domain.models.clients.pb.PbStakingValidator
-import io.provenance.explorer.domain.models.clients.pb.PbValidatorsResponse
 import org.jetbrains.exposed.dao.EntityID
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
@@ -14,18 +14,23 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 
 object ValidatorAddressesTable : IntIdTable(name = "validator_addresses") {
-    val consensusAddress = varchar("consensus_address", 96).uniqueIndex()
-    val consensusPubKeyAddress = varchar("consensus_pubkey_address", 96).uniqueIndex()
+    val consensusPubkey = varchar("consensus_pubkey", 96).uniqueIndex()
+    val accountAddress = varchar("account_address", 96).uniqueIndex()
     val operatorAddress = varchar("operator_address", 96).uniqueIndex()
+    val consensusAddress = varchar("consensus_address", 96).uniqueIndex()
 }
 
 class ValidatorAddressesRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<ValidatorAddressesRecord>(ValidatorAddressesTable) {
-        fun findByConsensusPubKey(address: String) = transaction {
-            ValidatorAddressesRecord.find { ValidatorAddressesTable.consensusPubKeyAddress eq address }.firstOrNull()
+        fun findByAccount(address: String) = transaction {
+            ValidatorAddressesRecord.find { ValidatorAddressesTable.accountAddress eq address }.firstOrNull()
         }
 
-        fun findByConsensus(address: String) = transaction {
+        fun findByConsensusPubkey(pubkey: String) = transaction {
+            ValidatorAddressesRecord.find { ValidatorAddressesTable.consensusPubkey eq pubkey }.firstOrNull()
+        }
+
+        fun findByConsensusAddress(address: String) = transaction {
             ValidatorAddressesRecord.find { ValidatorAddressesTable.consensusAddress eq address }.firstOrNull()
         }
 
@@ -33,30 +38,33 @@ class ValidatorAddressesRecord(id: EntityID<Int>) : IntEntity(id) {
             ValidatorAddressesRecord.find { ValidatorAddressesTable.operatorAddress eq address }.firstOrNull()
         }
 
-        fun insertIgnore(consensus: String, consensusPubKey: String, operator: String) = transaction {
+        fun insertIgnore(account: String, operator: String, consensusPubkey: String, consensusAddress : String) =
+            transaction {
             ValidatorAddressesTable.insertIgnore {
-                it[this.consensusAddress] = consensus
-                it[this.consensusPubKeyAddress] = consensusPubKey
+                it[this.consensusPubkey] = consensusPubkey
+                it[this.accountAddress] = account
                 it[this.operatorAddress] = operator
+                it[this.consensusAddress] = consensusAddress
             }
         }
     }
 
-    var consensusAddress by ValidatorAddressesTable.consensusAddress
-    var consensusPubKeyAddress by ValidatorAddressesTable.consensusPubKeyAddress
+    var consensusPubkey by ValidatorAddressesTable.consensusPubkey
+    var accountAddress by ValidatorAddressesTable.accountAddress
     var operatorAddress by ValidatorAddressesTable.operatorAddress
+    var consensusAddress by ValidatorAddressesTable.consensusAddress
 }
 
 
 object ValidatorsCacheTable : CacheIdTable<Int>(name = "validators_cache") {
     val height = reference("height", BlockCacheTable.height).primaryKey()
     override val id = height.entityId()
-    val validators = jsonb<ValidatorsCacheTable, PbValidatorsResponse>("validators", OBJECT_MAPPER)
+    val validators = jsonb<ValidatorsCacheTable, Query.GetValidatorSetByHeightResponse>("validators", OBJECT_MAPPER)
 }
 
 class ValidatorsCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
     companion object : CacheEntityClass<Int, ValidatorsCacheRecord>(ValidatorsCacheTable) {
-        fun insertIgnore(blockHeight: Int, json: PbValidatorsResponse) =
+        fun insertIgnore(blockHeight: Int, json: Query.GetValidatorSetByHeightResponse) =
             transaction {
                 ValidatorsCacheTable.insertIgnore {
                     it[this.height] = blockHeight
@@ -77,12 +85,12 @@ class ValidatorsCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
 object StakingValidatorCacheTable : CacheIdTable<String>(name = "staking_validator_cache") {
     val operatorAddress = reference("operator_address", ValidatorAddressesTable.operatorAddress).primaryKey()
     override val id = operatorAddress.entityId()
-    val stakingValidator = jsonb<StakingValidatorCacheTable, PbStakingValidator>("staking_validator", OBJECT_MAPPER)
+    val stakingValidator = jsonb<StakingValidatorCacheTable, Staking.Validator>("staking_validator", OBJECT_MAPPER)
 }
 
 class StakingValidatorCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
     companion object : CacheEntityClass<String, StakingValidatorCacheRecord>(StakingValidatorCacheTable) {
-        fun insertIgnore(operatorAddress: String, json: PbStakingValidator) =
+        fun insertIgnore(operatorAddress: String, json: Staking.Validator) =
             transaction {
                 StakingValidatorCacheTable.insertIgnore {
                     it[this.operatorAddress] = operatorAddress
@@ -104,12 +112,12 @@ object ValidatorDelegationCacheTable : CacheIdTable<String>(name = "validator_de
     val operatorAddress = reference("operator_address", ValidatorAddressesTable.operatorAddress).primaryKey()
     override val id = operatorAddress.entityId()
     val validatorDelegations =
-        jsonb<ValidatorDelegationCacheTable, PbDelegations>("validator_delegations", OBJECT_MAPPER)
+        jsonb<ValidatorDelegationCacheTable, QueryOuterClass.QueryValidatorDelegationsResponse>("validator_delegations", OBJECT_MAPPER)
 }
 
 class ValidatorDelegationCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
     companion object : CacheEntityClass<String, ValidatorDelegationCacheRecord>(ValidatorDelegationCacheTable) {
-        fun insertIgnore(operatorAddress: String, json: PbDelegations) =
+        fun insertIgnore(operatorAddress: String, json: QueryOuterClass.QueryValidatorDelegationsResponse) =
             transaction {
                 ValidatorDelegationCacheTable.insertIgnore {
                     it[this.operatorAddress] = operatorAddress

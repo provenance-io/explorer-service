@@ -1,25 +1,25 @@
 package io.provenance.explorer.service
 
-import io.provenance.explorer.client.PbClient
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
-import io.provenance.explorer.domain.models.clients.pb.MarkerDetail.Companion.getManagingAccounts
-import io.provenance.explorer.domain.models.clients.pb.MarkerDetail.Companion.isMintable
 import io.provenance.explorer.domain.models.explorer.AssetDetail
 import io.provenance.explorer.domain.models.explorer.AssetHolder
 import io.provenance.explorer.domain.models.explorer.AssetListed
+import io.provenance.explorer.grpc.getManagingAccounts
+import io.provenance.explorer.grpc.isMintable
+import io.provenance.explorer.grpc.v1.MarkerGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.math.RoundingMode
 
 @Service
-class AssetService(private val pbClient: PbClient, private val blockService: BlockService) {
+class AssetService(private val pbClient: MarkerGrpcClient, private val accountService: AccountService) {
 
-    fun getAllAssets() = pbClient.getMarkers().markers.map {
+    fun getAllAssets() = pbClient.getAllMarkers().map {
         MarkerCacheRecord.insertIgnore(it).let { detail ->
             AssetListed(
                 detail.denom,
                 detail.baseAccount.address,
-                blockService.getTotalSupply(detail.denom),
+                accountService.getTotalSupply(detail.denom),
                 detail.supply.toBigDecimal()
             )
         }
@@ -27,7 +27,7 @@ class AssetService(private val pbClient: PbClient, private val blockService: Blo
 
     private fun getAssetRaw(denom: String) = transaction {
         MarkerCacheRecord.findById(denom)?.data ?:
-            pbClient.getMarkerDetail(denom).marker.let { MarkerCacheRecord.insertIgnore(it) }
+            pbClient.getMarkerDetail(denom).let { MarkerCacheRecord.insertIgnore(it) }
     }
 
     fun getAssetDetail(denom: String) =
@@ -37,7 +37,7 @@ class AssetService(private val pbClient: PbClient, private val blockService: Blo
                     it.denom,
                     it.baseAccount.address,
                     it.getManagingAccounts(),
-                    blockService.getTotalSupply(denom),
+                    accountService.getTotalSupply(denom),
                     it.supply.toBigDecimal(),
                     it.isMintable(),
                     getAssetHolders(denom).count(),
@@ -45,13 +45,11 @@ class AssetService(private val pbClient: PbClient, private val blockService: Blo
                 )
             }
 
-    fun getAssetHolders(denom: String) = blockService.getTotalSupply(denom).let { supply ->
-        pbClient.getMarkerHolders(denom).balances
+    fun getAssetHolders(denom: String) = accountService.getTotalSupply(denom).let { supply ->
+        pbClient.getMarkerHolders(denom).balancesList
             .map { bal ->
-                val balance = bal.coins.first { coin -> coin.denom == denom }.amount.toBigDecimal()
+                val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount.toBigDecimal()
                 AssetHolder(bal.address, balance, balance.divide(supply, 6, RoundingMode.HALF_UP))
             }
     }
 }
-
-fun String.getMarkerType() = this.split(".").last()
