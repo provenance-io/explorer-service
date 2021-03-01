@@ -1,8 +1,8 @@
 package io.provenance.explorer.domain.entities
 
+import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
-import io.provenance.explorer.domain.models.clients.tendermint.BlockMeta
 import org.jetbrains.exposed.dao.EntityID
 import org.jetbrains.exposed.dao.IdTable
 import org.jetbrains.exposed.dao.IntEntity
@@ -14,7 +14,7 @@ import org.joda.time.DateTime
 object BlockCacheTable : CacheIdTable<Int>(name = "block_cache") {
     val height = integer("height").primaryKey()
     override val id = height.entityId()
-    val block = jsonb<BlockCacheTable, BlockMeta>("block", OBJECT_MAPPER)
+    val block = jsonb<BlockCacheTable, Query.GetBlockByHeightResponse>("block", OBJECT_MAPPER)
     val blockTimestamp = datetime("block_timestamp")
     val txCount = integer("tx_count")
 }
@@ -22,7 +22,12 @@ object BlockCacheTable : CacheIdTable<Int>(name = "block_cache") {
 class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
     companion object : CacheEntityClass<Int, BlockCacheRecord>(BlockCacheTable) {
 
-        fun insertIgnore(blockHeight: Int, transactionCount: Int, timestamp: DateTime, blockMeta: BlockMeta) =
+        fun insertIgnore(
+            blockHeight: Int,
+            transactionCount: Int,
+            timestamp: DateTime,
+            blockMeta: Query.GetBlockByHeightResponse
+        ) =
             transaction {
                 BlockCacheTable.insertIgnore {
                     it[this.height] = blockHeight

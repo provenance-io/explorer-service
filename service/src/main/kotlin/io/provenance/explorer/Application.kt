@@ -10,28 +10,24 @@ import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.scheduling.annotation.EnableScheduling
-import springfox.documentation.swagger2.annotations.EnableSwagger2
+import org.springframework.web.servlet.config.annotation.EnableWebMvc
 import java.util.TimeZone
 
 @ComponentScan(basePackages = ["io.provenance.explorer" ])
-@EnableSwagger2
-@EnableAutoConfiguration(
-        exclude = [
-            HibernateJpaAutoConfiguration::class
-        ]
-)
+@EnableAutoConfiguration(exclude = [HibernateJpaAutoConfiguration::class])
 @EnableConfigurationProperties(value = [ExplorerProperties::class])
 @EnableScheduling
-
-open class Application
+@EnableWebMvc
+class Application
 
 fun main(args: Array<String>) {
     TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
     SpringApplicationBuilder(Application::class.java).properties(
-            "spring.config.location:classpath:/"
+        "spring.config.location:classpath:/"
     ).build().run(*args)
 }
 
 val OBJECT_MAPPER = ObjectMapper()
-        .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE)
-        .configureProvenance()
+    .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE)
+    .configureProvenance()
+

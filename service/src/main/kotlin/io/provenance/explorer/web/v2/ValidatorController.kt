@@ -41,8 +41,7 @@ class ValidatorController(private val explorerService: ExplorerService) : BaseCo
 
     @ApiOperation("Returns validator by address id")
     @GetMapping("/{id}")
-    fun validator(@PathVariable id: String): ResponseEntity<ValidatorDetails?> =
-        ResponseEntity.ok(explorerService.getValidator(id))
+    fun validator(@PathVariable id: String) = ResponseEntity.ok(explorerService.getValidator(id))
 
     @ApiOperation("Returns set of validators at block height")
     @GetMapping("/height/{blockHeight}")

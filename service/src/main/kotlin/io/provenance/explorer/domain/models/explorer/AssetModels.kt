@@ -1,10 +1,9 @@
 package io.provenance.explorer.domain.models.explorer
 
-import io.provenance.explorer.domain.models.clients.CustomPubKey
-import io.provenance.explorer.domain.models.clients.DenomAmount
+import com.google.protobuf.Any
+import cosmos.base.v1beta1.CoinOuterClass
 import java.math.BigDecimal
 import java.math.BigInteger
-import java.security.PublicKey
 
 
 data class AssetListed(
@@ -36,8 +35,10 @@ data class AccountDetail(
     val address: String,
     val accountNumber: Long,
     val sequence: Int,
-    val publicKey: CustomPubKey?,
-    val balances: List<DenomAmount>
+    val publicKey: String?,
+    val balances: List<Coin>
 )
 
+data class Coin ( val amount: BigInteger, val denom: String)
 
+fun CoinOuterClass.Coin.toData() = Coin(this.amount.toBigInteger(), this.denom)

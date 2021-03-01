@@ -41,6 +41,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Improvements
 * Added templates and build workflow
 * Updated `/api/v2/validators/height/{blockHeight}` to translate page to offset for proper searching
+* Upgraded to gRpc blockchain calls #17
+* Upgraded to Kotlin gradle 
 
 ## PRE-HISTORY
 

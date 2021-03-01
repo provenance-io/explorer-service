@@ -1,13 +1,19 @@
 package io.provenance.explorer.service
 
-import io.provenance.explorer.client.PbClient
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorAddressesRecord
-import io.provenance.explorer.domain.extensions.edPubKeyToBech32
+import io.provenance.explorer.domain.entities.ValidatorDelegationCacheRecord
+import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
+import io.provenance.explorer.domain.entities.updateHitCount
+import io.provenance.explorer.domain.extensions.isPastDue
+import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.extensions.uptime
-import io.provenance.explorer.domain.models.clients.pb.PbDelegations
 import io.provenance.explorer.domain.models.explorer.ValidatorDetails
+import io.provenance.explorer.grpc.toConsAddress
+import io.provenance.explorer.grpc.toKeyValue
+import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
@@ -15,26 +21,49 @@ import java.math.RoundingMode
 
 @Service
 class ValidatorService(
-    private val explorerProperties: ExplorerProperties,
-    private val cacheService: CacheService,
+    private val props: ExplorerProperties,
     private val blockService: BlockService,
-    private val pbClient: PbClient
+    private val grpcClient: ValidatorGrpcClient
 ) {
 
     protected val logger = logger(ValidatorService::class)
 
+    fun getValidatorsByHeightFromCache(blockHeight: Int) = transaction {
+        ValidatorsCacheRecord.findById(blockHeight)?.also {
+            ValidatorsCacheRecord.updateHitCount(blockHeight)
+        }?.validators
+    }
+
+    fun getStakingValidatorFromCache(operatorAddress: String) = transaction {
+        StakingValidatorCacheRecord.findById(operatorAddress)?.let {
+            if (it.lastHit.millis.isPastDue(props.stakingValidatorTtlMs())) {
+                it.delete()
+                null
+            } else it.stakingValidator
+        }
+    }
+
+    fun getStakingValidatorDelegationsFromCache(operatorAddress: String) = transaction {
+        ValidatorDelegationCacheRecord.findById(operatorAddress)?.let {
+            if (it.lastHit.millis.isPastDue(props.stakingValidatorDelegationsTtlMs())) {
+                it.delete()
+                null
+            } else it.validatorDelegations
+        }
+    }
+
     fun getValidators(blockHeight: Int) =
-        cacheService.getValidatorsByHeight(blockHeight)
-            ?: pbClient.getValidatorsAtHeight(blockService.getLatestBlockHeightIndex())
-                .let { cacheService.addValidatorsToCache(blockHeight, it) }
+        getValidatorsByHeightFromCache(blockHeight)
+        ?: grpcClient.getValidatorsAtHeight(blockService.getLatestBlockHeightIndex())
+            .let { ValidatorsCacheRecord.insertIgnore(blockHeight, it) }
 
     fun getValidator(address: String) =
-        getValidatorOperatorAddress(address)?.let { addr ->
+        getValidatorOperatorAddress(address)!!.let { addr ->
             val currentHeight = blockService.getLatestBlockHeightIndex()
             //TODO make async and add caching
             val stakingValidator = getStakingValidator(addr.operatorAddress)
-            val signingInfo = getSigningInfos().info.firstOrNull { it.address == addr.consensusAddress }
-            val validatorSet = pbClient.getLatestValidators().validators
+            val signingInfo = getSigningInfos().firstOrNull { it.address == addr.consensusAddress }
+            val validatorSet = grpcClient.getLatestValidators()
             val latestValidator = validatorSet.firstOrNull { it.address == addr.consensusAddress }!!
             val votingPowerPercent = BigDecimal(validatorSet.sumBy { it.votingPower.toInt() })
                 .divide(latestValidator.votingPower.toBigDecimal(), 6, RoundingMode.HALF_UP)
@@ -44,74 +73,72 @@ class ValidatorService(
                 votingPowerPercent,
                 stakingValidator.description.moniker,
                 addr.operatorAddress,
-                addr.operatorAddress,
-                addr.consensusPubKeyAddress,
+                addr.accountAddress,
+                stakingValidator.consensusPubkey.toConsAddress(props.provValConsPrefix()) ?: "",
                 signingInfo!!.missedBlocksCounter.toInt(),
                 currentHeight - signingInfo.startHeight.toInt(),
                 0,
-                signingInfo.uptime(currentHeight))
+                signingInfo.uptime(currentHeight),
+                null,  // TODO: Update when we can get images going
+                stakingValidator.description.details,
+                stakingValidator.description.website,
+                stakingValidator.description.identity)
         }
 
     fun getStakingValidator(operatorAddress: String) =
-        cacheService.getStakingValidator(operatorAddress)
-            ?: pbClient.getStakingValidator(operatorAddress)
-                .let { cacheService.addStakingValidatorToCache(operatorAddress, it.validator) }
+        getStakingValidatorFromCache(operatorAddress)
+        ?: grpcClient.getStakingValidator(operatorAddress)
+            .let { StakingValidatorCacheRecord.insertIgnore(operatorAddress, it) }
 
     fun getStakingValidatorDelegations(operatorAddress: String) =
-        cacheService.getStakingValidatorDelegations(operatorAddress)
-            ?: pbClient.getStakingValidatorDelegations(operatorAddress)
-                .let { cacheService.addStakingValidatorDelegations(operatorAddress, PbDelegations(it.delegationResponses)) }
+        getStakingValidatorDelegationsFromCache(operatorAddress)
+        ?: grpcClient.getStakingValidatorDelegations(operatorAddress)
+            .let { ValidatorDelegationCacheRecord.insertIgnore(operatorAddress, it) }
 
-    fun getValidatorDistribution(operatorAddress: String) = pbClient.getValidatorDistribution(operatorAddress).result
+//    fun getValidatorDistribution(operatorAddress: String) = grpcClient.getValidatorDistribution(operatorAddress).result
 
     fun getValidatorOperatorAddress(address: String) = when {
-        address.startsWith(explorerProperties.provenanceValidatorConsensusPubKeyPrefix()) -> findAddressByConsensusPubKey(address)
-        address.startsWith(explorerProperties.provenanceValidatorConsensusPrefix()) -> findAddressByConsensus(address)
-        address.startsWith(explorerProperties.provenanceValidatorOperatorPrefix()) -> findAddressByOperator(address)
+        address.startsWith(props.provValOperPrefix()) -> findAddressByOperator(address)
+        address.startsWith(props.provValConsPrefix()) -> findAddressByConsensus(address)
+        address.startsWith(props.provAccPrefix()) -> findAddressByAccount(address)
         else -> null
     }
 
-    fun getStakingValidators(status: String, offset: Int, count: Int) = pbClient.getStakingValidators(status, offset, count)
+    fun getStakingValidators(status: String, offset: Int, count: Int) =
+        grpcClient.getStakingValidators(status, offset, count)
 
-    fun getSigningInfos() = pbClient.getSlashingSigningInfo()
+    fun getSigningInfos() = grpcClient.getSigningInfos()
 
-    fun findAddressByConsensusPubKey(address: String) =
-        ValidatorAddressesRecord.findByConsensusPubKey(address)
-            ?: discoverAddresses().let { ValidatorAddressesRecord.findByConsensusPubKey(address) }
+    fun findAddressByAccount(address: String) =
+        ValidatorAddressesRecord.findByAccount(address)
+        ?: discoverAddresses().let { ValidatorAddressesRecord.findByAccount(address) }
 
     fun findAddressByConsensus(address: String) =
-        ValidatorAddressesRecord.findByConsensus(address)
-            ?: discoverAddresses().let { ValidatorAddressesRecord.findByConsensus(address) }
+        ValidatorAddressesRecord.findByConsensusAddress(address)
+        ?: discoverAddresses().let { ValidatorAddressesRecord.findByConsensusAddress(address) }
 
     fun findAddressByOperator(address: String) =
         ValidatorAddressesRecord.findByOperator(address)
-            ?: discoverAddresses().let { ValidatorAddressesRecord.findByOperator(address) }
+        ?: discoverAddresses().let { ValidatorAddressesRecord.findByOperator(address) }
 
-    private fun findAllConsensusAddresses() = transaction { ValidatorAddressesRecord.all().map { it.consensusAddress } }
+    private fun findAllConsensusPubkeys() = transaction { ValidatorAddressesRecord.all().map { it.consensusPubkey } }
 
     private fun discoverAddresses() = let {
-        val currentValidators = findAllConsensusAddresses()
-        val latestValidators = pbClient.getLatestValidators()
+        val currentValidatorsKeys = findAllConsensusPubkeys()
+        val latestValidators = grpcClient.getLatestValidators()
         //TODO make this loop through all validators for the case of more than the limit
-        val pairedAddresses = pbClient.getStakingValidators("BOND_STATUS_BONDED", 0, 100)
-            .validators
-            .map {
-                Pair<String, String>(
-                    it.consensusPubkey.key.edPubKeyToBech32(
-                        explorerProperties
-                            .provenanceValidatorConsensusPubKeyPrefix()), it.operatorAddress)
-            }
-        latestValidators.validators
-            .filter { !currentValidators.contains(it.address) }
+        val pairedAddresses = grpcClient.getStakingValidators("BOND_STATUS_BONDED", 0, 100)
+            .map { Pair<String, String>(it.consensusPubkey.toKeyValue()!!, it.operatorAddress) }
+        latestValidators
+            .filter { !currentValidatorsKeys.contains(it.pubKey.toKeyValue()) }
             .forEach { validator ->
-                pairedAddresses.firstOrNull {
-                    validator.pubKey.key
-                        .edPubKeyToBech32(explorerProperties.provenanceValidatorConsensusPubKeyPrefix()) == it.first }
+                pairedAddresses.firstOrNull { validator.pubKey.toKeyValue()!! == it.first }
                     ?.let {
                         ValidatorAddressesRecord.insertIgnore(
-                            validator.address,
-                            validator.pubKey.key.edPubKeyToBech32(explorerProperties.provenanceValidatorConsensusPubKeyPrefix()),
-                            it.second)
+                            it.second.translateAddress(props).accountAddr,
+                            it.second,
+                            validator.pubKey.toKeyValue()!!,
+                            validator.pubKey.toConsAddress(props.provValConsPrefix())!!)
                     }
             }
     }

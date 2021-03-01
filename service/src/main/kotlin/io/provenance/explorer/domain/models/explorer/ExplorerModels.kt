@@ -1,5 +1,7 @@
 package io.provenance.explorer.domain.models.explorer
 
+import cosmos.tx.v1beta1.ServiceOuterClass
+import org.joda.time.DateTime
 import java.math.BigDecimal
 
 data class PagedResults<T>(val pages: Int, val results: List<T>)
@@ -41,7 +43,8 @@ data class ValidatorSummary(
     val selfBonded: BigDecimal,
     val selfBondedDenomination: String,
     val delegators: Int,
-    val bondHeight: Int
+    val bondHeight: Int,
+    val status: String
 )
 
 data class ValidatorDetails(
@@ -54,7 +57,11 @@ data class ValidatorDetails(
     val missedBlocks: Int,
     val totalBlocks: Int,
     val bondHeight: Int,
-    val uptime: BigDecimal
+    val uptime: BigDecimal,
+    val imgUrl: String?,
+    val description: String?,
+    val siteUrl: String?,
+    val identity: String?
 )
 
 data class BlockDetail(
@@ -91,6 +98,13 @@ data class TxDetails(
 )
 
 data class TxHistory(val date: String, var numberTxs: Int)
+
+data class TxFromCache(
+    val tx: ServiceOuterClass.GetTxResponse,
+    val type: String,
+    val signer: String?,
+    val timestamp: DateTime
+)
 
 data class Spotlight(
     val latestBlock: BlockDetail,

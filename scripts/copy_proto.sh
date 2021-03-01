@@ -22,13 +22,16 @@ TM_LIBS="third_party/proto/tendermint/libs/bits"
 GOGO_PROTO_TYPES="third_party/proto/gogoproto"
 COSMOS_PROTO_TYPES="third_party/proto/cosmos_proto"
 COSMOS_BASE_TYPES="third_party/proto/cosmos/base"
+COSMOS_DISTRIBUTION_TYPES="third_party/proto/cosmos/distribution"
 COSMOS_SIGNING_TYPES="third_party/proto/cosmos/tx/signing"
 COSMOS_STAKING_TYPES="third_party/proto/cosmos/staking"
+COSMOS_GOV_TYPES="third_party/proto/cosmos/gov"
 COSMOS_SLASHING_TYPES="third_party/proto/cosmos/slashing"
 COSMOS_CRYPTO_TYPES="third_party/proto/cosmos/crypto"
 COSMOS_AUTH_TYPES="third_party/proto/cosmos/auth"
 COSMOS_BANK_TYPES="third_party/proto/cosmos/bank"
 COSMOS_TX_TYPES="third_party/proto/cosmos/tx"
+COSMOS_PARAM_TYPES="third_party/proto/cosmos/params"
 CONFIO_TYPES="third_party/proto/confio"
 
 
@@ -49,6 +52,7 @@ echo "Adding cos bank"
 mkdir -p $COSMOS_BANK_TYPES/v1beta1
 curl -sSL $PROVENANCE_MAIN_URL/$COSMOS_BANK_TYPES/v1beta1/bank.proto >$COSMOS_BANK_TYPES/v1beta1/bank.proto
 curl -sSL $COSMOS_URL/bank/v1beta1/query.proto >$COSMOS_BANK_TYPES/v1beta1/query.proto
+curl -sSL $COSMOS_URL/bank/v1beta1/tx.proto >$COSMOS_BANK_TYPES/v1beta1/tx.proto
 
 echo "Adding cos base"
 mkdir -p $COSMOS_BASE_TYPES/v1beta1
@@ -62,6 +66,10 @@ echo "Adding cos base/query"
 mkdir -p $COSMOS_BASE_TYPES/query/v1beta1
 curl -sSL $PROVENANCE_MAIN_URL/$COSMOS_BASE_TYPES/query/v1beta1/pagination.proto >$COSMOS_BASE_TYPES/query/v1beta1/pagination.proto
 
+echo "Adding cos base/reflection"
+mkdir -p $COSMOS_BASE_TYPES/reflection/v1beta1
+curl -sSL $COSMOS_URL/base/reflection/v1beta1/reflection.proto >$COSMOS_BASE_TYPES/reflection/v1beta1/reflection.proto
+
 echo "Adding cos base/tendermint"
 mkdir -p $COSMOS_BASE_TYPES/tendermint/v1beta1
 curl -sSL $COSMOS_URL/base/tendermint/v1beta1/query.proto >$COSMOS_BASE_TYPES/tendermint/v1beta1/query.proto
@@ -73,6 +81,24 @@ curl -sSL $PROVENANCE_MAIN_URL/$COSMOS_CRYPTO_TYPES/multisig/v1beta1/multisig.pr
 echo "Adding cos crypto/secp256k1"
 mkdir -p $COSMOS_CRYPTO_TYPES/secp256k1
 curl -sSL $PROVENANCE_MAIN_URL/$COSMOS_CRYPTO_TYPES/secp256k1/keys.proto >$COSMOS_CRYPTO_TYPES/secp256k1/keys.proto
+
+echo "Adding cos crypto/ed25519"
+mkdir -p $COSMOS_CRYPTO_TYPES/ed25519
+curl -sSL $COSMOS_URL/crypto/ed25519/keys.proto >$COSMOS_CRYPTO_TYPES/ed25519/keys.proto
+
+echo "Adding cos distribution"
+mkdir -p $COSMOS_DISTRIBUTION_TYPES/v1beta1
+curl -sSL $COSMOS_URL/distribution/v1beta1/query.proto >$COSMOS_DISTRIBUTION_TYPES/v1beta1/query.proto
+curl -sSL $COSMOS_URL/distribution/v1beta1/distribution.proto >$COSMOS_DISTRIBUTION_TYPES/v1beta1/distribution.proto
+
+echo "Adding cos gov"
+mkdir -p $COSMOS_GOV_TYPES/v1beta1
+curl -sSL $COSMOS_URL/gov/v1beta1/tx.proto >$COSMOS_GOV_TYPES/v1beta1/tx.proto
+curl -sSL $COSMOS_URL/gov/v1beta1/gov.proto >$COSMOS_GOV_TYPES/v1beta1/gov.proto
+
+echo "Adding cos params"
+mkdir -p $COSMOS_PARAM_TYPES/v1beta1
+curl -sSL $COSMOS_URL/params/v1beta1/params.proto >$COSMOS_PARAM_TYPES/v1beta1/params.proto
 
 echo "Adding cos signing"
 mkdir -p $COSMOS_SIGNING_TYPES/v1beta1

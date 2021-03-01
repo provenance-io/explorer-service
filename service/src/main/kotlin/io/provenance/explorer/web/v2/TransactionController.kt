@@ -1,6 +1,5 @@
 package io.provenance.explorer.web.v2
 
-import io.provenance.explorer.domain.models.clients.pb.PbTransaction
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.RecentTx
 import io.provenance.explorer.domain.models.explorer.TxDetails
@@ -41,8 +40,7 @@ class TransactionController(private val explorerService: ExplorerService) : Base
 
     @ApiOperation("Returns transaction json by hash value")
     @GetMapping("/{hash}/json")
-    fun transactionJson(@PathVariable hash: String):
-        ResponseEntity<PbTransaction> = ResponseEntity.ok(explorerService.getTransactionJson(hash))
+    fun transactionJson(@PathVariable hash: String) = ResponseEntity.ok(explorerService.getTransactionJson(hash))
 
     @ApiOperation("Return transaction by block height")
     @GetMapping("/height/{height}")

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import javax.validation.constraints.Min
 
+@Deprecated("Deprecated in v=favor of V2 of the API.")
 @Validated
 @RestController
 @RequestMapping(value = ["/api/v1"])
