@@ -43,10 +43,8 @@ Necessary tools
 - Go to `service/src/main/resources/application.properties`
 - Make sure the following properties are as follows:
     ```
-    provenance-explorer.mainnet=true
-    provenance-explorer.tendermint-url=http://localhost:26657/
-    provenance-explorer.tendermint-client-timeout-ms=5000
-    provenance-explorer.pb-url=http://localhost:1317/
+    provenance-explorer.mainnet=false
+    provenance-explorer.pb-url=http://localhost:9090
     ```
 - Run from command line
     ```
