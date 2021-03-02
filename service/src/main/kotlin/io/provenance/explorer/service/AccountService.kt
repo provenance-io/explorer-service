@@ -1,9 +1,11 @@
 package io.provenance.explorer.service
 
 import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.extensions.toSigObj
 import io.provenance.explorer.domain.models.explorer.AccountDetail
+import io.provenance.explorer.domain.models.explorer.Signatures
 import io.provenance.explorer.domain.models.explorer.toData
-import io.provenance.explorer.grpc.toKeyValue
+import io.provenance.explorer.grpc.toMultiSig
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
@@ -21,7 +23,7 @@ class AccountService(private val accountClient: AccountGrpcClient) {
             it.id.value,
             it.accountNumber,
             it.baseAccount.sequence.toInt(),
-            it.baseAccount.pubKey.toKeyValue(),
+            AccountRecord.findSigsByAddress(it.id.value).toSigObj(),
             getAccountBalances(address)
         )
     }

@@ -35,7 +35,7 @@ data class AccountDetail(
     val address: String,
     val accountNumber: Long,
     val sequence: Int,
-    val publicKey: String?,
+    val publicKeys: Signatures,
     val balances: List<Coin>
 )
 

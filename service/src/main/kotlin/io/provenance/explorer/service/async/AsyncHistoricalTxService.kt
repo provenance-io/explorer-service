@@ -6,7 +6,6 @@ import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.TransactionService
-import org.joda.time.DateTime
 import org.joda.time.LocalDate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -28,11 +27,7 @@ class AsyncHistoricalTxService(
         val index = getBlockIndex()
         val startHeight = blockService.getLatestBlockHeight()
         var indexHeight = startHeight
-        if (startCollectingHistoricalBlocks(index) || continueCollectingHistoricalBlocks(
-                index!!.first!!,
-                index.second!!
-            )
-        ) {
+        if (startCollectingHistoricalBlocks(index) || continueCollectingHistoricalBlocks(index!!.first!!, index.second!!)) {
             val endDate = getEndDate()
             var shouldContinue = true
             if (index?.first == null)

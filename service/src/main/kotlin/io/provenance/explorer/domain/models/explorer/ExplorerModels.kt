@@ -13,7 +13,7 @@ data class RecentTx(
     val denomination: String,
     val type: String,
     val blockHeight: Int,
-    val signer: String?,
+    val signers: Signatures,
     val status: String,
     val errorCode: Int?,
     val codespace: String?
@@ -53,7 +53,7 @@ data class ValidatorDetails(
     val moniker: String,
     val operatorAddress: String,
     val ownerAddress: String,
-    val consensusPubKey: String,
+    val consensusPubKey: String?,
     val missedBlocks: Int,
     val totalBlocks: Int,
     val bondHeight: Int,
@@ -88,7 +88,7 @@ data class TxDetails(
     val codespace: String?,
     val fee: BigDecimal,
     val feeDenomination: String,
-    val signer: String?,
+    val signers: Signatures,
     val memo: String,
     val txType: String,
     val from: String,
@@ -102,7 +102,6 @@ data class TxHistory(val date: String, var numberTxs: Int)
 data class TxFromCache(
     val tx: ServiceOuterClass.GetTxResponse,
     val type: String,
-    val signer: String?,
     val timestamp: DateTime
 )
 

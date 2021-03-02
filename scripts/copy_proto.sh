@@ -77,6 +77,7 @@ curl -sSL $COSMOS_URL/base/tendermint/v1beta1/query.proto >$COSMOS_BASE_TYPES/te
 echo "Adding cos crypto/multisig"
 mkdir -p $COSMOS_CRYPTO_TYPES/multisig/v1beta1
 curl -sSL $PROVENANCE_MAIN_URL/$COSMOS_CRYPTO_TYPES/multisig/v1beta1/multisig.proto >$COSMOS_CRYPTO_TYPES/multisig/v1beta1/multisig.proto
+curl -sSL $COSMOS_URL/crypto/multisig/keys.proto >$COSMOS_CRYPTO_TYPES/multisig/keys.proto
 
 echo "Adding cos crypto/secp256k1"
 mkdir -p $COSMOS_CRYPTO_TYPES/secp256k1

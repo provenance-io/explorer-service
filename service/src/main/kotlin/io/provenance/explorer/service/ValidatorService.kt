@@ -12,7 +12,7 @@ import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.extensions.uptime
 import io.provenance.explorer.domain.models.explorer.ValidatorDetails
 import io.provenance.explorer.grpc.toConsAddress
-import io.provenance.explorer.grpc.toKeyValue
+import io.provenance.explorer.grpc.toSingleSigKeyValue
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
@@ -128,16 +128,16 @@ class ValidatorService(
         val latestValidators = grpcClient.getLatestValidators()
         //TODO make this loop through all validators for the case of more than the limit
         val pairedAddresses = grpcClient.getStakingValidators("BOND_STATUS_BONDED", 0, 100)
-            .map { Pair<String, String>(it.consensusPubkey.toKeyValue()!!, it.operatorAddress) }
+            .map { Pair<String, String>(it.consensusPubkey.toSingleSigKeyValue()!!, it.operatorAddress) }
         latestValidators
-            .filter { !currentValidatorsKeys.contains(it.pubKey.toKeyValue()) }
+            .filter { !currentValidatorsKeys.contains(it.pubKey.toSingleSigKeyValue()) }
             .forEach { validator ->
-                pairedAddresses.firstOrNull { validator.pubKey.toKeyValue()!! == it.first }
+                pairedAddresses.firstOrNull { validator.pubKey.toSingleSigKeyValue()!! == it.first }
                     ?.let {
                         ValidatorAddressesRecord.insertIgnore(
                             it.second.translateAddress(props).accountAddr,
                             it.second,
-                            validator.pubKey.toKeyValue()!!,
+                            validator.pubKey.toSingleSigKeyValue()!!,
                             validator.pubKey.toConsAddress(props.provValConsPrefix())!!)
                     }
             }
