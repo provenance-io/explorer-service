@@ -14,12 +14,14 @@ import cosmos.base.abci.v1beta1.Abci
 import cosmos.slashing.v1beta1.Slashing
 import cosmos.staking.v1beta1.Staking
 import cosmos.tx.v1beta1.ServiceOuterClass
-import cosmos.tx.v1beta1.TxOuterClass
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.Bech32
 import io.provenance.explorer.domain.core.Hash
 import io.provenance.explorer.domain.core.toBech32Data
+import io.provenance.explorer.domain.entities.SignatureRecord
 import io.provenance.explorer.domain.models.explorer.Addresses
+import io.provenance.explorer.domain.models.explorer.Signatures
+import io.provenance.explorer.grpc.toMultiSig
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
 import org.joda.time.DateTime
 import tendermint.types.BlockOuterClass
@@ -66,10 +68,6 @@ fun Abci.TxResponse.type() = this.logsList?.flatMap { it.eventsList }
     ?.attributesList
     ?.firstOrNull { it.key == "action" }
     ?.value
-
-
-fun List<TxOuterClass.SignerInfo>.signatureKey() =
-    if (this.isNotEmpty()) this[0].publicKey else null
 
 fun ServiceOuterClass.GetTxResponse.sendMsg() =
     this.tx.body.messagesList.first { it.typeUrl.contains("MsgSend") }.unpack(Tx.MsgSend::class.java)
@@ -123,6 +121,9 @@ fun Timestamp.toDateTime() = DateTime(Instant.ofEpochSecond( this.seconds, this.
 fun Timestamp.formattedString() = DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond( this.seconds, this.nanos.toLong()))
 
 fun BlockOuterClass.Block.height() = this.header.height.toInt()
+
+fun List<SignatureRecord>.toSigObj() =
+    Signatures(this.map { rec -> rec.base64Sig }, this[0].multiSigObject?.toMultiSig()?.threshold)
 
 /**
  * ObjectMapper extension for getting the ObjectMapper configured

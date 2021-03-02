@@ -1,7 +1,6 @@
 package io.provenance.explorer.service
 
 import cosmos.tx.v1beta1.ServiceOuterClass
-import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.TransactionCacheRecord
 import io.provenance.explorer.domain.entities.updateHitCount
@@ -13,7 +12,6 @@ import org.springframework.stereotype.Service
 
 @Service
 class TransactionService(
-    private val props: ExplorerProperties,
     private val txClient: TransactionGrpcClient,
     private val blockService: BlockService
 ) {
@@ -32,7 +30,7 @@ class TransactionService(
 
     fun getTxs(count: Int, offset: Int) = transaction {
         TransactionCacheRecord.getAllWithOffset(SortOrder.DESC, count, offset)
-            .map { TxFromCache(it.txV2, it.txType, it.signer, it.txTimestamp) }
+            .map { TxFromCache(it.txV2, it.txType, it.txTimestamp) }
     }
 
     fun getBlocksByHeights(height: Int) = txClient.getTxsByHeight(height)

@@ -7,3 +7,8 @@ data class Addresses(
     val validatorAccountAddr: String,
     val consensusAccountAddr: String,
 )
+
+data class Signatures(
+    val signers: List<String>,
+    val threshold: Int?
+)

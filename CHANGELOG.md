@@ -37,6 +37,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Features
 * Added a script to pull in protos used in the client #5
 * Added a `build.gradle` to allow the protos to be compiled to java on build task #5
+* Added support for multisig on transactions, accounts, and validators (limited) #9
 
 ### Improvements
 * Added templates and build workflow

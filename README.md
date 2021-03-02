@@ -64,5 +64,5 @@ Necessary tools
 ### Swagger URLs
 Useful to hit the respective APIs directly
 
-Swagger for Explorer : http://localhost:8612/swagger-ui.html#/ <br/>
+Swagger for Explorer : http://localhost:8612/swagger-ui/index.html# <br/>
 Swagger for Testnet: http://localhost:1317/swagger/

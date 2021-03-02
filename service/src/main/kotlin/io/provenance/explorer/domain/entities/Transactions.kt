@@ -4,10 +4,8 @@ import com.google.protobuf.Timestamp
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
-import io.provenance.explorer.domain.extensions.signatureKey
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.type
-import io.provenance.explorer.grpc.toKeyValue
 import org.jetbrains.exposed.dao.EntityID
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.insertIgnore
@@ -19,7 +17,6 @@ object TransactionCacheTable : CacheIdTable<String>(name = "transaction_cache") 
     override val id = hash.entityId()
     val height = reference("height", BlockCacheTable.height)
     val txType = varchar("tx_type", 64)
-    val signer = varchar("signer", 128).nullable()
     val gasWanted = integer("gas_wanted")
     val gasUsed = integer("gas_used")
     val txTimestamp = datetime("tx_timestamp")
@@ -38,7 +35,6 @@ class TransactionCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
                     if (tx.txResponse.code > 0) it[errorCode] = tx.txResponse.code
                     if (tx.txResponse.codespace.isNotBlank()) it[codespace] = tx.txResponse.codespace
                     it[txType] = if (tx.txResponse.code == 0) tx.txResponse.type()!! else "ERROR"
-                    it[signer] = tx.tx.authInfo.signerInfosList.signatureKey()?.toKeyValue()
                     it[gasUsed] = tx.txResponse.gasUsed.toInt()
                     it[gasWanted] = tx.txResponse.gasWanted.toInt()
                     it[txTimestamp] = txTime.toDateTime()
@@ -46,10 +42,19 @@ class TransactionCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
                     it[hitCount] = 0
                     it[lastHit] = DateTime.now()
                 }
+                tx.tx.authInfo.signerInfosList.forEach { sig ->
+                    SignatureJoinRecord.insert(
+                        sig.publicKey,
+                        SigJoinType.TRANSACTION,
+                        tx.txResponse.txhash
+                    )
+                }
             }
 
         fun findByHeight(height: Int) =
             TransactionCacheRecord.find { TransactionCacheTable.height eq height }
+
+        fun findSigsByHash(hash: String) = SignatureRecord.findByJoin(SigJoinType.TRANSACTION, hash)
 
         fun getAllWithOffset(sort: SortOrder, count: Int, offset: Int) =
             TransactionCacheRecord.all()
@@ -60,7 +65,6 @@ class TransactionCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
     var hash by TransactionCacheTable.hash
     var height by TransactionCacheTable.height
     var txType by TransactionCacheTable.txType
-    var signer by TransactionCacheTable.signer
     var gasWanted by TransactionCacheTable.gasWanted
     var gasUsed by TransactionCacheTable.gasUsed
     var txTimestamp by TransactionCacheTable.txTimestamp

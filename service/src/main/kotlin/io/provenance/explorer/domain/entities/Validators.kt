@@ -90,6 +90,7 @@ object StakingValidatorCacheTable : CacheIdTable<String>(name = "staking_validat
 
 class StakingValidatorCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
     companion object : CacheEntityClass<String, StakingValidatorCacheRecord>(StakingValidatorCacheTable) {
+
         fun insertIgnore(operatorAddress: String, json: Staking.Validator) =
             transaction {
                 StakingValidatorCacheTable.insertIgnore {

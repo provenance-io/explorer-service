@@ -21,11 +21,13 @@ object AccountTable : IdTable<String>(name = "account") {
     val type = varchar("type", 128)
     val accountNumber = long("account_number")
     val baseAccount = jsonb<AccountTable, Auth.BaseAccount>("base_account", OBJECT_MAPPER)
-    val data = jsonb<AccountTable, Message>("data", OBJECT_MAPPER)
+    val data = jsonb<AccountTable, Any>("data", OBJECT_MAPPER)
 }
 
 class AccountRecord(id: EntityID<String>) : Entity<String>(id) {
     companion object : EntityClass<String, AccountRecord>(AccountTable) {
+
+        fun findSigsByAddress(address: String) = SignatureRecord.findByJoin(SigJoinType.ACCOUNT, address)
 
         fun insertIgnore(acc: Any) =
             when {
@@ -36,7 +38,7 @@ class AccountRecord(id: EntityID<String>) : Entity<String>(id) {
                             acc.typeUrl.getAccountType(),
                             it.baseAccount.accountNumber,
                             it.baseAccount,
-                            it
+                            acc
                         )
                     }
                 acc.`is`(Auth.BaseAccount::class.java) ->
@@ -46,7 +48,8 @@ class AccountRecord(id: EntityID<String>) : Entity<String>(id) {
                             acc.typeUrl.getAccountType(),
                             it.accountNumber,
                             it,
-                            it)
+                            acc
+                        )
                     }
                 acc.`is`(MarkerAccount::class.java) ->
                     acc.unpack(MarkerAccount::class.java).let {
@@ -55,17 +58,18 @@ class AccountRecord(id: EntityID<String>) : Entity<String>(id) {
                             acc.typeUrl.getAccountType(),
                             it.baseAccount.accountNumber,
                             it.baseAccount,
-                            it)
+                            acc
+                        )
                     }
                 else -> throw IllegalArgumentException("This account type has not been handled yet: ${acc.typeUrl}")
             }
 
-        fun <T : Message> insertIgnore(
+        fun insertIgnore(
             address: String,
             type: String,
             number: Long,
             baseAccount: Auth.BaseAccount,
-            data: T
+            data: Any
         ) = transaction {
             AccountTable.insertIgnore {
                 it[this.accountAddress] = address
@@ -73,6 +77,8 @@ class AccountRecord(id: EntityID<String>) : Entity<String>(id) {
                 it[this.accountNumber] = number
                 it[this.baseAccount] = baseAccount
                 it[this.data] = data
+            }.also {
+                SignatureJoinRecord.insert(baseAccount.pubKey, SigJoinType.ACCOUNT, address)
             }.let { findById(address) }
         }
     }
