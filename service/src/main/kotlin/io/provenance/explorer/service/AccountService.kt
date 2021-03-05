@@ -1,17 +1,16 @@
 package io.provenance.explorer.service
 
+import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.extensions.toSigObj
 import io.provenance.explorer.domain.models.explorer.AccountDetail
-import io.provenance.explorer.domain.models.explorer.Signatures
 import io.provenance.explorer.domain.models.explorer.toData
-import io.provenance.explorer.grpc.toMultiSig
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 
 @Service
-class AccountService(private val accountClient: AccountGrpcClient) {
+class AccountService(private val accountClient: AccountGrpcClient, private val props: ExplorerProperties) {
 
     private fun getAccountRaw(address: String) = transaction {
         AccountRecord.findById(address)
@@ -23,7 +22,7 @@ class AccountService(private val accountClient: AccountGrpcClient) {
             it.id.value,
             it.accountNumber,
             it.baseAccount.sequence.toInt(),
-            AccountRecord.findSigsByAddress(it.id.value).toSigObj(),
+            AccountRecord.findSigsByAddress(it.id.value).toSigObj(props.provAccPrefix()),
             getAccountBalances(address)
         )
     }

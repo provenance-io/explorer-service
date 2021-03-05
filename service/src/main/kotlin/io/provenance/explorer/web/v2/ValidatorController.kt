@@ -1,10 +1,8 @@
 package io.provenance.explorer.web.v2
 
-import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.PagedResults
-import io.provenance.explorer.domain.models.explorer.ValidatorDetails
 import io.provenance.explorer.domain.models.explorer.ValidatorSummary
-import io.provenance.explorer.service.ExplorerService
+import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -25,23 +23,19 @@ import javax.validation.constraints.Min
     value = "Validator controller",
     produces = "application/json",
     consumes = "application/json",
-    tags = ["Validators"])
-class ValidatorController(private val explorerService: ExplorerService) : BaseController() {
+    tags = ["Validators"]
+)
+class ValidatorController(private val validatorService: ValidatorService) : BaseController() {
 
     @ApiOperation("Returns recent validators")
     @GetMapping("/recent")
-    fun validatorsV2(
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+    fun validators(
+        @RequestParam(required = false, defaultValue = "100") @Min(1) count: Int,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "desc") sort: String,
-        @RequestParam(required = false, defaultValue = "BOND_STATUS_BONDED") status: String
+        @RequestParam(required = false, defaultValue = "active") status: String
     ):
         ResponseEntity<PagedResults<ValidatorSummary>> =
-        ResponseEntity.ok(explorerService.getRecentValidators(count, page, sort, status))
-
-    @ApiOperation("Returns validator by address id")
-    @GetMapping("/{id}")
-    fun validator(@PathVariable id: String) = ResponseEntity.ok(explorerService.getValidator(id))
+        ResponseEntity.ok(validatorService.getRecentValidators(count, page, status))
 
     @ApiOperation("Returns set of validators at block height")
     @GetMapping("/height/{blockHeight}")
@@ -49,10 +43,30 @@ class ValidatorController(private val explorerService: ExplorerService) : BaseCo
         @PathVariable blockHeight: Int,
         @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "desc") sort: String
     ):
         ResponseEntity<PagedResults<ValidatorSummary>> =
-        ResponseEntity.ok(
-            explorerService.getValidatorsAtHeight(blockHeight, count, page.toOffset(count), sort, "BOND_STATUS_BONDED"))
+        ResponseEntity.ok(validatorService.getValidatorsAtHeight(blockHeight, count, page))
+
+    @ApiOperation("Returns validator by address id")
+    @GetMapping("/{id}")
+    fun validator(@PathVariable id: String) = ResponseEntity.ok(validatorService.getValidator(id))
+
+    @ApiOperation("Returns delegations for validator by address id")
+    @GetMapping("/{id}/delegations/bonded")
+    fun validatorDelegationsBonded(
+        @PathVariable id: String,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int
+    ) = ResponseEntity.ok(validatorService.getBondedDelegations(id, page, count))
+
+    @ApiOperation("Returns unbonding delegations for validator by address id")
+    @GetMapping("/{id}/delegations/unbonding")
+    fun validatorDelegationsUnbonding(@PathVariable id: String) =
+        ResponseEntity.ok(validatorService.getUnbondingDelegations(id))
+
+    @ApiOperation("Returns commission info for validator by address id")
+    @GetMapping("/{id}/commission")
+    fun validatorCommissionInfo(@PathVariable id: String) =
+        ResponseEntity.ok(validatorService.getCommissionInfo(id))
 
 }

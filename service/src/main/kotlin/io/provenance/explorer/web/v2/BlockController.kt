@@ -23,14 +23,14 @@ import javax.validation.constraints.Min
 @Api(value = "Block controller", produces = "application/json", consumes = "application/json", tags = ["Blocks"])
 class BlockController(private val explorerService: ExplorerService) : BaseController() {
 
+    @ApiOperation("Return block at current height")
+    @GetMapping("/height")
+    fun blockHeight(): ResponseEntity<BlockDetail> = ResponseEntity.ok(explorerService.getBlockAtHeight(null))
+
     @ApiOperation("Return block at specified height")
     @GetMapping("/height/{height}")
     fun blockHeight(@PathVariable height: Int):
         ResponseEntity<BlockDetail> = ResponseEntity.ok(explorerService.getBlockAtHeight(height))
-
-    @ApiOperation("Return block at current height")
-    @GetMapping("/height")
-    fun blockHeight(): ResponseEntity<BlockDetail> = ResponseEntity.ok(explorerService.getBlockAtHeight(null))
 
     @ApiOperation("Returns most recent blocks")
     @GetMapping("/recent")

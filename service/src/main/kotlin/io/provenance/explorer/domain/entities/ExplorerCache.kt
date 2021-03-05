@@ -12,7 +12,7 @@ import org.joda.time.DateTime
 
 
 object SpotlightCacheTable : IdTable<Int>(name = "spotlight_cache") {
-    override val id = integer("id").entityId().primaryKey()
+    override val id = integer("id").entityId()
     val spotlight = jsonb<SpotlightCacheTable, Spotlight>("spotlight", OBJECT_MAPPER)
     val lastHit = datetime("last_hit")
 }

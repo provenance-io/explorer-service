@@ -1,14 +1,15 @@
 package io.provenance.explorer.domain.entities
 
 import cosmos.base.tendermint.v1beta1.Query
-import cosmos.staking.v1beta1.QueryOuterClass
 import cosmos.staking.v1beta1.Staking
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.jsonb
 import org.jetbrains.exposed.dao.EntityID
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.IntIdTable
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -57,7 +58,7 @@ class ValidatorAddressesRecord(id: EntityID<Int>) : IntEntity(id) {
 
 
 object ValidatorsCacheTable : CacheIdTable<Int>(name = "validators_cache") {
-    val height = reference("height", BlockCacheTable.height).primaryKey()
+    val height = integer("height")
     override val id = height.entityId()
     val validators = jsonb<ValidatorsCacheTable, Query.GetValidatorSetByHeightResponse>("validators", OBJECT_MAPPER)
 }
@@ -83,55 +84,52 @@ class ValidatorsCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
 
 
 object StakingValidatorCacheTable : CacheIdTable<String>(name = "staking_validator_cache") {
-    val operatorAddress = reference("operator_address", ValidatorAddressesTable.operatorAddress).primaryKey()
+    val operatorAddress = varchar("operator_address", 96)
     override val id = operatorAddress.entityId()
     val stakingValidator = jsonb<StakingValidatorCacheTable, Staking.Validator>("staking_validator", OBJECT_MAPPER)
+    val moniker = varchar("moniker", 128)
+    val status = varchar("status", 64)
+    val jailed = bool("jailed")
 }
 
 class StakingValidatorCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
     companion object : CacheEntityClass<String, StakingValidatorCacheRecord>(StakingValidatorCacheTable) {
+
+        val logger = logger(StakingValidatorCacheRecord::class)
 
         fun insertIgnore(operatorAddress: String, json: Staking.Validator) =
             transaction {
                 StakingValidatorCacheTable.insertIgnore {
                     it[this.operatorAddress] = operatorAddress
                     it[this.stakingValidator] = json
+                    it[this.moniker] = json.description.moniker
+                    it[this.status] = json.status.name
+                    it[this.jailed] = json.jailed
                     it[this.hitCount] = 0
                     it[this.lastHit] = DateTime.now()
                 }.let { json }
             }
+
+        fun findByStatus(status: String) = transaction {
+            when (status) {
+                "active" -> StakingValidatorCacheRecord.find {
+                    StakingValidatorCacheTable.status eq Staking.BondStatus.BOND_STATUS_BONDED.name }
+                "jailed" -> StakingValidatorCacheRecord.find { StakingValidatorCacheTable.jailed eq true }
+                "candidate" -> StakingValidatorCacheRecord.find {
+                    (StakingValidatorCacheTable.status neq Staking.BondStatus.BOND_STATUS_BONDED.name) and
+                        (StakingValidatorCacheTable.jailed eq false) }
+                else -> listOf<StakingValidatorCacheRecord>()
+                    .also { logger.error("This status is not supported: $status") }
+            }
+        }
     }
 
     var operatorAddress by StakingValidatorCacheTable.operatorAddress
     var stakingValidator by StakingValidatorCacheTable.stakingValidator
+    var moniker by StakingValidatorCacheTable.moniker
+    var status by StakingValidatorCacheTable.status
+    var jailed by StakingValidatorCacheTable.jailed
     override var lastHit by StakingValidatorCacheTable.lastHit
     override var hitCount by StakingValidatorCacheTable.hitCount
-}
-
-
-object ValidatorDelegationCacheTable : CacheIdTable<String>(name = "validator_delegations_cache") {
-    val operatorAddress = reference("operator_address", ValidatorAddressesTable.operatorAddress).primaryKey()
-    override val id = operatorAddress.entityId()
-    val validatorDelegations =
-        jsonb<ValidatorDelegationCacheTable, QueryOuterClass.QueryValidatorDelegationsResponse>("validator_delegations", OBJECT_MAPPER)
-}
-
-class ValidatorDelegationCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
-    companion object : CacheEntityClass<String, ValidatorDelegationCacheRecord>(ValidatorDelegationCacheTable) {
-        fun insertIgnore(operatorAddress: String, json: QueryOuterClass.QueryValidatorDelegationsResponse) =
-            transaction {
-                ValidatorDelegationCacheTable.insertIgnore {
-                    it[this.operatorAddress] = operatorAddress
-                    it[this.validatorDelegations] = json
-                    it[this.hitCount] = 0
-                    it[this.lastHit] = DateTime.now()
-                }.let { json }
-            }
-    }
-
-    var operatorAddress by ValidatorDelegationCacheTable.operatorAddress
-    var validatorDelegations by ValidatorDelegationCacheTable.validatorDelegations
-    override var lastHit by ValidatorDelegationCacheTable.lastHit
-    override var hitCount by ValidatorDelegationCacheTable.hitCount
 }
 

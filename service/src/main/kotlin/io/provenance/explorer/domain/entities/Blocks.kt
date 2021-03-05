@@ -12,7 +12,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 
 object BlockCacheTable : CacheIdTable<Int>(name = "block_cache") {
-    val height = integer("height").primaryKey()
+    val height = integer("height")
     override val id = height.entityId()
     val block = jsonb<BlockCacheTable, Query.GetBlockByHeightResponse>("block", OBJECT_MAPPER)
     val blockTimestamp = datetime("block_timestamp")
@@ -50,7 +50,7 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
 
 
 object BlockIndexTable : IdTable<Int>(name = "block_index") {
-    override val id = integer("id").entityId().primaryKey()
+    override val id = integer("id").entityId()
     val maxHeightRead = integer("max_height_read").nullable()
     val minHeightRead = integer("min_height_read").nullable()
     val lastUpdate = datetime("last_update")
