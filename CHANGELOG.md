@@ -39,6 +39,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added a `build.gradle` to allow the protos to be compiled to java on build task #5
 * Added support for multisig on transactions, accounts, and validators (limited) #9
 * Added Validator specific APIs #15
+* Added Account-specific transaction API #11
 
 ### Improvements
 * Added templates and build workflow
@@ -46,6 +47,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Upgraded to gRpc blockchain calls #17
 * Upgraded to Kotlin gradle
 * Updated the transaction database tables to allow for better searching #15
+* Updated block queries to return the same object with updated info #13
 
 ### Bug Fixes
 * Translated the signatures back to usable addresses

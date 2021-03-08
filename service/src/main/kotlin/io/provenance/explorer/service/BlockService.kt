@@ -33,7 +33,7 @@ class BlockService(private val blockClient: BlockGrpcClient) {
 
     fun getBlock(blockHeight: Int) =
         getBlockByHeightFromCache(blockHeight) ?: getBlockAtHeightFromChain(blockHeight)
-            ?.let { addBlockToCache(it.block.height(), it.block.data.txsCount, it.block.header.time.toDateTime(), it) }
+            .let { addBlockToCache(it.block.height(), it.block.data.txsCount, it.block.header.time.toDateTime(), it) }
 
     fun getBlockByHeightFromCache(blockHeight: Int) = transaction {
         BlockCacheRecord.findById(blockHeight)?.also {
@@ -42,7 +42,7 @@ class BlockService(private val blockClient: BlockGrpcClient) {
     }
 
     fun getChainIdString() =
-        if (chainId.isEmpty()) getBlock(getLatestBlockHeightIndex())!!.block.header.chainId.also { this.chainId = it }
+        if (chainId.isEmpty()) getBlock(getLatestBlockHeightIndex()).block.header.chainId.also { this.chainId = it }
         else this.chainId
 
     fun addBlockToCache(

@@ -30,8 +30,7 @@ class AsyncService(
         if (startCollectingHistoricalBlocks(index) || continueCollectingHistoricalBlocks(index!!.first!!, index.second!!)) {
             val endDate = getEndDate()
             var shouldContinue = true
-            if (index?.first == null)
-                blockService.updateBlockMaxHeightIndex(startHeight)
+            blockService.updateBlockMaxHeightIndex(startHeight)
             indexHeight = index?.second?.minus(1) ?: indexHeight
             while (shouldContinue && indexHeight > 0) {
                 blockService.getBlockAtHeightFromChain(indexHeight).let {

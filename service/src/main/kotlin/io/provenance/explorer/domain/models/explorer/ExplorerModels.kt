@@ -2,18 +2,7 @@ package io.provenance.explorer.domain.models.explorer
 
 import java.math.BigDecimal
 
-
-data class RecentBlock(
-    val height: Int,
-    val txNum: Int,
-    val time: String,
-    val proposerAddress: String,
-    val votingPower: BigDecimal,
-    val validatorsNum: Int,
-    val validatorsTotal: Int
-)
-
-data class BlockDetail(
+data class BlockSummary(
     val height: Int,
     val hash: String,
     val time: String,
@@ -21,12 +10,14 @@ data class BlockDetail(
     val moniker: String,
     val icon: String,
     val votingPower: Int,
+    val votingPowerTotal: Int,
     val numValidators: Int,
+    val numValidatorsTotal: Int,
     val txNum: Int
 )
 
 data class Spotlight(
-    val latestBlock: BlockDetail,
+    val latestBlock: BlockSummary,
     val avgBlockTime: BigDecimal,
     val bondedTokenPercent: BigDecimal,
     val bondedTokenAmount: Long,
