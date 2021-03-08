@@ -6,24 +6,24 @@ import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.TransactionService
+import io.provenance.explorer.service.ValidatorService
 import org.joda.time.LocalDate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import tendermint.types.BlockOuterClass
 
 @Service
-class AsyncHistoricalTxService(
+class AsyncService(
     private val explorerProperties: ExplorerProperties,
     private val blockService: BlockService,
-    private val transactionService: TransactionService
+    private val transactionService: TransactionService,
+    private val validatorService: ValidatorService
 ) {
 
-    protected val logger = logger(AsyncHistoricalTxService::class)
+    protected val logger = logger(AsyncService::class)
 
     @Scheduled(initialDelay = 0L, fixedDelay = 1000L)
-    fun updateLatestBlockHeightJob() = updateCache()
-
-    fun updateCache() {
+    fun updateLatestBlockHeightJob() {
         val index = getBlockIndex()
         val startHeight = blockService.getLatestBlockHeight()
         var indexHeight = startHeight
@@ -82,5 +82,8 @@ class AsyncHistoricalTxService(
     fun getEndDate() = LocalDate().toDateTimeAtStartOfDay().minusDays(explorerProperties.initialHistoricalDays() + 1)
 
     fun BlockOuterClass.Block.day() = this.header.time.toDateTime()
+
+    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
+    fun updateStakingValidators() = validatorService.updateStakingValidators()
 
 }

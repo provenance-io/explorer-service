@@ -6,7 +6,16 @@ import cosmos.bank.v1beta1.Tx
 import cosmos.crypto.ed25519.Keys
 import cosmos.gov.v1beta1.Gov
 import cosmos.params.v1beta1.Params
+import cosmos.tx.v1beta1.TxOuterClass
+import cosmos.upgrade.v1beta1.Upgrade
+import cosmos.vesting.v1beta1.Vesting
+import io.provenance.marker.v1.ChangeStatusProposal
 import io.provenance.marker.v1.MarkerAccount
+import io.provenance.marker.v1.MsgWithdrawRequest
+import io.provenance.marker.v1.RemoveAdministratorProposal
+import io.provenance.marker.v1.SetAdministratorProposal
+import io.provenance.marker.v1.SupplyDecreaseProposal
+import io.provenance.marker.v1.SupplyIncreaseProposal
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
@@ -68,20 +77,59 @@ class RestConfig {
 }
 
 fun accountDescriptors() =
-    listOf(MarkerAccount.getDescriptor(), Auth.BaseAccount.getDescriptor(), Auth.ModuleAccount.getDescriptor())
+    listOf(
+        MarkerAccount.getDescriptor(),
+        Auth.BaseAccount.getDescriptor(),
+        Auth.ModuleAccount.getDescriptor(),
+        Vesting.BaseVestingAccount.getDescriptor(),
+        Vesting.ContinuousVestingAccount.getDescriptor(),
+        Vesting.DelayedVestingAccount.getDescriptor(),
+        Vesting.PeriodicVestingAccount.getDescriptor()
+    )
 
 fun pubKeyDescriptors() =
-    listOf(Keys.PubKey.getDescriptor(), cosmos.crypto.secp256k1.Keys.PubKey.getDescriptor())
+    listOf(
+        Keys.PubKey.getDescriptor(),
+        cosmos.crypto.secp256k1.Keys.PubKey.getDescriptor(),
+        cosmos.crypto.secp256r1.Keys.PubKey.getDescriptor(),
+        cosmos.crypto.multisig.Keys.LegacyAminoPubKey.getDescriptor()
+    )
 
 fun msgDescriptors() =
     listOf(
+        TxOuterClass.Tx.getDescriptor(),
         Tx.MsgSend.getDescriptor(),
         Tx.MsgMultiSend.getDescriptor(),
         cosmos.gov.v1beta1.Tx.MsgSubmitProposal.getDescriptor(),
         cosmos.gov.v1beta1.Tx.MsgVote.getDescriptor(),
         cosmos.gov.v1beta1.Tx.MsgVoteWeighted.getDescriptor(),
-        cosmos.gov.v1beta1.Tx.MsgDeposit.getDescriptor()
+        cosmos.gov.v1beta1.Tx.MsgDeposit.getDescriptor(),
+        cosmos.distribution.v1beta1.Tx.MsgSetWithdrawAddress.getDescriptor(),
+        cosmos.distribution.v1beta1.Tx.MsgWithdrawDelegatorReward.getDescriptor(),
+        cosmos.distribution.v1beta1.Tx.MsgWithdrawValidatorCommission.getDescriptor(),
+        cosmos.distribution.v1beta1.Tx.MsgFundCommunityPool.getDescriptor(),
+        cosmos.evidence.v1beta1.Tx.MsgSubmitEvidence.getDescriptor(),
+        cosmos.feegrant.v1beta1.Tx.MsgGrantFeeAllowance.getDescriptor(),
+        cosmos.feegrant.v1beta1.Tx.MsgRevokeFeeAllowance.getDescriptor(),
+        cosmos.slashing.v1beta1.Tx.MsgUnjail.getDescriptor(),
+        cosmos.staking.v1beta1.Tx.MsgCreateValidator.getDescriptor(),
+        cosmos.staking.v1beta1.Tx.MsgEditValidator.getDescriptor(),
+        cosmos.staking.v1beta1.Tx.MsgDelegate.getDescriptor(),
+        cosmos.staking.v1beta1.Tx.MsgBeginRedelegate.getDescriptor(),
+        cosmos.staking.v1beta1.Tx.MsgUndelegate.getDescriptor(),
+        cosmos.vesting.v1beta1.Tx.MsgCreateVestingAccount.getDescriptor(),
+        MsgWithdrawRequest.getDescriptor()
     )
 
 fun contentDescriptors() =
-    listOf(Gov.TextProposal.getDescriptor(), Params.ParameterChangeProposal.getDescriptor())
+    listOf(
+        Gov.TextProposal.getDescriptor(),
+        Params.ParameterChangeProposal.getDescriptor(),
+        Upgrade.SoftwareUpgradeProposal.getDescriptor(),
+        Upgrade.CancelSoftwareUpgradeProposal.getDescriptor(),
+        SupplyIncreaseProposal.getDescriptor(),
+        SupplyDecreaseProposal.getDescriptor(),
+        SetAdministratorProposal.getDescriptor(),
+        RemoveAdministratorProposal.getDescriptor(),
+        ChangeStatusProposal.getDescriptor()
+    )

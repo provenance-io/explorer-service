@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @Validated
@@ -24,4 +25,8 @@ class MigrationController(private val migrationService: MigrationService) : Base
     @ApiOperation("Populates existing transactions so people dont have to wait for 500K blocks to process.")
     @GetMapping("/populate/txs")
     fun populateTxs(): ResponseEntity<Boolean> = ResponseEntity.ok(migrationService.populateTxs())
+
+    @ApiOperation("For Testing")
+    @GetMapping("/test/json")
+    fun jsonTest(@RequestParam txHash: String) = ResponseEntity.ok(migrationService.translateMsgAny(txHash))
 }

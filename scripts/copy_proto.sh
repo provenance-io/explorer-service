@@ -27,10 +27,18 @@ COSMOS_SIGNING_TYPES="third_party/proto/cosmos/tx/signing"
 COSMOS_STAKING_TYPES="third_party/proto/cosmos/staking"
 COSMOS_GOV_TYPES="third_party/proto/cosmos/gov"
 COSMOS_SLASHING_TYPES="third_party/proto/cosmos/slashing"
+COSMOS_CAPABILITY_TYPES="third_party/proto/cosmos/capability"
+COSMOS_CRISIS_TYPES="third_party/proto/cosmos/crisis"
 COSMOS_CRYPTO_TYPES="third_party/proto/cosmos/crypto"
 COSMOS_AUTH_TYPES="third_party/proto/cosmos/auth"
+COSMOS_AUTHZ_TYPES="third_party/proto/cosmos/authz"
 COSMOS_BANK_TYPES="third_party/proto/cosmos/bank"
+COSMOS_EVIDENCE_TYPES="third_party/proto/cosmos/evidence"
+COSMOS_FEEGRANT_TYPES="third_party/proto/cosmos/feegrant"
 COSMOS_TX_TYPES="third_party/proto/cosmos/tx"
+COSMOS_UPGRADE_TYPES="third_party/proto/cosmos/upgrade"
+COSMOS_VESTING_TYPES="third_party/proto/cosmos/vesting"
+COSMOS_MINT_TYPES="third_party/proto/cosmos/mint"
 COSMOS_PARAM_TYPES="third_party/proto/cosmos/params"
 CONFIO_TYPES="third_party/proto/confio"
 
@@ -43,10 +51,16 @@ echo "Adding cosmos_proto"
 mkdir -p $COSMOS_PROTO_TYPES
 curl -sSL $PROVENANCE_MAIN_URL/$COSMOS_PROTO_TYPES/cosmos.proto >$COSMOS_PROTO_TYPES/cosmos.proto
 
-echo "Adding cos suth"
+echo "Adding cos auth"
 mkdir -p $COSMOS_AUTH_TYPES/v1beta1
 curl -sSL $PROVENANCE_MAIN_URL/$COSMOS_AUTH_TYPES/v1beta1/auth.proto >$COSMOS_AUTH_TYPES/v1beta1/auth.proto
 curl -sSL $COSMOS_URL/auth/v1beta1/query.proto >$COSMOS_AUTH_TYPES/v1beta1/query.proto
+
+echo "Adding cos authz"
+mkdir -p $COSMOS_AUTHZ_TYPES/v1beta1
+curl -sSL $COSMOS_URL/authz/v1beta1/authz.proto >$COSMOS_AUTHZ_TYPES/v1beta1/authz.proto
+curl -sSL $COSMOS_URL/authz/v1beta1/tx.proto >$COSMOS_AUTHZ_TYPES/v1beta1/tx.proto
+curl -sSL $COSMOS_URL/authz/v1beta1/query.proto >$COSMOS_AUTHZ_TYPES/v1beta1/query.proto
 
 echo "Adding cos bank"
 mkdir -p $COSMOS_BANK_TYPES/v1beta1
@@ -74,6 +88,14 @@ echo "Adding cos base/tendermint"
 mkdir -p $COSMOS_BASE_TYPES/tendermint/v1beta1
 curl -sSL $COSMOS_URL/base/tendermint/v1beta1/query.proto >$COSMOS_BASE_TYPES/tendermint/v1beta1/query.proto
 
+echo "Adding cos capability"
+mkdir -p $COSMOS_CAPABILITY_TYPES/v1beta1
+curl -sSL $COSMOS_URL/capability/v1beta1/capability.proto >$COSMOS_CAPABILITY_TYPES/v1beta1/capability.proto
+
+echo "Adding cos crisis"
+mkdir -p $COSMOS_CRISIS_TYPES/v1beta1
+curl -sSL $COSMOS_URL/crisis/v1beta1/tx.proto >$COSMOS_CRISIS_TYPES/v1beta1/tx.proto
+
 echo "Adding cos crypto/multisig"
 mkdir -p $COSMOS_CRYPTO_TYPES/multisig/v1beta1
 curl -sSL $PROVENANCE_MAIN_URL/$COSMOS_CRYPTO_TYPES/multisig/v1beta1/multisig.proto >$COSMOS_CRYPTO_TYPES/multisig/v1beta1/multisig.proto
@@ -83,6 +105,10 @@ echo "Adding cos crypto/secp256k1"
 mkdir -p $COSMOS_CRYPTO_TYPES/secp256k1
 curl -sSL $PROVENANCE_MAIN_URL/$COSMOS_CRYPTO_TYPES/secp256k1/keys.proto >$COSMOS_CRYPTO_TYPES/secp256k1/keys.proto
 
+echo "Adding cos crypto/secp256r1"
+mkdir -p $COSMOS_CRYPTO_TYPES/secp256r1
+curl -sSL $COSMOS_URL/crypto/secp256r1/keys.proto >$COSMOS_CRYPTO_TYPES/secp256r1/keys.proto
+
 echo "Adding cos crypto/ed25519"
 mkdir -p $COSMOS_CRYPTO_TYPES/ed25519
 curl -sSL $COSMOS_URL/crypto/ed25519/keys.proto >$COSMOS_CRYPTO_TYPES/ed25519/keys.proto
@@ -91,15 +117,35 @@ echo "Adding cos distribution"
 mkdir -p $COSMOS_DISTRIBUTION_TYPES/v1beta1
 curl -sSL $COSMOS_URL/distribution/v1beta1/query.proto >$COSMOS_DISTRIBUTION_TYPES/v1beta1/query.proto
 curl -sSL $COSMOS_URL/distribution/v1beta1/distribution.proto >$COSMOS_DISTRIBUTION_TYPES/v1beta1/distribution.proto
+curl -sSL $COSMOS_URL/distribution/v1beta1/tx.proto >$COSMOS_DISTRIBUTION_TYPES/v1beta1/tx.proto
+
+echo "Adding cos evidence"
+mkdir -p $COSMOS_EVIDENCE_TYPES/v1beta1
+curl -sSL $COSMOS_URL/evidence/v1beta1/tx.proto >$COSMOS_EVIDENCE_TYPES/v1beta1/tx.proto
+curl -sSL $COSMOS_URL/evidence/v1beta1/query.proto >$COSMOS_EVIDENCE_TYPES/v1beta1/query.proto
+curl -sSL $COSMOS_URL/evidence/v1beta1/evidence.proto >$COSMOS_EVIDENCE_TYPES/v1beta1/evidence.proto
+
+echo "Adding cos feegrant"
+mkdir -p $COSMOS_FEEGRANT_TYPES/v1beta1
+curl -sSL $COSMOS_URL/feegrant/v1beta1/tx.proto >$COSMOS_FEEGRANT_TYPES/v1beta1/tx.proto
+curl -sSL $COSMOS_URL/feegrant/v1beta1/query.proto >$COSMOS_FEEGRANT_TYPES/v1beta1/query.proto
+curl -sSL $COSMOS_URL/feegrant/v1beta1/feegrant.proto >$COSMOS_FEEGRANT_TYPES/v1beta1/feegrant.proto
 
 echo "Adding cos gov"
 mkdir -p $COSMOS_GOV_TYPES/v1beta1
 curl -sSL $COSMOS_URL/gov/v1beta1/tx.proto >$COSMOS_GOV_TYPES/v1beta1/tx.proto
 curl -sSL $COSMOS_URL/gov/v1beta1/gov.proto >$COSMOS_GOV_TYPES/v1beta1/gov.proto
+curl -sSL $COSMOS_URL/gov/v1beta1/query.proto >$COSMOS_GOV_TYPES/v1beta1/query.proto
+
+echo "Adding cos mint"
+mkdir -p $COSMOS_MINT_TYPES/v1beta1
+curl -sSL $COSMOS_URL/mint/v1beta1/mint.proto >$COSMOS_MINT_TYPES/v1beta1/mint.proto
+curl -sSL $COSMOS_URL/mint/v1beta1/query.proto >$COSMOS_MINT_TYPES/v1beta1/query.proto
 
 echo "Adding cos params"
 mkdir -p $COSMOS_PARAM_TYPES/v1beta1
 curl -sSL $COSMOS_URL/params/v1beta1/params.proto >$COSMOS_PARAM_TYPES/v1beta1/params.proto
+curl -sSL $COSMOS_URL/params/v1beta1/query.proto >$COSMOS_PARAM_TYPES/v1beta1/query.proto
 
 echo "Adding cos signing"
 mkdir -p $COSMOS_SIGNING_TYPES/v1beta1
@@ -109,16 +155,29 @@ echo "Adding cos slashing"
 mkdir -p $COSMOS_SLASHING_TYPES/v1beta1
 curl -sSL $COSMOS_URL/slashing/v1beta1/query.proto >$COSMOS_SLASHING_TYPES/v1beta1/query.proto
 curl -sSL $COSMOS_URL/slashing/v1beta1/slashing.proto >$COSMOS_SLASHING_TYPES/v1beta1/slashing.proto
+curl -sSL $COSMOS_URL/slashing/v1beta1/tx.proto >$COSMOS_SLASHING_TYPES/v1beta1/tx.proto
 
 echo "Adding cos staking"
 mkdir -p $COSMOS_STAKING_TYPES/v1beta1
 curl -sSL $COSMOS_URL/staking/v1beta1/query.proto >$COSMOS_STAKING_TYPES/v1beta1/query.proto
 curl -sSL $COSMOS_URL/staking/v1beta1/staking.proto >$COSMOS_STAKING_TYPES/v1beta1/staking.proto
+curl -sSL $COSMOS_URL/staking/v1beta1/tx.proto >$COSMOS_STAKING_TYPES/v1beta1/tx.proto
 
 echo "Adding cos tx"
 mkdir -p $COSMOS_TX_TYPES/v1beta1
 curl -sSL $COSMOS_URL/tx/v1beta1/service.proto >$COSMOS_TX_TYPES/v1beta1/service.proto
 curl -sSL $COSMOS_URL/tx/v1beta1/tx.proto >$COSMOS_TX_TYPES/v1beta1/tx.proto
+
+echo "Adding cos upgrade"
+mkdir -p $COSMOS_UPGRADE_TYPES/v1beta1
+curl -sSL $COSMOS_URL/upgrade/v1beta1/upgrade.proto >$COSMOS_UPGRADE_TYPES/v1beta1/upgrade.proto
+curl -sSL $COSMOS_URL/upgrade/v1beta1/query.proto >$COSMOS_UPGRADE_TYPES/v1beta1/query.proto
+
+echo "Adding cos vesting"
+mkdir -p $COSMOS_VESTING_TYPES/v1beta1
+curl -sSL $COSMOS_URL/vesting/v1beta1/vesting.proto >$COSMOS_VESTING_TYPES/v1beta1/vesting.proto
+curl -sSL $COSMOS_URL/vesting/v1beta1/tx.proto >$COSMOS_VESTING_TYPES/v1beta1/tx.proto
+
 
 echo "Adding gogo"
 mkdir -p "$GOGO_PROTO_TYPES"
@@ -168,12 +227,15 @@ echo "Adding prov/attribute"
 mkdir -p $PROVENANCE_TYPES/attribute/v1
 curl -sSL $PROVENANCE_URL/attribute/v1/attribute.proto >$PROVENANCE_TYPES/attribute/v1/attribute.proto
 curl -sSL $PROVENANCE_URL/attribute/v1/query.proto >$PROVENANCE_TYPES/attribute/v1/query.proto
+curl -sSL $PROVENANCE_URL/attribute/v1/tx.proto >$PROVENANCE_TYPES/attribute/v1/tx.proto
 
 echo "Adding prov/marker"
 mkdir -p $PROVENANCE_TYPES/marker/v1
 curl -sSL $PROVENANCE_URL/marker/v1/marker.proto >$PROVENANCE_TYPES/marker/v1/marker.proto
 curl -sSL $PROVENANCE_URL/marker/v1/query.proto >$PROVENANCE_TYPES/marker/v1/query.proto
 curl -sSL $PROVENANCE_URL/marker/v1/accessgrant.proto >$PROVENANCE_TYPES/marker/v1/accessgrant.proto
+curl -sSL $PROVENANCE_URL/marker/v1/tx.proto >$PROVENANCE_TYPES/marker/v1/tx.proto
+curl -sSL $PROVENANCE_URL/marker/v1/proposals.proto >$PROVENANCE_TYPES/marker/v1/proposals.proto
 
 echo "Adding prov/metadata"
 mkdir -p $PROVENANCE_TYPES/metadata/v1
@@ -181,10 +243,13 @@ curl -sSL $PROVENANCE_URL/metadata/v1/metadata.proto >$PROVENANCE_TYPES/metadata
 curl -sSL $PROVENANCE_URL/metadata/v1/query.proto >$PROVENANCE_TYPES/metadata/v1/query.proto
 curl -sSL $PROVENANCE_URL/metadata/v1/scope.proto >$PROVENANCE_TYPES/metadata/v1/scope.proto
 curl -sSL $PROVENANCE_URL/metadata/v1/specification.proto >$PROVENANCE_TYPES/metadata/v1/specification.proto
+curl -sSL $PROVENANCE_URL/metadata/v1/tx.proto >$PROVENANCE_TYPES/metadata/v1/tx.proto
+curl -sSL $PROVENANCE_URL/metadata/v1/contract.proto >$PROVENANCE_TYPES/metadata/v1/contract.proto
 
 echo "Adding prov/name"
 mkdir -p $PROVENANCE_TYPES/name/v1
 curl -sSL $PROVENANCE_URL/name/v1/name.proto >$PROVENANCE_TYPES/name/v1/name.proto
 curl -sSL $PROVENANCE_URL/name/v1/query.proto >$PROVENANCE_TYPES/name/v1/query.proto
+curl -sSL $PROVENANCE_URL/name/v1/tx.proto >$PROVENANCE_TYPES/name/v1/tx.proto
 
 echo "Finished proto copy"

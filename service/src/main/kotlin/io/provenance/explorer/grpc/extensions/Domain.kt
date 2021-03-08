@@ -58,7 +58,7 @@ fun Any.toMultiSig() =
         else -> null.also { logger().error("This typeUrl is not supported in multi sig: $typeUrl") }
     }
 
-fun Any.toConsAddress(hrpPrefix: String) =
+fun Any.toAddress(hrpPrefix: String) =
     when {
         typeUrl.contains("secp256k1") ->
             this.unpack(cosmos.crypto.secp256k1.Keys.PubKey::class.java).key.secpPubKeyToBech32(hrpPrefix)
@@ -71,4 +71,4 @@ fun Any.toConsAddress(hrpPrefix: String) =
 
 
 fun getPaginationBuilder(offset: Int, limit: Int) =
-    Pagination.PageRequest.newBuilder().setOffset(offset.toLong()).setLimit(limit.toLong())
+    Pagination.PageRequest.newBuilder().setOffset(offset.toLong()).setLimit(limit.toLong()).setCountTotal(true)

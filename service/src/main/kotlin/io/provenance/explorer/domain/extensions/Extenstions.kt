@@ -21,6 +21,7 @@ import io.provenance.explorer.domain.core.toBech32Data
 import io.provenance.explorer.domain.entities.SignatureRecord
 import io.provenance.explorer.domain.models.explorer.Addresses
 import io.provenance.explorer.domain.models.explorer.Signatures
+import io.provenance.explorer.grpc.toAddress
 import io.provenance.explorer.grpc.toMultiSig
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
 import org.joda.time.DateTime
@@ -30,6 +31,7 @@ import java.math.RoundingMode
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.Base64
+import kotlin.math.ceil
 
 fun ByteString.toValue() = Base64.getEncoder().encodeToString(this.toByteArray())
 
@@ -89,6 +91,24 @@ fun Long.isPastDue(currentMillis: Long) = DateTime.now().millis - this > current
 // translates page (this) to offset
 fun Int.toOffset(count: Int) = (this - 1) * count
 
+fun <T> List<T>.pageOfResults(page: Int, count: Int): List<T> {
+    val fromIndex = page.toOffset(count)
+    if (fromIndex > this.lastIndex)
+        return listOf<T>()
+
+    var toIndex = page.toOffset(count) + count
+    if (toIndex > this.lastIndex)
+        toIndex = this.lastIndex + 1
+
+    return this.subList(fromIndex, toIndex)
+}
+
+fun Int.pageCountOfResults(count: Int): Int =
+    if (this < count) 1
+    else ceil(this.toDouble() / count).toInt()
+
+
+
 fun String.translateAddress(props: ExplorerProperties) = this.toBech32Data().let {
     Addresses(
         it.hexData,
@@ -110,9 +130,7 @@ fun ByteString.translateByteArray(props: ExplorerProperties) = this.toByteArray(
 fun Staking.Validator.getStatusString() =
     when {
         this.jailed -> "jailed"
-        this.status in listOf(
-            Staking.BondStatus.BOND_STATUS_BONDED,
-            Staking.BondStatus.BOND_STATUS_UNBONDING) -> "active"
+        this.status == Staking.BondStatus.BOND_STATUS_BONDED -> "active"
         else -> "candidate"
     }
 
@@ -122,8 +140,15 @@ fun Timestamp.formattedString() = DateTimeFormatter.ISO_INSTANT.format(Instant.o
 
 fun BlockOuterClass.Block.height() = this.header.height.toInt()
 
-fun List<SignatureRecord>.toSigObj() =
-    Signatures(this.map { rec -> rec.base64Sig }, this[0].multiSigObject?.toMultiSig()?.threshold)
+fun List<SignatureRecord>.toSigObj(hrpPrefix: String) =
+    if (this.isNotEmpty())
+        Signatures(
+            this.map { rec -> rec.pubkeyObject.toAddress(hrpPrefix) ?: rec.base64Sig },
+            this[0].multiSigObject?.toMultiSig()?.threshold
+        )
+    else Signatures(listOf(), null)
+
+fun String.toScaledDecimal(scale: Int) = BigDecimal(this.toBigInteger(), scale)
 
 /**
  * ObjectMapper extension for getting the ObjectMapper configured

@@ -2,20 +2,19 @@ package io.provenance.explorer.grpc.v1
 
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.base.tendermint.v1beta1.ServiceGrpc
-import cosmos.distribution.v1beta1.QueryOuterClass as DistOuterClass
-import cosmos.distribution.v1beta1.QueryGrpc as DistGrpc
-import cosmos.staking.v1beta1.QueryGrpc as StakingGrpc
-import cosmos.staking.v1beta1.QueryOuterClass as StakingOuterClass
-import cosmos.slashing.v1beta1.QueryGrpc as SlashingGrpc
-import cosmos.slashing.v1beta1.QueryOuterClass as SlashingOuterClass
-import io.grpc.ManagedChannel
+import cosmos.staking.v1beta1.Staking
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.getPaginationBuilder
-import io.provenance.marker.v1.QueryGrpc
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
+import cosmos.distribution.v1beta1.QueryGrpc as DistGrpc
+import cosmos.distribution.v1beta1.QueryOuterClass as DistOuterClass
+import cosmos.slashing.v1beta1.QueryGrpc as SlashingGrpc
+import cosmos.slashing.v1beta1.QueryOuterClass as SlashingOuterClass
+import cosmos.staking.v1beta1.QueryGrpc as StakingGrpc
+import cosmos.staking.v1beta1.QueryOuterClass as StakingOuterClass
 
 @Component
 class ValidatorGrpcClient(channelUri: URI) {
@@ -47,37 +46,110 @@ class ValidatorGrpcClient(channelUri: URI) {
         slashingClient = SlashingGrpc.newBlockingStub(channel)
     }
 
-    fun getLatestValidators() =
-        tmClient.getLatestValidatorSet(Query.GetLatestValidatorSetRequest.getDefaultInstance()).validatorsList
+    fun getLatestValidators(): MutableList<Query.Validator> {
+        var offset = 0
+        val limit = 100
 
-    fun getValidatorsAtHeight(height: Int) =
-        tmClient.getValidatorSetByHeight(
-            Query.GetValidatorSetByHeightRequest.newBuilder().setHeight(height.toLong()).build())
+        val results = tmClient.getLatestValidatorSet(
+            Query.GetLatestValidatorSetRequest.newBuilder()
+                .setPagination(getPaginationBuilder(offset, limit))
+                .build())
+        val total = results.pagination?.total ?: results.validatorsCount.toLong()
+        val validators = results.validatorsList
 
-    fun getStakingValidators(status: String, offset: Int, limit: Int) =
-        stakingClient.validators(
-            StakingOuterClass.QueryValidatorsRequest.newBuilder()
-                .setStatus(status)
-                .setPagination(getPaginationBuilder(offset, limit)).build())
-            .validatorsList
+        while (validators.count() < total) {
+            offset += limit
+            tmClient.getLatestValidatorSet(
+                Query.GetLatestValidatorSetRequest.newBuilder()
+                    .setPagination(getPaginationBuilder(offset, limit))
+                    .build())
+                .let { validators.addAll(it.validatorsList) }
+        }
+
+        return validators
+    }
+
+    fun getValidatorsAtHeight(height: Int): Query.GetValidatorSetByHeightResponse {
+        var offset = 0
+        val limit = 100
+
+        val results = tmClient.getValidatorSetByHeight(
+            Query.GetValidatorSetByHeightRequest.newBuilder()
+                .setHeight(height.toLong())
+                .setPagination(getPaginationBuilder(offset, limit))
+                .build())
+        val total = results.pagination?.total ?: results.validatorsCount.toLong()
+        val validators = results.validatorsList
+
+        while (validators.count() < total) {
+            offset += limit
+            tmClient.getValidatorSetByHeight(
+                Query.GetValidatorSetByHeightRequest.newBuilder()
+                    .setHeight(height.toLong())
+                    .setPagination(getPaginationBuilder(offset, limit))
+                    .build())
+                .let { validators.addAll(it.validatorsList) }
+        }
+
+        return Query.GetValidatorSetByHeightResponse.newBuilder()
+            .setBlockHeight(height.toLong())
+            .setPagination(results.pagination)
+            .addAllValidators(validators)
+            .build()
+    }
+
+    fun getStakingValidators(): MutableList<Staking.Validator> {
+        var offset = 0
+        val limit = 100
+
+        val results = stakingClient.validators(StakingOuterClass.QueryValidatorsRequest.newBuilder()
+            .setPagination(getPaginationBuilder(offset, limit))
+            .build())
+
+        val total = results.pagination?.total ?: results.validatorsCount.toLong()
+        val validators = results.validatorsList
+
+        while (validators.count() < total) {
+            offset += limit
+            stakingClient.validators(StakingOuterClass.QueryValidatorsRequest.newBuilder()
+                .setPagination(getPaginationBuilder(offset, limit))
+                .build())
+                .let { validators.addAll(it.validatorsList) }
+        }
+
+        return validators
+    }
 
     fun getStakingValidator(address: String) =
         stakingClient.validator(
             StakingOuterClass.QueryValidatorRequest.newBuilder().setValidatorAddr(address).build()).validator
 
-    fun getStakingValidatorDelegations(address: String) =
+    fun getStakingValidatorDelegations(address: String, offset: Int, limit: Int) =
         stakingClient.validatorDelegations(
-            StakingOuterClass.QueryValidatorDelegationsRequest.newBuilder().setValidatorAddr(address).build())
+            StakingOuterClass.QueryValidatorDelegationsRequest.newBuilder()
+                .setValidatorAddr(address)
+                .setPagination(getPaginationBuilder(offset, limit))
+                .build())
 
-    fun getStakingValidatorUnbondingDels(address: String) =
-        stakingClient.validatorUnbondingDelegations(StakingOuterClass.QueryValidatorUnbondingDelegationsRequest
-            .newBuilder().setValidatorAddr(address).build()).unbondingResponsesList
+    fun getValidatorSelfDelegations(valAddress: String, delAddress: String) =
+        stakingClient.delegation(
+            StakingOuterClass.QueryDelegationRequest.newBuilder()
+                .setValidatorAddr(valAddress)
+                .setDelegatorAddr(delAddress)
+                .build())
 
-    fun getDistributionCommissions(address: String) =
+    fun getStakingValidatorUnbondingDels(address: String, offset: Int, limit: Int) =
+        stakingClient.validatorUnbondingDelegations(
+            StakingOuterClass.QueryValidatorUnbondingDelegationsRequest.newBuilder()
+                .setValidatorAddr(address)
+                .setPagination(getPaginationBuilder(offset, limit))
+                .build())
+
+    fun getValidatorCommission(address: String) =
         distClient.validatorCommission(
             DistOuterClass.QueryValidatorCommissionRequest.newBuilder().setValidatorAddress(address).build()).commission
 
-    fun getDistributionRewards(address: String) =
+    fun getValidatorRewards(address: String) =
         distClient.validatorOutstandingRewards(
             DistOuterClass.QueryValidatorOutstandingRewardsRequest.newBuilder().setValidatorAddress(address).build())
             .rewards

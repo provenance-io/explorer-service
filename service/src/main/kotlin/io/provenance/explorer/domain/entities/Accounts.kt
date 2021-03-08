@@ -1,7 +1,6 @@
 package io.provenance.explorer.domain.entities
 
 import com.google.protobuf.Any
-import com.google.protobuf.Message
 import cosmos.auth.v1beta1.Auth
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
@@ -16,7 +15,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 
 object AccountTable : IdTable<String>(name = "account") {
-    val accountAddress = varchar("account_address", 128).primaryKey()
+    val accountAddress = varchar("account_address", 128)
     override val id = accountAddress.entityId()
     val type = varchar("type", 128)
     val accountNumber = long("account_number")

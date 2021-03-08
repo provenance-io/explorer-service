@@ -29,7 +29,8 @@ class SignatureRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<SignatureRecord>(SignatureTable) {
 
         private fun findByBase64Sig(sig: String, type: String) = transaction {
-            SignatureRecord.find { (SignatureTable.base64Sig eq sig) and (SignatureTable.pubkeyType eq type)}.firstOrNull()
+            SignatureRecord.find { (SignatureTable.base64Sig eq sig) and (SignatureTable.pubkeyType eq type) }
+                .firstOrNull()
         }
 
         fun findByIdList(sigIds: List<Int>) = SignatureRecord.find { SignatureTable.id inList sigIds }
@@ -46,10 +47,12 @@ class SignatureRecord(id: EntityID<Int>) : IntEntity(id) {
             when {
                 pubkey.typeUrl.contains("secp256k1") ->
                     pubkey.unpack(cosmos.crypto.secp256k1.Keys.PubKey::class.java)
-                        .let { key -> listOf(insertAndGetId(key.key.toValue(), pubkey.typeUrl, pubkey, multiSig)) }
+                        .let { key -> listOf(
+                            insertAndGetId(key.key.toValue(), pubkey.typeUrl, pubkey, multiSig)) }
                 pubkey.typeUrl.contains("ed25519") ->
                     pubkey.unpack(cosmos.crypto.ed25519.Keys.PubKey::class.java)
-                        .let { key -> listOf(insertAndGetId(key.key.toValue(), pubkey.typeUrl, pubkey, multiSig)) }
+                        .let { key -> listOf(
+                            insertAndGetId(key.key.toValue(), pubkey.typeUrl, pubkey, multiSig)) }
                 pubkey.typeUrl.contains("LegacyAminoPubKey") ->
                     pubkey.unpack(Keys.LegacyAminoPubKey::class.java).let { multi ->
                         multi.publicKeysList

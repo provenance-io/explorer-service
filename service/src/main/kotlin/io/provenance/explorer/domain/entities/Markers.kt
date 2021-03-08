@@ -12,7 +12,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 
 object MarkerCacheTable : IdTable<String>(name = "marker_cache") {
-    val markerAddress = varchar("marker_address", 128).primaryKey()
+    val markerAddress = varchar("marker_address", 128)
     override val id = markerAddress.entityId()
     val markerType = varchar("marker_type", 128)
     val denom = varchar("denom", 64)
