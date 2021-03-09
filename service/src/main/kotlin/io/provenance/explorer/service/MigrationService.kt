@@ -24,7 +24,7 @@ class MigrationService(private val txService: TransactionService, private val pr
 
     private fun populateAccSignatures() = transaction {
         AccountRecord.all().forEach {
-            SignatureJoinRecord.insert(it.baseAccount.pubKey, SigJoinType.ACCOUNT, it.id.value)
+            SignatureJoinRecord.insert(it.baseAccount.pubKey, SigJoinType.ACCOUNT, it.accountAddress)
         }
     }
 

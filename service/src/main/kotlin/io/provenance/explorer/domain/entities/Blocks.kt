@@ -3,13 +3,31 @@ package io.provenance.explorer.domain.entities
 import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
-import org.jetbrains.exposed.dao.EntityID
-import org.jetbrains.exposed.dao.IdTable
+import io.provenance.explorer.domain.models.explorer.TxHistory
+import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
+import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
+import org.jetbrains.exposed.sql.DecimalColumnType
+import org.jetbrains.exposed.sql.Expression
+import org.jetbrains.exposed.sql.Function
+import org.jetbrains.exposed.sql.QueryBuilder
+import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
+import org.jetbrains.exposed.sql.append
 import org.jetbrains.exposed.sql.insertIgnore
+import org.jetbrains.exposed.sql.jodatime.CustomDateTimeFunction
+import org.jetbrains.exposed.sql.jodatime.DateColumnType
+import org.jetbrains.exposed.sql.jodatime.datetime
+import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.stringLiteral
+import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
+import org.joda.time.DateTimeZone
+import java.math.BigDecimal
 
 object BlockCacheTable : CacheIdTable<Int>(name = "block_cache") {
     val height = integer("height")
@@ -38,6 +56,46 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
                     it[this.lastHit] = DateTime.now()
                 }.let { blockMeta }
             }
+
+        private fun String.dateTruncFunc() =
+            CustomDateTimeFunction("DATE_TRUNC", stringLiteral(this),  BlockCacheTable.blockTimestamp)
+
+        fun getTxCountsForParams(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
+            val dateTrunc = granularity.dateTruncFunc()
+            val txSum = BlockCacheTable.txCount.sum()
+            BlockCacheTable.slice(dateTrunc, txSum)
+                .select { BlockCacheTable.blockTimestamp.between(fromDate, toDate.plusDays(1)) }
+                .groupBy(dateTrunc)
+                .orderBy(dateTrunc, SortOrder.DESC)
+                .map {
+                    TxHistory(
+                        it[dateTrunc]!!.withZone(DateTimeZone.UTC)
+                            .toString("yyyy-MM-dd HH:mm:ss"),
+                        it[txSum]!!) }
+        }
+
+        fun getDaysBetweenHeights(minHeight: Int, maxHeight: Int) = transaction {
+            val dateTrunc = DateTruncGranularity.DAY.name.dateTruncFunc()
+            BlockCacheTable.slice(dateTrunc)
+                .select { BlockCacheTable.height.between(minHeight, maxHeight) }
+                .groupBy(dateTrunc)
+                .orderBy(dateTrunc, SortOrder.DESC)
+                .toList()
+                .size
+        }
+
+        fun getBlockCreationInterval(limit: Int): List<Pair<Int, BigDecimal?>> = transaction {
+            val lag = Lag(BlockCacheTable.blockTimestamp, BlockCacheTable.height)
+            val lagExtract = ExtractEpoch(lag)
+            val baseExtract = ExtractEpoch(BlockCacheTable.blockTimestamp)
+            val creationTime = lagExtract.minus(baseExtract)
+
+            BlockCacheTable.slice(BlockCacheTable.height, creationTime)
+                .selectAll()
+                .orderBy(BlockCacheTable.height, SortOrder.DESC)
+                .limit(limit)
+                .map { Pair(it[BlockCacheTable.height], it[creationTime]) }
+        }
     }
 
     var height by BlockCacheTable.height
@@ -48,6 +106,16 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
     override var hitCount by BlockCacheTable.hitCount
 }
 
+// Custom expressions for complex query types
+class Lag(val lag: Expression<DateTime>, val orderBy: Expression<Int>): Function<DateTime>(DateColumnType(true)) {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) =
+        queryBuilder { append("LAG(", lag,") OVER (order by ", orderBy, " desc)") }
+}
+
+class ExtractEpoch(val expr: Expression<DateTime>): Function<BigDecimal>(DecimalColumnType(10, 10)) {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) =
+        queryBuilder { append("extract(epoch from ", expr," )") }
+}
 
 object BlockIndexTable : IdTable<Int>(name = "block_index") {
     override val id = integer("id").entityId()

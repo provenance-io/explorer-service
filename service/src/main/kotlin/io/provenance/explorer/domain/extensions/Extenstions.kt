@@ -104,7 +104,7 @@ fun <T> List<T>.pageOfResults(page: Int, count: Int): List<T> {
 }
 
 // Total # of results divided by count per page
-fun Int.pageCountOfResults(count: Int): Int =
+fun Long.pageCountOfResults(count: Int): Int =
     if (this < count) 1
     else ceil(this.toDouble() / count).toInt()
 

@@ -6,12 +6,18 @@ import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.toDateTime
+import io.provenance.explorer.domain.models.explorer.GasStatistics
+import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.domain.models.explorer.getCategoryForType
 import io.provenance.explorer.grpc.extensions.getAssociatedAddresses
-import org.jetbrains.exposed.dao.EntityID
+import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
-import org.jetbrains.exposed.dao.IntIdTable
+import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.Avg
+import org.jetbrains.exposed.sql.IntegerColumnType
+import org.jetbrains.exposed.sql.Max
+import org.jetbrains.exposed.sql.Min
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
@@ -19,10 +25,14 @@ import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
+import org.jetbrains.exposed.sql.jodatime.CustomDateTimeFunction
+import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.stringLiteral
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
+import org.joda.time.DateTimeZone
 
 object TxCacheTable : CacheIdTable<String>(name = "tx_cache") {
     val hash = varchar("hash", 64)
@@ -81,10 +91,23 @@ class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
 
         fun findSigsByHash(hash: String) = SignatureRecord.findByJoin(SigJoinType.TRANSACTION, hash)
 
-        fun getAllWithOffset(sort: SortOrder, count: Int, offset: Int) =
-            TxCacheRecord.all()
-                .orderBy(Pair(TxCacheTable.height, sort))
-                .limit(count, offset)
+        fun getGasStats(startDate: DateTime, endDate: DateTime, granularity: String) = transaction {
+            val dateTrunc = CustomDateTimeFunction("DATE_TRUNC", stringLiteral(granularity),  TxCacheTable.txTimestamp)
+            val minGas = Min(TxCacheTable.gasUsed, IntegerColumnType())
+            val maxGas = Max(TxCacheTable.gasUsed, IntegerColumnType())
+            val avgGas = Avg(TxCacheTable.gasUsed, 5)
+
+            TxCacheTable.slice(dateTrunc, minGas, maxGas, avgGas)
+                .select { TxCacheTable.txTimestamp.between(startDate, endDate.plusDays(1)) }
+                .groupBy(dateTrunc)
+                .orderBy(dateTrunc, SortOrder.DESC)
+                .map { GasStatistics(
+                    it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
+                    it[minGas]!!,
+                    it[maxGas]!!,
+                    it[avgGas]!!
+                ) }
+        }
     }
 
     var hash by TxCacheTable.hash
@@ -172,6 +195,8 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findByQueryParams(
             address: String?,
             msgTypes: List<String>,
+            txHeight: Int?,
+            txStatus: TxStatus?,
             count: Int,
             offset: Int,
             fromDate: DateTime?,
@@ -186,6 +211,11 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
 
             if (msgTypes.isNotEmpty())
                 query.andWhere { TxMessageTypeTable.type inList msgTypes }
+            if (txHeight != null)
+                query.andWhere { TxCacheTable.height eq txHeight }
+            if (txStatus != null)
+                query.andWhere {
+                    if (txStatus == TxStatus.FAILURE) TxCacheTable.errorCode neq 0 else TxCacheTable.errorCode eq null }
             if (address != null)
                 query.andWhere { TxAddressJoinTable.address eq address }
             if (fromDate != null)
@@ -195,7 +225,7 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
 
             query.orderBy(Pair(TxMessageTable.blockHeight, SortOrder.DESC))
             val totalCount = query.count()
-            query.limit(count, offset)
+            query.limit(count, offset.toLong())
             TxCacheRecord.wrapRows(query).toList() to totalCount
         }
     }

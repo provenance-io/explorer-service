@@ -38,7 +38,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added a script to pull in protos used in the client #5
 * Added a `build.gradle` to allow the protos to be compiled to java on build task #5
 * Added support for multisig on transactions, accounts, and validators (limited) #9
-* Added Validator specific APIs #15
+* Added Validator-specific APIs #15
 * Added Account-specific transaction API #11
 
 ### Improvements
@@ -48,9 +48,13 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Upgraded to Kotlin gradle
 * Updated the transaction database tables to allow for better searching #15
 * Updated block queries to return the same object with updated info #13
+* Updated native queries to use exposed query-building instead
+* Updated transaction queries to return same objects as other similar queries #14
+* Upgraded Exposed library from 0.17.1 to 0.29.1
 
 ### Bug Fixes
 * Translated the signatures back to usable addresses
+* Fixed `gas/statistics` from previous updates
 
 ## PRE-HISTORY
 

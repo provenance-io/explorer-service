@@ -5,6 +5,7 @@ import java.math.BigDecimal
 import java.math.BigInteger
 
 data class TxDetails(
+    val txHash: String,
     val height: Int,
     val gasUsed: Int,
     val gasWanted: Int,
@@ -14,15 +15,12 @@ data class TxDetails(
     val status: String,
     val errorCode: Int?,
     val codespace: String?,
-    val fee: BigInteger,
-    val feeDenomination: String,
+    val errorLog: String?,
+    val fee: DenomAmount,
     val signers: Signatures,
     val memo: String,
-    val txType: String,
-    val from: String,
-    val amount: Int,
-    val denomination: String,
-    val to: String
+    val msg: List<TxMessage>,
+    val monikers: Map<String, String>
 )
 
 data class TxHistory(val date: String, var numberTxs: Int)
@@ -68,3 +66,7 @@ data class TxMessage(
     val type: String,
     val msg: ObjectNode
 )
+
+enum class DateTruncGranularity { DAY, HOUR }
+
+enum class TxStatus { SUCCESS, FAILURE }

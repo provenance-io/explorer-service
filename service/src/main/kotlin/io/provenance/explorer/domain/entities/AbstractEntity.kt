@@ -2,8 +2,9 @@ package io.provenance.explorer.domain.entities
 
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.EntityClass
-import org.jetbrains.exposed.dao.EntityID
-import org.jetbrains.exposed.dao.IdTable
+import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.dao.id.IdTable
+import org.jetbrains.exposed.sql.jodatime.datetime
 import org.joda.time.DateTime
 
 // Allows for last_hit and hit_count to be a common thing

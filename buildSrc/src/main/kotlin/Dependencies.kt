@@ -38,11 +38,10 @@ object Versions {
     // kotlin
     const val Kotlin = PluginVersions.Kotlin
     const val KotlinXCoroutines = "1.3.9"
-    const val KotlinXSerializationCore = "1.0.0"
 
     // 3rd Party
     const val BouncyCastle = "1.63"
-    const val Exposed = "0.17.9"
+    const val Exposed = "0.29.1"
     const val Flyway = PluginVersions.Flyway
     const val Jackson = "2.11.2"
     const val JacksonProtobuf = "0.9.12"
@@ -66,7 +65,10 @@ object Libraries {
     const val KotlinXCoRoutinesCore = "org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.KotlinXCoroutines}"
 
     // 3rd Party
-    const val Exposed = "org.jetbrains.exposed:exposed:${Versions.Exposed}"
+    const val Exposed = "org.jetbrains.exposed:exposed-core:${Versions.Exposed}"
+    const val ExposedDao = "org.jetbrains.exposed:exposed-dao:${Versions.Exposed}"
+    const val ExposedJavaTime = "org.jetbrains.exposed:exposed-jodatime:${Versions.Exposed}"
+    const val ExposedJdbc = "org.jetbrains.exposed:exposed-jdbc:${Versions.Exposed}"
     const val FlywayCore = "org.flywaydb:flyway-core:${Versions.Flyway}"
     const val JacksonModuleKotlin = "com.fasterxml.jackson.module:jackson-module-kotlin:${Versions.Jackson}"
     const val JacksonDatatype = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${Versions.Jackson}"
