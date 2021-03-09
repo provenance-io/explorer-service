@@ -103,11 +103,10 @@ fun <T> List<T>.pageOfResults(page: Int, count: Int): List<T> {
     return this.subList(fromIndex, toIndex)
 }
 
+// Total # of results divided by count per page
 fun Int.pageCountOfResults(count: Int): Int =
     if (this < count) 1
     else ceil(this.toDouble() / count).toInt()
-
-
 
 fun String.translateAddress(props: ExplorerProperties) = this.toBech32Data().let {
     Addresses(
