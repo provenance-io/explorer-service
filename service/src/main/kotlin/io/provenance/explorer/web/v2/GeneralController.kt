@@ -1,5 +1,6 @@
 package io.provenance.explorer.web.v2
 
+import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.GasStatistics
 import io.provenance.explorer.domain.models.explorer.Spotlight
 import io.provenance.explorer.service.ExplorerService
@@ -30,8 +31,8 @@ class GeneralController(private val explorerService: ExplorerService) : BaseCont
     @GetMapping("/gas/statistics")
     fun gasStatistics(@RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime,
                       @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime,
-                      @RequestParam(required = false, defaultValue = "day") granularity: String
-    ): ResponseEntity<MutableList<GasStatistics>> =
+                      @RequestParam(required = false) granularity: DateTruncGranularity?
+    ) =
         ResponseEntity.ok(explorerService.getGasStatistics(fromDate, toDate, granularity))
 
     @ApiOperation("Returns the ID of the chain associated with the explorer instance")

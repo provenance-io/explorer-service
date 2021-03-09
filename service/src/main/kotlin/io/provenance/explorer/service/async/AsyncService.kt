@@ -2,6 +2,8 @@ package io.provenance.explorer.service.async
 
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.entities.BlockCacheRecord
+import io.provenance.explorer.domain.entities.BlockCacheTable
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.service.BlockService
@@ -74,8 +76,8 @@ class AsyncService(
         blockIndex?.second == null || blockIndex.first == null
 
     fun continueCollectingHistoricalBlocks(maxRead: Int, minRead: Int): Boolean {
-        val historicalDays = blockService.getHistoricalDaysBetweenHeights(maxRead, minRead)
-        return historicalDays.size < explorerProperties.initialHistoricalDays() && minRead > 1
+        val historicalDays = BlockCacheRecord.getDaysBetweenHeights(minRead, maxRead)
+        return historicalDays < explorerProperties.initialHistoricalDays() && minRead > 1
     }
 
     fun getEndDate() = LocalDate().toDateTimeAtStartOfDay().minusDays(explorerProperties.initialHistoricalDays() + 1)

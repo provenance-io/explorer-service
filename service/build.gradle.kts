@@ -60,6 +60,9 @@ dependencies {
 
     api(Libraries.Swagger)
     api(Libraries.Exposed)
+    api(Libraries.ExposedJavaTime)
+    api(Libraries.ExposedDao)
+    api(Libraries.ExposedJdbc)
 
     testImplementation(Libraries.SpringBootStarterTest)
 

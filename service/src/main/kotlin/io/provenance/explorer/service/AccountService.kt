@@ -19,10 +19,10 @@ class AccountService(private val accountClient: AccountGrpcClient, private val p
     fun getAccountDetail(address: String) = getAccountRaw(address).let {
         AccountDetail(
             it.type,
-            it.id.value,
+            it.accountAddress,
             it.accountNumber,
             it.baseAccount.sequence.toInt(),
-            AccountRecord.findSigsByAddress(it.id.value).toSigObj(props.provAccPrefix()),
+            AccountRecord.findSigsByAddress(it.accountAddress).toSigObj(props.provAccPrefix()),
             getAccountBalances(address)
         )
     }

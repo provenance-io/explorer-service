@@ -136,11 +136,11 @@ class ValidatorService(
     fun updateStakingValidators() = transaction {
         val toBeUpdated = StakingValidatorCacheRecord.all()
             .filter { it.lastHit.millis.isPastDue(props.stakingValidatorTtlMs()) }
-        val updateAddresses = toBeUpdated.map { it.id.value }
+        val updateAddresses = toBeUpdated.map { it.operatorAddress }
         grpcClient.getStakingValidators()
             .filter { it.operatorAddress in updateAddresses }
             .forEach { stake ->
-                toBeUpdated.first { stake.operatorAddress == it.id.value }.delete()
+                toBeUpdated.first { stake.operatorAddress == it.operatorAddress }.delete()
                 StakingValidatorCacheRecord.insertIgnore(stake.operatorAddress, stake)
             }
     }
@@ -158,7 +158,7 @@ class ValidatorService(
         hydrateValidators(validatorSet, stakingValidators)
             .sortedByDescending { it.votingPower }
             .pageOfResults(page, count)
-            .let { PagedResults(it.size.pageCountOfResults(count), it) }
+            .let { PagedResults(it.size.toLong().pageCountOfResults(count), it) }
     }
 
     private fun hydrateValidators(validators: List<Query.Validator>, stakingValidators: List<Staking.Validator>) = let {
@@ -218,7 +218,7 @@ class ValidatorService(
                 it.delegation.shares.toScaledDecimal(18),
                 null,
                 null) }
-            PagedResults(res.pagination.total.toInt().pageCountOfResults(limit), list)
+            PagedResults(res.pagination.total.pageCountOfResults(limit), list)
         }
 
     fun getUnbondingDelegations(address: String) =
