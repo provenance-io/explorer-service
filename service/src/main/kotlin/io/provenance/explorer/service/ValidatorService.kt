@@ -135,12 +135,9 @@ class ValidatorService(
     // Updates the staking validator cache
     fun updateStakingValidators() = transaction {
         val toBeUpdated = StakingValidatorCacheRecord.all()
-            .filter { it.lastHit.millis.isPastDue(props.stakingValidatorTtlMs()) }
-        val updateAddresses = toBeUpdated.map { it.operatorAddress }
         grpcClient.getStakingValidators()
-            .filter { it.operatorAddress in updateAddresses }
             .forEach { stake ->
-                toBeUpdated.first { stake.operatorAddress == it.operatorAddress }.delete()
+                toBeUpdated.firstOrNull { stake.operatorAddress == it.operatorAddress }?.delete()
                 StakingValidatorCacheRecord.insertIgnore(stake.operatorAddress, stake)
             }
     }
