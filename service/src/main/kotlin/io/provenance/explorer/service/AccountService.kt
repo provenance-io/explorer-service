@@ -27,10 +27,7 @@ class AccountService(private val accountClient: AccountGrpcClient, private val p
         )
     }
 
-    private fun getAccountBalances(address: String) = accountClient.getAccountBalances(address).map { it.toData()}
-
-    fun getTotalSupply(denom: String) = accountClient.getSupplyByDenom(denom).amount.amount.toBigDecimal()
-
+    fun getAccountBalances(address: String) = accountClient.getAccountBalances(address).map { it.toData()}
 }
 
 fun String.getAccountType() = this.split(".").last()

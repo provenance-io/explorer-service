@@ -1,30 +1,27 @@
 package io.provenance.explorer.service
 
-import com.google.protobuf.util.JsonFormat
 import cosmos.base.tendermint.v1beta1.Query
-import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.height
-import io.provenance.explorer.domain.extensions.sendMsg
-import io.provenance.explorer.domain.extensions.toSigObj
 import io.provenance.explorer.domain.extensions.toValue
 import io.provenance.explorer.domain.extensions.translateByteArray
-import io.provenance.explorer.domain.extensions.type
 import io.provenance.explorer.domain.models.explorer.BlockSummary
+import io.provenance.explorer.domain.models.explorer.BondedTokens
+import io.provenance.explorer.domain.models.explorer.CountTotal
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.Spotlight
-import io.provenance.explorer.domain.models.explorer.TxDetails
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.math.RoundingMode
 
 
@@ -33,7 +30,7 @@ class ExplorerService(
     private val props: ExplorerProperties,
     private val cacheService: CacheService,
     private val blockService: BlockService,
-    private val accountService: AccountService,
+    private val assetService: AssetService,
     private val transactionService: TransactionService,
     private val validatorService: ValidatorService
 ) {
@@ -84,12 +81,12 @@ class ExplorerService(
             proposerAddress = validatorAddresses.operatorAddress,
             moniker = stakingValidator.description.moniker,
             icon = "", //TODO Add icon
-            votingPower = validatorsResponse.validatorsList
-                .filter { it.address in votingVals }
-                .sumBy { v -> v.votingPower.toInt() },
-            votingPowerTotal = validatorsResponse.validatorsList.sumBy { v -> v.votingPower.toInt() },
-            numValidators = validatorsResponse.validatorsList.filter { it.address in votingVals }.size,
-            numValidatorsTotal = validatorsResponse.validatorsCount,
+            votingPower = CountTotal(
+                validatorsResponse.validatorsList.filter { it.address in votingVals }.sumBy { v -> v.votingPower.toInt() },
+                validatorsResponse.validatorsList.sumBy { v -> v.votingPower.toInt() }),
+            validatorCount = CountTotal(
+                validatorsResponse.validatorsList.filter { it.address in votingVals }.size,
+                validatorsResponse.validatorsCount),
             txNum = blockResponse.block.data.txsCount)
     }
 
@@ -106,16 +103,14 @@ class ExplorerService(
             Spotlight(
                 latestBlock = getBlockAtHeight(null),
                 avgBlockTime = getAverageBlockCreationTime(),
-                bondedTokenPercent = BigDecimal(it.first).divide(it.second, 6, RoundingMode.HALF_UP),
-                bondedTokenAmount = it.first,
-                bondedTokenTotal = it.second
+                bondedTokens = BondedTokens(it.first.toBigInteger(), it.second, "nhash")
             )
         }.let { cacheService.addSpotlightToCache(it) }
 
     fun getBondedTokenRatio() = let {
-        val totalBlockChainTokens = accountService.getTotalSupply("nhash")
+        val totalBlockChainTokens = assetService.getTotalSupply("nhash")
         val totalBondedTokens = validatorService.getStakingValidators("active").map { it.tokens.toLong() }.sum()
-        Pair<Long, BigDecimal>(totalBondedTokens, totalBlockChainTokens)
+        Pair<Long, BigInteger>(totalBondedTokens, totalBlockChainTokens)
     }
 
     fun getGasStatistics(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =

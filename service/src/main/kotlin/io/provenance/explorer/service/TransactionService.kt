@@ -1,9 +1,7 @@
 package io.provenance.explorer.service
 
-import com.fasterxml.jackson.databind.node.ObjectNode
 import com.google.protobuf.util.JsonFormat
 import cosmos.tx.v1beta1.ServiceOuterClass
-import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
@@ -15,10 +13,12 @@ import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toSigObj
+import io.provenance.explorer.domain.models.explorer.Coin
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
-import io.provenance.explorer.domain.models.explorer.DenomAmount
+import io.provenance.explorer.domain.models.explorer.Gas
 import io.provenance.explorer.domain.models.explorer.MsgTypeSet
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.TxDetails
@@ -81,6 +81,7 @@ class TransactionService(
 
     fun getTxsByQuery(
         address: String?,
+        denom: String?,
         module: MsgTypeSet?,
         msgType: String?,
         txHeight: Int?,
@@ -93,7 +94,7 @@ class TransactionService(
         val msgTypes = if (msgType != null) listOf(msgType) else module?.types ?: listOf()
 
         val query = TxMessageRecord.findByQueryParams(
-                address, msgTypes, txHeight, txStatus, count, page.toOffset(count), fromDate, toDate)
+                address, denom, msgTypes, txHeight, txStatus, count, page.toOffset(count), fromDate, toDate)
         query.first.map {
             TxSummary(
                 it.hash,
@@ -101,24 +102,16 @@ class TransactionService(
                 it.txMessages.mapToTxMessages(),
                 TxAddressJoinRecord.findValidatorsByTxHash(it.id).map { v -> v.operatorAddress to v.moniker }.toMap(),
                 it.txTimestamp.toString(),
-                DenomAmount(
-                    it.txV2.tx.authInfo.fee.amountList[0].denom,
-                    it.txV2.tx.authInfo.fee.amountList[0].amount.toBigInteger()
-                ),
+                Coin(it.txV2.tx.authInfo.fee.amountList[0].amount.toBigInteger(),
+                    it.txV2.tx.authInfo.fee.amountList[0].denom),
                 TxCacheRecord.findSigsByHash(it.hash).toSigObj(props.provAccPrefix()),
-                if (it.errorCode == 0) "success" else "failed"
+                if (it.errorCode == null) "success" else "failed"
             )
         }.let { PagedResults(query.second.pageCountOfResults(count), it) }
     }
 
-    fun SizedIterable<TxMessageRecord>.mapToTxMessages() = this.map { msg ->
-        TxMessage(
-            msg.txMessageType.type,
-            OBJECT_MAPPER.readValue(protoPrinter.print(msg.txMessage), ObjectNode::class.java)
-                .let { node ->
-                    node.remove("@type")
-                    node
-                }) }
+    fun SizedIterable<TxMessageRecord>.mapToTxMessages() =
+        this.map { msg -> TxMessage(msg.txMessageType.type, msg.txMessage.toObjectNode(protoPrinter)) }
 
     fun getTxByHash(hash: String) = getTxByHashFromCache(hash) ?: txClient.getTxByHash(hash).addTxToCache()
 
@@ -130,17 +123,18 @@ class TransactionService(
         TxDetails(
             txHash = tx.txResponse.txhash,
             height = tx.txResponse.height.toInt(),
-            gasUsed = tx.txResponse.gasUsed.toInt(),
-            gasWanted = tx.txResponse.gasWanted.toInt(),
-            gasLimit = tx.tx.authInfo.fee.gasLimit.toInt(),
-            gasPrice = props.minGasPrice(),
+            gas = Gas(
+                tx.txResponse.gasUsed.toInt(),
+                tx.txResponse.gasWanted.toInt(),
+                tx.tx.authInfo.fee.gasLimit.toInt(),
+                props.minGasPrice()),
             time = blockService.getBlock(tx.txResponse.height.toInt()).block.header.time.formattedString(),
             status = if (tx.txResponse.code > 0) "failed" else "success",
             errorCode = tx.txResponse.code,
             codespace = tx.txResponse.codespace,
             errorLog = if (tx.txResponse.code > 0) tx.txResponse.rawLog else null,
-            fee = DenomAmount(tx.tx.authInfo.fee.amountList[0].denom,
-                tx.tx.authInfo.fee.amountList[0].amount.toBigInteger()),
+            fee = Coin(tx.tx.authInfo.fee.amountList[0].amount.toBigInteger(),
+                tx.tx.authInfo.fee.amountList[0].denom),
             signers = TxCacheRecord.findSigsByHash(tx.txResponse.txhash).toSigObj(props.provAccPrefix()),
             memo = tx.tx.body.memo,
             msg = TxMessageRecord.findByHash(tx.txResponse.txhash).mapToTxMessages(),

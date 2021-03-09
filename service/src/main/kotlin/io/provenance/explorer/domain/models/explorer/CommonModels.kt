@@ -1,5 +1,7 @@
 package io.provenance.explorer.domain.models.explorer
 
+import cosmos.base.v1beta1.CoinOuterClass
+import java.math.BigDecimal
 import java.math.BigInteger
 
 
@@ -17,7 +19,18 @@ data class Signatures(
     val threshold: Int?
 )
 
-data class DenomAmount(
-    val denom: String,
-    val amount: BigInteger
+data class Coin ( val amount: BigInteger, val denom: String)
+data class CoinDec (val amount: BigDecimal, val denom: String)
+
+fun CoinOuterClass.Coin.toData() = Coin(this.amount.toBigInteger(), this.denom)
+
+data class CountTotal(
+    val count: Int,
+    val total: Int
+)
+
+data class BondedTokens(
+    val count: BigInteger,
+    val total: BigInteger?,
+    val denom: String
 )

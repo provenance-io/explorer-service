@@ -9,19 +9,15 @@ data class BlockSummary(
     val proposerAddress: String,
     val moniker: String,
     val icon: String,
-    val votingPower: Int,
-    val votingPowerTotal: Int,
-    val numValidators: Int,
-    val numValidatorsTotal: Int,
+    val votingPower: CountTotal,
+    val validatorCount: CountTotal,
     val txNum: Int
 )
 
 data class Spotlight(
     val latestBlock: BlockSummary,
     val avgBlockTime: BigDecimal,
-    val bondedTokenPercent: BigDecimal,
-    val bondedTokenAmount: Long,
-    val bondedTokenTotal: BigDecimal
+    val bondedTokens: BondedTokens
 )
 
 data class GasStatistics(

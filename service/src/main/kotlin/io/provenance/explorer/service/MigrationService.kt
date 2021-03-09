@@ -37,6 +37,7 @@ class MigrationService(private val txService: TransactionService, private val pr
     fun populateTxs(): Boolean {
         listOf(585724,585722,584292,569451,569447,569266,569262,569251,556956,556910,556907,556511,556337,556334,
             556245,556241,555781,555778,553299,553281,552820,552806)
+            .also { TxMessageRecord.deleteByBlockHeight(it) }
             .forEach { txService.tryAddTxs(it) }
         return true
     }

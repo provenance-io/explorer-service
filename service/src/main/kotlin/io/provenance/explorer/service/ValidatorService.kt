@@ -10,7 +10,6 @@ import io.provenance.explorer.domain.entities.ValidatorAddressesRecord
 import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.getStatusString
-import io.provenance.explorer.domain.extensions.isPastDue
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.pageOfResults
 import io.provenance.explorer.domain.extensions.toDateTime
@@ -18,6 +17,11 @@ import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toScaledDecimal
 import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.extensions.uptime
+import io.provenance.explorer.domain.models.explorer.BondedTokens
+import io.provenance.explorer.domain.models.explorer.Coin
+import io.provenance.explorer.domain.models.explorer.CoinDec
+import io.provenance.explorer.domain.models.explorer.CommissionRate
+import io.provenance.explorer.domain.models.explorer.CountTotal
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.ValidatorCommission
 import io.provenance.explorer.domain.models.explorer.ValidatorDelegation
@@ -28,8 +32,6 @@ import io.provenance.explorer.grpc.toSingleSigKeyValue
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
-import java.math.BigDecimal
-import java.math.RoundingMode
 
 @Service
 class ValidatorService(
@@ -58,30 +60,28 @@ class ValidatorService(
     fun getValidator(address: String) =
         getValidatorOperatorAddress(address)!!.let { addr ->
             val currentHeight = blockService.getLatestBlockHeightIndex()
-            //TODO make async and add caching
             val stakingValidator = getStakingValidator(addr.operatorAddress)
             val signingInfo = getSigningInfos().firstOrNull { it.address == addr.consensusAddress }
             val validatorSet = grpcClient.getLatestValidators()
             val latestValidator = validatorSet.firstOrNull { it.address == addr.consensusAddress }!!
-            val votingPowerPercent = BigDecimal(validatorSet.sumBy { it.votingPower.toInt() })
-                .divide(latestValidator.votingPower.toBigDecimal(), 6, RoundingMode.HALF_UP)
-                .multiply(BigDecimal(100))
+            val votingPowerTotal = validatorSet.sumBy { it.votingPower.toInt() }
             ValidatorDetails(
-                latestValidator.votingPower.toInt(),
-                votingPowerPercent,
+                CountTotal(latestValidator.votingPower.toInt(), votingPowerTotal),
                 stakingValidator.description.moniker,
                 addr.operatorAddress,
                 addr.accountAddress,
                 grpcClient.getDelegatorWithdrawalAddress(addr.accountAddress),
                 stakingValidator.consensusPubkey.toAddress(props.provValConsPrefix()) ?: "",
-                signingInfo!!.missedBlocksCounter.toInt(),
-                currentHeight - signingInfo.startHeight.toInt(),
+                CountTotal(
+                    signingInfo!!.missedBlocksCounter.toInt(),
+                    currentHeight - signingInfo.startHeight.toInt()),
                 0,
                 signingInfo.uptime(currentHeight),
                 null,  // TODO: Update when we can get images going
                 stakingValidator.description.details,
                 stakingValidator.description.website,
-                stakingValidator.description.identity)
+                stakingValidator.description.identity
+            )
         }
 
     // Finds a validator address record from whatever address is passed in
@@ -153,7 +153,7 @@ class ValidatorService(
     private fun aggregateValidators(validatorSet: List<Query.Validator>, count: Int, page: Int, status: String) = let {
         val stakingValidators = getStakingValidators(status)
         hydrateValidators(validatorSet, stakingValidators)
-            .sortedByDescending { it.votingPower }
+            .sortedByDescending { it.votingPower.count }
             .pageOfResults(page, count)
             .let { PagedResults(it.size.toLong().pageCountOfResults(count), it) }
     }
@@ -190,16 +190,11 @@ class ValidatorService(
             addressId = stakingValidator.operatorAddress,
             consensusAddress = validator.address,
             proposerPriority = validator.proposerPriority.toInt(),
-            votingPower = validator.votingPower.toInt(),
-            votingPowerPercent = validator.votingPower.toBigDecimal()
-                .divide(totalVotingPower.toBigDecimal(), 6, RoundingMode.HALF_UP)
-                .multiply(BigDecimal(100)),
+            votingPower = CountTotal(validator.votingPower.toInt(), totalVotingPower),
             uptime = signingInfo.uptime(height),
             commission = stakingValidator.commission.commissionRates.rate.toScaledDecimal(18),
-            bondedTokens = stakingValidator.tokens.toLong(),
-            bondedTokensDenomination = "nhash",
-            selfBonded = selfBondedAmount.amount.toBigInteger(),
-            selfBondedDenomination = selfBondedAmount.denom,
+            bondedTokens = BondedTokens(stakingValidator.tokens.toBigInteger(), null, "nhash"),
+            selfBonded = BondedTokens(selfBondedAmount.amount.toBigInteger(), null, selfBondedAmount.denom),
             delegators = delegatorCount,
             bondHeight = 0,
             status = stakingValidator.getStatusString()
@@ -210,8 +205,7 @@ class ValidatorService(
         grpcClient.getStakingValidatorDelegations(address, page.toOffset(limit), limit).let { res ->
             val list = res.delegationResponsesList.map { ValidatorDelegation(
                 it.delegation.delegatorAddress,
-                it.balance.amount.toBigInteger(),
-                it.balance.denom,
+                Coin(it.balance.amount.toBigInteger(), it.balance.denom),
                 it.delegation.shares.toScaledDecimal(18),
                 null,
                 null) }
@@ -224,8 +218,7 @@ class ValidatorService(
                 list.entriesList.map {
                     ValidatorDelegation(
                         list.delegatorAddress,
-                        it.balance.toBigInteger(),
-                        "nhash",
+                        Coin(it.balance.toBigInteger(), "nhash"),
                         null,
                         it.creationHeight.toInt(),
                         it.completionTime.toDateTime()
@@ -244,19 +237,16 @@ class ValidatorService(
             grpcClient.getStakingValidatorDelegations(validator.operatorAddress, 0, 10).pagination.total
         val rewards = grpcClient.getValidatorCommission(address).commissionList[0]
         return ValidatorCommission(
-            validator.tokens.toBigInteger(),
-            "nhash",
-            selfBondedAmount.amount.toBigInteger(),
-            selfBondedAmount.denom,
-            validator.tokens.toBigInteger() - selfBondedAmount.amount.toBigInteger(),
-            "nhash",
+            BondedTokens(validator.tokens.toBigInteger(), null, "nhash"),
+            BondedTokens(selfBondedAmount.amount.toBigInteger(), null, selfBondedAmount.denom),
+            BondedTokens(validator.tokens.toBigInteger() - selfBondedAmount.amount.toBigInteger(), null,"nhash"),
             delegatorCount,
             validator.delegatorShares.toScaledDecimal(18),
-            rewards.amount.toScaledDecimal(18),
-            rewards.denom,
-            validator.commission.commissionRates.rate.toScaledDecimal(18),
-            validator.commission.commissionRates.maxRate.toScaledDecimal(18),
-            validator.commission.commissionRates.maxChangeRate.toScaledDecimal(18)
+            CoinDec(rewards.amount.toScaledDecimal(18), rewards.denom),
+            CommissionRate(
+                validator.commission.commissionRates.rate.toScaledDecimal(18),
+                validator.commission.commissionRates.maxRate.toScaledDecimal(18),
+                validator.commission.commissionRates.maxChangeRate.toScaledDecimal(18))
         )
     }
 

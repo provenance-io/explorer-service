@@ -8,6 +8,7 @@ import org.jetbrains.exposed.dao.EntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.sql.insertIgnore
+import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 
 
@@ -35,6 +36,10 @@ class MarkerCacheRecord(id: EntityID<String>) : Entity<String>(id) {
                     it[this.data] = marker
                 }.let { marker }
             }
+
+        fun findByDenom(denom: String) = transaction {
+            MarkerCacheRecord.find { MarkerCacheTable.denom eq denom }.firstOrNull()
+        }
     }
 
     var markerAddress by MarkerCacheTable.markerAddress
