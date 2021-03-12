@@ -42,7 +42,7 @@ class TransactionController(private val transactionService: TransactionService) 
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
     ) =
         ResponseEntity.ok(
-            transactionService.getTxsByQuery(null, null, msgType, null, txStatus, count, page, fromDate, toDate))
+            transactionService.getTxsByQuery(null, null, null, msgType, null, txStatus, count, page, fromDate, toDate))
 
     @ApiOperation("Return transaction by hash value")
     @GetMapping("/{hash}")
@@ -61,8 +61,7 @@ class TransactionController(private val transactionService: TransactionService) 
         @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
     ) = ResponseEntity.ok(
         transactionService.getTxsByQuery(
-            null, null, null, height, null, count, page, null, null
-        ))
+            null, null, null, null, height, null, count, page, null, null))
 
     @ApiOperation("Get X-Day Transaction History")
     @GetMapping("/history")
@@ -91,11 +90,13 @@ class TransactionController(private val transactionService: TransactionService) 
         @RequestParam(required = false) msgType: String?,
         @RequestParam(required = false) txStatus: TxStatus?,
         @RequestParam(required = false) address: String?,
+        @RequestParam(required = false) denom: String?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
     ) =
         ResponseEntity.ok(
-            transactionService.getTxsByQuery(address, module, msgType, null, txStatus, count, page, fromDate, toDate))
+            transactionService.getTxsByQuery(
+                address, denom, module, msgType, null, txStatus, count, page, fromDate, toDate))
 
     @ApiOperation("Returns transactions by query params for a specific address")
     @GetMapping("/address/{address}")
@@ -109,7 +110,8 @@ class TransactionController(private val transactionService: TransactionService) 
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
     ) =
         ResponseEntity.ok(
-            transactionService.getTxsByQuery(address, null, msgType, null, txStatus, count, page, fromDate, toDate))
+            transactionService.getTxsByQuery(
+                address, null, null, msgType, null, txStatus, count, page, fromDate, toDate))
 
 
 }

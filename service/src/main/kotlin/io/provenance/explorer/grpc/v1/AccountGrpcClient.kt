@@ -42,8 +42,4 @@ class AccountGrpcClient(channelUri : URI) {
     fun getAccountBalances(address: String) =
         bankClient.allBalances(BankOuterClass.QueryAllBalancesRequest.newBuilder().setAddress(address).build()).balancesList
 
-    fun getSupplyByDenom(denom: String) =
-        bankClient.supplyOf(BankOuterClass.QuerySupplyOfRequest.newBuilder().setDenom(denom).build())
-
-
 }

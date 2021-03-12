@@ -4,16 +4,20 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.google.protobuf.ByteString
+import com.google.protobuf.Message
 import com.google.protobuf.Timestamp
+import com.google.protobuf.util.JsonFormat
 import com.hubspot.jackson.datatype.protobuf.ProtobufModule
 import cosmos.bank.v1beta1.Tx
 import cosmos.base.abci.v1beta1.Abci
 import cosmos.slashing.v1beta1.Slashing
 import cosmos.staking.v1beta1.Staking
 import cosmos.tx.v1beta1.ServiceOuterClass
+import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.Bech32
 import io.provenance.explorer.domain.core.Hash
@@ -148,6 +152,13 @@ fun List<SignatureRecord>.toSigObj(hrpPrefix: String) =
     else Signatures(listOf(), null)
 
 fun String.toScaledDecimal(scale: Int) = BigDecimal(this.toBigInteger(), scale)
+
+fun Message.toObjectNode(protoPrinter: JsonFormat.Printer) =
+    OBJECT_MAPPER.readValue(protoPrinter.print(this), ObjectNode::class.java)
+        .let { node ->
+            node.remove("@type")
+            node
+        }
 
 /**
  * ObjectMapper extension for getting the ObjectMapper configured

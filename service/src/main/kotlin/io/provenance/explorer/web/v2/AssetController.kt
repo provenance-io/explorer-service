@@ -1,7 +1,6 @@
 package io.provenance.explorer.web.v2
 
 import io.provenance.explorer.domain.models.explorer.AssetDetail
-import io.provenance.explorer.domain.models.explorer.AssetHolder
 import io.provenance.explorer.domain.models.explorer.AssetListed
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.web.BaseController
@@ -13,7 +12,9 @@ import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import javax.validation.constraints.Min
 
 @Validated
 @RestController
@@ -32,6 +33,10 @@ class AssetController(private val assetService: AssetService) : BaseController()
 
     @ApiOperation("Returns asset holders for denom or address")
     @GetMapping("/{id}/holders")
-    fun getMarkerHolders(@PathVariable id: String): ResponseEntity<List<AssetHolder>> =
-        ResponseEntity.ok(assetService.getAssetHolders(id))
+    fun getMarkerHolders(
+        @PathVariable id: String,
+        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
+    ) =
+        ResponseEntity.ok(assetService.getAssetHolders(id, page, count))
 }
