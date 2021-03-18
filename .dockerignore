@@ -4,7 +4,7 @@ gradle
 .idea
 .gradle
 .github
-service/docker
+docker
 .dockerignore
 .gitignore
 gradlew
