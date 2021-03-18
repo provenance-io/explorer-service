@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.validation.annotation.Validated
 import javax.validation.constraints.NotNull
 
-@ConfigurationProperties(prefix = "provenance-explorer")
+@ConfigurationProperties(prefix = "explorer")
 @Validated
 class ExplorerProperties {
 
@@ -24,21 +24,11 @@ class ExplorerProperties {
     @NotNull
     lateinit var spotlightTtlMs: String
 
-    @NotNull
-    lateinit var stakingValidatorTtlMs: String
-
-    @NotNull
-    lateinit var stakingValidatorDelegationsTtlMs: String
-
     fun initialHistoricalDays() = initialHistoricalDayCount.toInt()
 
     fun minGasPrice() = minimumGasPrice.toBigDecimal()
 
     fun spotlightTtlMs() = spotlightTtlMs.toLong()
-
-    fun stakingValidatorTtlMs() = stakingValidatorTtlMs.toLong()
-
-    fun stakingValidatorDelegationsTtlMs() = stakingValidatorDelegationsTtlMs.toLong()
 
     //tp or pb
     fun provAccPrefix() =

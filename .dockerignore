@@ -1,0 +1,12 @@
+build
+scripts
+gradle
+.idea
+.gradle
+.github
+service/docker
+.dockerignore
+.gitignore
+gradlew
+gradlew.bat
+.DS_STORE

@@ -40,6 +40,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added support for multisig on transactions, accounts, and validators (limited) #9
 * Added Validator-specific APIs #15
 * Added Account-specific transaction API #11
+* Added working docker-compose script #10
 
 ### Improvements
 * Added templates and build workflow
@@ -51,6 +52,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Updated native queries to use exposed query-building instead
 * Updated transaction queries to return same objects as other similar queries #14
 * Upgraded Exposed library from 0.17.1 to 0.29.1
+* Updated the copy_proto script to be more intuitive
 
 ### Bug Fixes
 * Translated the signatures back to usable addresses
