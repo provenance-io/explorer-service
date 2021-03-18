@@ -1,0 +1,38 @@
+version: '3.9'
+services:
+  postgres:
+    image: postgres:13.2
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password1
+    ports:
+      - 5432:5432
+    volumes:
+      - ./db-init:/docker-entrypoint-initdb.d/
+
+  explorer-service:
+    image: explorer:latest
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    container_name: explorer
+    ports:
+      - 8612:8612
+    environment:
+      - SPRING_PROFILES_ACTIVE=container
+      - DB_USER=postgres
+      - DB_PASS=password1
+      - DB_HOST=postgres
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/explorer
+      - DB_PORT=5432
+      - DB_NAME=explorer
+      - DB_SCHEMA=explorer
+      - DB_CONNECTION_POOL_SIZE=5
+      - SPOTLIGHT_TTL_MS=5000
+      - INITIAL_HIST_DAY_COUNT=14
+      - EXPLORER_MAINNET=false
+      # Hits the locally running node
+      - EXPLORER_PB_URL=http://host.docker.internal:9090
+    depends_on:
+      - postgres

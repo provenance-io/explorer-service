@@ -1,0 +1,31 @@
+FROM gradle:6.8.3-jdk11 AS build
+RUN gradle --version && java -version
+WORKDIR /app
+
+# Only copy dependency-related files
+COPY build.gradle.kts gradle.properties settings.gradle.kts proto/build.gradle.kts buildSrc/build.gradle.kts /app/
+
+# Only download dependencies
+# Eat the expected build failure since no source code has been copied yet
+RUN gradle clean build --no-daemon > /dev/null 2>&1 || true
+
+# Copy all files
+COPY service /app/service/
+COPY database /app/database/
+COPY buildSrc /app/buildSrc/
+COPY proto /app/proto/
+COPY third_party /app/third_party/
+COPY .git /app/.git/
+COPY build.gradle.kts gradle.properties settings.gradle.kts /app/
+COPY CHANGELOG.md CODE_OF_CONDUCT.md CONTRIBUTING.md LICENSE README.md /app/
+
+# Do the actual build
+RUN gradle clean build --no-daemon
+
+FROM openjdk:11-jre
+
+COPY --from=build /app/service/build/libs/*.jar /service.jar
+
+EXPOSE 8612/tcp
+
+CMD java -jar /service.jar
