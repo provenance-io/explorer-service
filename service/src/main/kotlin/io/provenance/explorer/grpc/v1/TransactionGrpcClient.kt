@@ -4,7 +4,7 @@ import cosmos.tx.v1beta1.ServiceGrpc
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
-import io.provenance.explorer.grpc.getPaginationBuilder
+import io.provenance.explorer.grpc.extensions.getPaginationBuilder
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit

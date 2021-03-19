@@ -89,8 +89,3 @@ tasks.getByName<BootJar>("bootJar") {
         classpath += configurations.developmentOnly
     enabled = true
 }
-
-//tasks.getByName<Jar>("testJar") {
-//    archiveClassifier.set("test")
-//    from(sourceSets.test.get().output)
-//}

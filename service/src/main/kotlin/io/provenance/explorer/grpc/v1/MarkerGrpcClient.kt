@@ -1,10 +1,9 @@
 package io.provenance.explorer.grpc.v1
 
-import cosmos.staking.v1beta1.QueryOuterClass
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
-import io.provenance.explorer.grpc.getPaginationBuilder
-import io.provenance.explorer.grpc.toMarker
+import io.provenance.explorer.grpc.extensions.getPaginationBuilder
+import io.provenance.explorer.grpc.extensions.toMarker
 import io.provenance.marker.v1.Balance
 import io.provenance.marker.v1.MarkerAccount
 import io.provenance.marker.v1.QueryAllMarkersRequest

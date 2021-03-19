@@ -25,8 +25,8 @@ data class CoinDec (val amount: BigDecimal, val denom: String)
 fun CoinOuterClass.Coin.toData() = Coin(this.amount.toBigInteger(), this.denom)
 
 data class CountTotal(
-    val count: Int,
-    val total: Int
+    val count: BigInteger,
+    val total: BigInteger
 )
 
 data class BondedTokens(

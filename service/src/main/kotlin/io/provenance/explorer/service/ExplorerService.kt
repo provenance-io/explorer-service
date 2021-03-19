@@ -7,7 +7,7 @@ import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.height
-import io.provenance.explorer.domain.extensions.toValue
+import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.translateByteArray
 import io.provenance.explorer.domain.models.explorer.BlockSummary
 import io.provenance.explorer.domain.models.explorer.BondedTokens
@@ -76,17 +76,17 @@ class ExplorerService(
             .map { it.validatorAddress.translateByteArray(props).consensusAccountAddr }
         BlockSummary(
             height = blockResponse.block.height(),
-            hash = blockResponse.blockId.hash.toValue(),
+            hash = blockResponse.blockId.hash.toHash(),
             time = blockResponse.block.header.time.formattedString(),
             proposerAddress = validatorAddresses.operatorAddress,
             moniker = stakingValidator.description.moniker,
             icon = "", //TODO Add icon
             votingPower = CountTotal(
-                validatorsResponse.validatorsList.filter { it.address in votingVals }.sumBy { v -> v.votingPower.toInt() },
-                validatorsResponse.validatorsList.sumBy { v -> v.votingPower.toInt() }),
+                validatorsResponse.validatorsList.filter { it.address in votingVals }.sumOf { v -> v.votingPower.toBigInteger() },
+                validatorsResponse.validatorsList.sumOf { v -> v.votingPower.toBigInteger() }),
             validatorCount = CountTotal(
-                validatorsResponse.validatorsList.filter { it.address in votingVals }.size,
-                validatorsResponse.validatorsCount),
+                validatorsResponse.validatorsList.filter { it.address in votingVals }.size.toBigInteger(),
+                validatorsResponse.validatorsCount.toBigInteger()),
             txNum = blockResponse.block.data.txsCount)
     }
 
@@ -103,7 +103,8 @@ class ExplorerService(
             Spotlight(
                 latestBlock = getBlockAtHeight(null),
                 avgBlockTime = getAverageBlockCreationTime(),
-                bondedTokens = BondedTokens(it.first.toBigInteger(), it.second, "nhash")
+                bondedTokens = BondedTokens(it.first.toBigInteger(), it.second, "nhash"),
+                totalTxCount = TxCacheRecord.getTotalTxCount()
             )
         }.let { cacheService.addSpotlightToCache(it) }
 

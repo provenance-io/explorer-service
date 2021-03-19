@@ -23,6 +23,8 @@ import org.jetbrains.exposed.sql.Min
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.count
+import org.jetbrains.exposed.sql.countDistinct
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insert
@@ -95,6 +97,11 @@ class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
             TxCacheRecord.find { TxCacheTable.height eq height }
 
         fun findSigsByHash(hash: String) = SignatureRecord.findByJoin(SigJoinType.TRANSACTION, hash)
+
+        fun getTotalTxCount() = transaction {
+            val count = TxCacheTable.hash.count()
+            TxCacheTable.slice(count).selectAll().first()[count].toBigInteger()
+        }
 
         fun getGasStats(startDate: DateTime, endDate: DateTime, granularity: String) = transaction {
             val dateTrunc = CustomDateTimeFunction("DATE_TRUNC", stringLiteral(granularity),  TxCacheTable.txTimestamp)
@@ -227,6 +234,8 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
                     .innerJoin(TxMessageTypeTable, { TxMessageTable.txMessageType }, { TxMessageTypeTable.id })
                     .leftJoin(TxAddressJoinTable, { TxMessageTable.txHash }, { TxAddressJoinTable.txHash })
                     .leftJoin(TxMarkerJoinTable, { TxMessageTable.txHash }, { TxMarkerJoinTable.txHash })
+                    .slice(TxCacheTable.hash, TxCacheTable.height, TxCacheTable.gasWanted, TxCacheTable.gasUsed,
+                        TxCacheTable.txTimestamp, TxCacheTable.errorCode, TxCacheTable.codespace, TxCacheTable.txV2)
                     .selectAll()
 
             if (msgTypes.isNotEmpty())
@@ -245,10 +254,11 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
             if (toDate != null)
                 query.andWhere { TxCacheTable.txTimestamp lessEq toDate.plusDays(1) }
 
-            query.orderBy(Pair(TxMessageTable.blockHeight, SortOrder.DESC))
+            query.withDistinct(true)
+            query.orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
             val totalCount = query.count()
             query.limit(count, offset.toLong())
-            TxCacheRecord.wrapRows(query).toList() to totalCount
+            TxCacheRecord.wrapRows(query).toSet() to totalCount
         }
     }
 

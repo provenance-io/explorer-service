@@ -52,7 +52,7 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
         listOf("submit_proposal", "deposit", "vote")),
     TRANSFER(
         "transfer",
-        listOf("send", "multisend")),
+        listOf("send", "multisend", "transfer")),
     ASSET(
         "asset",
         listOf(
@@ -66,10 +66,26 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
             "mint",
             "burn",
             "withdraw",
-            "transfer",
             "setmetadata",
             "add_attribute",
             "delete_attribute"
+        )),
+    NFT(
+        "nft",
+        listOf(
+            "memorialize_contract_request",
+            "change_ownership_request",
+            "add_scope_request",
+            "delete_scope_request",
+            "add_session_request",
+            "add_record_request",
+            "delete_record_request",
+            "add_scope_specification_request",
+            "delete_scope_specification_request",
+            "add_contract_specification_request",
+            "delete_contract_specification_request",
+            "add_record_specification_request",
+            "delete_record_specification_request"
         )
     )
 }

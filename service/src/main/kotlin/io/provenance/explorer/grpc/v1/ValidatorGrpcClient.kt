@@ -5,7 +5,7 @@ import cosmos.base.tendermint.v1beta1.ServiceGrpc
 import cosmos.staking.v1beta1.Staking
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
-import io.provenance.explorer.grpc.getPaginationBuilder
+import io.provenance.explorer.grpc.extensions.getPaginationBuilder
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit

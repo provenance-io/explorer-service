@@ -54,10 +54,16 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Updated transaction queries to return same objects as other similar queries #14
 * Upgraded Exposed library from 0.17.1 to 0.29.1
 * Updated the copy_proto script to be more intuitive
+* Because we have a docker gha workflow that builds, I removed the branch-> main designation for build gha #34
 
 ### Bug Fixes
 * Translated the signatures back to usable addresses
 * Fixed `gas/statistics` from previous updates
+* Changed out Int to BigInteger in API return objects #34
+* Added distinct to Tx query so it actually only brings back tx objects/counts #34
+* Added total tx count to Spotlight object #34
+* Made Block Hash look like a hash #34
+* Updated a couple docker scripts cuz I moved things around in the last commit #34
 
 ## PRE-HISTORY
 

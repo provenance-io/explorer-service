@@ -122,7 +122,6 @@ fun pubKeyDescriptors() =
     listOf(
         Keys.PubKey.getDescriptor(),
         cosmos.crypto.secp256k1.Keys.PubKey.getDescriptor(),
-        cosmos.crypto.secp256r1.Keys.PubKey.getDescriptor(),
         cosmos.crypto.multisig.Keys.LegacyAminoPubKey.getDescriptor()
     )
 
@@ -133,15 +132,12 @@ fun msgDescriptors() =
         Tx.MsgMultiSend.getDescriptor(),
         cosmos.gov.v1beta1.Tx.MsgSubmitProposal.getDescriptor(),
         cosmos.gov.v1beta1.Tx.MsgVote.getDescriptor(),
-        cosmos.gov.v1beta1.Tx.MsgVoteWeighted.getDescriptor(),
         cosmos.gov.v1beta1.Tx.MsgDeposit.getDescriptor(),
         cosmos.distribution.v1beta1.Tx.MsgSetWithdrawAddress.getDescriptor(),
         cosmos.distribution.v1beta1.Tx.MsgWithdrawDelegatorReward.getDescriptor(),
         cosmos.distribution.v1beta1.Tx.MsgWithdrawValidatorCommission.getDescriptor(),
         cosmos.distribution.v1beta1.Tx.MsgFundCommunityPool.getDescriptor(),
         cosmos.evidence.v1beta1.Tx.MsgSubmitEvidence.getDescriptor(),
-        cosmos.feegrant.v1beta1.Tx.MsgGrantFeeAllowance.getDescriptor(),
-        cosmos.feegrant.v1beta1.Tx.MsgRevokeFeeAllowance.getDescriptor(),
         cosmos.slashing.v1beta1.Tx.MsgUnjail.getDescriptor(),
         cosmos.staking.v1beta1.Tx.MsgCreateValidator.getDescriptor(),
         cosmos.staking.v1beta1.Tx.MsgEditValidator.getDescriptor(),
