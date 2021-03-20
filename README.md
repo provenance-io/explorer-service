@@ -86,8 +86,7 @@ Necessary tools
 
 #### Via Docker and Docker-compose
 - Run `docker-compose -f docker/docker-compose.yml up`
-    - To build the images, add `--build -d` 
-- Follow [this](#to-get-the-explorer-ui-up-third) for frontend piece
+- This stands up dockers for database, service and frontend.
 
 ### Swagger URLs
 Useful to hit the respective APIs directly
