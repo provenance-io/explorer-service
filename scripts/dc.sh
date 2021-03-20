@@ -22,10 +22,8 @@ function up-cached {
   docker ps -a
 }
 
-function bounce-cached {
-  down
-  up-cached
+function stop {
+  docker-compose -f docker/docker-compose-db.yml stop
 }
-
 
 ${1}

@@ -1,8 +1,8 @@
 version: '3.5'
 services:
-  postgres:
+  explorer-postgres:
     image: postgres:13.2
-    container_name: postgres
+    container_name: postgres-local
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password1

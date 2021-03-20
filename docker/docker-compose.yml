@@ -1,22 +1,17 @@
 version: '3.9'
 services:
-  postgres:
-    image: postgres:13.2
-    container_name: postgres
+  explorer-postgres:
+    image: provenanceio/explorer-database:latest
+    container_name: explorer-postgres
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password1
     ports:
       - 5432:5432
-    volumes:
-      - ./db-init:/docker-entrypoint-initdb.d/
 
   explorer-service:
-    image: explorer:latest
-    build:
-      context: ../
-      dockerfile: docker/Dockerfile
-    container_name: explorer
+    image: provenanceio/explorer-service:latest
+    container_name: explorer-service
     ports:
       - 8612:8612
     environment:
@@ -24,7 +19,7 @@ services:
       - DB_USER=postgres
       - DB_PASS=password1
       - DB_HOST=postgres
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/explorer
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://explorer-postgres:5432/explorer
       - DB_PORT=5432
       - DB_NAME=explorer
       - DB_SCHEMA=explorer
@@ -35,4 +30,18 @@ services:
       # Hits the locally running node
       - EXPLORER_PB_URL=http://host.docker.internal:9090
     depends_on:
-      - postgres
+      - explorer-postgres
+    links:
+      - "explorer-postgres"
+
+  explorer-frontend:
+    image: provenanceio/explorer-frontend-generic:latest
+    container_name: explorer-frontend
+    ports:
+      - 3000:3000
+    environment:
+      - REACT_APP_ENV=local
+    depends_on:
+      - explorer-service
+    links:
+      - "explorer-service"

@@ -41,6 +41,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added Validator-specific APIs #15
 * Added Account-specific transaction API #11
 * Added working docker-compose script #10
+* Dockerize Database #36
 
 ### Improvements
 * Added templates and build workflow
