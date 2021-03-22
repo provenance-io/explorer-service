@@ -55,6 +55,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Upgraded Exposed library from 0.17.1 to 0.29.1
 * Updated the copy_proto script to be more intuitive
 * Because we have a docker gha workflow that builds, I removed the branch-> main designation for build gha #34
+* Added gradle custom `downloadProtos` task to download protos instead of shell script. 
 
 ### Bug Fixes
 * Translated the signatures back to usable addresses
