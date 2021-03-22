@@ -64,6 +64,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added total tx count to Spotlight object #34
 * Made Block Hash look like a hash #34
 * Updated a couple docker scripts cuz I moved things around in the last commit #34
+* Added a db index on tx_cache.height
 
 ## PRE-HISTORY
 
