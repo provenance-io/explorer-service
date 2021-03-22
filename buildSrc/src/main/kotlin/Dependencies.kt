@@ -16,6 +16,9 @@ object PluginIds { // please keep this sorted in sections
     const val SpringBoot = "org.springframework.boot"
     const val Protobuf = "com.google.protobuf"
     const val Grpc = "grpc"
+
+    // Provenance
+    const val ProvenanceDownloadProtos = "io.provenance.download-protos"
 }
 
 object PluginVersions { // please keep this sorted in sections
@@ -57,6 +60,11 @@ object Versions {
     // Testing
     const val Jupiter = "5.7.1"
     const val Mockito = "3.7.7"
+
+    //external protos
+    const val Provenance = "v0.2.1"
+    const val Cosmos = "v0.42.2"
+
 }
 
 object Libraries {

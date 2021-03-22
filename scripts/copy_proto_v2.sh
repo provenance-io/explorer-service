@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+#
+# DEPRECATED - use `./gradlew downloadProtos -p proto` instead
+#
+
 echo "version to download: prov: $1, cosmos: $2"
 echo "Starting proto copy"
 
