@@ -21,6 +21,9 @@ import org.apache.http.impl.client.HttpClients
 import org.apache.http.impl.client.LaxRedirectStrategy
 
 
+/**
+ * Custom gradle task to download Provenance and Cosmos protobuf files.
+ */
 open class DownloadProtosTask : DefaultTask() {
     private val tempPrefix = this.javaClass.name
 
@@ -39,6 +42,17 @@ open class DownloadProtosTask : DefaultTask() {
     var cosmosVersion: String? = null
 
 
+    /**
+     * Connects directly to provenance-io GitHub release directory
+     * and downloads the `provenanceVersion` proto zip file.
+     *
+     * Connects directly to cosmos-sdk GitHub tarball release directory
+     * and downloads the `cosmosVersion` proto gzipped tar file.
+     *
+     * Both files are uncompressed into the `third_party/proto` directory
+     * of this root gradle project.
+     *
+     */
     @TaskAction
     fun downloadProtos() {
 
@@ -59,6 +73,26 @@ open class DownloadProtosTask : DefaultTask() {
         )
     }
 
+    /**
+     * The default destination directory for downloaded and uncompressed
+     * protos
+     */
+    private fun thirdPartyPath() =
+        "${this.project.rootProject.rootDir}${File.separator}third_party${File.separator}"
+
+    /**
+     * Clean the destination for the downloaded and uncompressed *.proto
+     * files (i.e. `third_party/proto`)
+     *
+     */
+    private fun cleanDestination(destinationDir: String) {
+        FileUtils.forceDelete(File(destinationDir))
+        FileUtils.forceMkdir(File(destinationDir))
+    }
+
+    /**
+     * Extract `url` to a local machine temp directory
+     */
     private fun toTempFile(url: String): File =
         HttpClients.custom().setRedirectStrategy(LaxRedirectStrategy()).build()
             .use { client ->
@@ -80,11 +114,10 @@ open class DownloadProtosTask : DefaultTask() {
                 }
             }
 
-    private fun cleanDestination(destinationDir: String) {
-        FileUtils.forceDelete(File(destinationDir))
-        FileUtils.forceMkdir(File(destinationDir))
-    }
-
+    /**
+     * Unzip the given `file` to `destinationDir` but only include files
+     * that match the `includePattern` regex
+     */
     private fun unzip(
         file: File,
         destinationDir: String,
@@ -103,8 +136,11 @@ open class DownloadProtosTask : DefaultTask() {
         }
     }
 
-    private fun thirdPartyPath() = "${this.project.rootProject.rootDir}${File.separator}third_party"
-
+    /**
+     * Given a zip input stream and an entry in the zip file, extract
+     * the zip entry to the `destinationDir` when the zip entry file matches
+     * the `includePattern`
+     */
     @Throws(IOException::class)
     private fun handleZipEntry(
         zipInputStream: InputStream,
@@ -129,6 +165,14 @@ open class DownloadProtosTask : DefaultTask() {
         }
     }
 
+    /**
+     * UnTar the given `file` to `destinationDir` but only include files
+     * that match the `includePattern` regex and don't match the `excludePattern`.
+     *
+     * The `protoRootDir` is used to find the first occurrence directory of
+     * the `proto` directory (for example).  This `protoRootDir` is the directory
+     * copied to the local `thirdPartyPath()`.
+     */
     @Throws(IOException::class)
     private fun untar(
         file: File,
@@ -139,6 +183,8 @@ open class DownloadProtosTask : DefaultTask() {
     ) {
         val tempDir = File.createTempFile(tempPrefix, "dir").parentFile
 
+        //Keep the first (top) occurrence of a directory in the tar so
+        //copying entire directories is simpler
         var topTarDirectory: File? = null
 
         TarArchiveInputStream(FileInputStream(file)).use { tarArchiveInputStream ->
@@ -182,6 +228,13 @@ open class DownloadProtosTask : DefaultTask() {
         }?: throw IOException("tar file ${file.absolutePath} is not a well formed tar file - missing top level directory")
     }
 
+    /**
+     * Given a cwd find the all of the first directories matching the `findDirectory` name.
+     * For example, given a `findDirectory` of `proto` this will return matching
+     * directories named:
+     * `./some/dir/level/proto/messages` and `./some/other/dir/proto/messages`
+     *
+     */
     private fun findDirectory(
         currentDirectory: File,
         findDirectory: String,
@@ -203,20 +256,15 @@ open class DownloadProtosTask : DefaultTask() {
     }
 
 
+    /**
+     * ungzip a given gZippedFile tar file
+     */
     @Throws(IOException::class)
     private fun unGzip(gZippedFile: File): File =
-        GZIPInputStream(FileInputStream(gZippedFile)).let {
+        GZIPInputStream(FileInputStream(gZippedFile)).let { gzip ->
             File.createTempFile(tempPrefix, "tar").let { tempFile ->
-                val fos = FileOutputStream(tempFile)
-                val buffer = ByteArray(1024)
-                var len: Int
-                while (it.read(buffer).also { len = it } > 0) {
-                    fos.write(buffer, 0, len)
-                }
-                fos.close()
-                it.close()
+                FileUtils.copyToFile(gzip, tempFile)
                 tempFile
             }
         }
-
 }
