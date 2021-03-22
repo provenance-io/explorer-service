@@ -25,12 +25,13 @@ import io.provenance.explorer.domain.core.toBech32Data
 import io.provenance.explorer.domain.entities.SignatureRecord
 import io.provenance.explorer.domain.models.explorer.Addresses
 import io.provenance.explorer.domain.models.explorer.Signatures
-import io.provenance.explorer.grpc.toAddress
-import io.provenance.explorer.grpc.toMultiSig
+import io.provenance.explorer.grpc.extensions.toAddress
+import io.provenance.explorer.grpc.extensions.toMultiSig
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
 import org.joda.time.DateTime
 import tendermint.types.BlockOuterClass
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.math.RoundingMode
 import java.time.Instant
 import java.time.format.DateTimeFormatter
@@ -38,6 +39,7 @@ import java.util.Base64
 import kotlin.math.ceil
 
 fun ByteString.toValue() = Base64.getEncoder().encodeToString(this.toByteArray())
+fun ByteString.toHash() = this.toByteArray().toBech32Data().hexData
 
 //PubKeySecp256k1
 fun ByteString.secpPubKeyToBech32(hrpPrefix: String) = let {
@@ -81,9 +83,9 @@ fun ServiceOuterClass.GetTxResponse.sendMsg() =
 fun Abci.TxResponse.fee(minGasPrice: BigDecimal) = this.gasUsed.toBigDecimal().multiply(minGasPrice)
     .setScale(2, RoundingMode.CEILING)
 
-fun Slashing.ValidatorSigningInfo.uptime(currentHeight: Int) = let {
-    val startHeight = this.startHeight.toInt()
-    val missingBlockCounter = this.missedBlocksCounter.toInt()
+fun Slashing.ValidatorSigningInfo.uptime(currentHeight: BigInteger) = let {
+    val startHeight = this.startHeight.toBigInteger()
+    val missingBlockCounter = this.missedBlocksCounter.toBigInteger()
     BigDecimal(currentHeight - startHeight - missingBlockCounter)
             .divide(BigDecimal(currentHeight - startHeight), 2, RoundingMode.CEILING)
             .multiply(BigDecimal(100.00))

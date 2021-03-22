@@ -27,11 +27,12 @@ import io.provenance.explorer.domain.models.explorer.ValidatorCommission
 import io.provenance.explorer.domain.models.explorer.ValidatorDelegation
 import io.provenance.explorer.domain.models.explorer.ValidatorDetails
 import io.provenance.explorer.domain.models.explorer.ValidatorSummary
-import io.provenance.explorer.grpc.toAddress
-import io.provenance.explorer.grpc.toSingleSigKeyValue
+import io.provenance.explorer.grpc.extensions.toAddress
+import io.provenance.explorer.grpc.extensions.toSingleSigKeyValue
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
+import java.math.BigInteger
 
 @Service
 class ValidatorService(
@@ -59,22 +60,22 @@ class ValidatorService(
     // Returns a validator detail object for the validator
     fun getValidator(address: String) =
         getValidatorOperatorAddress(address)!!.let { addr ->
-            val currentHeight = blockService.getLatestBlockHeightIndex()
+            val currentHeight = blockService.getLatestBlockHeightIndex().toBigInteger()
             val stakingValidator = getStakingValidator(addr.operatorAddress)
             val signingInfo = getSigningInfos().firstOrNull { it.address == addr.consensusAddress }
             val validatorSet = grpcClient.getLatestValidators()
             val latestValidator = validatorSet.firstOrNull { it.address == addr.consensusAddress }!!
-            val votingPowerTotal = validatorSet.sumBy { it.votingPower.toInt() }
+            val votingPowerTotal = validatorSet.sumOf { it.votingPower.toBigInteger() }
             ValidatorDetails(
-                CountTotal(latestValidator.votingPower.toInt(), votingPowerTotal),
+                CountTotal(latestValidator.votingPower.toBigInteger(), votingPowerTotal),
                 stakingValidator.description.moniker,
                 addr.operatorAddress,
                 addr.accountAddress,
                 grpcClient.getDelegatorWithdrawalAddress(addr.accountAddress),
                 stakingValidator.consensusPubkey.toAddress(props.provValConsPrefix()) ?: "",
                 CountTotal(
-                    signingInfo!!.missedBlocksCounter.toInt(),
-                    currentHeight - signingInfo.startHeight.toInt()),
+                    signingInfo!!.missedBlocksCounter.toBigInteger(),
+                    currentHeight - signingInfo.startHeight.toBigInteger()),
                 0,
                 signingInfo.uptime(currentHeight),
                 null,  // TODO: Update when we can get images going
@@ -162,13 +163,13 @@ class ValidatorService(
         val stakingPubKeys = stakingValidators.map { it.consensusPubkey.toSingleSigKeyValue() }
         val signingInfos = getSigningInfos()
         val height = signingInfos.first().indexOffset
-        val totalVotingPower = validators.sumBy { it.votingPower.toInt() }
+        val totalVotingPower = validators.sumOf { it.votingPower.toBigInteger() }
         validators.filter { stakingPubKeys.contains(it.pubKey.toSingleSigKeyValue()) }
             .map { validator ->
                 val stakingValidator = stakingValidators
                     .find { it.consensusPubkey.toSingleSigKeyValue() == validator.pubKey.toSingleSigKeyValue() }
                 val signingInfo = signingInfos.find { it.address == validator.address }
-                hydrateValidator(validator, stakingValidator!!, signingInfo!!, height.toInt(), totalVotingPower)
+                hydrateValidator(validator, stakingValidator!!, signingInfo!!, height.toBigInteger(), totalVotingPower)
             }
     }
 
@@ -176,8 +177,8 @@ class ValidatorService(
         validator: Query.Validator,
         stakingValidator: Staking.Validator,
         signingInfo: Slashing.ValidatorSigningInfo,
-        height: Int,
-        totalVotingPower: Int
+        height: BigInteger,
+        totalVotingPower: BigInteger
     ) = let {
         val selfBondedAmount = grpcClient.getValidatorSelfDelegations(
             stakingValidator.operatorAddress,
@@ -190,7 +191,7 @@ class ValidatorService(
             addressId = stakingValidator.operatorAddress,
             consensusAddress = validator.address,
             proposerPriority = validator.proposerPriority.toInt(),
-            votingPower = CountTotal(validator.votingPower.toInt(), totalVotingPower),
+            votingPower = CountTotal(validator.votingPower.toBigInteger(), totalVotingPower),
             uptime = signingInfo.uptime(height),
             commission = stakingValidator.commission.commissionRates.rate.toScaledDecimal(18),
             bondedTokens = BondedTokens(stakingValidator.tokens.toBigInteger(), null, "nhash"),

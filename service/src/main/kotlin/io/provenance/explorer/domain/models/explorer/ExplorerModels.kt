@@ -1,6 +1,7 @@
 package io.provenance.explorer.domain.models.explorer
 
 import java.math.BigDecimal
+import java.math.BigInteger
 
 data class BlockSummary(
     val height: Int,
@@ -17,7 +18,8 @@ data class BlockSummary(
 data class Spotlight(
     val latestBlock: BlockSummary,
     val avgBlockTime: BigDecimal,
-    val bondedTokens: BondedTokens
+    val bondedTokens: BondedTokens,
+    val totalTxCount: BigInteger
 )
 
 data class GasStatistics(

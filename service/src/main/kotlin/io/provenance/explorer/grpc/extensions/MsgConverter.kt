@@ -42,15 +42,12 @@ fun Any.toMsgSend() = this.unpack(Tx.MsgSend::class.java)
 fun Any.toMsgMultiSend() = this.unpack(Tx.MsgMultiSend::class.java)
 fun Any.toMsgSubmitProposal() = this.unpack(cosmos.gov.v1beta1.Tx.MsgSubmitProposal::class.java)
 fun Any.toMsgVote() = this.unpack(cosmos.gov.v1beta1.Tx.MsgVote::class.java)
-fun Any.toMsgVoteWeighted() = this.unpack(cosmos.gov.v1beta1.Tx.MsgVoteWeighted::class.java)
 fun Any.toMsgDeposit() = this.unpack(cosmos.gov.v1beta1.Tx.MsgDeposit::class.java)
 fun Any.toMsgSetWithdrawAddress() = this.unpack(cosmos.distribution.v1beta1.Tx.MsgSetWithdrawAddress::class.java)
 fun Any.toMsgWithdrawDelegatorReward() = this.unpack(cosmos.distribution.v1beta1.Tx.MsgWithdrawDelegatorReward::class.java)
 fun Any.toMsgWithdrawValidatorCommission() = this.unpack(cosmos.distribution.v1beta1.Tx.MsgWithdrawValidatorCommission::class.java)
 fun Any.toMsgFundCommunityPool() = this.unpack(cosmos.distribution.v1beta1.Tx.MsgFundCommunityPool::class.java)
 fun Any.toMsgSubmitEvidence() = this.unpack(cosmos.evidence.v1beta1.Tx.MsgSubmitEvidence::class.java)
-fun Any.toMsgGrantFeeAllowance() = this.unpack(cosmos.feegrant.v1beta1.Tx.MsgGrantFeeAllowance::class.java)
-fun Any.toMsgRevokeFeeAllowance() = this.unpack(cosmos.feegrant.v1beta1.Tx.MsgRevokeFeeAllowance::class.java)
 fun Any.toMsgUnjail() = this.unpack(cosmos.slashing.v1beta1.Tx.MsgUnjail::class.java)
 fun Any.toMsgCreateValidator() = this.unpack(cosmos.staking.v1beta1.Tx.MsgCreateValidator::class.java)
 fun Any.toMsgEditValidator() = this.unpack(cosmos.staking.v1beta1.Tx.MsgEditValidator::class.java)
@@ -101,11 +98,8 @@ fun Any.getAssociatedAddresses(): List<String> =
             .let { listOf(it.validatorAddress) }
         typeUrl.contains("MsgFundCommunityPool") -> this.toMsgFundCommunityPool().let { listOf(it.depositor) }
         typeUrl.contains("MsgSubmitEvidence") -> this.toMsgSubmitEvidence().let { listOf(it.submitter) }
-        typeUrl.contains("MsgGrantFeeAllowance") -> this.toMsgGrantFeeAllowance().let { listOf(it.grantee, it.granter) }
-        typeUrl.contains("MsgRevokeFeeAllowance") -> this.toMsgRevokeFeeAllowance().let { listOf(it.grantee, it.granter) }
         typeUrl.contains("MsgSubmitProposal") -> this.toMsgSubmitProposal().let { listOf(it.proposer) }
         typeUrl.contains("MsgVote") -> this.toMsgVote().let { listOf(it.voter) }
-        typeUrl.contains("MsgVoteWeighted") -> this.toMsgVoteWeighted().let { listOf(it.voter) }
         typeUrl.contains("MsgDeposit") -> this.toMsgDeposit().let { listOf(it.depositor) }
         typeUrl.contains("MsgUnjail") -> this.toMsgUnjail().let { listOf(it.validatorAddr) }
         typeUrl.contains("MsgCreateValidator") -> this.toMsgCreateValidator()
@@ -139,19 +133,19 @@ fun Any.getAssociatedAddresses(): List<String> =
         typeUrl.contains("MsgDeleteNameRequest") -> this.toMsgDeleteNameRequest().let { listOf(it.record.address)}
         typeUrl.contains("MsgAddAttributeRequest") -> this.toMsgAddAttributeRequest().let { listOf(it.account, it.owner)}
         typeUrl.contains("MsgDeleteAttributeRequest") -> this.toMsgDeleteAttributeRequest().let { listOf(it.account, it.owner)}
-        typeUrl.contains("MsgMemorializeContractRequest") -> this.toMsgMemorializeContractRequest().let { listOf()}
+        typeUrl.contains("MsgMemorializeContractRequest") -> this.toMsgMemorializeContractRequest().let { listOf() }
         typeUrl.contains("MsgChangeOwnershipRequest") -> this.toMsgChangeOwnershipRequest().let { listOf()}
-        typeUrl.contains("MsgAddScopeRequest") -> this.toMsgAddScopeRequest().let { listOf()}
-        typeUrl.contains("MsgDeleteScopeRequest") -> this.toMsgDeleteScopeRequest().let { listOf()}
-        typeUrl.contains("MsgAddSessionRequest") -> this.toMsgAddSessionRequest().let { listOf()}
-        typeUrl.contains("MsgAddRecordRequest") -> this.toMsgAddRecordRequest().let { listOf()}
-        typeUrl.contains("MsgDeleteRecordRequest") -> this.toMsgDeleteRecordRequest().let { listOf()}
-        typeUrl.contains("MsgAddScopeSpecificationRequest") -> this.toMsgAddScopeSpecificationRequest().let { listOf()}
-        typeUrl.contains("MsgDeleteScopeSpecificationRequest") -> this.toMsgDeleteScopeSpecificationRequest().let { listOf()}
-        typeUrl.contains("MsgAddContractSpecificationRequest") -> this.toMsgAddContractSpecificationRequest().let { listOf()}
-        typeUrl.contains("MsgDeleteContractSpecificationRequest") -> this.toMsgDeleteContractSpecificationRequest().let { listOf()}
-        typeUrl.contains("MsgAddRecordSpecificationRequest") -> this.toMsgAddRecordSpecificationRequest().let { listOf()}
-        typeUrl.contains("MsgDeleteRecordSpecificationRequest") -> this.toMsgDeleteRecordSpecificationRequest().let { listOf()}
+        typeUrl.contains("MsgAddScopeRequest") -> this.toMsgAddScopeRequest().signersList
+        typeUrl.contains("MsgDeleteScopeRequest") -> this.toMsgDeleteScopeRequest().signersList
+        typeUrl.contains("MsgAddSessionRequest") -> this.toMsgAddSessionRequest().signersList
+        typeUrl.contains("MsgAddRecordRequest") -> this.toMsgAddRecordRequest().signersList
+        typeUrl.contains("MsgDeleteRecordRequest") -> this.toMsgDeleteRecordRequest().signersList
+        typeUrl.contains("MsgAddScopeSpecificationRequest") -> this.toMsgAddScopeSpecificationRequest().signersList
+        typeUrl.contains("MsgDeleteScopeSpecificationRequest") -> this.toMsgDeleteScopeSpecificationRequest().signersList
+        typeUrl.contains("MsgAddContractSpecificationRequest") -> this.toMsgAddContractSpecificationRequest().signersList
+        typeUrl.contains("MsgDeleteContractSpecificationRequest") -> this.toMsgDeleteContractSpecificationRequest().signersList
+        typeUrl.contains("MsgAddRecordSpecificationRequest") -> this.toMsgAddRecordSpecificationRequest().signersList
+        typeUrl.contains("MsgDeleteRecordSpecificationRequest") -> this.toMsgDeleteRecordSpecificationRequest().signersList
 
         else -> listOf<String>().also { logger().error("This typeUrl is not yet supported in tx messages: $typeUrl") }
     }

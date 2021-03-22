@@ -10,10 +10,11 @@ import io.provenance.explorer.domain.models.explorer.AssetHolder
 import io.provenance.explorer.domain.models.explorer.AssetListed
 import io.provenance.explorer.domain.models.explorer.AssetSupply
 import io.provenance.explorer.domain.models.explorer.TokenCounts
-import io.provenance.explorer.grpc.getManagingAccounts
-import io.provenance.explorer.grpc.isMintable
+import io.provenance.explorer.grpc.extensions.getManagingAccounts
+import io.provenance.explorer.grpc.extensions.isMintable
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
+import io.provenance.explorer.grpc.v1.MetadataGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.math.RoundingMode
@@ -22,6 +23,7 @@ import java.math.RoundingMode
 class AssetService(
     private val markerClient: MarkerGrpcClient,
     private val attrClient: AttributeGrpcClient,
+    private val metadataClient: MetadataGrpcClient,
     private val accountService: AccountService,
     private val protoPrinter: JsonFormat.Printer
 ) {
@@ -59,7 +61,7 @@ class AssetService(
                     markerClient.getMarkerMetadata(denom).toObjectNode(protoPrinter),
                     TokenCounts(
                         accountService.getAccountBalances(it.baseAccount.address).size,
-                        0 // TODO: Update with Scope counts
+                        metadataClient.getScopesByValueOwner(it.baseAccount.address).size
                     )
                 )
             }

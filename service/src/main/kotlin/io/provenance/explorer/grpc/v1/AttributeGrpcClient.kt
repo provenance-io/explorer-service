@@ -1,20 +1,14 @@
 package io.provenance.explorer.grpc.v1
 
-import cosmos.bank.v1beta1.QueryOuterClass as BankOuterClass
-import cosmos.auth.v1beta1.QueryOuterClass as AuthOuterClass
 import io.grpc.ManagedChannelBuilder
 import io.provenance.attribute.v1.Attribute
 import io.provenance.attribute.v1.QueryAttributesRequest
 import io.provenance.attribute.v1.QueryGrpc
 import io.provenance.explorer.config.GrpcLoggingInterceptor
-import io.provenance.explorer.grpc.getPaginationBuilder
-import io.provenance.marker.v1.Balance
-import io.provenance.marker.v1.QueryHoldingRequest
+import io.provenance.explorer.grpc.extensions.getPaginationBuilder
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
-import cosmos.bank.v1beta1.QueryGrpc as BankQueryGrpc
-import cosmos.auth.v1beta1.QueryGrpc as AuthQueryGrpc
 
 @Component
 class AttributeGrpcClient(channelUri : URI) {
