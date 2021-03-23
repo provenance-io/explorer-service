@@ -2,14 +2,16 @@ package io.provenance.explorer.service
 
 import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
-import io.provenance.explorer.domain.entities.TxMessageRecord
+import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.AssetDetail
 import io.provenance.explorer.domain.models.explorer.AssetHolder
 import io.provenance.explorer.domain.models.explorer.AssetListed
 import io.provenance.explorer.domain.models.explorer.AssetSupply
+import io.provenance.explorer.domain.models.explorer.CountTotal
 import io.provenance.explorer.domain.models.explorer.TokenCounts
+import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.grpc.extensions.getManagingAccounts
 import io.provenance.explorer.grpc.extensions.isMintable
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
@@ -47,7 +49,8 @@ class AssetService(
         getAssetRaw(denom)
             .let {
                 val txCount =
-                    TxMessageRecord.findByQueryParams(null, denom, listOf(), null, null, 1, 0, null, null).second
+                    TxCacheRecord.findByQueryParamsForCount(
+                        TxQueryParams(null, denom, listOf(), null, null, 1, 0, null, null))
                 AssetDetail(
                     it.denom,
                     it.baseAccount.address,
@@ -55,7 +58,7 @@ class AssetService(
                     AssetSupply(getTotalSupply(denom), it.supply.toBigInteger()),
                     it.isMintable(),
                     markerClient.getAllMarkerHolders(denom).size,
-                    txCount.toBigInteger(),
+                    txCount,
                     attrClient.getAllAttributesForAddress(it.baseAccount.address)
                         .map { attr -> attr.toObjectNode(protoPrinter) },
                     markerClient.getMarkerMetadata(denom).toObjectNode(protoPrinter),
@@ -70,11 +73,7 @@ class AssetService(
         markerClient.getMarkerHolders(denom, page.toOffset(count), count).balancesList
             .map { bal ->
                 val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount.toBigInteger()
-                AssetHolder(
-                    bal.address,
-                    balance,
-                    balance.toBigDecimal().divide(supply.toBigDecimal(), 6, RoundingMode.HALF_UP)
-                )
+                AssetHolder(bal.address, CountTotal(balance, supply))
             }
     }
 

@@ -114,6 +114,10 @@ fun Long.pageCountOfResults(count: Int): Int =
     if (this < count) 1
     else ceil(this.toDouble() / count).toInt()
 
+fun BigInteger.pageCountOfResults(count: Int): Int =
+    if (this < count.toBigInteger()) 1
+    else ceil(this.toDouble() / count).toInt()
+
 fun String.translateAddress(props: ExplorerProperties) = this.toBech32Data().let {
     Addresses(
         it.hexData,

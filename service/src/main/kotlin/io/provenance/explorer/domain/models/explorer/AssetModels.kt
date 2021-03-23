@@ -43,8 +43,7 @@ data class Attribute(
 
 data class AssetHolder(
     val ownerAddress: String,
-    val balance: BigInteger,
-    val percentage: BigDecimal
+    val balance: CountTotal
 )
 
 data class AccountDetail(
