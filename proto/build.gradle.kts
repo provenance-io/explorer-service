@@ -9,6 +9,7 @@ dependencies {
     api(Libraries.ProtobufJava)
     api(Libraries.GrpcStub)
     api(Libraries.GrpcProtobuf)
+
     if (JavaVersion.current().isJava9Compatible) {
         // Workaround for @javax.annotation.Generated
         // see: https://github.com/grpc/grpc-java/issues/3633
@@ -37,4 +38,9 @@ protobuf {
             }
         }
     }
+}
+
+tasks.register<io.provenance.DownloadProtosTask>("downloadProtos") {
+    provenanceVersion = Versions.Provenance
+    cosmosVersion = Versions.Cosmos
 }

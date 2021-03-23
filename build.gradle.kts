@@ -8,6 +8,7 @@ plugins {
     id(PluginIds.TestLogger) version PluginVersions.TestLogger apply false
     id(PluginIds.DependencyAnalysis) version PluginVersions.DependencyAnalysis
     id(PluginIds.Protobuf) version PluginVersions.Protobuf
+    id(PluginIds.ProvenanceDownloadProtos)
 }
 
 allprojects {
