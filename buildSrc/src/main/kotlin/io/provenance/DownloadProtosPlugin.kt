@@ -14,8 +14,12 @@ class DownloadProtosPlugin: Plugin<Project> {
             "downloadProtos",
             DownloadProtosTask::class
         ) {
-            this.group = "help"
-            this.description = "Downloads Provenance and Cosmos protobuf files.  Specify the Provenance and Cosmos versions: --provenance-version v0.2.1 --cosmos-version v0.42.2"
+            this.group = "protobuf"
+            this.description =
+                "Downloads Provenance and Cosmos protobuf files. " +
+                " Specify the Provenance and Cosmos versions: --provenance-version vX.Y.Z --cosmos-version vX.Y.Z." +
+                " Version information can be found at https://github.com/provenance-io/provenance/releases and " +
+                " https://github.com/cosmos/cosmos-sdk/releases."
         }
     }
 }
