@@ -2,6 +2,8 @@ package io.provenance.explorer.domain.entities
 
 import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.domain.core.sql.ExtractEpoch
+import io.provenance.explorer.domain.core.sql.Lag
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.models.explorer.TxHistory
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
@@ -104,17 +106,6 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
     var txCount by BlockCacheTable.txCount
     override var lastHit by BlockCacheTable.lastHit
     override var hitCount by BlockCacheTable.hitCount
-}
-
-// Custom expressions for complex query types
-class Lag(val lag: Expression<DateTime>, val orderBy: Expression<Int>): Function<DateTime>(DateColumnType(true)) {
-    override fun toQueryBuilder(queryBuilder: QueryBuilder) =
-        queryBuilder { append("LAG(", lag,") OVER (order by ", orderBy, " desc)") }
-}
-
-class ExtractEpoch(val expr: Expression<DateTime>): Function<BigDecimal>(DecimalColumnType(10, 10)) {
-    override fun toQueryBuilder(queryBuilder: QueryBuilder) =
-        queryBuilder { append("extract(epoch from ", expr," )") }
 }
 
 object BlockIndexTable : IdTable<Int>(name = "block_index") {

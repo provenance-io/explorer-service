@@ -4,6 +4,7 @@ import com.google.protobuf.Any
 import com.google.protobuf.Timestamp
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toValue
@@ -31,6 +32,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.append
 import org.jetbrains.exposed.sql.count
+import org.jetbrains.exposed.sql.countDistinct
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insert
@@ -130,14 +132,13 @@ class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
         fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
             val query =
                 findByQueryParams(txQueryParams, null)
-                    .groupBy(TxCacheTable.hash)
                     .orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
                     .limit(txQueryParams.count, txQueryParams.offset.toLong())
             TxCacheRecord.wrapRows(query).toSet()
         }
 
         fun findByQueryParamsForCount(txQueryParams: TxQueryParams) = transaction {
-            val distinctCount = Distinct(TxCacheTable.hash).count()
+            val distinctCount = TxCacheTable.hash.countDistinct()
             findByQueryParams(txQueryParams, listOf(distinctCount)).first()[distinctCount].toBigInteger()
         }
 
@@ -149,8 +150,9 @@ class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
                     .leftJoin(TxAddressJoinTable, { TxMessageTable.txHash }, { TxAddressJoinTable.txHash })
                     .leftJoin(TxMarkerJoinTable, { TxMessageTable.txHash }, { TxMarkerJoinTable.txHash })
                     .slice(distinctQuery ?:
-                        listOf(TxCacheTable.hash, TxCacheTable.height, TxCacheTable.gasWanted, TxCacheTable.gasUsed,
-                            TxCacheTable.txTimestamp, TxCacheTable.errorCode, TxCacheTable.codespace, TxCacheTable.txV2))
+                        listOf(Distinct(TxCacheTable.hash, VarCharColumnType(64)), TxCacheTable.hash,
+                            TxCacheTable.height, TxCacheTable.gasWanted, TxCacheTable.gasUsed, TxCacheTable.txTimestamp,
+                            TxCacheTable.errorCode, TxCacheTable.codespace, TxCacheTable.txV2))
                     .selectAll()
 
             if (tqp.msgTypes.isNotEmpty())
@@ -171,7 +173,6 @@ class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
 
              query
         }
-
     }
 
     var hash by TxCacheTable.hash
