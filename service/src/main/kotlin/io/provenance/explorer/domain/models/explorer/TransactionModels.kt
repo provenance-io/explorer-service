@@ -1,7 +1,20 @@
 package io.provenance.explorer.domain.models.explorer
 
 import com.fasterxml.jackson.databind.node.ObjectNode
+import org.joda.time.DateTime
 import java.math.BigDecimal
+
+data class TxQueryParams(
+    val address: String?,
+    val denom: String?,
+    val msgTypes: List<String>,
+    val txHeight: Int?,
+    val txStatus: TxStatus?,
+    val count: Int,
+    val offset: Int,
+    val fromDate: DateTime?,
+    val toDate: DateTime?
+)
 
 data class TxDetails(
     val txHash: String,

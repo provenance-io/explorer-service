@@ -23,6 +23,7 @@ import io.provenance.explorer.domain.models.explorer.MsgTypeSet
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.TxDetails
 import io.provenance.explorer.domain.models.explorer.TxMessage
+import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.domain.models.explorer.TxSummary
 import io.provenance.explorer.domain.models.explorer.TxType
@@ -91,24 +92,27 @@ class TransactionService(
         fromDate: DateTime?,
         toDate: DateTime?
     ) = transaction {
-        val msgTypes = if (msgType != null) listOf(msgType) else module?.types ?: listOf()
+            val msgTypes = if (msgType != null) listOf(msgType) else module?.types ?: listOf()
 
-        val query = TxMessageRecord.findByQueryParams(
-                address, denom, msgTypes, txHeight, txStatus, count, page.toOffset(count), fromDate, toDate)
-        query.first.map {
-            TxSummary(
-                it.hash,
-                it.height,
-                it.txMessages.mapToTxMessages(),
-                TxAddressJoinRecord.findValidatorsByTxHash(it.id).map { v -> v.operatorAddress to v.moniker }.toMap(),
-                it.txTimestamp.toString(),
-                Coin(it.txV2.tx.authInfo.fee.amountList[0].amount.toBigInteger(),
-                    it.txV2.tx.authInfo.fee.amountList[0].denom),
-                TxCacheRecord.findSigsByHash(it.hash).toSigObj(props.provAccPrefix()),
-                if (it.errorCode == null) "success" else "failed"
-            )
-        }.let { PagedResults(query.second.pageCountOfResults(count), it) }
-    }
+            val params =
+                TxQueryParams(address, denom, msgTypes, txHeight, txStatus, count, page.toOffset(count), fromDate, toDate)
+
+            val total = TxCacheRecord.findByQueryParamsForCount(params)
+            TxCacheRecord.findByQueryForResults(params).map {
+                TxSummary(
+                    it.hash,
+                    it.height,
+                    it.txMessages.mapToTxMessages(),
+                    TxAddressJoinRecord.findValidatorsByTxHash(it.id)
+                        .map { v -> v.operatorAddress to v.moniker }.toMap(),
+                    it.txTimestamp.toString(),
+                    Coin(it.txV2.tx.authInfo.fee.amountList[0].amount.toBigInteger(),
+                        it.txV2.tx.authInfo.fee.amountList[0].denom),
+                    TxCacheRecord.findSigsByHash(it.hash).toSigObj(props.provAccPrefix()),
+                    if (it.errorCode == null) "success" else "failed"
+                )
+            }.let { PagedResults(total.pageCountOfResults(count), it) }
+        }
 
     fun SizedIterable<TxMessageRecord>.mapToTxMessages() =
         this.map { msg -> TxMessage(msg.txMessageType.type, msg.txMessage.toObjectNode(protoPrinter)) }

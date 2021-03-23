@@ -8,6 +8,7 @@ import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toValue
 import io.provenance.explorer.domain.models.explorer.GasStatistics
+import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.domain.models.explorer.getCategoryForType
 import io.provenance.explorer.grpc.extensions.getAssociatedAddresses
@@ -17,14 +18,19 @@ import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Avg
+import org.jetbrains.exposed.sql.Count
+import org.jetbrains.exposed.sql.Expression
+import org.jetbrains.exposed.sql.Function
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.Max
 import org.jetbrains.exposed.sql.Min
+import org.jetbrains.exposed.sql.QueryBuilder
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.append
 import org.jetbrains.exposed.sql.count
-import org.jetbrains.exposed.sql.countDistinct
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insert
@@ -120,6 +126,52 @@ class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
                     it[avgGas]!!
                 ) }
         }
+
+        fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
+            val query =
+                findByQueryParams(txQueryParams, null)
+                    .groupBy(TxCacheTable.hash)
+                    .orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
+                    .limit(txQueryParams.count, txQueryParams.offset.toLong())
+            TxCacheRecord.wrapRows(query).toSet()
+        }
+
+        fun findByQueryParamsForCount(txQueryParams: TxQueryParams) = transaction {
+            val distinctCount = Distinct(TxCacheTable.hash).count()
+            findByQueryParams(txQueryParams, listOf(distinctCount)).first()[distinctCount].toBigInteger()
+        }
+
+        private fun findByQueryParams(tqp: TxQueryParams, distinctQuery: List<Count>?) = transaction {
+            val query =
+                TxMessageTable
+                    .innerJoin(TxCacheTable, { TxMessageTable.txHash }, { TxCacheTable.hash })
+                    .innerJoin(TxMessageTypeTable, { TxMessageTable.txMessageType }, { TxMessageTypeTable.id })
+                    .leftJoin(TxAddressJoinTable, { TxMessageTable.txHash }, { TxAddressJoinTable.txHash })
+                    .leftJoin(TxMarkerJoinTable, { TxMessageTable.txHash }, { TxMarkerJoinTable.txHash })
+                    .slice(distinctQuery ?:
+                        listOf(TxCacheTable.hash, TxCacheTable.height, TxCacheTable.gasWanted, TxCacheTable.gasUsed,
+                            TxCacheTable.txTimestamp, TxCacheTable.errorCode, TxCacheTable.codespace, TxCacheTable.txV2))
+                    .selectAll()
+
+            if (tqp.msgTypes.isNotEmpty())
+                query.andWhere { TxMessageTypeTable.type inList tqp.msgTypes }
+            if (tqp.txHeight != null)
+                query.andWhere { TxCacheTable.height eq tqp.txHeight }
+            if (tqp.txStatus != null)
+                query.andWhere {
+                    if (tqp.txStatus == TxStatus.FAILURE) TxCacheTable.errorCode neq 0 else TxCacheTable.errorCode eq null }
+            if (tqp.address != null)
+                query.andWhere { TxAddressJoinTable.address eq tqp.address }
+            if (tqp.denom != null)
+                query.andWhere { TxMarkerJoinTable.denom eq tqp.denom }
+            if (tqp.fromDate != null)
+                query.andWhere { TxCacheTable.txTimestamp greaterEq tqp.fromDate }
+            if (tqp.toDate != null)
+                query.andWhere { TxCacheTable.txTimestamp lessEq tqp.toDate.plusDays(1) }
+
+             query
+        }
+
     }
 
     var hash by TxCacheTable.hash
@@ -133,6 +185,11 @@ class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
     override var lastHit by TxCacheTable.lastHit
     override var hitCount by TxCacheTable.hitCount
     val txMessages by TxMessageRecord referrersOn TxMessageTable.txHash
+}
+
+class Distinct(val expr: Expression<String>): Function<String>(VarCharColumnType(128)) {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) =
+        queryBuilder { append("distinct(", expr, ")") }
 }
 
 object TxMessageTypeTable : IntIdTable(name = "tx_message_type") {
@@ -216,50 +273,6 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
                     }
                 }
             }
-
-        fun findByQueryParams(
-            address: String?,
-            denom: String?,
-            msgTypes: List<String>,
-            txHeight: Int?,
-            txStatus: TxStatus?,
-            count: Int,
-            offset: Int,
-            fromDate: DateTime?,
-            toDate: DateTime?
-        ) = transaction {
-            val query =
-                TxMessageTable
-                    .innerJoin(TxCacheTable, { TxMessageTable.txHash }, { TxCacheTable.hash })
-                    .innerJoin(TxMessageTypeTable, { TxMessageTable.txMessageType }, { TxMessageTypeTable.id })
-                    .leftJoin(TxAddressJoinTable, { TxMessageTable.txHash }, { TxAddressJoinTable.txHash })
-                    .leftJoin(TxMarkerJoinTable, { TxMessageTable.txHash }, { TxMarkerJoinTable.txHash })
-                    .slice(TxCacheTable.hash, TxCacheTable.height, TxCacheTable.gasWanted, TxCacheTable.gasUsed,
-                        TxCacheTable.txTimestamp, TxCacheTable.errorCode, TxCacheTable.codespace, TxCacheTable.txV2)
-                    .selectAll()
-
-            if (msgTypes.isNotEmpty())
-                query.andWhere { TxMessageTypeTable.type inList msgTypes }
-            if (txHeight != null)
-                query.andWhere { TxCacheTable.height eq txHeight }
-            if (txStatus != null)
-                query.andWhere {
-                    if (txStatus == TxStatus.FAILURE) TxCacheTable.errorCode neq 0 else TxCacheTable.errorCode eq null }
-            if (address != null)
-                query.andWhere { TxAddressJoinTable.address eq address }
-            if (denom != null)
-                query.andWhere { TxMarkerJoinTable.denom eq denom }
-            if (fromDate != null)
-                query.andWhere { TxCacheTable.txTimestamp greaterEq fromDate }
-            if (toDate != null)
-                query.andWhere { TxCacheTable.txTimestamp lessEq toDate.plusDays(1) }
-
-            query.withDistinct(true)
-            query.orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
-            val totalCount = query.count()
-            query.limit(count, offset.toLong())
-            TxCacheRecord.wrapRows(query).toSet() to totalCount
-        }
     }
 
     var blockHeight by TxMessageTable.blockHeight
