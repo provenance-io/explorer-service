@@ -2,9 +2,11 @@ package io.provenance.explorer.service
 
 import com.google.protobuf.util.JsonFormat
 import cosmos.tx.v1beta1.ServiceOuterClass
+import cosmos.tx.v1beta1.TxOuterClass
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
+import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheTable
@@ -12,6 +14,7 @@ import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.formattedString
+import io.provenance.explorer.domain.extensions.getMinGasFee
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
@@ -57,14 +60,23 @@ class TransactionService(
             logger.info("Cache hit for transaction at height $blockHeight with $expectedNumTxs transactions")
         else {
             logger.info("Searching for $expectedNumTxs transactions at height $blockHeight")
-            tryAddTxs(blockHeight)
+            tryAddTxs(blockHeight, expectedNumTxs)
         }
 
-    fun tryAddTxs(blockHeight: Int) = try {
-        txClient.getTxsByHeight(blockHeight).txResponsesList
-            .forEach { txClient.getTxByHash(it.txhash).addTxToCache() }
+    fun tryAddTxs(blockHeight: Int, txCount: Int) = try {
+        txClient.getTxsByHeight(blockHeight, txCount)
+            .also { calculateBlockTxFee(it.first, blockHeight) }
+            .second.forEach { txClient.getTxByHash(it.txhash).addTxToCache() }
     } catch (e: Exception) {
         logger.error("Failed to retrieve transactions at block: $blockHeight", e)
+    }
+
+    fun calculateBlockTxFee(result: List<TxOuterClass.Tx>, height: Int) = transaction {
+        result.let { list ->
+            val numerator = list.sumBy { it.authInfo.fee.amountList.first().amount.toInt() }
+            val denominator = list.sumBy { it.authInfo.fee.gasLimit.toInt() }
+            numerator.div(denominator.toDouble())
+        }.let { BlockProposerRecord.save(height, it, null, null) }
     }
 
     fun ServiceOuterClass.GetTxResponse.addTxToCache() =
@@ -106,8 +118,8 @@ class TransactionService(
                     TxAddressJoinRecord.findValidatorsByTxHash(it.id)
                         .map { v -> v.operatorAddress to v.moniker }.toMap(),
                     it.txTimestamp.toString(),
-                    Coin(it.txV2.tx.authInfo.fee.amountList[0].amount.toBigInteger(),
-                        it.txV2.tx.authInfo.fee.amountList[0].denom),
+                    Coin(it.txV2.tx.authInfo.fee.amountList.first().amount.toBigInteger(),
+                        it.txV2.tx.authInfo.fee.amountList.first().denom),
                     TxCacheRecord.findSigsByHash(it.hash).toSigObj(props.provAccPrefix()),
                     if (it.errorCode == null) "success" else "failed"
                 )
@@ -131,14 +143,14 @@ class TransactionService(
                 tx.txResponse.gasUsed.toInt(),
                 tx.txResponse.gasWanted.toInt(),
                 tx.tx.authInfo.fee.gasLimit.toInt(),
-                props.minGasPrice()),
+                tx.tx.authInfo.fee.getMinGasFee()),
             time = blockService.getBlock(tx.txResponse.height.toInt()).block.header.time.formattedString(),
             status = if (tx.txResponse.code > 0) "failed" else "success",
             errorCode = tx.txResponse.code,
             codespace = tx.txResponse.codespace,
             errorLog = if (tx.txResponse.code > 0) tx.txResponse.rawLog else null,
-            fee = Coin(tx.tx.authInfo.fee.amountList[0].amount.toBigInteger(),
-                tx.tx.authInfo.fee.amountList[0].denom),
+            fee = Coin(tx.tx.authInfo.fee.amountList.first().amount.toBigInteger(),
+                tx.tx.authInfo.fee.amountList.first().denom),
             signers = TxCacheRecord.findSigsByHash(tx.txResponse.txhash).toSigObj(props.provAccPrefix()),
             memo = tx.tx.body.memo,
             msg = TxMessageRecord.findByHash(tx.txResponse.txhash).mapToTxMessages(),

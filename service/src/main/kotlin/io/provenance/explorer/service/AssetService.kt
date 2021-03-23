@@ -35,7 +35,8 @@ class AssetService(
             AssetListed(
                 detail.denom,
                 detail.baseAccount.address,
-                AssetSupply(getTotalSupply(detail.denom), detail.supply.toBigInteger())
+                AssetSupply(getTotalSupply(detail.denom), detail.supply.toBigInteger()),
+                detail.status.name.prettyStatus()
             )
         }
     }
@@ -64,8 +65,8 @@ class AssetService(
                     markerClient.getMarkerMetadata(denom).toObjectNode(protoPrinter),
                     TokenCounts(
                         accountService.getAccountBalances(it.baseAccount.address).size,
-                        metadataClient.getScopesByValueOwner(it.baseAccount.address).size
-                    )
+                        metadataClient.getScopesByValueOwner(it.baseAccount.address).size),
+                    it.status.name.prettyStatus()
                 )
             }
 
@@ -82,3 +83,5 @@ class AssetService(
 
 fun String.getDenomByAddress() =
     MarkerCacheRecord.findById(this)?.denom ?: throw IllegalArgumentException("No denom exists for address $this")
+
+fun String.prettyStatus() = this.substringAfter("MARKER_STATUS_")

@@ -8,7 +8,8 @@ import java.math.BigInteger
 data class AssetListed(
     val marker: String,
     val ownerAddress: String,
-    val supply: AssetSupply
+    val supply: AssetSupply,
+    val status: String
 )
 
 data class AssetDetail(
@@ -21,7 +22,8 @@ data class AssetDetail(
     val txnCount: BigInteger?,
     val attributes: List<ObjectNode>,
     val metadata: ObjectNode,
-    val tokens: TokenCounts
+    val tokens: TokenCounts,
+    val markerStatus: String
 )
 
 data class AssetSupply(

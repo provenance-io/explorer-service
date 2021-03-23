@@ -17,6 +17,7 @@ import cosmos.base.abci.v1beta1.Abci
 import cosmos.slashing.v1beta1.Slashing
 import cosmos.staking.v1beta1.Staking
 import cosmos.tx.v1beta1.ServiceOuterClass
+import cosmos.tx.v1beta1.TxOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.Bech32
@@ -29,6 +30,7 @@ import io.provenance.explorer.grpc.extensions.toAddress
 import io.provenance.explorer.grpc.extensions.toMultiSig
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
 import org.joda.time.DateTime
+import org.joda.time.DateTimeZone
 import tendermint.types.BlockOuterClass
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -147,13 +149,15 @@ fun Timestamp.toDateTime() = DateTime(Instant.ofEpochSecond( this.seconds, this.
 
 fun Timestamp.formattedString() = DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond( this.seconds, this.nanos.toLong()))
 
+fun DateTime.startOfDay() = this.withZone(DateTimeZone.UTC).withTimeAtStartOfDay()
+
 fun BlockOuterClass.Block.height() = this.header.height.toInt()
 
 fun List<SignatureRecord>.toSigObj(hrpPrefix: String) =
     if (this.isNotEmpty())
         Signatures(
             this.map { rec -> rec.pubkeyObject.toAddress(hrpPrefix) ?: rec.base64Sig },
-            this[0].multiSigObject?.toMultiSig()?.threshold
+            this.first().multiSigObject?.toMultiSig()?.threshold
         )
     else Signatures(listOf(), null)
 
@@ -165,6 +169,9 @@ fun Message.toObjectNode(protoPrinter: JsonFormat.Printer) =
             node.remove("@type")
             node
         }
+
+// this == gas_limit
+fun TxOuterClass.Fee.getMinGasFee() = this.amountList.first().amount.toInt().div(this.gasLimit.toDouble())
 
 /**
  * ObjectMapper extension for getting the ObjectMapper configured

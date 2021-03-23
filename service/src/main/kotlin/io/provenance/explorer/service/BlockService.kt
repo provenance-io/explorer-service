@@ -7,14 +7,10 @@ import io.provenance.explorer.domain.entities.BlockIndexRecord
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
-import io.provenance.explorer.domain.models.explorer.TxHistory
 import io.provenance.explorer.grpc.v1.BlockGrpcClient
-import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
-
-import java.math.BigDecimal
 
 
 @Service
@@ -50,7 +46,7 @@ class BlockService(private val blockClient: BlockGrpcClient) {
         transactionCount: Int,
         timestamp: DateTime,
         blockMeta: Query.GetBlockByHeightResponse
-    ) = BlockCacheRecord.insertIgnore(blockHeight, transactionCount, timestamp, blockMeta)
+    ) = transaction { BlockCacheRecord.insertIgnore(blockHeight, transactionCount, timestamp, blockMeta) }
 
     fun updateBlockMaxHeightIndex(maxHeightRead: Int) = BlockIndexRecord.save(maxHeightRead, null)
 

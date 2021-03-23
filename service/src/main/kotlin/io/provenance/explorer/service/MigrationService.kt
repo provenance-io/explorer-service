@@ -4,15 +4,24 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.BlockCacheRecord
+import io.provenance.explorer.domain.entities.BlockProposerRecord
+import io.provenance.explorer.domain.entities.ErrorFinding
 import io.provenance.explorer.domain.entities.SigJoinType
 import io.provenance.explorer.domain.entities.SignatureJoinRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
+import io.provenance.explorer.domain.entities.TxMessageTypeRecord
+import io.provenance.explorer.domain.entities.UnknownTxType
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 
 @Service
-class MigrationService(private val txService: TransactionService, private val protoPrinter: JsonFormat.Printer) {
+class MigrationService(
+    private val txService: TransactionService,
+    private val validatorService: ValidatorService,
+    private val protoPrinter: JsonFormat.Printer
+) {
 
     private fun populateTxSignatures() = transaction {
         TxCacheRecord.all().forEach {
@@ -34,13 +43,40 @@ class MigrationService(private val txService: TransactionService, private val pr
         return true
     }
 
-    fun populateTxs(): Boolean {
-        listOf(585724,585722,584292,569451,569447,569266,569262,569251,556956,556910,556907,556511,556337,556334,
-            556245,556241,555781,555778,553299,553281,552820,552806)
-            .also { TxMessageRecord.deleteByBlockHeight(it) }
-            .forEach { txService.tryAddTxs(it) }
+    fun updateTxs(): Boolean {
+        val origCount = BlockCacheRecord.getCountWithTxs()
+        var count = origCount
+        val pageLimit = 200
+        var offset = 0
+        while (count > 0) {
+            BlockCacheRecord.getBlocksWithTxs(200, 0).forEach block@{ block ->
+                if (BlockProposerRecord.findById(block.height)?.minGasFee != null)
+                    return@block
+                validatorService.saveProposerRecord(block.block, block.blockTimestamp, block.height)
+                var txs = TxCacheRecord.findByHeight(block.height)
+                if (origCount > txs.count()) {
+                    txService.addTxsToCache(block.height, origCount.toInt())
+                    txs = TxCacheRecord.findByHeight(block.height)
+                }
+                txService.calculateBlockTxFee(txs.map { it.txV2.tx }, block.height)
+            }
+            count -= pageLimit
+            offset += offset
+        }
+
         return true
     }
+
+    fun updateTxMsgType(record: UnknownTxType) = transaction {
+        TxMessageTypeRecord.insert(record.type, record.module, record.protoType)
+        "Updated"
+    }
+
+    fun getErrors() =
+        mapOf(
+            "txErrors" to ErrorFinding.getTxErrors(),
+            "unknownTxMsgTypes" to ErrorFinding.getUnknownTxTypes()
+        )
 
     fun translateMsgAny(hash: String) = transaction {
         TxMessageRecord.findByHash(hash)

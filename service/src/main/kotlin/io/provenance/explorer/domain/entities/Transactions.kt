@@ -4,9 +4,13 @@ import com.google.protobuf.Any
 import com.google.protobuf.Timestamp
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.domain.core.sql.DateTrunc
+import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toValue
+import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.GasStatistics
 import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.domain.models.explorer.TxStatus
@@ -31,17 +35,16 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.append
 import org.jetbrains.exposed.sql.count
+import org.jetbrains.exposed.sql.countDistinct
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
-import org.jetbrains.exposed.sql.jodatime.CustomDateTimeFunction
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.stringLiteral
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
@@ -76,11 +79,11 @@ class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
                 }).let {
                     tx.tx.body.messagesList.forEachIndexed { idx, msg ->
                         if (tx.txResponse.logsCount > 0)
-                            tx.txResponse.logsList[0].eventsList
+                            tx.txResponse.logsList.first().eventsList
                                 .filter { event -> event.type == "message" }[idx]
                                 .let { event ->
                                     val type = event.attributesList.first { att -> att.key == "action" }.value
-                                    val module = event.attributesList.first { att -> att.key == "module" }.value
+                                    val module = event.attributesList.firstOrNull { att -> att.key == "module" }?.value ?: "unknown"
                                     TxMessageRecord.insert(tx.txResponse.height.toInt(), it!!, msg, type, module)
                                 }
                         else
@@ -110,13 +113,13 @@ class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
         }
 
         fun getGasStats(startDate: DateTime, endDate: DateTime, granularity: String) = transaction {
-            val dateTrunc = CustomDateTimeFunction("DATE_TRUNC", stringLiteral(granularity),  TxCacheTable.txTimestamp)
+            val dateTrunc = DateTrunc(granularity, TxCacheTable.txTimestamp)
             val minGas = Min(TxCacheTable.gasUsed, IntegerColumnType())
             val maxGas = Max(TxCacheTable.gasUsed, IntegerColumnType())
             val avgGas = Avg(TxCacheTable.gasUsed, 5)
 
             TxCacheTable.slice(dateTrunc, minGas, maxGas, avgGas)
-                .select { TxCacheTable.txTimestamp.between(startDate, endDate.plusDays(1)) }
+                .select { TxCacheTable.txTimestamp.between(startDate.startOfDay(), endDate.startOfDay().plusDays(1)) }
                 .groupBy(dateTrunc)
                 .orderBy(dateTrunc, SortOrder.DESC)
                 .map { GasStatistics(
@@ -130,14 +133,13 @@ class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
         fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
             val query =
                 findByQueryParams(txQueryParams, null)
-                    .groupBy(TxCacheTable.hash)
                     .orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
                     .limit(txQueryParams.count, txQueryParams.offset.toLong())
             TxCacheRecord.wrapRows(query).toSet()
         }
 
         fun findByQueryParamsForCount(txQueryParams: TxQueryParams) = transaction {
-            val distinctCount = Distinct(TxCacheTable.hash).count()
+            val distinctCount = TxCacheTable.hash.countDistinct()
             findByQueryParams(txQueryParams, listOf(distinctCount)).first()[distinctCount].toBigInteger()
         }
 
@@ -149,8 +151,9 @@ class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
                     .leftJoin(TxAddressJoinTable, { TxMessageTable.txHash }, { TxAddressJoinTable.txHash })
                     .leftJoin(TxMarkerJoinTable, { TxMessageTable.txHash }, { TxMarkerJoinTable.txHash })
                     .slice(distinctQuery ?:
-                        listOf(TxCacheTable.hash, TxCacheTable.height, TxCacheTable.gasWanted, TxCacheTable.gasUsed,
-                            TxCacheTable.txTimestamp, TxCacheTable.errorCode, TxCacheTable.codespace, TxCacheTable.txV2))
+                        listOf(Distinct(TxCacheTable.hash, VarCharColumnType(64)), TxCacheTable.hash,
+                            TxCacheTable.height, TxCacheTable.gasWanted, TxCacheTable.gasUsed, TxCacheTable.txTimestamp,
+                            TxCacheTable.errorCode, TxCacheTable.codespace, TxCacheTable.txV2))
                     .selectAll()
 
             if (tqp.msgTypes.isNotEmpty())
@@ -165,13 +168,12 @@ class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
             if (tqp.denom != null)
                 query.andWhere { TxMarkerJoinTable.denom eq tqp.denom }
             if (tqp.fromDate != null)
-                query.andWhere { TxCacheTable.txTimestamp greaterEq tqp.fromDate }
+                query.andWhere { TxCacheTable.txTimestamp greaterEq tqp.fromDate.startOfDay() }
             if (tqp.toDate != null)
-                query.andWhere { TxCacheTable.txTimestamp lessEq tqp.toDate.plusDays(1) }
+                query.andWhere { TxCacheTable.txTimestamp lessEq tqp.toDate.startOfDay().plusDays(1) }
 
              query
         }
-
     }
 
     var hash by TxCacheTable.hash
@@ -216,6 +218,8 @@ class TxMessageTypeRecord(id: EntityID<Int>) : IntEntity(id) {
                     it.apply {
                         this.type = type
                         this.module = module
+                        if (type.getCategoryForType() != null)
+                            this.category = type.getCategoryForType()!!.mainCategory
                     }
                 } else it.apply {
                     if (type.getCategoryForType() != null)

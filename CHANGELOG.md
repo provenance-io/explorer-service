@@ -42,6 +42,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added Account-specific transaction API #11
 * Added working docker-compose script #10
 * Dockerize Database #36
+* Added Min Gas Fee statistics #30
 
 ### Improvements
 * Added templates and build workflow
@@ -56,6 +57,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Updated the copy_proto script to be more intuitive
 * Because we have a docker gha workflow that builds, I removed the branch-> main designation for build gha #34
 * Added gradle custom `downloadProtos` task to download protos instead of shell script. 
+* Updated Validator.bond_height to come from real numbers
+* Added Asset status to the asset objects 
+* Added current gas fee to Validator objects
 
 ### Bug Fixes
 * Translated the signatures back to usable addresses
