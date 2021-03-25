@@ -1,5 +1,7 @@
 package io.provenance.explorer.web.v2
 
+import io.provenance.explorer.domain.entities.TxMessageTypeRecord
+import io.provenance.explorer.domain.entities.UnknownTxType
 import io.provenance.explorer.service.MigrationService
 import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
@@ -8,6 +10,9 @@ import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -22,9 +27,18 @@ class MigrationController(private val migrationService: MigrationService) : Base
     @GetMapping("/populate/sigs")
     fun populateSigs(): ResponseEntity<Boolean> = ResponseEntity.ok(migrationService.populateSigs())
 
-    @ApiOperation("Populates existing transactions so people dont have to wait for 500K blocks to process.")
-    @GetMapping("/populate/txs")
-    fun populateTxs(): ResponseEntity<Boolean> = ResponseEntity.ok(migrationService.populateTxs())
+    @ApiOperation("Updates existing transactions with new data points")
+    @GetMapping("/update/txs")
+    fun updateTxs(): ResponseEntity<Boolean> = ResponseEntity.ok(migrationService.updateTxs())
+
+    @ApiOperation("Updates existing transaction msg type with the given info")
+    @PostMapping("/update/txMsgType")
+    fun updateTxMessageType(@RequestBody txMsgType: UnknownTxType) =
+        ResponseEntity.ok(migrationService.updateTxMsgType(txMsgType))
+
+    @ApiOperation("Fetches common error types in the data")
+    @GetMapping("/errors")
+    fun getErrors() = ResponseEntity.ok(migrationService.getErrors())
 
     @ApiOperation("For Testing")
     @GetMapping("/test/json")

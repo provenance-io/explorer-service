@@ -6,6 +6,8 @@ import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
+import org.joda.time.DateTime
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
@@ -68,5 +70,14 @@ class ValidatorController(private val validatorService: ValidatorService) : Base
     @GetMapping("/{id}/commission")
     fun validatorCommissionInfo(@PathVariable id: String) =
         ResponseEntity.ok(validatorService.getCommissionInfo(id))
+
+    @ApiOperation("Returns statistics on min gas fees for the address")
+    @GetMapping("/{id}/gas_fees")
+    fun validatorGasFees(
+        @PathVariable id: String,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?,
+        @RequestParam(required = false, defaultValue = "14") @Min(1) dayCount: Int
+    ) = ResponseEntity.ok(validatorService.getGasFeeStatistics(id, fromDate, toDate, dayCount))
 
 }

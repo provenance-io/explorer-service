@@ -5,8 +5,10 @@ import cosmos.slashing.v1beta1.Slashing
 import cosmos.staking.v1beta1.Staking
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorAddressesRecord
+import io.provenance.explorer.domain.entities.ValidatorGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.getStatusString
@@ -16,6 +18,7 @@ import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toScaledDecimal
 import io.provenance.explorer.domain.extensions.translateAddress
+import io.provenance.explorer.domain.extensions.translateByteArray
 import io.provenance.explorer.domain.extensions.uptime
 import io.provenance.explorer.domain.models.explorer.BondedTokens
 import io.provenance.explorer.domain.models.explorer.Coin
@@ -31,6 +34,7 @@ import io.provenance.explorer.grpc.extensions.toAddress
 import io.provenance.explorer.grpc.extensions.toSingleSigKeyValue
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 import java.math.BigInteger
 
@@ -76,12 +80,13 @@ class ValidatorService(
                 CountTotal(
                     signingInfo!!.missedBlocksCounter.toBigInteger(),
                     currentHeight - signingInfo.startHeight.toBigInteger()),
-                0,
+                signingInfo.startHeight,
                 signingInfo.uptime(currentHeight),
                 null,  // TODO: Update when we can get images going
                 stakingValidator.description.details,
                 stakingValidator.description.website,
-                stakingValidator.description.identity
+                stakingValidator.description.identity,
+                BlockProposerRecord.findCurrentFeeForAddress(address)?.minGasFee
             )
         }
 
@@ -197,8 +202,9 @@ class ValidatorService(
             bondedTokens = BondedTokens(stakingValidator.tokens.toBigInteger(), null, "nhash"),
             selfBonded = BondedTokens(selfBondedAmount.amount.toBigInteger(), null, selfBondedAmount.denom),
             delegators = delegatorCount,
-            bondHeight = 0,
-            status = stakingValidator.getStatusString()
+            bondHeight = signingInfo.startHeight,
+            status = stakingValidator.getStatusString(),
+            currentGasFee = BlockProposerRecord.findCurrentFeeForAddress(stakingValidator.operatorAddress)?.minGasFee
         )
     }
 
@@ -236,7 +242,7 @@ class ValidatorService(
         ).delegationResponse.balance
         val delegatorCount =
             grpcClient.getStakingValidatorDelegations(validator.operatorAddress, 0, 10).pagination.total
-        val rewards = grpcClient.getValidatorCommission(address).commissionList[0]
+        val rewards = grpcClient.getValidatorCommission(address).commissionList.first()
         return ValidatorCommission(
             BondedTokens(validator.tokens.toBigInteger(), null, "nhash"),
             BondedTokens(selfBondedAmount.amount.toBigInteger(), null, selfBondedAmount.denom),
@@ -251,5 +257,16 @@ class ValidatorService(
         )
     }
 
+    fun getGasFeeStatistics(address: String, fromDate: DateTime?, toDate: DateTime?, count: Int) =
+        ValidatorGasFeeCacheRecord.findByAddress(address, fromDate, toDate, count).reversed()
 
+    fun getProposerConsensusAddr(blockMeta: Query.GetBlockByHeightResponse) =
+        blockMeta.block.header.proposerAddress.translateByteArray(props).consensusAccountAddr
+
+    fun saveProposerRecord(blockMeta: Query.GetBlockByHeightResponse, timestamp: DateTime, blockHeight: Int) =
+        transaction {
+            val consAddr = getProposerConsensusAddr(blockMeta)
+            val proposer = findAddressByConsensus(consAddr)!!.operatorAddress
+            BlockProposerRecord.save(blockHeight, null, timestamp, proposer)
+        }
 }

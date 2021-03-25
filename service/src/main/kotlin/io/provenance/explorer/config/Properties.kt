@@ -19,14 +19,9 @@ class ExplorerProperties {
     lateinit var initialHistoricalDayCount: String
 
     @NotNull
-    lateinit var minimumGasPrice: String
-
-    @NotNull
     lateinit var spotlightTtlMs: String
 
     fun initialHistoricalDays() = initialHistoricalDayCount.toInt()
-
-    fun minGasPrice() = minimumGasPrice.toBigDecimal()
 
     fun spotlightTtlMs() = spotlightTtlMs.toLong()
 

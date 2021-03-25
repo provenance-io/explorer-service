@@ -2,27 +2,25 @@ package io.provenance.explorer.domain.entities
 
 import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.domain.core.sql.DateTrunc
+import io.provenance.explorer.domain.core.sql.ExtractEpoch
+import io.provenance.explorer.domain.core.sql.Lag
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.TxHistory
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
-import org.jetbrains.exposed.sql.DecimalColumnType
-import org.jetbrains.exposed.sql.Expression
-import org.jetbrains.exposed.sql.Function
-import org.jetbrains.exposed.sql.QueryBuilder
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
-import org.jetbrains.exposed.sql.append
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insertIgnore
-import org.jetbrains.exposed.sql.jodatime.CustomDateTimeFunction
-import org.jetbrains.exposed.sql.jodatime.DateColumnType
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.stringLiteral
 import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -57,25 +55,22 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
                 }.let { blockMeta }
             }
 
-        private fun String.dateTruncFunc() =
-            CustomDateTimeFunction("DATE_TRUNC", stringLiteral(this),  BlockCacheTable.blockTimestamp)
-
         fun getTxCountsForParams(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
-            val dateTrunc = granularity.dateTruncFunc()
+            val dateTrunc = DateTrunc(granularity, BlockCacheTable.blockTimestamp)
             val txSum = BlockCacheTable.txCount.sum()
             BlockCacheTable.slice(dateTrunc, txSum)
-                .select { BlockCacheTable.blockTimestamp.between(fromDate, toDate.plusDays(1)) }
+                .select { BlockCacheTable.blockTimestamp
+                    .between(fromDate.startOfDay(), toDate.startOfDay().plusDays(1)) }
                 .groupBy(dateTrunc)
                 .orderBy(dateTrunc, SortOrder.DESC)
                 .map {
                     TxHistory(
-                        it[dateTrunc]!!.withZone(DateTimeZone.UTC)
-                            .toString("yyyy-MM-dd HH:mm:ss"),
+                        it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
                         it[txSum]!!) }
         }
 
         fun getDaysBetweenHeights(minHeight: Int, maxHeight: Int) = transaction {
-            val dateTrunc = DateTruncGranularity.DAY.name.dateTruncFunc()
+            val dateTrunc = DateTrunc(DateTruncGranularity.DAY.name, BlockCacheTable.blockTimestamp)
             BlockCacheTable.slice(dateTrunc)
                 .select { BlockCacheTable.height.between(minHeight, maxHeight) }
                 .groupBy(dateTrunc)
@@ -96,6 +91,14 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
                 .limit(limit)
                 .map { Pair(it[BlockCacheTable.height], it[creationTime]) }
         }
+
+        fun getBlocksWithTxs(count: Int, offset: Int) = transaction {
+            BlockCacheRecord.find { BlockCacheTable.txCount greater 0 }.limit(count, offset.toLong())
+        }
+
+        fun getCountWithTxs() = transaction {
+            BlockCacheRecord.find { BlockCacheTable.txCount greater 0 }.count()
+        }
     }
 
     var height by BlockCacheTable.height
@@ -104,17 +107,6 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
     var txCount by BlockCacheTable.txCount
     override var lastHit by BlockCacheTable.lastHit
     override var hitCount by BlockCacheTable.hitCount
-}
-
-// Custom expressions for complex query types
-class Lag(val lag: Expression<DateTime>, val orderBy: Expression<Int>): Function<DateTime>(DateColumnType(true)) {
-    override fun toQueryBuilder(queryBuilder: QueryBuilder) =
-        queryBuilder { append("LAG(", lag,") OVER (order by ", orderBy, " desc)") }
-}
-
-class ExtractEpoch(val expr: Expression<DateTime>): Function<BigDecimal>(DecimalColumnType(10, 10)) {
-    override fun toQueryBuilder(queryBuilder: QueryBuilder) =
-        queryBuilder { append("extract(epoch from ", expr," )") }
 }
 
 object BlockIndexTable : IdTable<Int>(name = "block_index") {
@@ -142,4 +134,48 @@ class BlockIndexRecord(id: EntityID<Int>) : IntEntity(id) {
     var maxHeightRead by BlockIndexTable.maxHeightRead
     var minHeightRead by BlockIndexTable.minHeightRead
     var lastUpdate by BlockIndexTable.lastUpdate
+}
+
+object BlockProposerTable : IdTable<Int>(name = "block_proposer") {
+    val blockHeight = integer("block_height")
+    override val id = blockHeight.entityId()
+    val proposerOperatorAddress = varchar("proposer_operator_address", 96)
+    val minGasFee = double("min_gas_fee").nullable()
+    val blockTimestamp = datetime("block_timestamp")
+}
+
+class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<BlockProposerRecord>(BlockProposerTable) {
+
+        fun save(height: Int, minGasFee: Double?, timestamp: DateTime?, proposer: String?) = transaction {
+            (BlockProposerRecord.findById(height) ?: new(height) {
+                this.proposerOperatorAddress = proposer!!
+                this.blockTimestamp = timestamp!!
+            }).apply {
+                this.minGasFee = minGasFee
+            }
+        }
+
+        fun findCurrentFeeForAddress(address: String) = transaction {
+            BlockProposerRecord
+                .find { (BlockProposerTable.proposerOperatorAddress eq address) and
+                    (BlockProposerTable.minGasFee.isNotNull()) }
+                .orderBy(Pair(BlockProposerTable.blockHeight, SortOrder.DESC))
+                .limit(1)
+                .firstOrNull()
+        }
+
+        fun findForDates(fromDate: DateTime, toDate: DateTime, address: String?) = transaction {
+            val query = BlockProposerTable
+                .select { BlockProposerTable.blockTimestamp.between(fromDate, toDate.plusDays(1)) }
+            if ( address != null)
+                query.andWhere { BlockProposerTable.proposerOperatorAddress eq address }
+            BlockProposerRecord.wrapRows(query)
+        }
+    }
+
+    var blockHeight by BlockProposerTable.blockHeight
+    var proposerOperatorAddress by BlockProposerTable.proposerOperatorAddress
+    var minGasFee by BlockProposerTable.minGasFee
+    var blockTimestamp by BlockProposerTable.blockTimestamp
 }

@@ -14,8 +14,9 @@ data class ValidatorSummary(
     val bondedTokens: BondedTokens,
     val selfBonded: BondedTokens,
     val delegators: Long,
-    val bondHeight: Int,
-    val status: String
+    val bondHeight: Long,
+    val status: String,
+    val currentGasFee: Double?
 )
 
 data class ValidatorDetails(
@@ -26,12 +27,13 @@ data class ValidatorDetails(
     val withdrawalAddress: String,
     val consensusPubKey: String?,
     val blockCount: CountTotal,
-    val bondHeight: Int,
+    val bondHeight: Long,
     val uptime: BigDecimal,
     val imgUrl: String?,
     val description: String?,
     val siteUrl: String?,
-    val identity: String?
+    val identity: String?,
+    val currentGasFee: Double?
 )
 
 data class ValidatorDelegation(

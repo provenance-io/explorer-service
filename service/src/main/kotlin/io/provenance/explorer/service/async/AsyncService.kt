@@ -3,16 +3,22 @@ package io.provenance.explorer.service.async
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
-import io.provenance.explorer.domain.entities.BlockCacheTable
+import io.provenance.explorer.domain.entities.BlockProposerRecord
+import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
+import io.provenance.explorer.domain.entities.ValidatorGasFeeCacheRecord
 import io.provenance.explorer.domain.extensions.height
+import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.TransactionService
 import io.provenance.explorer.service.ValidatorService
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.joda.time.DateTime
 import org.joda.time.LocalDate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import tendermint.types.BlockOuterClass
+import java.math.BigDecimal
 
 @Service
 class AsyncService(
@@ -45,6 +51,7 @@ class AsyncService(
                         it.block.data.txsCount,
                         it.block.header.time.toDateTime(),
                         it)
+                    validatorService.saveProposerRecord(it, it.block.header.time.toDateTime(), it.block.height())
                     if (it.block.data.txsCount > 0) {
                         transactionService.addTxsToCache(it.block.height(), it.block.data.txsCount)
                     }
@@ -56,8 +63,7 @@ class AsyncService(
             while (indexHeight > index.first!!) {
                 blockService.getBlockAtHeightFromChain(indexHeight).let {
                     blockService.addBlockToCache(
-                        it.block.height(), it.block.data.txsCount,
-                        it.block.header.time.toDateTime(), it)
+                        it.block.height(), it.block.data.txsCount, it.block.header.time.toDateTime(), it)
                     indexHeight = it.block.height() - 1
                     if (it.block.data.txsCount > 0) {
                         transactionService.addTxsToCache(it.block.height(), it.block.data.txsCount)
@@ -86,5 +92,32 @@ class AsyncService(
 
     @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateStakingValidators() = validatorService.updateStakingValidators()
+
+    @Scheduled(cron = "0 0 1 * * ?") // Everyday at 1 am
+//    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
+    fun updateGasFeeCaches() = transaction {
+        val date = DateTime.now().startOfDay().minusDays(1)
+        val records = BlockProposerRecord.findForDates(date, date, null)
+        records.groupBy { it.proposerOperatorAddress }.forEach { (k, v) -> calcAndInsert(v, k, date) }
+        calcAndInsert(records.toList(), null, date)
+    }
+
+    private fun calcAndInsert(orig: List<BlockProposerRecord>, addr: String?, date: DateTime) = transaction {
+        val list = orig.filter { it.minGasFee != null }.map { it.minGasFee!!.toBigDecimal() }
+        if (list.isNotEmpty()) {
+            val max = list.maxWithOrNull(Comparator.naturalOrder())
+            val min = list.minWithOrNull(Comparator.naturalOrder())
+            val avg = list.fold(BigDecimal.ZERO, BigDecimal::add).div(list.count().toBigDecimal())
+            if (addr != null)
+                ValidatorGasFeeCacheRecord.save(addr, min, max, avg, date)
+            else
+                ChainGasFeeCacheRecord.save(min, max, avg, date)
+        } else {
+            if (addr != null)
+                ValidatorGasFeeCacheRecord.save(addr, null, null, null, date)
+            else
+                ChainGasFeeCacheRecord.save(null, null, null, date)
+        }
+    }
 
 }

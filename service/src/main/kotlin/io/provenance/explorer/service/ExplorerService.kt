@@ -4,6 +4,7 @@ import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
+import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.height
@@ -67,8 +68,7 @@ class ExplorerService(
         blockResponse: Query.GetBlockByHeightResponse,
         validatorsResponse: Query.GetValidatorSetByHeightResponse
     ) = let {
-        val proposerConsAddress =
-            blockResponse.block.header.proposerAddress.translateByteArray(props).consensusAccountAddr
+        val proposerConsAddress = validatorService.getProposerConsensusAddr(blockResponse)
         val validatorAddresses = validatorService.findAddressByConsensus(proposerConsAddress)
         val stakingValidator = validatorService.getStakingValidator(validatorAddresses!!.operatorAddress)
         val votingVals = blockResponse.block.lastCommit.signaturesList
@@ -116,6 +116,9 @@ class ExplorerService(
 
     fun getGasStatistics(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
         TxCacheRecord.getGasStats(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
+
+    fun getGasFeeStatistics(fromDate: DateTime?, toDate: DateTime?, count: Int) =
+        ChainGasFeeCacheRecord.findForDates(fromDate, toDate, count).reversed()
 
     fun getChainId() = blockService.getChainIdString()
 }

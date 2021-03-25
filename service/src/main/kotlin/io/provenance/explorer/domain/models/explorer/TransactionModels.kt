@@ -36,7 +36,7 @@ data class Gas(
     val gasUsed: Int,
     val gasWanted: Int,
     val gasLimit: Int,
-    val gasPrice: BigDecimal
+    val gasPrice: Double
 )
 
 data class TxHistory(val date: String, var numberTxs: Int)
