@@ -22,7 +22,7 @@ import org.joda.time.DateTime
 import java.math.BigDecimal
 
 
-object SpotlightCacheTable : IntIdTable(name = "spotlight_cache") {
+object SpotlightCacheTable : IdTable<Int>(name = "spotlight_cache") {
     override val id = integer("id").entityId()
     val spotlight = jsonb<SpotlightCacheTable, Spotlight>("spotlight", OBJECT_MAPPER)
     val lastHit = datetime("last_hit")

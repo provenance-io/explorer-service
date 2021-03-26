@@ -8,6 +8,7 @@ import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.height
+import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.translateByteArray
 import io.provenance.explorer.domain.models.explorer.BlockSummary
@@ -42,6 +43,7 @@ class ExplorerService(
         val queryHeight = height ?: blockService.getLatestBlockHeightIndex()
         val blockResponse = async {
             blockService.getBlock(queryHeight).also {
+                validatorService.saveProposerRecord(it, it.block.header.time.toDateTime(), it.block.height())
                 if (it.block.data.txsCount > 0)
                     transactionService.addTxsToCache(queryHeight, it.block.data.txsCount)
             }
