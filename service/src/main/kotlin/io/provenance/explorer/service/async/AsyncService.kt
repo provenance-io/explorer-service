@@ -64,6 +64,7 @@ class AsyncService(
                 blockService.getBlockAtHeightFromChain(indexHeight).let {
                     blockService.addBlockToCache(
                         it.block.height(), it.block.data.txsCount, it.block.header.time.toDateTime(), it)
+                    validatorService.saveProposerRecord(it, it.block.header.time.toDateTime(), it.block.height())
                     indexHeight = it.block.height() - 1
                     if (it.block.data.txsCount > 0) {
                         transactionService.addTxsToCache(it.block.height(), it.block.data.txsCount)
@@ -94,7 +95,6 @@ class AsyncService(
     fun updateStakingValidators() = validatorService.updateStakingValidators()
 
     @Scheduled(cron = "0 0 1 * * ?") // Everyday at 1 am
-//    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateGasFeeCaches() = transaction {
         val date = DateTime.now().startOfDay().minusDays(1)
         val records = BlockProposerRecord.findForDates(date, date, null)
