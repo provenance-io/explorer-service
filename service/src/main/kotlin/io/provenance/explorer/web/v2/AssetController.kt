@@ -39,4 +39,8 @@ class AssetController(private val assetService: AssetService) : BaseController()
         @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
     ) =
         ResponseEntity.ok(assetService.getAssetHolders(id, page, count))
+
+    @ApiOperation("Returns metadata for asset")
+    @GetMapping("/{id}/metadata")
+    fun getMarkerMetadata(@PathVariable id: String) = ResponseEntity.ok(assetService.getMetaData(id))
 }

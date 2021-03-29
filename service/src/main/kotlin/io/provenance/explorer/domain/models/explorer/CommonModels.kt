@@ -1,7 +1,7 @@
 package io.provenance.explorer.domain.models.explorer
 
 import cosmos.base.v1beta1.CoinOuterClass
-import java.math.BigDecimal
+import io.provenance.explorer.domain.extensions.toHash
 import java.math.BigInteger
 
 
@@ -19,18 +19,22 @@ data class Signatures(
     val threshold: Int?
 )
 
-data class Coin ( val amount: BigInteger, val denom: String)
-data class CoinDec (val amount: BigDecimal, val denom: String)
+data class CoinStr ( val amount: String, val denom: String )
 
-fun CoinOuterClass.Coin.toData() = Coin(this.amount.toBigInteger(), this.denom)
+fun CoinOuterClass.Coin.toData() = this.amount.toHash(this.denom).let { CoinStr(it.first, it.second) }
 
 data class CountTotal(
     val count: BigInteger,
     val total: BigInteger
 )
 
+data class CountStrTotal(
+    val count: String,
+    val total: String
+)
+
 data class BondedTokens(
-    val count: BigInteger,
-    val total: BigInteger?,
+    val count: String,
+    val total: String?,
     val denom: String
 )

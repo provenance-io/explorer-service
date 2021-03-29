@@ -3,13 +3,15 @@ package io.provenance.explorer.service
 import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
+import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.AssetDetail
 import io.provenance.explorer.domain.models.explorer.AssetHolder
 import io.provenance.explorer.domain.models.explorer.AssetListed
+import io.provenance.explorer.domain.models.explorer.AssetManagement
 import io.provenance.explorer.domain.models.explorer.AssetSupply
-import io.provenance.explorer.domain.models.explorer.CountTotal
+import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.TokenCounts
 import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.grpc.extensions.getManagingAccounts
@@ -19,7 +21,6 @@ import io.provenance.explorer.grpc.v1.MarkerGrpcClient
 import io.provenance.explorer.grpc.v1.MetadataGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
-import java.math.RoundingMode
 
 @Service
 class AssetService(
@@ -35,7 +36,9 @@ class AssetService(
             AssetListed(
                 detail.denom,
                 detail.baseAccount.address,
-                AssetSupply(getTotalSupply(detail.denom), detail.supply.toBigInteger()),
+                AssetSupply(
+                    getTotalSupply(detail.denom).toHash(detail.denom).first,
+                    detail.supply.toBigInteger().toHash(detail.denom).first),
                 detail.status.name.prettyStatus()
             )
         }
@@ -55,8 +58,8 @@ class AssetService(
                 AssetDetail(
                     it.denom,
                     it.baseAccount.address,
-                    it.getManagingAccounts(),
-                    AssetSupply(getTotalSupply(denom), it.supply.toBigInteger()),
+                    AssetManagement(it.getManagingAccounts(), it.allowGovernanceControl),
+                    AssetSupply(getTotalSupply(denom).toHash(denom).first, it.supply.toBigInteger().toHash(denom).first),
                     it.isMintable(),
                     markerClient.getAllMarkerHolders(denom).size,
                     txCount,
@@ -74,14 +77,18 @@ class AssetService(
         markerClient.getMarkerHolders(denom, page.toOffset(count), count).balancesList
             .map { bal ->
                 val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount.toBigInteger()
-                AssetHolder(bal.address, CountTotal(balance, supply))
+                AssetHolder(bal.address, CountStrTotal(balance.toHash(denom).first, supply.toHash(denom).first))
             }
     }
 
     fun getTotalSupply(denom: String) = markerClient.getSupplyByDenom(denom).amount.toBigInteger()
+
+    fun getMetaData(denom: String) = protoPrinter.print(markerClient.getMarkerMetadata(denom))
 }
 
 fun String.getDenomByAddress() =
     MarkerCacheRecord.findById(this)?.denom ?: throw IllegalArgumentException("No denom exists for address $this")
 
 fun String.prettyStatus() = this.substringAfter("MARKER_STATUS_")
+
+fun String.prettyRole() = this.substringAfter("ACCESS_")

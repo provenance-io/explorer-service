@@ -60,6 +60,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Updated Validator.bond_height to come from real numbers
 * Added Asset status to the asset objects 
 * Added current gas fee to Validator objects
+* Initial conversions from nhash to hash #44
+* Changed ownership on assets #45
 
 ### Bug Fixes
 * Translated the signatures back to usable addresses
@@ -70,6 +72,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Made Block Hash look like a hash #34
 * Updated a couple docker scripts cuz I moved things around in the last commit #34
 * Added a db index on tx_cache.height
+* Added additional db indices
+* Fixed a bug where candidate/jailed validators were being filtered out of results
 
 ## PRE-HISTORY
 

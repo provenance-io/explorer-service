@@ -8,8 +8,10 @@ import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.extensions.edPubKeyToBech32
 import io.provenance.explorer.domain.extensions.secpPubKeyToBech32
 import io.provenance.explorer.domain.extensions.toValue
+import io.provenance.explorer.service.prettyRole
 import io.provenance.marker.v1.Access
 import io.provenance.marker.v1.MarkerAccount
+import io.provenance.marker.v1.MarkerStatus
 
 
 // Marker Extensions
@@ -27,20 +29,20 @@ fun Any.toMarker(): MarkerAccount =
 
 fun MarkerAccount.isMintable() = this.accessControlList.any { it.permissionsList.contains(Access.ACCESS_MINT) }
 
-fun MarkerAccount.getManagingAccounts() = if (this.manager.isBlank()) {
-    this.accessControlList.filter { it.permissionsList.contains(Access.ACCESS_ADMIN) }.map { it.address }
-} else {
-    listOf(this.manager)
+fun MarkerAccount.getManagingAccounts(): MutableMap<String, List<String>> {
+    val managers = this.accessControlList.associate { addr ->
+       addr.address to addr.permissionsList.filter { it.number != 0 }.map { it.name.prettyRole() }
+    }.toMutableMap()
+
+    return when {
+        this.status >= MarkerStatus.MARKER_STATUS_ACTIVE -> managers
+        else -> {
+            if (this.manager.isNotBlank())
+                managers[this.manager] = Access.values().filter { it.number != 0 }.map { it.name.prettyRole() }
+            managers
+        }
+    }
 }
-
-
-// TODO: Update when I have access to this api, if this'll work
-//fun Any.getMarker(reflClient: CosmosReflectionGrpcClient) {
-//    val interfaceName = MarkerAccount.getDescriptor().options.getExtension(Cosmos.implementsInterface)
-//    reflClient.listImplementations()[interfaceName].firstOrNull { it == this.typeUrl }.let { this.unpack(Class.forName
-//        (it)) }
-//}
-
 
 // PubKey Extensions
 fun Any.toSingleSigKeyValue() = this.toSingleSig().let { it?.toValue() }

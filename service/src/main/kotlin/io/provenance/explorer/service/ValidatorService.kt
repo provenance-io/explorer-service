@@ -11,18 +11,19 @@ import io.provenance.explorer.domain.entities.ValidatorAddressesRecord
 import io.provenance.explorer.domain.entities.ValidatorGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
 import io.provenance.explorer.domain.entities.updateHitCount
+import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.getStatusString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.pageOfResults
 import io.provenance.explorer.domain.extensions.toDateTime
+import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toScaledDecimal
 import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.extensions.translateByteArray
 import io.provenance.explorer.domain.extensions.uptime
 import io.provenance.explorer.domain.models.explorer.BondedTokens
-import io.provenance.explorer.domain.models.explorer.Coin
-import io.provenance.explorer.domain.models.explorer.CoinDec
+import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.CommissionRate
 import io.provenance.explorer.domain.models.explorer.CountTotal
 import io.provenance.explorer.domain.models.explorer.PagedResults
@@ -68,10 +69,11 @@ class ValidatorService(
             val stakingValidator = getStakingValidator(addr.operatorAddress)
             val signingInfo = getSigningInfos().firstOrNull { it.address == addr.consensusAddress }
             val validatorSet = grpcClient.getLatestValidators()
-            val latestValidator = validatorSet.firstOrNull { it.address == addr.consensusAddress }!!
+            val latestValidator = validatorSet.firstOrNull { it.address == addr.consensusAddress }
             val votingPowerTotal = validatorSet.sumOf { it.votingPower.toBigInteger() }
             ValidatorDetails(
-                CountTotal(latestValidator.votingPower.toBigInteger(), votingPowerTotal),
+                if (latestValidator != null) CountTotal(latestValidator.votingPower.toBigInteger(), votingPowerTotal)
+                    else null,
                 stakingValidator.description.moniker,
                 addr.operatorAddress,
                 addr.accountAddress,
@@ -158,28 +160,33 @@ class ValidatorService(
 
     private fun aggregateValidators(validatorSet: List<Query.Validator>, count: Int, page: Int, status: String) = let {
         val stakingValidators = getStakingValidators(status)
-        hydrateValidators(validatorSet, stakingValidators)
-            .sortedByDescending { it.votingPower.count }
+        val addresses = stakingValidators.mapNotNull { findAddressByOperator(it.operatorAddress) }
+        hydrateValidators(validatorSet, stakingValidators, addresses)
+            .sortedByDescending { it.bondedTokens.count }
             .pageOfResults(page, count)
             .let { PagedResults(it.size.toLong().pageCountOfResults(count), it) }
     }
 
-    private fun hydrateValidators(validators: List<Query.Validator>, stakingValidators: List<Staking.Validator>) = let {
-        val stakingPubKeys = stakingValidators.map { it.consensusPubkey.toSingleSigKeyValue() }
+    private fun hydrateValidators(
+        validators: List<Query.Validator>,
+        stakingValidators: List<Staking.Validator>,
+        addresses: List<ValidatorAddressesRecord>
+    ) = let {
         val signingInfos = getSigningInfos()
         val height = signingInfos.first().indexOffset
         val totalVotingPower = validators.sumOf { it.votingPower.toBigInteger() }
-        validators.filter { stakingPubKeys.contains(it.pubKey.toSingleSigKeyValue()) }
-            .map { validator ->
-                val stakingValidator = stakingValidators
-                    .find { it.consensusPubkey.toSingleSigKeyValue() == validator.pubKey.toSingleSigKeyValue() }
-                val signingInfo = signingInfos.find { it.address == validator.address }
-                hydrateValidator(validator, stakingValidator!!, signingInfo!!, height.toBigInteger(), totalVotingPower)
+        stakingValidators
+            .map { stakingVal ->
+                val address = addresses.first { it.operatorAddress == stakingVal.operatorAddress }
+                val validator = validators
+                    .firstOrNull { it.pubKey.toSingleSigKeyValue() == stakingVal.consensusPubkey.toSingleSigKeyValue() }
+                val signingInfo = signingInfos.find { it.address == address.consensusAddress }
+                hydrateValidator(validator, stakingVal, signingInfo!!, height.toBigInteger(), totalVotingPower)
             }
     }
 
     private fun hydrateValidator(
-        validator: Query.Validator,
+        validator: Query.Validator?,
         stakingValidator: Staking.Validator,
         signingInfo: Slashing.ValidatorSigningInfo,
         height: BigInteger,
@@ -194,13 +201,15 @@ class ValidatorService(
         ValidatorSummary(
             moniker = stakingValidator.description.moniker,
             addressId = stakingValidator.operatorAddress,
-            consensusAddress = validator.address,
-            proposerPriority = validator.proposerPriority.toInt(),
-            votingPower = CountTotal(validator.votingPower.toBigInteger(), totalVotingPower),
+            consensusAddress = signingInfo.address,
+            proposerPriority = validator?.proposerPriority?.toInt(),
+            votingPower = (if (validator != null) CountTotal(validator.votingPower.toBigInteger(), totalVotingPower) else null),
             uptime = signingInfo.uptime(height),
             commission = stakingValidator.commission.commissionRates.rate.toScaledDecimal(18),
-            bondedTokens = BondedTokens(stakingValidator.tokens.toBigInteger(), null, "nhash"),
-            selfBonded = BondedTokens(selfBondedAmount.amount.toBigInteger(), null, selfBondedAmount.denom),
+            bondedTokens = stakingValidator.tokens.toHash(NHASH)
+                .let { BondedTokens(it.first, null, it.second) },
+            selfBonded = selfBondedAmount.amount.toHash(selfBondedAmount.denom)
+                .let { BondedTokens(it.first, null, it.second) },
             delegators = delegatorCount,
             bondHeight = signingInfo.startHeight,
             status = stakingValidator.getStatusString(),
@@ -210,12 +219,15 @@ class ValidatorService(
 
     fun getBondedDelegations(address: String, page: Int, limit: Int) =
         grpcClient.getStakingValidatorDelegations(address, page.toOffset(limit), limit).let { res ->
-            val list = res.delegationResponsesList.map { ValidatorDelegation(
-                it.delegation.delegatorAddress,
-                Coin(it.balance.amount.toBigInteger(), it.balance.denom),
-                it.delegation.shares.toScaledDecimal(18),
-                null,
-                null) }
+            val list = res.delegationResponsesList.map {
+                ValidatorDelegation(
+                    it.delegation.delegatorAddress,
+                    it.balance.amount.toHash(it.balance.denom).let { coin -> CoinStr(coin.first, coin
+                        .second) },
+                    it.delegation.shares.toScaledDecimal(18),
+                    null,
+                    null)
+            }
             PagedResults(res.pagination.total.pageCountOfResults(limit), list)
         }
 
@@ -225,7 +237,7 @@ class ValidatorService(
                 list.entriesList.map {
                     ValidatorDelegation(
                         list.delegatorAddress,
-                        Coin(it.balance.toBigInteger(), "nhash"),
+                        it.balance.toHash(NHASH).let { coin -> CoinStr(coin.first, coin.second) },
                         null,
                         it.creationHeight.toInt(),
                         it.completionTime.toDateTime()
@@ -244,12 +256,14 @@ class ValidatorService(
             grpcClient.getStakingValidatorDelegations(validator.operatorAddress, 0, 10).pagination.total
         val rewards = grpcClient.getValidatorCommission(address).commissionList.first()
         return ValidatorCommission(
-            BondedTokens(validator.tokens.toBigInteger(), null, "nhash"),
-            BondedTokens(selfBondedAmount.amount.toBigInteger(), null, selfBondedAmount.denom),
-            BondedTokens(validator.tokens.toBigInteger() - selfBondedAmount.amount.toBigInteger(), null,"nhash"),
+            validator.tokens.toHash(NHASH).let { BondedTokens(it.first, null, it.second) },
+            selfBondedAmount.amount.toHash(selfBondedAmount.denom)
+                .let { BondedTokens(it.first, null, it.second) },
+            validator.tokens.toBigInteger().minus(selfBondedAmount.amount.toBigInteger()).toHash(NHASH)
+                .let { BondedTokens(it.first, null, it.second) },
             delegatorCount,
             validator.delegatorShares.toScaledDecimal(18),
-            CoinDec(rewards.amount.toScaledDecimal(18), rewards.denom),
+            rewards.amount.toHash(rewards.denom).let { CoinStr(it.first, it.second) },
             CommissionRate(
                 validator.commission.commissionRates.rate.toScaledDecimal(18),
                 validator.commission.commissionRates.maxRate.toScaledDecimal(18),

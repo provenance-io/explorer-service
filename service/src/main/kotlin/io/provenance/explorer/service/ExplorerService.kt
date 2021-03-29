@@ -6,6 +6,7 @@ import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
+import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
@@ -23,7 +24,6 @@ import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
-import java.math.BigInteger
 import java.math.RoundingMode
 
 
@@ -105,15 +105,16 @@ class ExplorerService(
             Spotlight(
                 latestBlock = getBlockAtHeight(null),
                 avgBlockTime = getAverageBlockCreationTime(),
-                bondedTokens = BondedTokens(it.first.toBigInteger(), it.second, "nhash"),
+                bondedTokens = it.first.toBigInteger().toHash(NHASH)
+                    .let { coin -> BondedTokens(coin.first, it.second, coin.second) },
                 totalTxCount = TxCacheRecord.getTotalTxCount()
             )
         }.let { cacheService.addSpotlightToCache(it) }
 
     fun getBondedTokenRatio() = let {
-        val totalBlockChainTokens = assetService.getTotalSupply("nhash")
+        val totalBlockChainTokens = assetService.getTotalSupply(NHASH).toHash(NHASH).first
         val totalBondedTokens = validatorService.getStakingValidators("active").map { it.tokens.toLong() }.sum()
-        Pair<Long, BigInteger>(totalBondedTokens, totalBlockChainTokens)
+        Pair<Long, String>(totalBondedTokens, totalBlockChainTokens)
     }
 
     fun getGasStatistics(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
