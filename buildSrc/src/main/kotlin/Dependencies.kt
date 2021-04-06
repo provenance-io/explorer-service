@@ -40,7 +40,7 @@ object PluginVersions { // please keep this sorted in sections
 object Versions {
     // kotlin
     const val Kotlin = PluginVersions.Kotlin
-    const val KotlinXCoroutines = "1.3.9"
+    const val KotlinXCoroutines = "1.4.3"
 
     // 3rd Party
     const val BouncyCastle = "1.63"
@@ -69,7 +69,8 @@ object Versions {
 
 object Libraries {
     // Kotlin
-    const val KotlinReflect = "org.jetbrains.kotlin:kotlin-reflect"
+    const val KotlinReflect = "org.jetbrains.kotlin:kotlin-reflect:${Versions.Kotlin}"
+    const val KotlinStdlib = "org.jetbrains.kotlin:kotlin-stdlib:${Versions.Kotlin}"
     const val KotlinXCoRoutinesCore = "org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.KotlinXCoroutines}"
 
     // 3rd Party

@@ -79,12 +79,6 @@ fun Abci.TxResponse.type() = this.logsList?.flatMap { it.eventsList }
     ?.firstOrNull { it.key == "action" }
     ?.value
 
-fun ServiceOuterClass.GetTxResponse.sendMsg() =
-    this.tx.body.messagesList.first { it.typeUrl.contains("MsgSend") }.unpack(Tx.MsgSend::class.java)
-
-fun Abci.TxResponse.fee(minGasPrice: BigDecimal) = this.gasUsed.toBigDecimal().multiply(minGasPrice)
-    .setScale(2, RoundingMode.CEILING)
-
 fun Slashing.ValidatorSigningInfo.uptime(currentHeight: BigInteger) = let {
     val startHeight = this.startHeight.toBigInteger()
     val missingBlockCounter = this.missedBlocksCounter.toBigInteger()

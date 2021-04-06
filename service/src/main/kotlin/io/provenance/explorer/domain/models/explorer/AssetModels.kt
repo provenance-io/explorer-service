@@ -1,21 +1,20 @@
 package io.provenance.explorer.domain.models.explorer
 
 import com.fasterxml.jackson.databind.node.ObjectNode
-import java.math.BigDecimal
 import java.math.BigInteger
 
 
 data class AssetListed(
     val marker: String,
-    val ownerAddress: String,
+    val holdingAccount: String,
     val supply: AssetSupply,
     val status: String
 )
 
 data class AssetDetail(
     val marker: String,
-    val ownerAddress: String,
-    val managingAccounts: List<String>,
+    val holdingAccount: String,
+    val managingAccounts: AssetManagement,
     val supply: AssetSupply,
     val mintable: Boolean,
     val holderCount: Int,
@@ -27,8 +26,8 @@ data class AssetDetail(
 )
 
 data class AssetSupply(
-    val circulation: BigInteger,
-    val total: BigInteger
+    val circulation: String,
+    val total: String
 )
 
 data class TokenCounts(
@@ -45,7 +44,7 @@ data class Attribute(
 
 data class AssetHolder(
     val ownerAddress: String,
-    val balance: CountTotal
+    val balance: CountStrTotal
 )
 
 data class AccountDetail(
@@ -54,5 +53,10 @@ data class AccountDetail(
     val accountNumber: Long,
     val sequence: Int,
     val publicKeys: Signatures,
-    val balances: List<Coin>
+    val balances: List<CoinStr>
+)
+
+data class AssetManagement(
+    val managers: Map<String, List<String>>,
+    val allowGovControl: Boolean
 )

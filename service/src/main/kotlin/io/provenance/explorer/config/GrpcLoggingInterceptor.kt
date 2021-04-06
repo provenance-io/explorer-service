@@ -24,7 +24,7 @@ class GrpcLoggingInterceptor : ClientInterceptor {
             next.newCall(method, callOptions.withDeadlineAfter(10000, TimeUnit.MILLISECONDS))
         ) {
             override fun sendMessage(message: M) {
-                logger.info("Requesting external api method: $methodName")
+                logger.debug("Requesting external api method: $methodName")
                 super.sendMessage(message)
             }
         }

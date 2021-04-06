@@ -22,6 +22,7 @@ import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Avg
+import org.jetbrains.exposed.sql.ColumnSet
 import org.jetbrains.exposed.sql.Count
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.Function
@@ -144,17 +145,22 @@ class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
         }
 
         private fun findByQueryParams(tqp: TxQueryParams, distinctQuery: List<Count>?) = transaction {
-            val query =
-                TxMessageTable
-                    .innerJoin(TxCacheTable, { TxMessageTable.txHash }, { TxCacheTable.hash })
+            var join: ColumnSet = TxCacheTable
+
+            if (tqp.msgTypes.isNotEmpty())
+                join = join.innerJoin(TxMessageTable, { TxCacheTable.hash }, { TxMessageTable.txHash })
                     .innerJoin(TxMessageTypeTable, { TxMessageTable.txMessageType }, { TxMessageTypeTable.id })
-                    .leftJoin(TxAddressJoinTable, { TxMessageTable.txHash }, { TxAddressJoinTable.txHash })
-                    .leftJoin(TxMarkerJoinTable, { TxMessageTable.txHash }, { TxMarkerJoinTable.txHash })
-                    .slice(distinctQuery ?:
+            if (tqp.address != null)
+                join = join.leftJoin(TxAddressJoinTable, { TxCacheTable.hash }, { TxAddressJoinTable.txHash })
+            if (tqp.denom != null)
+                join = join.leftJoin(TxMarkerJoinTable, { TxCacheTable.hash }, { TxMarkerJoinTable.txHash })
+
+            val query =
+                    join.slice(distinctQuery ?:
                         listOf(Distinct(TxCacheTable.hash, VarCharColumnType(64)), TxCacheTable.hash,
                             TxCacheTable.height, TxCacheTable.gasWanted, TxCacheTable.gasUsed, TxCacheTable.txTimestamp,
                             TxCacheTable.errorCode, TxCacheTable.codespace, TxCacheTable.txV2))
-                    .selectAll()
+                        .selectAll()
 
             if (tqp.msgTypes.isNotEmpty())
                 query.andWhere { TxMessageTypeTable.type inList tqp.msgTypes }

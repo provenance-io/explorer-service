@@ -50,7 +50,7 @@ subprojects {
     tasks.withType<KotlinCompile> {
         kotlinOptions {
 //            freeCompilerArgs = listOf("-Xjsr305=strict", "-Xinline-classes")
-            jvmTarget = "1.8"
+            jvmTarget = "11"
         }
     }
 
@@ -74,6 +74,7 @@ subprojects {
 
     dependencies {
         implementation(Libraries.KotlinReflect)
+        implementation(Libraries.KotlinStdlib)
 
         testCompileOnly(Libraries.JunitJupiterApi)
         testRuntimeOnly(Libraries.JunitVintageEngine)
