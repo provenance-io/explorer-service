@@ -25,7 +25,7 @@ jobs:
         id: delete_old_tags
         with:
           token: ${{secrets.DOCKERHUB_TOKEN}}
-          keep-last: 50
-          user: ${{ secrets.DOCKERHUB_USERNAME }}
-          repos: '["provenanceio/explorer-service"]'
-          substrings: '[${{ steps.prep.outputs.version }}]'
+          keep-last: 1
+          user: provenanceio
+          repos: '["explorer-service"]'
+          substrings: '["${{ steps.prep.outputs.version }}"]'
