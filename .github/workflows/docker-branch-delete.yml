@@ -21,7 +21,7 @@ jobs:
           VERSION=$(echo ${github.event.ref} | sed -r 's#/+#-#g')
           echo ::set-output name=version::${VERSION}
       - name: Delete branch docker
-        uses: m3ntorship/action-dockerhub-cleanup@v1.2
+        uses: m3ntorship/action-dockerhub-cleanup@1.2
         id: delete_old_tags
         with:
           token: ${{secrets.DOCKERHUB_TOKEN}}
