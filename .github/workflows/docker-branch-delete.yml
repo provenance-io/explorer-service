@@ -18,7 +18,7 @@ jobs:
         id: prep
         run: |
           DOCKER_IMAGE=provenanceio/explorer-service
-          VERSION=$(echo ${github.event.ref} | sed -r 's#/+#-#g')
+          VERSION=$(echo ${{github.event.ref}} | sed -r 's#/+#-#g')
           echo ::set-output name=version::${VERSION}
       - name: Delete branch docker
         uses: m3ntorship/action-dockerhub-cleanup@1.2
