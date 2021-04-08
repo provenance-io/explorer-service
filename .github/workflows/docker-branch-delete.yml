@@ -1,0 +1,31 @@
+name: Delete branch docker
+# Deletes the docker associated with the branch
+
+on:
+  delete:
+    branches:
+      - '!main'
+
+jobs:
+  delete:
+    if: github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Clean up
+        run: echo "Clean up for branch ${{ github.event.ref }}"
+      - name: Prepare
+        id: prep
+        run: |
+          DOCKER_IMAGE=provenanceio/explorer-service
+          VERSION=$(echo ${github.event.ref} | sed -r 's#/+#-#g')
+          echo ::set-output name=version::${VERSION}
+      - name: Delete branch docker
+        uses: m3ntorship/action-dockerhub-cleanup@v1.2
+        id: delete_old_tags
+        with:
+          token: ${{secrets.DOCKERHUB_TOKEN}}
+          keep-last: 50
+          user: ${{ secrets.DOCKERHUB_USERNAME }}
+          repos: '["provenanceio/explorer-service"]'
+          substrings: '[${{ steps.prep.outputs.version }}]'
