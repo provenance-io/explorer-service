@@ -5,36 +5,40 @@ on:
   delete:
     branches:
       - '!main'
+      
+# This wont work currently. Using a personal access token does not allow deletion through the hub.docker.com API.
+# See: https://github.com/docker/roadmap/issues/115
+# Leaving in place so it will be corrected eventually
 
-jobs:
-  delete:
-    if: github.event.ref_type == 'branch'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Clean up
-        run: echo "Clean up for branch ${{ github.event.ref }}"
-      - name: Prepare
-        id: prep
-        run: |
-          DOCKER_IMAGE=provenanceio/explorer-service
-          VERSION=$(echo ${{github.event.ref}} | sed -r 's#/+#-#g')
-          echo ::set-output name=version::${VERSION}
-      - name: Get Dockerhub JWT token
-        id: docker-token
-        run: |
-          TOKEN=$(curl -X POST \
-            -H "Content-Type: application/json" \
-            -H "Accept: application/json" \
-            -d '{"username":"${{ secrets.DOCKERHUB_USERNAME }}","password":"${{ secrets.DOCKERHUB_TOKEN }}"}' \
-            https://hub.docker.com/v2/users/login/ | jq -r '.token')
-          echo ::set-output name=token::${TOKEN}
-      - name: Delete branch docker
-        uses: m3ntorship/action-dockerhub-cleanup@1.2
-        id: delete_old_tags
-        with:
-          token: ${{ steps.docker-token.outputs.token }}
-          keep-last: 1
-          user: provenanceio
-          repos: '["explorer-service"]'
-          substrings: '["${{ steps.prep.outputs.version }}"]'
+# jobs:
+#   delete:
+#     if: github.event.ref_type == 'branch'
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v2
+#       - name: Clean up
+#         run: echo "Clean up for branch ${{ github.event.ref }}"
+#       - name: Prepare
+#         id: prep
+#         run: |
+#           DOCKER_IMAGE=provenanceio/explorer-service
+#           VERSION=$(echo ${{github.event.ref}} | sed -r 's#/+#-#g')
+#           echo ::set-output name=version::${VERSION}
+#       - name: Get Dockerhub JWT token
+#         id: docker-token
+#         run: |
+#           TOKEN=$(curl -X POST \
+#             -H "Content-Type: application/json" \
+#             -H "Accept: application/json" \
+#             -d '{"username":"${{ secrets.DOCKERHUB_USERNAME }}","password":"${{ secrets.DOCKERHUB_TOKEN }}"}' \
+#             https://hub.docker.com/v2/users/login/ | jq -r '.token')
+#           echo ::set-output name=token::${TOKEN}
+#       - name: Delete branch docker
+#         uses: m3ntorship/action-dockerhub-cleanup@1.2
+#         id: delete_old_tags
+#         with:
+#           token: ${{ steps.docker-token.outputs.token }}
+#           keep-last: 1
+#           user: provenanceio
+#           repos: '["explorer-service"]'
+#           substrings: '["${{ steps.prep.outputs.version }}"]'
