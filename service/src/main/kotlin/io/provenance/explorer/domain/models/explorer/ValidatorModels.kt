@@ -8,15 +8,16 @@ data class ValidatorSummary (
     val addressId: String,
     val consensusAddress: String,
     val proposerPriority: Int?,
-    val uptime: BigDecimal,
+    val uptime: BigDecimal?,
     val votingPower: CountTotal?,
     val commission: BigDecimal,
     val bondedTokens: BondedTokens,
     val selfBonded: BondedTokens,
-    val delegators: Long,
-    val bondHeight: Long,
+    val delegators: Long?,
+    val bondHeight: Long?,
     val status: String,
-    val currentGasFee: Double?
+    val currentGasFee: Double?,
+    val unbondingHeight: Long?
 )
 
 data class ValidatorDetails (
@@ -26,14 +27,17 @@ data class ValidatorDetails (
     val ownerAddress: String,
     val withdrawalAddress: String,
     val consensusPubKey: String?,
-    val blockCount: CountTotal,
-    val bondHeight: Long,
-    val uptime: BigDecimal,
+    val blockCount: CountTotal?,
+    val bondHeight: Long?,
+    val uptime: BigDecimal?,
     val imgUrl: String?,
     val description: String?,
     val siteUrl: String?,
     val identity: String?,
-    val currentGasFee: Double?
+    val currentGasFee: Double?,
+    val status: String,
+    val unbondingHeight: Long?,
+    val jailedUntil: DateTime?
 )
 
 data class ValidatorDelegation (

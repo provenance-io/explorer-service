@@ -17,8 +17,6 @@ import org.springframework.stereotype.Service
 class BlockService(private val blockClient: BlockGrpcClient) {
     protected val logger = logger(BlockService::class)
 
-    protected var chainId: String = ""
-
     fun getBlockIndexFromCache() = BlockIndexRecord.getIndex()
 
     fun getLatestBlockHeightIndex(): Int = getBlockIndexFromCache()!!.maxHeightRead!!
@@ -26,20 +24,6 @@ class BlockService(private val blockClient: BlockGrpcClient) {
     fun getBlockAtHeightFromChain(height: Int) = blockClient.getBlockAtHeight(height)
 
     fun getLatestBlockHeight(): Int = blockClient.getLatestBlock().block.height()
-
-    fun getBlock(blockHeight: Int) =
-        getBlockByHeightFromCache(blockHeight) ?: getBlockAtHeightFromChain(blockHeight)
-            .let { addBlockToCache(it.block.height(), it.block.data.txsCount, it.block.header.time.toDateTime(), it) }
-
-    fun getBlockByHeightFromCache(blockHeight: Int) = transaction {
-        BlockCacheRecord.findById(blockHeight)?.also {
-            BlockCacheRecord.updateHitCount(blockHeight)
-        }?.block
-    }
-
-    fun getChainIdString() =
-        if (chainId.isEmpty()) getBlock(getLatestBlockHeightIndex()).block.header.chainId.also { this.chainId = it }
-        else this.chainId
 
     fun addBlockToCache(
         blockHeight: Int,

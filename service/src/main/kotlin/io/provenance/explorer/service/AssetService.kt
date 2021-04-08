@@ -1,8 +1,9 @@
 package io.provenance.explorer.service
 
 import com.google.protobuf.util.JsonFormat
+import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
-import io.provenance.explorer.domain.entities.TxCacheRecord
+import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
@@ -13,12 +14,12 @@ import io.provenance.explorer.domain.models.explorer.AssetManagement
 import io.provenance.explorer.domain.models.explorer.AssetSupply
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.TokenCounts
-import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.grpc.extensions.getManagingAccounts
 import io.provenance.explorer.grpc.extensions.isMintable
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
 import io.provenance.explorer.grpc.v1.MetadataGrpcClient
+import io.provenance.marker.v1.MarkerStatus
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 
@@ -30,46 +31,44 @@ class AssetService(
     private val accountService: AccountService,
     private val protoPrinter: JsonFormat.Printer
 ) {
+    protected val logger = logger(AssetService::class)
 
-    fun getAllAssets() = markerClient.getAllMarkers().map {
-        MarkerCacheRecord.insertIgnore(it).let { detail ->
+    fun getAllAssets() = MarkerCacheRecord.findByStatus(listOf(MarkerStatus.MARKER_STATUS_ACTIVE))
+        .map {
             AssetListed(
-                detail.denom,
-                detail.baseAccount.address,
+                it.denom,
+                it.markerAddress,
                 AssetSupply(
-                    getTotalSupply(detail.denom).toHash(detail.denom).first,
-                    detail.supply.toBigInteger().toHash(detail.denom).first),
-                detail.status.name.prettyStatus()
+                    getTotalSupply(it.denom).toHash(it.denom).first,
+                    it.data.supply.toBigInteger().toHash(it.denom).first),
+                it.status.prettyStatus()
             )
         }
-    }
 
-    private fun getAssetRaw(denom: String) = transaction {
-        MarkerCacheRecord.findByDenom(denom)?.data ?:
+    fun getAssetRaw(denom: String) = transaction {
+        MarkerCacheRecord.findByDenom(denom)?.let { Pair(it.id, it.data) } ?:
             markerClient.getMarkerDetail(denom).let { MarkerCacheRecord.insertIgnore(it) }
     }
 
     fun getAssetDetail(denom: String) =
         getAssetRaw(denom)
-            .let {
-                val txCount =
-                    TxCacheRecord.findByQueryParamsForCount(
-                        TxQueryParams(null, denom, listOf(), null, null, 1, 0, null, null))
+            .let { (id, detail) ->
+                val txCount = TxMarkerJoinRecord.findCountByDenom(id!!.value)
                 AssetDetail(
-                    it.denom,
-                    it.baseAccount.address,
-                    AssetManagement(it.getManagingAccounts(), it.allowGovernanceControl),
-                    AssetSupply(getTotalSupply(denom).toHash(denom).first, it.supply.toBigInteger().toHash(denom).first),
-                    it.isMintable(),
+                    detail.denom,
+                    detail.baseAccount.address,
+                    AssetManagement(detail.getManagingAccounts(), detail.allowGovernanceControl),
+                    AssetSupply(getTotalSupply(denom).toHash(denom).first, detail.supply.toBigInteger().toHash(denom).first),
+                    detail.isMintable(),
                     markerClient.getAllMarkerHolders(denom).size,
                     txCount,
-                    attrClient.getAllAttributesForAddress(it.baseAccount.address)
+                    attrClient.getAllAttributesForAddress(detail.baseAccount.address)
                         .map { attr -> attr.toObjectNode(protoPrinter) },
                     markerClient.getMarkerMetadata(denom).toObjectNode(protoPrinter),
                     TokenCounts(
-                        accountService.getAccountBalances(it.baseAccount.address).size,
-                        metadataClient.getScopesByValueOwner(it.baseAccount.address).size),
-                    it.status.name.prettyStatus()
+                        accountService.getAccountBalances(detail.baseAccount.address).size,
+                        metadataClient.getScopesByValueOwner(detail.baseAccount.address).size),
+                    detail.status.name.prettyStatus()
                 )
             }
 
@@ -84,10 +83,25 @@ class AssetService(
     fun getTotalSupply(denom: String) = markerClient.getSupplyByDenom(denom).amount.toBigInteger()
 
     fun getMetaData(denom: String) = protoPrinter.print(markerClient.getMarkerMetadata(denom))
+
+    // Updates the Marker cache
+    fun updateAssets(denoms: Set<String>) = transaction {
+        logger.info("saving assets")
+        denoms.forEach { marker ->
+            val data = markerClient.getMarkerDetail(marker)
+            val record = MarkerCacheRecord.findByDenom(marker)!!
+            if (data != record.data)
+                record.apply {
+                    this.status = data.status.toString()
+                    this.totalSupply = data.supply.toBigDecimal()
+                    this.data = data
+                }
+        }
+    }
 }
 
 fun String.getDenomByAddress() =
-    MarkerCacheRecord.findById(this)?.denom ?: throw IllegalArgumentException("No denom exists for address $this")
+    MarkerCacheRecord.findByAddress(this)?.denom ?: throw IllegalArgumentException("No denom exists for address $this")
 
 fun String.prettyStatus() = this.substringAfter("MARKER_STATUS_")
 

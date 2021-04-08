@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import com.google.common.hash.Hashing
 import com.google.protobuf.ByteString
 import com.google.protobuf.Message
 import com.google.protobuf.Timestamp
@@ -40,7 +41,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Base64
 import kotlin.math.ceil
 
-fun ByteString.toValue() = Base64.getEncoder().encodeToString(this.toByteArray())
+fun ByteString.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
+fun ByteString.toDbHash() = Hashing.sha512().hashBytes(this.toByteArray()).asBytes().toString()
 fun ByteString.toHash() = this.toByteArray().toBech32Data().hexData
 
 //PubKeySecp256k1
@@ -139,6 +141,8 @@ fun Staking.Validator.getStatusString() =
         else -> "candidate"
     }
 
+fun Staking.Validator.isActive() = this.status == Staking.BondStatus.BOND_STATUS_BONDED && !this.jailed
+
 fun Timestamp.toDateTime() = DateTime(Instant.ofEpochSecond( this.seconds, this.nanos.toLong()).toEpochMilli())
 
 fun Timestamp.formattedString() = DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond( this.seconds, this.nanos.toLong()))
@@ -154,8 +158,6 @@ fun List<SignatureRecord>.toSigObj(hrpPrefix: String) =
             this.first().multiSigObject?.toMultiSig()?.threshold
         )
     else Signatures(listOf(), null)
-
-fun String.toScaledDecimal(scale: Int) = BigDecimal(this.toBigInteger(), scale)
 
 fun Message.toObjectNode(protoPrinter: JsonFormat.Printer) =
     OBJECT_MAPPER.readValue(protoPrinter.print(this), ObjectNode::class.java)

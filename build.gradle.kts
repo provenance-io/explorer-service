@@ -76,11 +76,14 @@ subprojects {
         implementation(Libraries.KotlinReflect)
         implementation(Libraries.KotlinStdlib)
 
-        testCompileOnly(Libraries.JunitJupiterApi)
-        testRuntimeOnly(Libraries.JunitVintageEngine)
-        testRuntimeOnly(Libraries.JunitJupiterEngine)
+        testImplementation(Libraries.SpringBootStarterTest) {
+            exclude(module = "junit")
+            exclude(module = "mockito-core")
+            exclude(module = "assertj-core")
+        }
         testImplementation(Libraries.JunitJupiterApi)
-        testImplementation(Libraries.MockitoCore)
-        testImplementation(Libraries.KotlinTest)
+        testRuntimeOnly(Libraries.JunitJupiterEngine)
+        testImplementation(Libraries.SpringMockk)
+        testImplementation(Libraries.KotestAssert)
     }
 }

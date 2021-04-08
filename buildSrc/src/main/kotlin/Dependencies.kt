@@ -59,7 +59,8 @@ object Versions {
 
     // Testing
     const val Jupiter = "5.7.1"
-    const val Mockito = "3.7.7"
+    const val SpringMockk = "3.0.1"
+    const val Kotest = "4.4.3"
 
     //external protos
     const val Provenance = "v0.2.1"
@@ -111,11 +112,10 @@ object Libraries {
     const val Swagger = "io.springfox:springfox-boot-starter:${Versions.Swagger}"
 
     // Testing
-    const val JunitVintageEngine = "org.junit.vintage:junit-vintage-engine:${Versions.Jupiter}"
     const val JunitJupiterApi = "org.junit.jupiter:junit-jupiter-api:${Versions.Jupiter}"
     const val JunitJupiterEngine = "org.junit.jupiter:junit-jupiter-engine:${Versions.Jupiter}"
-    const val MockitoCore = "org.mockito:mockito-core:${Versions.Mockito}"
-    const val KotlinTest = "org.jetbrains.kotlin:kotlin-test"
+    const val SpringMockk = "com.ninja-squad:springmockk:${Versions.SpringMockk}"
+    const val KotestAssert = "io.kotest:kotest-assertions-core:${Versions.Kotest}"
 }
 
 // gradle configurations

@@ -7,7 +7,7 @@ import cosmos.crypto.multisig.Keys
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.extensions.edPubKeyToBech32
 import io.provenance.explorer.domain.extensions.secpPubKeyToBech32
-import io.provenance.explorer.domain.extensions.toValue
+import io.provenance.explorer.domain.extensions.toBase64
 import io.provenance.explorer.service.prettyRole
 import io.provenance.marker.v1.Access
 import io.provenance.marker.v1.MarkerAccount
@@ -29,23 +29,27 @@ fun Any.toMarker(): MarkerAccount =
 
 fun MarkerAccount.isMintable() = this.accessControlList.any { it.permissionsList.contains(Access.ACCESS_MINT) }
 
+fun Array<Access>.filterRoles() = this.filter { it.roleFilter() }
+fun List<Access>.filterRoles() = this.filter { it.roleFilter() }
+fun Access.roleFilter() = this != Access.UNRECOGNIZED && this != Access.ACCESS_UNSPECIFIED
+
 fun MarkerAccount.getManagingAccounts(): MutableMap<String, List<String>> {
     val managers = this.accessControlList.associate { addr ->
-       addr.address to addr.permissionsList.filter { it.number != 0 }.map { it.name.prettyRole() }
+       addr.address to addr.permissionsList.filterRoles().map { it.name.prettyRole() }
     }.toMutableMap()
 
     return when {
-        this.status >= MarkerStatus.MARKER_STATUS_ACTIVE -> managers
+        this.status.number >= MarkerStatus.MARKER_STATUS_ACTIVE.number -> managers
         else -> {
             if (this.manager.isNotBlank())
-                managers[this.manager] = Access.values().filter { it.number != 0 }.map { it.name.prettyRole() }
+                managers[this.manager] = Access.values().filterRoles().map { it.name.prettyRole() }
             managers
         }
     }
 }
 
 // PubKey Extensions
-fun Any.toSingleSigKeyValue() = this.toSingleSig().let { it?.toValue() }
+fun Any.toSingleSigKeyValue() = this.toSingleSig().let { it?.toBase64() }
 
 fun Any.toSingleSig(): ByteString? =
     when {

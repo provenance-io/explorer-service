@@ -40,7 +40,28 @@ class MigrationController(private val migrationService: MigrationService) : Base
     @GetMapping("/errors")
     fun getErrors() = ResponseEntity.ok(migrationService.getErrors())
 
+    @ApiOperation("Updates validator cache for missing records")
+    @GetMapping("/update/validatorCache")
+    fun updateValidatorCache() = ResponseEntity.ok(migrationService.updateValidatorsCache())
+
+    @ApiOperation("Updates existing blocks with proposer records")
+    @GetMapping("/update/block/proposers")
+    fun updateBlockProposers(): ResponseEntity<Boolean> = ResponseEntity.ok(migrationService.updateProposers())
+
+    @ApiOperation("Updates account joins with proper account ids")
+    @GetMapping("/update/accountJoin")
+    fun updateAccountJoin() = ResponseEntity.ok(migrationService.updateAccountJoins())
+
     @ApiOperation("For Testing")
     @GetMapping("/test/json")
     fun jsonTest(@RequestParam txHash: String) = ResponseEntity.ok(migrationService.translateMsgAny(txHash))
+
+    @ApiOperation("Tests denom object comparison")
+    @PostMapping("/test/denomObject")
+    fun denomComparison(@RequestParam denom: String) =
+        ResponseEntity.ok(migrationService.compareDenomObject(denom))
+
+    @ApiOperation("Updates TxMessage hash")
+    @GetMapping("/update/txMessageHash")
+    fun updateTxMessageHash() = ResponseEntity.ok(migrationService.transformTxMessageHashes())
 }

@@ -7,18 +7,19 @@ import io.provenance.explorer.domain.core.sql.ExtractEpoch
 import io.provenance.explorer.domain.core.sql.Lag
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.startOfDay
-import io.provenance.explorer.domain.models.explorer.TxHistory
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.dao.id.IdTable
+import io.provenance.explorer.domain.models.explorer.TxHistory
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
+import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.jodatime.datetime
+import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.sum
@@ -26,6 +27,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import java.math.BigDecimal
+
 
 object BlockCacheTable : CacheIdTable<Int>(name = "block_cache") {
     val height = integer("height")
@@ -154,6 +156,14 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
             }).apply {
                 this.minGasFee = minGasFee
             }
+        }
+
+        fun findMissingRecords() = transaction {
+            BlockCacheTable
+                .leftJoin(BlockProposerTable, { BlockCacheTable.height }, { BlockProposerTable.blockHeight })
+                .slice(BlockCacheTable.columns)
+                .select { BlockProposerTable.blockHeight.isNull() }
+                .let { BlockCacheRecord.wrapRows(it).toSet() }
         }
 
         fun findCurrentFeeForAddress(address: String) = transaction {

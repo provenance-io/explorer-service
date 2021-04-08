@@ -4,7 +4,7 @@ import com.google.protobuf.Any
 import cosmos.crypto.multisig.Keys
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
-import io.provenance.explorer.domain.extensions.toValue
+import io.provenance.explorer.domain.extensions.toBase64
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -48,11 +48,11 @@ class SignatureRecord(id: EntityID<Int>) : IntEntity(id) {
                 pubkey.typeUrl.contains("secp256k1") ->
                     pubkey.unpack(cosmos.crypto.secp256k1.Keys.PubKey::class.java)
                         .let { key -> listOf(
-                            insertAndGetId(key.key.toValue(), pubkey.typeUrl, pubkey, multiSig)) }
+                            insertAndGetId(key.key.toBase64(), pubkey.typeUrl, pubkey, multiSig)) }
                 pubkey.typeUrl.contains("ed25519") ->
                     pubkey.unpack(cosmos.crypto.ed25519.Keys.PubKey::class.java)
                         .let { key -> listOf(
-                            insertAndGetId(key.key.toValue(), pubkey.typeUrl, pubkey, multiSig)) }
+                            insertAndGetId(key.key.toBase64(), pubkey.typeUrl, pubkey, multiSig)) }
                 pubkey.typeUrl.contains("LegacyAminoPubKey") ->
                     pubkey.unpack(Keys.LegacyAminoPubKey::class.java).let { multi ->
                         multi.publicKeysList

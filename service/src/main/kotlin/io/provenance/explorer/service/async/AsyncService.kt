@@ -10,8 +10,6 @@ import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.service.BlockService
-import io.provenance.explorer.service.TransactionService
-import io.provenance.explorer.service.ValidatorService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.LocalDate
@@ -24,8 +22,7 @@ import java.math.BigDecimal
 class AsyncService(
     private val explorerProperties: ExplorerProperties,
     private val blockService: BlockService,
-    private val transactionService: TransactionService,
-    private val validatorService: ValidatorService
+    private val asyncCache: AsyncCaching
 ) {
 
     protected val logger = logger(AsyncService::class)
@@ -46,15 +43,7 @@ class AsyncService(
                         shouldContinue = false
                         return
                     }
-                    blockService.addBlockToCache(
-                        it.block.height(),
-                        it.block.data.txsCount,
-                        it.block.header.time.toDateTime(),
-                        it)
-                    validatorService.saveProposerRecord(it, it.block.header.time.toDateTime(), it.block.height())
-                    if (it.block.data.txsCount > 0) {
-                        transactionService.addTxsToCache(it.block.height(), it.block.data.txsCount)
-                    }
+                    asyncCache.saveBlockEtc(it)
                     indexHeight = it.block.height() - 1
                 }
                 blockService.updateBlockMinHeightIndex(indexHeight + 1)
@@ -62,13 +51,8 @@ class AsyncService(
         } else {
             while (indexHeight > index.first!!) {
                 blockService.getBlockAtHeightFromChain(indexHeight).let {
-                    blockService.addBlockToCache(
-                        it.block.height(), it.block.data.txsCount, it.block.header.time.toDateTime(), it)
-                    validatorService.saveProposerRecord(it, it.block.header.time.toDateTime(), it.block.height())
+                    asyncCache.saveBlockEtc(it)
                     indexHeight = it.block.height() - 1
-                    if (it.block.data.txsCount > 0) {
-                        transactionService.addTxsToCache(it.block.height(), it.block.data.txsCount)
-                    }
                 }
             }
             blockService.updateBlockMaxHeightIndex(startHeight)
@@ -90,9 +74,6 @@ class AsyncService(
     fun getEndDate() = LocalDate().toDateTimeAtStartOfDay().minusDays(explorerProperties.initialHistoricalDays() + 1)
 
     fun BlockOuterClass.Block.day() = this.header.time.toDateTime()
-
-    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
-    fun updateStakingValidators() = validatorService.updateStakingValidators()
 
     @Scheduled(cron = "0 0 1 * * ?") // Everyday at 1 am
     fun updateGasFeeCaches() = transaction {

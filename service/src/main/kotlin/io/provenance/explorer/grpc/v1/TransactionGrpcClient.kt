@@ -8,7 +8,11 @@ import cosmos.tx.v1beta1.ServiceOuterClass
 import cosmos.tx.v1beta1.TxOuterClass
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
+import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.exceptions.TendermintApiCustomException
+import io.provenance.explorer.domain.exceptions.TendermintApiException
 import io.provenance.explorer.grpc.extensions.getPaginationBuilder
+import io.provenance.explorer.service.async.AsyncService
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -17,6 +21,7 @@ import java.util.concurrent.TimeUnit
 class TransactionGrpcClient(channelUri: URI) {
 
     private val txClient: ServiceGrpc.ServiceBlockingStub
+    protected val logger = logger(TransactionGrpcClient::class)
 
     init {
         val channel =
@@ -51,6 +56,10 @@ class TransactionGrpcClient(channelUri: URI) {
 
         val txs = results.txsList
         val txResps = results.txResponsesList
+
+        if (txs.count() == 0)
+            throw TendermintApiException("Blockchain failed to retrieve txs for height $height. Expected $total, " +
+                "Returned 0. This is not normal.")
 
         while (txs.count() < total) {
             offset += limit

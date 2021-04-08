@@ -64,8 +64,6 @@ dependencies {
     api(Libraries.ExposedDao)
     api(Libraries.ExposedJdbc)
 
-    testImplementation(Libraries.SpringBootStarterTest)
-
     developmentOnly(Libraries.SpringBootDevTools)
 }
 

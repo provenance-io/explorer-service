@@ -1,7 +1,12 @@
 package io.provenance.explorer.service
 
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.AccountRecord.Companion.update
+import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
+import io.provenance.explorer.domain.entities.TxAddressJoinRecord
+import io.provenance.explorer.domain.entities.TxAddressJoinType
 import io.provenance.explorer.domain.extensions.toSigObj
 import io.provenance.explorer.domain.models.explorer.AccountDetail
 import io.provenance.explorer.domain.models.explorer.toData
@@ -12,9 +17,11 @@ import org.springframework.stereotype.Service
 @Service
 class AccountService(private val accountClient: AccountGrpcClient, private val props: ExplorerProperties) {
 
-    private fun getAccountRaw(address: String) = transaction {
-        AccountRecord.findById(address)
-    } ?: accountClient.getAccountInfo(address).let { AccountRecord.insertIgnore(it)!! }
+    protected val logger = logger(AccountService::class)
+
+    fun getAccountRaw(address: String) = transaction { AccountRecord.findByAddress(address) } ?: saveAccount(address)
+
+    fun saveAccount(address: String) = accountClient.getAccountInfo(address).let { AccountRecord.insertIgnore(it) }
 
     fun getAccountDetail(address: String) = getAccountRaw(address).let {
         AccountDetail(
@@ -28,6 +35,29 @@ class AccountService(private val accountClient: AccountGrpcClient, private val p
     }
 
     fun getAccountBalances(address: String) = accountClient.getAccountBalances(address).map { it.toData()}
+
+    fun updateAccountJoins() {
+        logger.info("updating account joins")
+        val list = transaction { TxAddressJoinRecord.findByNoId() }
+        list.forEach { addr ->
+            logger.info("updating address $addr")
+            getAccountRaw(addr).let { acc ->
+                transaction {
+                    TxAddressJoinRecord.update(addr, acc.id.value, TxAddressJoinType.ACCOUNT.name)
+                }
+            }
+        }
+    }
+
+    fun updateAccounts(accs: Set<Int>) = transaction {
+        logger.info("Updating accounts")
+        accs.forEach { id ->
+            val record = AccountRecord.findById(id)!!
+            val data = accountClient.getAccountInfo(record.accountAddress)
+            if (data != record.data)
+                record.update(data)
+        }
+    }
 }
 
 fun String.getAccountType() = this.split(".").last()
