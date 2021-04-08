@@ -20,11 +20,20 @@ jobs:
           DOCKER_IMAGE=provenanceio/explorer-service
           VERSION=$(echo ${{github.event.ref}} | sed -r 's#/+#-#g')
           echo ::set-output name=version::${VERSION}
+      - name: Get Dockerhub JWT token
+        id: docker-token
+        run: |
+          TOKEN=$(curl -X POST \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            -d '{"username":"${{ secrets.DOCKERHUB_USERNAME }}","password":"${{ secrets.DOCKERHUB_TOKEN }}"}' \
+            https://hub.docker.com/v2/users/login/ | jq -r '.token')
+          echo ::set-output name=token::${TOKEN}
       - name: Delete branch docker
         uses: m3ntorship/action-dockerhub-cleanup@1.2
         id: delete_old_tags
         with:
-          token: ${{secrets.DOCKERHUB_TOKEN}}
+          token: ${{ steps.docker-token.outputs.token }}
           keep-last: 1
           user: provenanceio
           repos: '["explorer-service"]'
