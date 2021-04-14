@@ -10,7 +10,7 @@ data class ValidatorSummary (
     val proposerPriority: Int?,
     val uptime: BigDecimal?,
     val votingPower: CountTotal?,
-    val commission: BigDecimal,
+    val commission: String,
     val bondedTokens: BondedTokens,
     val selfBonded: BondedTokens,
     val delegators: Long?,
@@ -43,7 +43,7 @@ data class ValidatorDetails (
 data class ValidatorDelegation (
     val address: String,
     val amount: CoinStr,
-    val shares: BigDecimal?,
+    val shares: String?,
     val block: Int?,
     val endTime: DateTime?
 )
@@ -53,13 +53,13 @@ data class ValidatorCommission (
     val selfBonded: BondedTokens,
     val delegatorBonded: BondedTokens,
     val delegatorCount: Long,
-    val totalShares: BigDecimal,
+    val totalShares: String,
     val commissionRewards: CoinStr,
     val commissionRate:	CommissionRate
 )
 
 data class CommissionRate (
-    val rate: BigDecimal,
-    val maxRate: BigDecimal,
-    val maxChangeRate: BigDecimal
+    val rate: String,
+    val maxRate: String,
+    val maxChangeRate: String
 )

@@ -32,7 +32,7 @@ class ExplorerService(
     private val props: ExplorerProperties,
     private val cacheService: CacheService,
     private val blockService: BlockService,
-    private val assetService: AssetService,
+    private val accountService: AccountService,
     private val validatorService: ValidatorService,
     private val asyncCaching: AsyncCaching
 ) {
@@ -106,7 +106,7 @@ class ExplorerService(
         }.let { cacheService.addSpotlightToCache(it) }
 
     fun getBondedTokenRatio() = let {
-        val totalBlockChainTokens = assetService.getTotalSupply(NHASH).toHash(NHASH).first
+        val totalBlockChainTokens = accountService.getCurrentSupply(NHASH).toHash(NHASH).first
         val totalBondedTokens = validatorService.getStakingValidators("active").map { it.tokens.toLong() }.sum()
         Pair<Long, String>(totalBondedTokens, totalBlockChainTokens)
     }

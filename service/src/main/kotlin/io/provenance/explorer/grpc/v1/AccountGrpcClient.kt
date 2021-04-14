@@ -4,6 +4,7 @@ import cosmos.bank.v1beta1.QueryOuterClass as BankOuterClass
 import cosmos.auth.v1beta1.QueryOuterClass as AuthOuterClass
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
+import io.provenance.marker.v1.QuerySupplyRequest
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -41,5 +42,8 @@ class AccountGrpcClient(channelUri : URI) {
 
     fun getAccountBalances(address: String) =
         bankClient.allBalances(BankOuterClass.QueryAllBalancesRequest.newBuilder().setAddress(address).build()).balancesList
+
+    fun getCurrentSupply(denom: String) =
+        bankClient.supplyOf(BankOuterClass.QuerySupplyOfRequest.newBuilder().setDenom(denom).build()).amount
 
 }

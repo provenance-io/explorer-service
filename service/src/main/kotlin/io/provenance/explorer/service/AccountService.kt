@@ -36,18 +36,7 @@ class AccountService(private val accountClient: AccountGrpcClient, private val p
 
     fun getAccountBalances(address: String) = accountClient.getAccountBalances(address).map { it.toData()}
 
-    fun updateAccountJoins() {
-        logger.info("updating account joins")
-        val list = transaction { TxAddressJoinRecord.findByNoId() }
-        list.forEach { addr ->
-            logger.info("updating address $addr")
-            getAccountRaw(addr).let { acc ->
-                transaction {
-                    TxAddressJoinRecord.update(addr, acc.id.value, TxAddressJoinType.ACCOUNT.name)
-                }
-            }
-        }
-    }
+    fun getCurrentSupply(denom: String) = accountClient.getCurrentSupply(denom).amount
 
     fun updateAccounts(accs: Set<Int>) = transaction {
         logger.info("Updating accounts")

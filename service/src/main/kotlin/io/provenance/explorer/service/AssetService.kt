@@ -4,6 +4,7 @@ import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
+import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
@@ -13,6 +14,7 @@ import io.provenance.explorer.domain.models.explorer.AssetListed
 import io.provenance.explorer.domain.models.explorer.AssetManagement
 import io.provenance.explorer.domain.models.explorer.AssetSupply
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
+import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.TokenCounts
 import io.provenance.explorer.grpc.extensions.getManagingAccounts
 import io.provenance.explorer.grpc.extensions.isMintable
@@ -39,8 +41,8 @@ class AssetService(
                 it.denom,
                 it.markerAddress,
                 AssetSupply(
-                    getTotalSupply(it.denom).toHash(it.denom).first,
-                    it.data.supply.toBigInteger().toHash(it.denom).first),
+                    it.data.supply.toBigInteger().toString(),
+                    accountService.getCurrentSupply(it.denom).toString()),
                 it.status.prettyStatus()
             )
         }
@@ -58,7 +60,9 @@ class AssetService(
                     detail.denom,
                     detail.baseAccount.address,
                     AssetManagement(detail.getManagingAccounts(), detail.allowGovernanceControl),
-                    AssetSupply(getTotalSupply(denom).toHash(denom).first, detail.supply.toBigInteger().toHash(denom).first),
+                    AssetSupply(
+                        detail.supply.toBigInteger().toString(),
+                        accountService.getCurrentSupply(denom).toString()),
                     detail.isMintable(),
                     markerClient.getAllMarkerHolders(denom).size,
                     txCount,
@@ -72,15 +76,14 @@ class AssetService(
                 )
             }
 
-    fun getAssetHolders(denom: String, page: Int, count: Int) = getTotalSupply(denom).let { supply ->
-        markerClient.getMarkerHolders(denom, page.toOffset(count), count).balancesList
-            .map { bal ->
+    fun getAssetHolders(denom: String, page: Int, count: Int) = accountService.getCurrentSupply(denom).let { supply ->
+        val res = markerClient.getMarkerHolders(denom, page.toOffset(count), count)
+        val list = res.balancesList.map { bal ->
                 val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount.toBigInteger()
                 AssetHolder(bal.address, CountStrTotal(balance.toHash(denom).first, supply.toHash(denom).first))
-            }
+            }.sortedByDescending { it.balance.count }
+        PagedResults(res.pagination.total.pageCountOfResults(count), list)
     }
-
-    fun getTotalSupply(denom: String) = markerClient.getSupplyByDenom(denom).amount.toBigInteger()
 
     fun getMetaData(denom: String) = protoPrinter.print(markerClient.getMarkerMetadata(denom))
 
