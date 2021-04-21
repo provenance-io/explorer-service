@@ -7,18 +7,18 @@ import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
-import io.provenance.explorer.domain.entities.ValidatorAddressesRecord
 import io.provenance.explorer.domain.entities.ValidatorGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.getStatusString
+import io.provenance.explorer.domain.extensions.isActive
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.pageOfResults
 import io.provenance.explorer.domain.extensions.toDateTime
+import io.provenance.explorer.domain.extensions.toDecCoin
 import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.toOffset
-import io.provenance.explorer.domain.extensions.toScaledDecimal
 import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.extensions.translateByteArray
 import io.provenance.explorer.domain.extensions.uptime
@@ -53,14 +53,32 @@ class ValidatorService(
         ValidatorsCacheRecord.findById(blockHeight)?.also {
             ValidatorsCacheRecord.updateHitCount(blockHeight)
         }?.validators
-    } ?: grpcClient.getValidatorsAtHeight(blockHeight)
-        .let { ValidatorsCacheRecord.insertIgnore(blockHeight, it) }
+    }!!
+
+    fun saveValidatorsAtHeight(blockHeight: Int) =
+        grpcClient.getValidatorsAtHeight(blockHeight).let { ValidatorsCacheRecord.insertIgnore(blockHeight, it) }
+
+    fun updateValidatorsAtHeight() {
+        logger.info("updating validator cache")
+        val list = transaction { ValidatorsCacheRecord.getMissingBlocks() }
+        list.forEach { height -> saveValidatorsAtHeight(height) }
+    }
 
     // Gets a single staking validator from cache
     fun getStakingValidator(operatorAddress: String) =
-        transaction { StakingValidatorCacheRecord.findById(operatorAddress)?.stakingValidator }
-            ?: grpcClient.getStakingValidator(operatorAddress)
-                .let { StakingValidatorCacheRecord.insertIgnore(operatorAddress, it) }
+        transaction { StakingValidatorCacheRecord.findByOperator(operatorAddress)?.stakingValidator }
+            ?: saveValidator(operatorAddress).second
+
+    fun saveValidator(address: String) = transaction {
+        grpcClient.getStakingValidator(address)
+            .let {
+                StakingValidatorCacheRecord.insertIgnore(
+                    address,
+                    it.operatorAddress.translateAddress(props).accountAddr,
+                    it.consensusPubkey.toSingleSigKeyValue()!!,
+                    it.consensusPubkey.toAddress(props.provValConsPrefix())!!,
+                    it) }
+    }
 
     // Returns a validator detail object for the validator
     fun getValidator(address: String) =
@@ -88,7 +106,10 @@ class ValidatorService(
                 stakingValidator.description.details,
                 stakingValidator.description.website,
                 stakingValidator.description.identity,
-                BlockProposerRecord.findCurrentFeeForAddress(address)?.minGasFee
+                BlockProposerRecord.findCurrentFeeForAddress(address)?.minGasFee,
+                stakingValidator.getStatusString(),
+                if (!stakingValidator.isActive()) stakingValidator.unbondingHeight else null,
+                if (stakingValidator.jailed) signingInfo.jailedUntil.toDateTime() else null
             )
         }
 
@@ -107,47 +128,45 @@ class ValidatorService(
     fun getSigningInfos() = grpcClient.getSigningInfos()
 
     fun findAddressByAccount(address: String) =
-        ValidatorAddressesRecord.findByAccount(address)
-        ?: discoverAddresses().let { ValidatorAddressesRecord.findByAccount(address) }
+        StakingValidatorCacheRecord.findByAccount(address)
+        ?: discoverAddresses().let { StakingValidatorCacheRecord.findByAccount(address) }
 
     fun findAddressByConsensus(address: String) =
-        ValidatorAddressesRecord.findByConsensusAddress(address)
-        ?: discoverAddresses().let { ValidatorAddressesRecord.findByConsensusAddress(address) }
+        StakingValidatorCacheRecord.findByConsensusAddress(address)
+        ?: discoverAddresses().let { StakingValidatorCacheRecord.findByConsensusAddress(address) }
 
     fun findAddressByOperator(address: String) =
-        ValidatorAddressesRecord.findByOperator(address)
-        ?: discoverAddresses().let { ValidatorAddressesRecord.findByOperator(address) }
-
-    private fun findAllConsensusPubkeys() = transaction { ValidatorAddressesRecord.all().map { it.consensusPubkey } }
+        StakingValidatorCacheRecord.findByOperator(address)
+        ?: discoverAddresses().let { StakingValidatorCacheRecord.findByOperator(address) }
 
     private fun discoverAddresses() = let {
-        val currentValidatorsKeys = findAllConsensusPubkeys()
-        val latestValidators = grpcClient.getLatestValidators()
-        val stakingVals = transaction { StakingValidatorCacheRecord.all().map { it.stakingValidator } }
-        val pairedAddresses =
-            stakingVals.map { Pair<String, String>(it.consensusPubkey.toSingleSigKeyValue()!!, it.operatorAddress) }
-        latestValidators
-            .filter { !currentValidatorsKeys.contains(it.pubKey.toSingleSigKeyValue()) }
+        val stakingVals = transaction { StakingValidatorCacheRecord.all().map { it.operatorAddress } }
+        grpcClient.getStakingValidators()
             .forEach { validator ->
-                pairedAddresses.firstOrNull { validator.pubKey.toSingleSigKeyValue()!! == it.first }
-                    ?.let {
-                        ValidatorAddressesRecord.insertIgnore(
-                            it.second.translateAddress(props).accountAddr,
-                            it.second,
-                            validator.pubKey.toSingleSigKeyValue()!!,
-                            validator.pubKey.toAddress(props.provValConsPrefix())!!)
-                    }
+                if (!stakingVals.contains(validator.operatorAddress))
+                    StakingValidatorCacheRecord.insertIgnore(
+                        validator.operatorAddress,
+                        validator.operatorAddress.translateAddress(props).accountAddr,
+                        validator.consensusPubkey.toSingleSigKeyValue()!!,
+                        validator.consensusPubkey.toAddress(props.provValConsPrefix())!!,
+                        validator)
             }
     }
 
     // Updates the staking validator cache
-    fun updateStakingValidators() = transaction {
-        val toBeUpdated = StakingValidatorCacheRecord.all()
-        grpcClient.getStakingValidators()
-            .forEach { stake ->
-                toBeUpdated.firstOrNull { stake.operatorAddress == it.operatorAddress }?.delete()
-                StakingValidatorCacheRecord.insertIgnore(stake.operatorAddress, stake)
-            }
+    fun updateStakingValidators(vals: Set<Int>) = transaction {
+        logger.info("Updating validators")
+        vals.forEach { v ->
+            val record = StakingValidatorCacheRecord.findById(v)!!
+            val data = grpcClient.getStakingValidator(record.operatorAddress)
+            if (data != record.stakingValidator)
+                record.apply {
+                    this.moniker = data.description.moniker
+                    this.jailed = data.jailed
+                    this.status = data.status.name
+                    this.stakingValidator = data
+                }
+        }
     }
 
     // In point to get most recent validators
@@ -170,7 +189,7 @@ class ValidatorService(
     private fun hydrateValidators(
         validators: List<Query.Validator>,
         stakingValidators: List<Staking.Validator>,
-        addresses: List<ValidatorAddressesRecord>
+        addresses: List<StakingValidatorCacheRecord>
     ) = let {
         val signingInfos = getSigningInfos()
         val height = signingInfos.first().indexOffset
@@ -204,16 +223,17 @@ class ValidatorService(
             consensusAddress = signingInfo.address,
             proposerPriority = validator?.proposerPriority?.toInt(),
             votingPower = (if (validator != null) CountTotal(validator.votingPower.toBigInteger(), totalVotingPower) else null),
-            uptime = signingInfo.uptime(height),
-            commission = stakingValidator.commission.commissionRates.rate.toScaledDecimal(18),
+            uptime = if (stakingValidator.isActive()) signingInfo.uptime(height) else null,
+            commission = stakingValidator.commission.commissionRates.rate.toDecCoin(),
             bondedTokens = stakingValidator.tokens.toHash(NHASH)
                 .let { BondedTokens(it.first, null, it.second) },
             selfBonded = selfBondedAmount.amount.toHash(selfBondedAmount.denom)
                 .let { BondedTokens(it.first, null, it.second) },
             delegators = delegatorCount,
-            bondHeight = signingInfo.startHeight,
+            bondHeight = if (stakingValidator.isActive()) signingInfo.startHeight else null,
             status = stakingValidator.getStatusString(),
-            currentGasFee = BlockProposerRecord.findCurrentFeeForAddress(stakingValidator.operatorAddress)?.minGasFee
+            currentGasFee = BlockProposerRecord.findCurrentFeeForAddress(stakingValidator.operatorAddress)?.minGasFee,
+            unbondingHeight = if (!stakingValidator.isActive()) stakingValidator.unbondingHeight else null
         )
     }
 
@@ -222,9 +242,8 @@ class ValidatorService(
             val list = res.delegationResponsesList.map {
                 ValidatorDelegation(
                     it.delegation.delegatorAddress,
-                    it.balance.amount.toHash(it.balance.denom).let { coin -> CoinStr(coin.first, coin
-                        .second) },
-                    it.delegation.shares.toScaledDecimal(18),
+                    it.balance.amount.toHash(it.balance.denom).let { coin -> CoinStr(coin.first, coin.second, it.balance.denom) },
+                    it.delegation.shares.toDecCoin(),
                     null,
                     null)
             }
@@ -237,7 +256,7 @@ class ValidatorService(
                 list.entriesList.map {
                     ValidatorDelegation(
                         list.delegatorAddress,
-                        it.balance.toHash(NHASH).let { coin -> CoinStr(coin.first, coin.second) },
+                        it.balance.toHash(NHASH).let { coin -> CoinStr(coin.first, coin.second, NHASH) },
                         null,
                         it.creationHeight.toInt(),
                         it.completionTime.toDateTime()
@@ -262,12 +281,12 @@ class ValidatorService(
             validator.tokens.toBigInteger().minus(selfBondedAmount.amount.toBigInteger()).toHash(NHASH)
                 .let { BondedTokens(it.first, null, it.second) },
             delegatorCount,
-            validator.delegatorShares.toScaledDecimal(18),
-            rewards.amount.toHash(rewards.denom).let { CoinStr(it.first, it.second) },
+            validator.delegatorShares.toDecCoin(),
+            rewards.amount.toDecCoin().toHash(rewards.denom).let { CoinStr(it.first, it.second, rewards.denom) },
             CommissionRate(
-                validator.commission.commissionRates.rate.toScaledDecimal(18),
-                validator.commission.commissionRates.maxRate.toScaledDecimal(18),
-                validator.commission.commissionRates.maxChangeRate.toScaledDecimal(18))
+                validator.commission.commissionRates.rate.toDecCoin(),
+                validator.commission.commissionRates.maxRate.toDecCoin(),
+                validator.commission.commissionRates.maxChangeRate.toDecCoin())
         )
     }
 

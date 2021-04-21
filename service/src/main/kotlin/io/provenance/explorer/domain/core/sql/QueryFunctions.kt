@@ -1,24 +1,15 @@
 package io.provenance.explorer.domain.core.sql
 
-import io.provenance.explorer.domain.entities.TxCacheTable
-import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.DecimalColumnType
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.Function
 import org.jetbrains.exposed.sql.IColumnType
 import org.jetbrains.exposed.sql.QueryBuilder
-import org.jetbrains.exposed.sql.Table
-import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.append
 import org.jetbrains.exposed.sql.jodatime.CustomDateTimeFunction
 import org.jetbrains.exposed.sql.jodatime.DateColumnType
-import org.jetbrains.exposed.sql.jodatime.dateTimeLiteral
-import org.jetbrains.exposed.sql.jodatime.dateTimeParam
-import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.stringLiteral
-import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.joda.time.DateTime
-import org.joda.time.format.ISODateTimeFormat.dateTime
 import java.math.BigDecimal
 
 // Generic Distinct function

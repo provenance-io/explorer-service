@@ -4,9 +4,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import org.joda.time.DateTime
 
 data class TxQueryParams(
+    val addressId: Int?,
+    val addressType: String?,
     val address: String?,
+    val markerId: Int?,
     val denom: String?,
-    val msgTypes: List<String>,
+    val msgTypes: List<Int>,
     val txHeight: Int?,
     val txStatus: TxStatus?,
     val count: Int,
@@ -14,6 +17,9 @@ data class TxQueryParams(
     val fromDate: DateTime?,
     val toDate: DateTime?
 )
+
+fun TxQueryParams.onlyTxQuery() = addressId == null && markerId == null && msgTypes.isEmpty()
+fun TxQueryParams.onlyAddress() = addressId != null && markerId == null && msgTypes.isEmpty()
 
 data class TxDetails(
     val txHash: String,

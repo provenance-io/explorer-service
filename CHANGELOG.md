@@ -62,6 +62,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added current gas fee to Validator objects
 * Initial conversions from nhash to hash #44
 * Changed ownership on assets #45
+* Improved query performance #53
 
 ### Bug Fixes
 * Translated the signatures back to usable addresses
@@ -74,6 +75,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added a db index on tx_cache.height
 * Added additional db indices
 * Fixed a bug where candidate/jailed validators were being filtered out of results
+* Added missing protos #55
+* Properly handling Multi Msg txs #56
+
+### Data
+* Added migrations for Tx, BlockProposer, TxMessage, and TxMessageType data points #57
 
 ## PRE-HISTORY
 

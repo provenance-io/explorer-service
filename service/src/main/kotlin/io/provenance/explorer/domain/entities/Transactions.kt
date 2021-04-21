@@ -9,50 +9,42 @@ import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
-import io.provenance.explorer.domain.extensions.toValue
-import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
+import io.provenance.explorer.domain.extensions.toBase64
+import io.provenance.explorer.domain.extensions.toDbHash
 import io.provenance.explorer.domain.models.explorer.GasStatistics
 import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.domain.models.explorer.getCategoryForType
-import io.provenance.explorer.grpc.extensions.getAssociatedAddresses
-import io.provenance.explorer.grpc.extensions.getAssociatedDenoms
+import io.provenance.explorer.domain.models.explorer.onlyTxQuery
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Avg
 import org.jetbrains.exposed.sql.ColumnSet
-import org.jetbrains.exposed.sql.Count
 import org.jetbrains.exposed.sql.Expression
-import org.jetbrains.exposed.sql.Function
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.Max
 import org.jetbrains.exposed.sql.Min
-import org.jetbrains.exposed.sql.QueryBuilder
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.append
-import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.countDistinct
-import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
 import org.jetbrains.exposed.sql.jodatime.datetime
-import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 
-object TxCacheTable : CacheIdTable<String>(name = "tx_cache") {
+object TxCacheTable : IntIdTable(name = "tx_cache") {
     val hash = varchar("hash", 64)
-    override val id = hash.entityId()
     val height = reference("height", BlockCacheTable.height)
     val gasWanted = integer("gas_wanted")
     val gasUsed = integer("gas_used")
@@ -62,11 +54,11 @@ object TxCacheTable : CacheIdTable<String>(name = "tx_cache") {
     val txV2 = jsonb<TxCacheTable, ServiceOuterClass.GetTxResponse>("tx_v2", OBJECT_MAPPER)
 }
 
-class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
-    companion object : CacheEntityClass<String, TxCacheRecord>(TxCacheTable) {
+class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxCacheRecord>(TxCacheTable) {
         fun insertIgnore(tx: ServiceOuterClass.GetTxResponse, txTime: Timestamp) =
             transaction {
-                (TxCacheRecord.findById(tx.txResponse.txhash)?.id ?: TxCacheTable.insertIgnoreAndGetId {
+                (findByHash(tx.txResponse.txhash)?.id ?: TxCacheTable.insertIgnoreAndGetId {
                     it[hash] = tx.txResponse.txhash
                     it[height] = tx.txResponse.height.toInt()
                     if (tx.txResponse.code > 0) it[errorCode] = tx.txResponse.code
@@ -75,42 +67,18 @@ class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
                     it[gasWanted] = tx.txResponse.gasWanted.toInt()
                     it[txTimestamp] = txTime.toDateTime()
                     it[txV2] = tx
-                    it[hitCount] = 0
-                    it[lastHit] = DateTime.now()
-                }).let {
-                    tx.tx.body.messagesList.forEachIndexed { idx, msg ->
-                        if (tx.txResponse.logsCount > 0)
-                            tx.txResponse.logsList.first().eventsList
-                                .filter { event -> event.type == "message" }[idx]
-                                .let { event ->
-                                    val type = event.attributesList.first { att -> att.key == "action" }.value
-                                    val module = event.attributesList.firstOrNull { att -> att.key == "module" }?.value ?: "unknown"
-                                    TxMessageRecord.insert(tx.txResponse.height.toInt(), it!!, msg, type, module)
-                                }
-                        else
-                            TxMessageRecord.insert(tx.txResponse.height.toInt(), it!!, msg, "unknown", "unknown")
-
-                        TxAddressJoinRecord.insert(it!!, tx.txResponse.height.toInt(), msg.getAssociatedAddresses())
-                        TxMarkerJoinRecord.insert(it, tx.txResponse.height.toInt(), msg.getAssociatedDenoms())
-                    }
-                }
-                tx.tx.authInfo.signerInfosList.forEach { sig ->
-                    SignatureJoinRecord.insert(
-                        sig.publicKey,
-                        SigJoinType.TRANSACTION,
-                        tx.txResponse.txhash
-                    )
-                }
+                })!!
             }
 
         fun findByHeight(height: Int) =
             TxCacheRecord.find { TxCacheTable.height eq height }
 
+        fun findByHash(hash: String) = transaction { TxCacheRecord.find { TxCacheTable.hash eq hash } }.firstOrNull()
+
         fun findSigsByHash(hash: String) = SignatureRecord.findByJoin(SigJoinType.TRANSACTION, hash)
 
         fun getTotalTxCount() = transaction {
-            val count = TxCacheTable.hash.count()
-            TxCacheTable.slice(count).selectAll().first()[count].toBigInteger()
+            TxCacheTable.selectAll().count().toBigInteger()
         }
 
         fun getGasStats(startDate: DateTime, endDate: DateTime, granularity: String) = transaction {
@@ -132,46 +100,51 @@ class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
         }
 
         fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
+            val columns: MutableList<Expression<*>> = mutableListOf(TxCacheTable.id, TxCacheTable.hash,
+                TxCacheTable.height, TxCacheTable.gasWanted, TxCacheTable.gasUsed, TxCacheTable.txTimestamp,
+                TxCacheTable.errorCode, TxCacheTable.codespace, TxCacheTable.txV2)
             val query =
-                findByQueryParams(txQueryParams, null)
+                findByQueryParams(txQueryParams, columns)
                     .orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
                     .limit(txQueryParams.count, txQueryParams.offset.toLong())
             TxCacheRecord.wrapRows(query).toSet()
         }
 
         fun findByQueryParamsForCount(txQueryParams: TxQueryParams) = transaction {
-            val distinctCount = TxCacheTable.hash.countDistinct()
-            findByQueryParams(txQueryParams, listOf(distinctCount)).first()[distinctCount].toBigInteger()
+            if (txQueryParams.onlyTxQuery()) {
+                findByQueryParams(txQueryParams, null).count().toBigInteger()
+            } else {
+                val distinctCount = TxCacheTable.id.countDistinct()
+                findByQueryParams(txQueryParams, listOf(distinctCount)).first()[distinctCount].toBigInteger()
+            }
         }
 
-        private fun findByQueryParams(tqp: TxQueryParams, distinctQuery: List<Count>?) = transaction {
+        private fun findByQueryParams(tqp: TxQueryParams, distinctQuery: List<Expression<*>>?) = transaction {
             var join: ColumnSet = TxCacheTable
 
             if (tqp.msgTypes.isNotEmpty())
-                join = join.innerJoin(TxMessageTable, { TxCacheTable.hash }, { TxMessageTable.txHash })
-                    .innerJoin(TxMessageTypeTable, { TxMessageTable.txMessageType }, { TxMessageTypeTable.id })
-            if (tqp.address != null)
-                join = join.leftJoin(TxAddressJoinTable, { TxCacheTable.hash }, { TxAddressJoinTable.txHash })
-            if (tqp.denom != null)
-                join = join.leftJoin(TxMarkerJoinTable, { TxCacheTable.hash }, { TxMarkerJoinTable.txHash })
+                join = join.innerJoin(TxMessageTable, { TxCacheTable.id }, { TxMessageTable.txHashId })
+            if ((tqp.addressId != null && tqp.addressType != null) || tqp.address != null)
+                join = join.innerJoin(TxAddressJoinTable, { TxCacheTable.id }, { TxAddressJoinTable.txHashId })
+            if (tqp.markerId != null || tqp.denom != null)
+                join = join.innerJoin(TxMarkerJoinTable, { TxCacheTable.id }, { TxMarkerJoinTable.txHashId })
 
-            val query =
-                    join.slice(distinctQuery ?:
-                        listOf(Distinct(TxCacheTable.hash, VarCharColumnType(64)), TxCacheTable.hash,
-                            TxCacheTable.height, TxCacheTable.gasWanted, TxCacheTable.gasUsed, TxCacheTable.txTimestamp,
-                            TxCacheTable.errorCode, TxCacheTable.codespace, TxCacheTable.txV2))
-                        .selectAll()
+            val query = if (distinctQuery != null) join.slice(distinctQuery).selectAll() else join.selectAll()
 
             if (tqp.msgTypes.isNotEmpty())
-                query.andWhere { TxMessageTypeTable.type inList tqp.msgTypes }
+                query.andWhere { TxMessageTable.txMessageType inList tqp.msgTypes }
             if (tqp.txHeight != null)
                 query.andWhere { TxCacheTable.height eq tqp.txHeight }
             if (tqp.txStatus != null)
                 query.andWhere {
-                    if (tqp.txStatus == TxStatus.FAILURE) TxCacheTable.errorCode neq 0 else TxCacheTable.errorCode eq null }
-            if (tqp.address != null)
-                query.andWhere { TxAddressJoinTable.address eq tqp.address }
-            if (tqp.denom != null)
+                    if (tqp.txStatus == TxStatus.FAILURE) TxCacheTable.errorCode neq 0 else TxCacheTable.errorCode.isNull() }
+            if (tqp.addressId != null && tqp.addressType != null)
+                query.andWhere { (TxAddressJoinTable.addressId eq tqp.addressId) and (TxAddressJoinTable.addressType eq tqp.addressType) }
+            else if (tqp.address != null)
+                query.andWhere { (TxAddressJoinTable.address eq tqp.address) }
+            if (tqp.markerId != null)
+                query.andWhere { TxMarkerJoinTable.markerId eq tqp.markerId }
+            else if (tqp.denom != null)
                 query.andWhere { TxMarkerJoinTable.denom eq tqp.denom }
             if (tqp.fromDate != null)
                 query.andWhere { TxCacheTable.txTimestamp greaterEq tqp.fromDate.startOfDay() }
@@ -190,14 +163,7 @@ class TxCacheRecord(id: EntityID<String>) : CacheEntity<String>(id) {
     var errorCode by TxCacheTable.errorCode
     var codespace by TxCacheTable.codespace
     var txV2 by TxCacheTable.txV2
-    override var lastHit by TxCacheTable.lastHit
-    override var hitCount by TxCacheTable.hitCount
-    val txMessages by TxMessageRecord referrersOn TxMessageTable.txHash
-}
-
-class Distinct(val expr: Expression<String>): Function<String>(VarCharColumnType(128)) {
-    override fun toQueryBuilder(queryBuilder: QueryBuilder) =
-        queryBuilder { append("distinct(", expr, ")") }
+    val txMessages by TxMessageRecord referrersOn TxMessageTable.txHashId
 }
 
 object TxMessageTypeTable : IntIdTable(name = "tx_message_type") {
@@ -210,7 +176,7 @@ object TxMessageTypeTable : IntIdTable(name = "tx_message_type") {
 class TxMessageTypeRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxMessageTypeRecord>(TxMessageTypeTable) {
 
-        private fun findByProtoType(protoType: String) = transaction {
+        fun findByProtoType(protoType: String) = transaction {
             TxMessageTypeRecord.find { TxMessageTypeTable.protoType eq protoType }.firstOrNull()
         }
 
@@ -219,19 +185,12 @@ class TxMessageTypeRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun insert(type: String, module: String, protoType: String) = transaction {
-            findByProtoType(protoType)?.let {
-                (if (it.type == "unknown" && type != "unknown") {
-                    it.apply {
-                        this.type = type
-                        this.module = module
-                        if (type.getCategoryForType() != null)
-                            this.category = type.getCategoryForType()!!.mainCategory
-                    }
-                } else it.apply {
-                    if (type.getCategoryForType() != null)
-                        this.category = type.getCategoryForType()!!.mainCategory
-                }).id
-            } ?: TxMessageTypeTable.insertAndGetId {
+            findByProtoType(protoType)?.apply {
+                this.type = type
+                this.module = module
+                if (type.getCategoryForType() != null)
+                    this.category = type.getCategoryForType()!!.mainCategory
+            }?.id ?: TxMessageTypeTable.insertAndGetId {
                 it[this.type] = type
                 it[this.module] = module
                 it[this.protoType] = protoType
@@ -249,7 +208,8 @@ class TxMessageTypeRecord(id: EntityID<Int>) : IntEntity(id) {
 
 object TxMessageTable : IntIdTable(name = "tx_message") {
     val blockHeight = integer("block_height")
-    val txHash = reference("tx_hash", TxCacheTable)
+    val txHash = varchar("tx_hash", 64)
+    val txHashId = reference("tx_hash_id", TxCacheTable)
     val txMessageType = reference("tx_message_type_id", TxMessageTypeTable)
     val txMessage = jsonb<TxMessageTable, Any>("tx_message", OBJECT_MAPPER)
     val txMessageHash = text("tx_message_hash")
@@ -258,120 +218,147 @@ object TxMessageTable : IntIdTable(name = "tx_message") {
 class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxMessageRecord>(TxMessageTable) {
 
-        fun deleteByBlockHeight(heights: List<Int>) = transaction {
-            TxMessageTable.deleteWhere { TxMessageTable.blockHeight inList heights }
-        }
-
         fun findByHash(hash: String) = transaction {
             TxMessageRecord.find { TxMessageTable.txHash eq hash }
         }
 
-        private fun findByTxHashAndMessageHash(txHash: String, messageHash: String) = transaction {
-            TxMessageRecord.find { (TxMessageTable.txHash eq txHash) and (TxMessageTable.txMessageHash eq messageHash) }
+        fun findByHashId(hashId: Int) = transaction {
+            TxMessageRecord.find { TxMessageTable.txHashId eq hashId }
+        }
+
+        private fun findByTxHashAndMessageHash(txHashId: Int, messageHash: String) = transaction {
+            TxMessageRecord.find { (TxMessageTable.txHashId eq txHashId) and (TxMessageTable.txMessageHash eq messageHash) }
                 .firstOrNull()
         }
 
-        fun insert(blockHeight: Int, txHash: EntityID<String>, message: Any, type: String, module: String) =
+        fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, message: Any, type: String, module: String) =
             transaction {
                 TxMessageTypeRecord.insert(type, module, message.typeUrl).let { typeId ->
-                    findByTxHashAndMessageHash(txHash.value, message.value.toValue()) ?: TxMessageTable.insert {
+                    findByTxHashAndMessageHash(txId.value, message.value.toDbHash()) ?: TxMessageTable.insert {
                         it[this.blockHeight] = blockHeight
                         it[this.txHash] = txHash
+                        it[this.txHashId] = txId
                         it[this.txMessageType] = typeId
                         it[this.txMessage] = message
-                        it[this.txMessageHash] = message.value.toValue()
+                        it[this.txMessageHash] = message.value.toDbHash()
                     }
                 }
             }
     }
 
     var blockHeight by TxMessageTable.blockHeight
-    var txHash by TxCacheRecord referencedOn TxMessageTable.txHash
+    var txHashId by TxCacheRecord referencedOn TxMessageTable.txHashId
+    var txHash by TxMessageTable.txHash
     var txMessageType by TxMessageTypeRecord referencedOn TxMessageTable.txMessageType
     var txMessage by TxMessageTable.txMessage
     var txMessageHash by TxMessageTable.txMessageHash
 }
 
+enum class TxAddressJoinType { ACCOUNT, OPERATOR }
+
 object TxAddressJoinTable : IntIdTable(name = "tx_address_join") {
     val blockHeight = integer("block_height")
-    val txHash = reference("tx_hash", TxCacheTable)
+    val txHash = varchar("tx_hash", 64)
+    val txHashId = reference("tx_hash_id", TxCacheTable)
+    val addressType = varchar("address_type", 16)
+    val addressId = integer("address_id")
     val address = varchar("address", 128)
 }
 
 class TxAddressJoinRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxAddressJoinRecord>(TxAddressJoinTable) {
 
-        private fun findByHashAndAddress(txHash: EntityID<String>, address: String) = transaction {
-            TxAddressJoinRecord
-                .find { (TxAddressJoinTable.txHash eq txHash) and (TxAddressJoinTable.address eq address) }
-                .firstOrNull()
-        }
+        private fun findByHashAndAddress(txHashId: EntityID<Int>, addrPair: Pair<String, Int?>, addr: String) =
+            transaction {
+                TxAddressJoinRecord
+                    .find { (TxAddressJoinTable.txHashId eq txHashId) and
+                        (if (addrPair.second != null)
+                            (TxAddressJoinTable.addressType eq addrPair.first) and (TxAddressJoinTable.addressId eq addrPair.second!!)
+                        else (TxAddressJoinTable.address eq addr)) }
+                    .firstOrNull()
+            }
 
-        fun findValidatorsByTxHash(txHash: EntityID<String>) = transaction {
+        fun findValidatorsByTxHash(txHashId: EntityID<Int>) = transaction {
             StakingValidatorCacheRecord.wrapRows(
                 TxAddressJoinTable
-                    .innerJoin(
-                        StakingValidatorCacheTable,
-                        { TxAddressJoinTable.address },
-                        { StakingValidatorCacheTable.operatorAddress })
-                    .select { (TxAddressJoinTable.txHash eq txHash) }
+                    .innerJoin(StakingValidatorCacheTable, { TxAddressJoinTable.addressId }, { StakingValidatorCacheTable.id })
+                    .select { (TxAddressJoinTable.txHashId eq txHashId) and
+                        (TxAddressJoinTable.addressType eq TxAddressJoinType.OPERATOR.name)}
             ).toList()
         }
 
-        fun insert(txHash: EntityID<String>, blockHeight: Int, addresses: List<String>) = transaction {
-            addresses.forEach { addr ->
-                findByHashAndAddress(txHash, addr) ?: TxAddressJoinTable.insert {
-                    it[this.blockHeight] = blockHeight
-                    it[this.txHash] = txHash
-                    it[this.address] = addr
-                }
+        fun findByNoId() = transaction {
+            val dist = Distinct(TxAddressJoinTable.address, VarCharColumnType(128))
+            TxAddressJoinTable.slice(dist)
+                .select { (TxAddressJoinTable.addressId eq 0) }
+                .map { it[dist] }
+                .toSet()
+        }
+
+        fun update(addr: String, addrId: Int, addrType: String) = transaction {
+            TxAddressJoinTable.update( { (TxAddressJoinTable.address eq addr) and (TxAddressJoinTable.addressId eq 0)
+            } ) {
+                it[this.addressId] = addrId
+                it[this.addressType] = addrType
             }
+        }
+
+        fun insert(txHash: String, txId: EntityID<Int>, blockHeight: Int, addrPair: Pair<String, Int?>, address: String) =
+            transaction {
+                    findByHashAndAddress(txId, addrPair, address) ?: TxAddressJoinTable.insert {
+                        it[this.blockHeight] = blockHeight
+                        it[this.txHashId] = txId
+                        it[this.txHash] = txHash
+                        it[this.addressId] = addrPair.second!!
+                        it[this.addressType] = addrPair.first
+                        it[this.address] = address
+                    }
         }
     }
 
     var blockHeight by TxAddressJoinTable.blockHeight
-    var txHash by TxCacheRecord referencedOn TxAddressJoinTable.txHash
+    var txHashId by TxCacheRecord referencedOn TxAddressJoinTable.txHashId
+    var txHash by TxAddressJoinTable.txHash
     var address by TxAddressJoinTable.address
+    var addressId by TxAddressJoinTable.addressId
+    var addressType by TxAddressJoinTable.addressType
 }
 
 object TxMarkerJoinTable : IntIdTable(name = "tx_marker_join") {
     val blockHeight = integer("block_height")
-    val txHash = reference("tx_hash", TxCacheTable)
+    val txHashId = reference("tx_hash_id", TxCacheTable)
+    val txHash = varchar("tx_hash", 64)
+    val markerId = reference("marker_id", MarkerCacheTable)
     val denom = varchar("denom", 128)
 }
 
 class TxMarkerJoinRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxMarkerJoinRecord>(TxMarkerJoinTable) {
 
-        private fun findByHashAndDenom(txHash: EntityID<String>, denom: String) = transaction {
+        fun findCountByDenom(markerId: Int) = transaction {
+            TxMarkerJoinRecord.find { TxMarkerJoinTable.markerId eq markerId }.count().toBigInteger()
+        }
+
+        private fun findByHashAndDenom(txId: EntityID<Int>, markerId: Int) = transaction {
             TxMarkerJoinRecord
-                .find { (TxMarkerJoinTable.txHash eq txHash) and (TxMarkerJoinTable.denom eq denom) }
+                .find { (TxMarkerJoinTable.txHashId eq txId) and (TxMarkerJoinTable.markerId eq markerId) }
                 .firstOrNull()
         }
 
-        fun findValidatorsByTxHash(txHash: EntityID<String>) = transaction {
-            StakingValidatorCacheRecord.wrapRows(
-                TxMarkerJoinTable
-                    .innerJoin(
-                        StakingValidatorCacheTable,
-                        { TxMarkerJoinTable.denom },
-                        { StakingValidatorCacheTable.operatorAddress })
-                    .select { (TxMarkerJoinTable.txHash eq txHash) }
-            ).toList()
-        }
-
-        fun insert(txHash: EntityID<String>, blockHeight: Int, denoms: List<String>) = transaction {
-            denoms.forEach { addr ->
-                findByHashAndDenom(txHash, addr) ?: TxMarkerJoinTable.insert {
+        fun insert(txHash: String, txId: EntityID<Int>, blockHeight: Int, markerId: Int, denom: String) = transaction {
+                findByHashAndDenom(txId, markerId) ?: TxMarkerJoinTable.insert {
                     it[this.blockHeight] = blockHeight
                     it[this.txHash] = txHash
-                    it[this.denom] = addr
+                    it[this.txHashId] = txId
+                    it[this.denom] = denom
+                    it[this.markerId] = markerId
                 }
-            }
         }
     }
 
     var blockHeight by TxMarkerJoinTable.blockHeight
-    var txHash by TxCacheRecord referencedOn TxMarkerJoinTable.txHash
+    var txHashId by TxCacheRecord referencedOn TxMarkerJoinTable.txHashId
+    var txHash by TxMarkerJoinTable.txHash
+    var markerId by TxMarkerJoinTable.markerId
     var denom by TxMarkerJoinTable.denom
 }

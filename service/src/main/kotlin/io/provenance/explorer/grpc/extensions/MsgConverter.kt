@@ -18,19 +18,22 @@ import io.provenance.marker.v1.MsgMintRequest
 import io.provenance.marker.v1.MsgSetDenomMetadataRequest
 import io.provenance.marker.v1.MsgTransferRequest
 import io.provenance.marker.v1.MsgWithdrawRequest
-import io.provenance.metadata.v1.MsgAddContractSpecificationRequest
-import io.provenance.metadata.v1.MsgAddRecordRequest
-import io.provenance.metadata.v1.MsgAddRecordSpecificationRequest
-import io.provenance.metadata.v1.MsgAddScopeRequest
-import io.provenance.metadata.v1.MsgAddScopeSpecificationRequest
-import io.provenance.metadata.v1.MsgAddSessionRequest
-import io.provenance.metadata.v1.MsgChangeOwnershipRequest
+import io.provenance.metadata.v1.MsgBindOSLocatorRequest
 import io.provenance.metadata.v1.MsgDeleteContractSpecificationRequest
+import io.provenance.metadata.v1.MsgDeleteOSLocatorRequest
 import io.provenance.metadata.v1.MsgDeleteRecordRequest
 import io.provenance.metadata.v1.MsgDeleteRecordSpecificationRequest
 import io.provenance.metadata.v1.MsgDeleteScopeRequest
 import io.provenance.metadata.v1.MsgDeleteScopeSpecificationRequest
-import io.provenance.metadata.v1.MsgMemorializeContractRequest
+import io.provenance.metadata.v1.MsgModifyOSLocatorRequest
+import io.provenance.metadata.v1.MsgP8eMemorializeContractRequest
+import io.provenance.metadata.v1.MsgWriteContractSpecificationRequest
+import io.provenance.metadata.v1.MsgWriteP8eContractSpecRequest
+import io.provenance.metadata.v1.MsgWriteRecordRequest
+import io.provenance.metadata.v1.MsgWriteRecordSpecificationRequest
+import io.provenance.metadata.v1.MsgWriteScopeRequest
+import io.provenance.metadata.v1.MsgWriteScopeSpecificationRequest
+import io.provenance.metadata.v1.MsgWriteSessionRequest
 import io.provenance.name.v1.MsgBindNameRequest
 import io.provenance.name.v1.MsgDeleteNameRequest
 
@@ -71,19 +74,28 @@ fun Any.toMsgBindNameRequest() = this.unpack(MsgBindNameRequest::class.java)
 fun Any.toMsgDeleteNameRequest() = this.unpack(MsgDeleteNameRequest::class.java)
 fun Any.toMsgAddAttributeRequest() = this.unpack(MsgAddAttributeRequest::class.java)
 fun Any.toMsgDeleteAttributeRequest() = this.unpack(MsgDeleteAttributeRequest::class.java)
-fun Any.toMsgMemorializeContractRequest() = this.unpack(MsgMemorializeContractRequest::class.java)
-fun Any.toMsgChangeOwnershipRequest() = this.unpack(MsgChangeOwnershipRequest::class.java)
-fun Any.toMsgAddScopeRequest() = this.unpack(MsgAddScopeRequest::class.java)
+fun Any.toMsgP8eMemorializeContractRequest() = this.unpack(MsgP8eMemorializeContractRequest::class.java)
+fun Any.toMsgWriteP8eContractSpecRequest() = this.unpack(MsgWriteP8eContractSpecRequest::class.java)
+fun Any.toMsgWriteScopeRequest() = this.unpack(MsgWriteScopeRequest::class.java)
 fun Any.toMsgDeleteScopeRequest() = this.unpack(MsgDeleteScopeRequest::class.java)
-fun Any.toMsgAddSessionRequest() = this.unpack(MsgAddSessionRequest::class.java)
-fun Any.toMsgAddRecordRequest() = this.unpack(MsgAddRecordRequest::class.java)
+fun Any.toMsgWriteSessionRequest() = this.unpack(MsgWriteSessionRequest::class.java)
+fun Any.toMsgWriteRecordRequest() = this.unpack(MsgWriteRecordRequest::class.java)
 fun Any.toMsgDeleteRecordRequest() = this.unpack(MsgDeleteRecordRequest::class.java)
-fun Any.toMsgAddScopeSpecificationRequest() = this.unpack(MsgAddScopeSpecificationRequest::class.java)
+fun Any.toMsgWriteScopeSpecificationRequest() = this.unpack(MsgWriteScopeSpecificationRequest::class.java)
 fun Any.toMsgDeleteScopeSpecificationRequest() = this.unpack(MsgDeleteScopeSpecificationRequest::class.java)
-fun Any.toMsgAddContractSpecificationRequest() = this.unpack(MsgAddContractSpecificationRequest::class.java)
+fun Any.toMsgWriteContractSpecificationRequest() = this.unpack(MsgWriteContractSpecificationRequest::class.java)
 fun Any.toMsgDeleteContractSpecificationRequest() = this.unpack(MsgDeleteContractSpecificationRequest::class.java)
-fun Any.toMsgAddRecordSpecificationRequest() = this.unpack(MsgAddRecordSpecificationRequest::class.java)
+fun Any.toMsgWriteRecordSpecificationRequest() = this.unpack(MsgWriteRecordSpecificationRequest::class.java)
 fun Any.toMsgDeleteRecordSpecificationRequest() = this.unpack(MsgDeleteRecordSpecificationRequest::class.java)
+fun Any.toMsgBindOSLocatorRequest() = this.unpack(MsgBindOSLocatorRequest::class.java)
+fun Any.toMsgDeleteOSLocatorRequest() = this.unpack(MsgDeleteOSLocatorRequest::class.java)
+fun Any.toMsgModifyOSLocatorRequest() = this.unpack(MsgModifyOSLocatorRequest::class.java)
+fun Any.toMsgStoreCode() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgStoreCode::class.java)
+fun Any.toMsgInstantiateContract() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgInstantiateContract::class.java)
+fun Any.toMsgExecuteContract() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgExecuteContract::class.java)
+fun Any.toMsgMigrateContract() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgMigrateContract::class.java)
+fun Any.toMsgUpdateAdmin() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgUpdateAdmin::class.java)
+fun Any.toMsgClearAdmin() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgClearAdmin::class.java)
 
 fun Any.getAssociatedAddresses(): List<String> =
     when {
@@ -133,19 +145,28 @@ fun Any.getAssociatedAddresses(): List<String> =
         typeUrl.contains("MsgDeleteNameRequest") -> this.toMsgDeleteNameRequest().let { listOf(it.record.address)}
         typeUrl.contains("MsgAddAttributeRequest") -> this.toMsgAddAttributeRequest().let { listOf(it.account, it.owner)}
         typeUrl.contains("MsgDeleteAttributeRequest") -> this.toMsgDeleteAttributeRequest().let { listOf(it.account, it.owner)}
-        typeUrl.contains("MsgMemorializeContractRequest") -> this.toMsgMemorializeContractRequest().let { listOf() }
-        typeUrl.contains("MsgChangeOwnershipRequest") -> this.toMsgChangeOwnershipRequest().let { listOf()}
-        typeUrl.contains("MsgAddScopeRequest") -> this.toMsgAddScopeRequest().signersList
+        typeUrl.contains("MsgP8eMemorializeContractRequest") -> this.toMsgP8eMemorializeContractRequest().let { listOf() }
+        typeUrl.contains("MsgWriteP8eContractSpecRequest") -> this.toMsgWriteP8eContractSpecRequest().let { listOf()}
+        typeUrl.contains("MsgWriteScopeRequest") -> this.toMsgWriteScopeRequest().signersList
         typeUrl.contains("MsgDeleteScopeRequest") -> this.toMsgDeleteScopeRequest().signersList
-        typeUrl.contains("MsgAddSessionRequest") -> this.toMsgAddSessionRequest().signersList
-        typeUrl.contains("MsgAddRecordRequest") -> this.toMsgAddRecordRequest().signersList
+        typeUrl.contains("MsgWriteSessionRequest") -> this.toMsgWriteSessionRequest().signersList
+        typeUrl.contains("MsgWriteRecordRequest") -> this.toMsgWriteRecordRequest().signersList
         typeUrl.contains("MsgDeleteRecordRequest") -> this.toMsgDeleteRecordRequest().signersList
-        typeUrl.contains("MsgAddScopeSpecificationRequest") -> this.toMsgAddScopeSpecificationRequest().signersList
+        typeUrl.contains("MsgWriteScopeSpecificationRequest") -> this.toMsgWriteScopeSpecificationRequest().signersList
         typeUrl.contains("MsgDeleteScopeSpecificationRequest") -> this.toMsgDeleteScopeSpecificationRequest().signersList
-        typeUrl.contains("MsgAddContractSpecificationRequest") -> this.toMsgAddContractSpecificationRequest().signersList
+        typeUrl.contains("MsgWriteContractSpecificationRequest") -> this.toMsgWriteContractSpecificationRequest().signersList
         typeUrl.contains("MsgDeleteContractSpecificationRequest") -> this.toMsgDeleteContractSpecificationRequest().signersList
-        typeUrl.contains("MsgAddRecordSpecificationRequest") -> this.toMsgAddRecordSpecificationRequest().signersList
+        typeUrl.contains("MsgWriteRecordSpecificationRequest") -> this.toMsgWriteRecordSpecificationRequest().signersList
         typeUrl.contains("MsgDeleteRecordSpecificationRequest") -> this.toMsgDeleteRecordSpecificationRequest().signersList
+        typeUrl.contains("MsgBindOSLocatorRequest") -> this.toMsgBindOSLocatorRequest().let { listOf(it.locator.owner) }
+        typeUrl.contains("MsgDeleteOSLocatorRequest") -> this.toMsgDeleteOSLocatorRequest().let { listOf(it.locator.owner) }
+        typeUrl.contains("MsgModifyOSLocatorRequest") -> this.toMsgModifyOSLocatorRequest().let { listOf(it.locator.owner) }
+        typeUrl.contains("MsgStoreCode") -> this.toMsgStoreCode().let { listOf(it.sender) }
+        typeUrl.contains("MsgInstantiateContract") -> this.toMsgInstantiateContract().let { listOf(it.sender, it.admin) }
+        typeUrl.contains("MsgExecuteContract") -> this.toMsgExecuteContract().let { listOf(it.sender) }
+        typeUrl.contains("MsgMigrateContract") -> this.toMsgMigrateContract().let { listOf(it.sender) }
+        typeUrl.contains("MsgUpdateAdmin") -> this.toMsgUpdateAdmin().let { listOf(it.sender, it.newAdmin) }
+        typeUrl.contains("MsgClearAdmin") -> this.toMsgClearAdmin().let { listOf(it.sender) }
 
         else -> listOf<String>().also { logger().error("This typeUrl is not yet supported in tx messages: $typeUrl") }
     }
@@ -173,6 +194,8 @@ fun Any.getAssociatedDenoms(): List<String> =
             .let { listOf(it.account.getDenomByAddress())}
         typeUrl.contains("MsgDeleteAttributeRequest") -> this.toMsgDeleteAttributeRequest()
             .let { listOf(it.account.getDenomByAddress())}
+        typeUrl.contains("MsgInstantiateContract") -> this.toMsgInstantiateContract().let { it.fundsList.map { c -> c.denom } }
+        typeUrl.contains("MsgExecuteContract") -> this.toMsgExecuteContract().let { it.fundsList.map { c -> c.denom } }
 
         else -> listOf<String>()
             .also { logger().debug("This typeUrl is not yet supported in as an asset-based msg: $typeUrl") }

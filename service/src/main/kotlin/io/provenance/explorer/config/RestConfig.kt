@@ -10,6 +10,7 @@ import cosmos.params.v1beta1.Params
 import cosmos.tx.v1beta1.TxOuterClass
 import cosmos.upgrade.v1beta1.Upgrade
 import cosmos.vesting.v1beta1.Vesting
+import cosmwasm.wasm.v1beta1.Proposal
 import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest
 import io.provenance.marker.v1.AddMarkerProposal
@@ -31,19 +32,23 @@ import io.provenance.marker.v1.RemoveAdministratorProposal
 import io.provenance.marker.v1.SetAdministratorProposal
 import io.provenance.marker.v1.SupplyDecreaseProposal
 import io.provenance.marker.v1.SupplyIncreaseProposal
-import io.provenance.metadata.v1.MsgAddContractSpecificationRequest
-import io.provenance.metadata.v1.MsgAddRecordRequest
-import io.provenance.metadata.v1.MsgAddRecordSpecificationRequest
-import io.provenance.metadata.v1.MsgAddScopeRequest
-import io.provenance.metadata.v1.MsgAddScopeSpecificationRequest
-import io.provenance.metadata.v1.MsgAddSessionRequest
-import io.provenance.metadata.v1.MsgChangeOwnershipRequest
+import io.provenance.marker.v1.WithdrawEscrowProposal
+import io.provenance.metadata.v1.MsgBindOSLocatorRequest
+import io.provenance.metadata.v1.MsgWriteScopeRequest
+import io.provenance.metadata.v1.MsgDeleteScopeRequest
+import io.provenance.metadata.v1.MsgWriteSessionRequest
+import io.provenance.metadata.v1.MsgWriteRecordRequest
+import io.provenance.metadata.v1.MsgWriteScopeSpecificationRequest
 import io.provenance.metadata.v1.MsgDeleteContractSpecificationRequest
+import io.provenance.metadata.v1.MsgDeleteOSLocatorRequest
 import io.provenance.metadata.v1.MsgDeleteRecordRequest
 import io.provenance.metadata.v1.MsgDeleteRecordSpecificationRequest
-import io.provenance.metadata.v1.MsgDeleteScopeRequest
 import io.provenance.metadata.v1.MsgDeleteScopeSpecificationRequest
-import io.provenance.metadata.v1.MsgMemorializeContractRequest
+import io.provenance.metadata.v1.MsgModifyOSLocatorRequest
+import io.provenance.metadata.v1.MsgP8eMemorializeContractRequest
+import io.provenance.metadata.v1.MsgWriteContractSpecificationRequest
+import io.provenance.metadata.v1.MsgWriteP8eContractSpecRequest
+import io.provenance.metadata.v1.MsgWriteRecordSpecificationRequest
 import io.provenance.name.v1.CreateRootNameProposal
 import io.provenance.name.v1.MsgBindNameRequest
 import io.provenance.name.v1.MsgDeleteNameRequest
@@ -161,19 +166,28 @@ fun msgDescriptors() =
         MsgDeleteNameRequest.getDescriptor(),
         MsgAddAttributeRequest.getDescriptor(),
         MsgDeleteAttributeRequest.getDescriptor(),
-        MsgMemorializeContractRequest.getDescriptor(),
-        MsgChangeOwnershipRequest.getDescriptor(),
-        MsgAddScopeRequest.getDescriptor(),
+        MsgWriteP8eContractSpecRequest.getDescriptor(),
+        MsgP8eMemorializeContractRequest.getDescriptor(),
+        MsgWriteScopeRequest.getDescriptor(),
         MsgDeleteScopeRequest.getDescriptor(),
-        MsgAddSessionRequest.getDescriptor(),
-        MsgAddRecordRequest.getDescriptor(),
+        MsgWriteSessionRequest.getDescriptor(),
+        MsgWriteRecordRequest.getDescriptor(),
         MsgDeleteRecordRequest.getDescriptor(),
-        MsgAddScopeSpecificationRequest.getDescriptor(),
+        MsgWriteScopeSpecificationRequest.getDescriptor(),
         MsgDeleteScopeSpecificationRequest.getDescriptor(),
-        MsgAddContractSpecificationRequest.getDescriptor(),
+        MsgWriteContractSpecificationRequest.getDescriptor(),
         MsgDeleteContractSpecificationRequest.getDescriptor(),
-        MsgAddRecordSpecificationRequest.getDescriptor(),
-        MsgDeleteRecordSpecificationRequest.getDescriptor()
+        MsgWriteRecordSpecificationRequest.getDescriptor(),
+        MsgDeleteRecordSpecificationRequest.getDescriptor(),
+        MsgBindOSLocatorRequest.getDescriptor(),
+        MsgDeleteOSLocatorRequest.getDescriptor(),
+        MsgModifyOSLocatorRequest.getDescriptor(),
+        cosmwasm.wasm.v1beta1.Tx.MsgStoreCode.getDescriptor(),
+        cosmwasm.wasm.v1beta1.Tx.MsgInstantiateContract.getDescriptor(),
+        cosmwasm.wasm.v1beta1.Tx.MsgExecuteContract.getDescriptor(),
+        cosmwasm.wasm.v1beta1.Tx.MsgMigrateContract.getDescriptor(),
+        cosmwasm.wasm.v1beta1.Tx.MsgUpdateAdmin.getDescriptor(),
+        cosmwasm.wasm.v1beta1.Tx.MsgClearAdmin.getDescriptor()
     )
 
 fun contentDescriptors() =
@@ -189,5 +203,13 @@ fun contentDescriptors() =
         SetAdministratorProposal.getDescriptor(),
         RemoveAdministratorProposal.getDescriptor(),
         ChangeStatusProposal.getDescriptor(),
-        CreateRootNameProposal.getDescriptor()
+        WithdrawEscrowProposal.getDescriptor(),
+        CreateRootNameProposal.getDescriptor(),
+        Proposal.StoreCodeProposal.getDescriptor(),
+        Proposal.InstantiateContractProposal.getDescriptor(),
+        Proposal.MigrateContractProposal.getDescriptor(),
+        Proposal.UpdateAdminProposal.getDescriptor(),
+        Proposal.ClearAdminProposal.getDescriptor(),
+        Proposal.PinCodesProposal.getDescriptor(),
+        Proposal.UnpinCodesProposal.getDescriptor()
     )

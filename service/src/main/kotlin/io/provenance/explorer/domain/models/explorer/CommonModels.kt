@@ -19,9 +19,9 @@ data class Signatures(
     val threshold: Int?
 )
 
-data class CoinStr ( val amount: String, val denom: String )
+data class CoinStr ( val amount: String, val denom: String, val queryDenom: String)
 
-fun CoinOuterClass.Coin.toData() = this.amount.toHash(this.denom).let { CoinStr(it.first, it.second) }
+fun CoinOuterClass.Coin.toData() = this.amount.toHash(this.denom).let { CoinStr(it.first, it.second, this.denom) }
 
 data class CountTotal(
     val count: BigInteger,
