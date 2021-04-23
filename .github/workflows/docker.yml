@@ -4,6 +4,7 @@ on:
   push:
     branches-ignore: # Should publish on main and regular branches, but not release/ or tagged branches
       - 'release/**'
+      - 'hotfix/**'
       - "v[0-9]+.[0-9]+.[0-9]+" # branches matching v*, i.e. v1.0, v20.15.10
       - "v[0-9]+.[0-9]+.[0-9]+-rc*" # branches matching v*, i.e. v1.0-rc1, v20.15.10-rc5
     tags:

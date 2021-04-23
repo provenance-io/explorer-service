@@ -34,6 +34,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+## [v1.0.0](https://github.com/provenance-io/explorer-service/releases/tag/vx.x.x) - 2021-04-23
+
 ### Features
 * Added a script to pull in protos used in the client #5
 * Added a `build.gradle` to allow the protos to be compiled to java on build task #5
@@ -73,13 +75,13 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added total tx count to Spotlight object #34
 * Made Block Hash look like a hash #34
 * Updated a couple docker scripts cuz I moved things around in the last commit #34
-* Added a db index on tx_cache.height
-* Added additional db indices
 * Fixed a bug where candidate/jailed validators were being filtered out of results
 * Added missing protos #55
 * Properly handling Multi Msg txs #56
 
 ### Data
+* Added a db index on tx_cache.height
+* Added additional db indices
 * Added migrations for Tx, BlockProposer, TxMessage, and TxMessageType data points #57
 
 ## PRE-HISTORY
