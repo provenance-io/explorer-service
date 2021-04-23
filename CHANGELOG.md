@@ -63,6 +63,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Initial conversions from nhash to hash #44
 * Changed ownership on assets #45
 * Improved query performance #53
+* Added release workflow #58
 
 ### Bug Fixes
 * Translated the signatures back to usable addresses
