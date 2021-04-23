@@ -46,8 +46,7 @@ class TransactionController(private val transactionService: TransactionService) 
 
     @ApiOperation("Return transaction by hash value")
     @GetMapping("/{hash}")
-    fun txByHash(@PathVariable hash: String):
-        ResponseEntity<TxDetails> = ResponseEntity.ok(transactionService.getTransactionByHash(hash))
+    fun txByHash(@PathVariable hash: String) = ResponseEntity.ok(transactionService.getTransactionByHash(hash))
 
     @ApiOperation("Returns transaction json by hash value")
     @GetMapping("/{hash}/json")
@@ -69,8 +68,7 @@ class TransactionController(private val transactionService: TransactionService) 
         @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime,
         @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime,
         @RequestParam(required = false) granularity: DateTruncGranularity?
-    ) =
-        ResponseEntity.ok(transactionService.getTxHistoryByQuery(fromDate, toDate, granularity))
+    ) = ResponseEntity.ok(transactionService.getTxHistoryByQuery(fromDate, toDate, granularity))
 
     @ApiOperation("Return list of transaction types")
     @GetMapping("/types")

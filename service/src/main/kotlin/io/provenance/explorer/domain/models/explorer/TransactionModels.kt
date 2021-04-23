@@ -2,6 +2,7 @@ package io.provenance.explorer.domain.models.explorer
 
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.joda.time.DateTime
+import java.math.BigInteger
 
 data class TxQueryParams(
     val addressId: Int?,
@@ -40,7 +41,7 @@ data class TxDetails(
 data class Gas(
     val gasUsed: Int,
     val gasWanted: Int,
-    val gasLimit: Int,
+    val gasLimit: BigInteger,
     val gasPrice: Double
 )
 
@@ -91,18 +92,23 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
     NFT(
         "nft",
         listOf(
-            "memorialize_contract_request",
+            "p8e_memorialize_contract_request",
+            "write_p8e_contract_spec_request",
             "change_ownership_request",
-            "add_scope_request",
+            "write_scope_request",
             "delete_scope_request",
-            "add_session_request",
-            "add_record_request",
+            "add_scope_data_access_request",
+            "delete_scope_data_access_request",
+            "add_scope_owner_request",
+            "delete_scope_owner_request",
+            "write_session_request",
+            "write_record_request",
             "delete_record_request",
-            "add_scope_specification_request",
+            "write_scope_specification_request",
             "delete_scope_specification_request",
-            "add_contract_specification_request",
+            "write_contract_specification_request",
             "delete_contract_specification_request",
-            "add_record_specification_request",
+            "write_record_specification_request",
             "delete_record_specification_request"
         )),
     IBC(
@@ -111,9 +117,15 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
             "update_client",
             "channel_open_confirm",
             "channel_open_try",
+            "channel_open_ack",
+            "channel_open_init",
             "connection_open_confirm",
             "connection_open_try",
-            "create_client"
+            "connection_open_ack",
+            "connection_open_init",
+            "create_client",
+            "acknowledge_packet",
+            "recv_packet"
         ))
 }
 

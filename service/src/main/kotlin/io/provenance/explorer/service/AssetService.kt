@@ -52,7 +52,7 @@ class AssetService(
                         it.supply.toBigInteger().toString(),
                         it.status.prettyStatus(),
                         it.data.isMintable(),
-                        it.lastTx.toString()) }
+                        if (it.lastTx != null) it.lastTx.toString() else null) }
         return PagedResults(MarkerCacheRecord.findCountByStatus(statuses).pageCountOfResults(count), list)
     }
 
@@ -83,7 +83,7 @@ class AssetService(
                     markerClient.getMarkerMetadata(denom).toObjectNode(protoPrinter),
                     TokenCounts(
                         accountService.getAccountBalances(detail.baseAccount.address).size,
-                        metadataClient.getScopesByValueOwner(detail.baseAccount.address).size),
+                        metadataClient.getScopesByOwner(detail.baseAccount.address).pagination.total.toInt()),
                     detail.status.name.prettyStatus()
                 )
             }

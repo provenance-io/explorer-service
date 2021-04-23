@@ -26,7 +26,7 @@ directory run this `gradle` task *from the root project directory*:
 > download.  Do not edit the protos in that directory.
 
 This `gradle` task will download the Provenance, Cosmos, and CosmWasm/wasmd proto versions defined
-in the `.buildSrc/src/main/kotlin/Dependencies.kt` file:
+in the `./buildSrc/src/main/kotlin/Dependencies.kt` file:
 
 ```kotlin
     //external protos
