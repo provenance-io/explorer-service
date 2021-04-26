@@ -122,63 +122,53 @@ only pull requests targeted directly against main.
 
 ### Release Procedure
 
+If new commits are API breaking, a new major version will be released. Everything else can be considered the next
+minor version to be released.
+
+- All new commits are merged into `main`
+- The `CHANGELOG` will be updated as needed
+
+To create a new release:
+
 - Start on `main`
-- Create the release candidate branch `rc/v*` (going forward known as **RC**)
-  and ensure it's protected against pushing from anyone except the release
-  manager/coordinator
-  - **no PRs targeting this branch should be merged unless exceptional circumstances arise**
-- On the `RC` branch, prepare a new version section in the `CHANGELOG.md`
-  - All links must be link-ified: `$ python ./scripts/linkify_changelog.py CHANGELOG.md`
-  - Copy the entries into a `RELEASE_CHANGELOG.md`, this is needed so the bot knows which entries to add to the release page on github.
-- Kick off a large round of testing
-- If errors are found during testing, commit the fixes to `main`
-  and create a new `RC` branch (making sure to increment the `rcN`)
-- After simulation has successfully completed, create the release branch
-  (`release/vX.XX.X`) from the `RC` branch
-- Create a PR to `main` to incorporate the `CHANGELOG.md` updates
-- Tag the release (use `git tag -a`) and create a release in Github
-- Delete the `RC` branches
+- Create the release version branch `release/vx.x.x` (aka `release`)
+- On the `release` branch, prepare a new version section in the `CHANGELOG.md`
+  - At the top of latest changes add `## [vx.x.x](https://github.com/provenance-io/provenance/releases/tag/vx.x.x) - YYYY-MM-DD`
+  - All links must be link-ified: `$ python ./scripts/linkify.py CHANGELOG.md`
+  - Copy the latest release entries into a `RELEASE_CHANGELOG.md`, this is needed so the bot knows which entries to add to the release page on github.
+- Tag the release (use `git tag -a vx.x.x -m "vx.x.x"`)
+- Push the tag up (use `git push origin vx.x.x`)
+  - The release will happen automatically in github
+- Create a PR from branch `release` to `main` to incorporate ONLY the `CHANGELOG.md` updates
+  - Do not push `RELEASE_CHANGELOG.md` to `main`
+- Delete the `release` branch
 
-### Point Release Procedure
+### Hotfix Procedure
 
-At the moment, only a single major release will be supported, so all point releases will be based
-off of that release.
+If a hotfix is needed against the current release, a hotfix branch will be created from the current version tag per the
+follow procedure:
 
-In order to alleviate the burden for a single person to have to cherry-pick and handle merge conflicts
-of all desired backporting PRs to a point release, we instead maintain a living backport branch, where
-all desired features and bug fixes are merged into as separate PRs.
-
-Example:
-
-Current release is `v0.1.0`. We then maintain a (living) branch `sru/release/v0.1.N`, given N as
-the next patch release number (currently `0.1.1`) for the `0.1` release series. As bugs are fixed
-and PRs are merged into `main`, if a contributor wishes the PR to be released as SRU into the
-`v0.1.N` point release, the contributor must:
-
-1. Add `0.1.N-backport` label
-2. Pull latest changes on the desired `sru/release/vX.X.N` branch
-3. Create a 2nd PR merging the respective SRU PR into `sru/release/v0.38.N`
-4. Update the PR's description and ensure it contains the following information:
-   - **[Impact]** Explanation of how the bug affects users or developers.
-   - **[Test Case]** section with detailed instructions on how to reproduce the bug.
-   - **[Regression Potential]** section with a discussion how regressions are most likely to manifest, or might
-     manifest even if it's unlikely, as a result of the change. **It is assumed that any SRU candidate PR is
-     well-tested before it is merged in and has an overall low risk of regression**.
+- Start from tag `vx.x.x`
+- Create a branch `hotfix/vx.x.(x+1)` (aka `hotfix`)
+- The hotfix commit should be PR'd against both `main` and `hotfix`
+  - The `CHANGELOG` should be updated accordingly for both
 
 It is the PR's author's responsibility to fix merge conflicts, update changelog entries, and
 ensure CI passes. If a PR originates from an external contributor, it may be a core team member's
 responsibility to perform this process instead of the original author.
-Lastly, it is core team's responsibility to ensure that the PR meets all the SRU criteria.
+Lastly, it is core team's responsibility to ensure that the PR meets all the Hotfix criteria.
 
-Finally, when a point release is ready to be made:
+When the hotfix is ready to be released:
 
-1. Create `release/v0.1.N` branch
-2. Ensure changelog entries are verified
-   1. Be sure changelog entries are added to `RELEASE_CHANGELOG.md`
-3. Add release version date to the changelog
-4. Push release branch along with the annotated tag: **git tag -a**
-5. Create a PR into `main` containing ONLY `CHANGELOG.md` updates
-   1. Do not push `RELEASE_CHANGELOG.md` to `main`
+- Start on `hotfix/vx.x.(x+1)` (aka `hotfix`)
+- On the `hotfix` branch, prepare a new version section in the `CHANGELOG.md`
+  - At the top of latest changes add `## [vx.x.x](https://github.com/provenance-io/provenance/releases/tag/vx.x.x) - YYYY-MM-DD`
+  - All links must be link-ified: `$ python ./scripts/linkify_changelog.py CHANGELOG.md`
+- Copy the latest release entries into a `RELEASE_CHANGELOG.md`
+- Tag the release (use `git tag -a vx.x.x -m "vx.x.x"`)
+- Push the tag up (use `git push origin vx.x.x`)
+  - The release will happen automatically in github
+- Create a PR into `main` containing ONLY `CHANGELOG.md` updates
+  -Do not push `RELEASE_CHANGELOG.md` to `main`
+- Delete the `hotfix` branch
 
-Note, although we aim to support only a single release at a time, the process stated above could be
-used for multiple previous versions.
