@@ -56,7 +56,7 @@ object TxCacheTable : IntIdTable(name = "tx_cache") {
 
 class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxCacheRecord>(TxCacheTable) {
-        fun insertIgnore(tx: ServiceOuterClass.GetTxResponse, txTime: Timestamp) =
+        fun insertIgnore(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime) =
             transaction {
                 (findByHash(tx.txResponse.txhash)?.id ?: TxCacheTable.insertIgnoreAndGetId {
                     it[hash] = tx.txResponse.txhash
@@ -65,17 +65,19 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                     if (tx.txResponse.codespace.isNotBlank()) it[codespace] = tx.txResponse.codespace
                     it[gasUsed] = tx.txResponse.gasUsed.toInt()
                     it[gasWanted] = tx.txResponse.gasWanted.toInt()
-                    it[txTimestamp] = txTime.toDateTime()
+                    it[txTimestamp] = txTime
                     it[txV2] = tx
                 })!!
             }
+
+        fun findByEntityId(id: EntityID<Int>) = transaction { TxCacheRecord.findById(id) }
 
         fun findByHeight(height: Int) =
             TxCacheRecord.find { TxCacheTable.height eq height }
 
         fun findByHash(hash: String) = transaction { TxCacheRecord.find { TxCacheTable.hash eq hash } }.firstOrNull()
 
-        fun findSigsByHash(hash: String) = SignatureRecord.findByJoin(SigJoinType.TRANSACTION, hash)
+        fun findSigsByHash(hash: String) = transaction { SignatureRecord.findByJoin(SigJoinType.TRANSACTION, hash) }
 
         fun getTotalTxCount() = transaction {
             TxCacheTable.selectAll().count().toBigInteger()

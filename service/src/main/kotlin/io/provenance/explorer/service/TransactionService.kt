@@ -29,7 +29,6 @@ import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.domain.models.explorer.TxSummary
 import io.provenance.explorer.domain.models.explorer.TxType
-import io.provenance.explorer.grpc.v1.TransactionGrpcClient
 import io.provenance.explorer.service.async.AsyncCaching
 import io.provenance.explorer.service.async.getAddressType
 import org.jetbrains.exposed.dao.id.EntityID
@@ -48,7 +47,10 @@ class TransactionService(
     protected val logger = logger(TransactionService::class)
 
     private fun getTxByHashFromCache(hash: String) =
-        transaction { TxCacheRecord.findByHash(hash)?.let { Pair(it.id, it.txV2) } }
+        transaction { TxCacheRecord.findByHash(hash)?.let {
+            val rec = checkMsgCount(it)
+            Pair(rec.id, rec.txV2)
+        } }
 
     fun getTxTypes(typeSet: MsgTypeSet?) = transaction {
         when (typeSet) {
@@ -68,9 +70,9 @@ class TransactionService(
         page: Int,
         fromDate: DateTime?,
         toDate: DateTime?
-    ) = transaction {
+    ): PagedResults<TxSummary> {
             val msgTypes = if (msgType != null) listOf(msgType) else module?.types ?: listOf()
-            val msgTypeIds = TxMessageTypeRecord.findByType(msgTypes).map { it.id.value }.toList()
+            val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
             val addr = address?.getAddressType(props)
             val markerId = if (denom != null) MarkerCacheRecord.findByDenom(denom)?.id?.value else null
 
@@ -80,25 +82,31 @@ class TransactionService(
 
             val total = TxCacheRecord.findByQueryParamsForCount(params)
             TxCacheRecord.findByQueryForResults(params).map {
+                val rec = checkMsgCount(it)
                 TxSummary(
-                    it.hash,
-                    it.height,
-                    it.txMessages.mapToTxMessages(),
-                    TxAddressJoinRecord.findValidatorsByTxHash(it.id)
-                        .map { v -> v.operatorAddress to v.moniker }.toMap(),
-                    it.txTimestamp.toString(),
-                    it.txV2.tx.authInfo.fee.amountList.first().amount
-                        .toHash(it.txV2.tx.authInfo.fee.amountList.first().denom)
-                        .let { coin -> CoinStr(coin.first, coin.second, it.txV2.tx.authInfo.fee.amountList.first().denom) },
-                    TxCacheRecord.findSigsByHash(it.hash).toSigObj(props.provAccPrefix()),
-                    if (it.errorCode == null) "success" else "failed"
+                    rec.hash,
+                    rec.height,
+                    transaction { rec.txMessages.mapToTxMessages() },
+                    TxAddressJoinRecord.findValidatorsByTxHash(rec.id).associate { v -> v.operatorAddress to v.moniker },
+                    rec.txTimestamp.toString(),
+                    rec.txV2.tx.authInfo.fee.amountList.first().amount
+                        .toHash(rec.txV2.tx.authInfo.fee.amountList.first().denom)
+                        .let { coin -> CoinStr(coin.first, coin.second, rec.txV2.tx.authInfo.fee.amountList.first().denom) },
+                    TxCacheRecord.findSigsByHash(rec.hash).toSigObj(props.provAccPrefix()),
+                    if (rec.errorCode == null) "success" else "failed"
                 )
-            }.let { PagedResults(total.pageCountOfResults(count), it) }
+            }.let { return PagedResults(total.pageCountOfResults(count), it) }
         }
+
+    // Triple checks that the tx messages are up to date in the db
+    fun checkMsgCount(curr: TxCacheRecord): TxCacheRecord =
+        if (transaction { curr.txMessages.count() != curr.txV2.tx.body.messagesCount.toLong() }) {
+            asyncCache.addTxToCache(curr.txV2, curr.txTimestamp)
+            TxCacheRecord.findByEntityId(curr.id)!!
+        } else curr
 
     fun SizedIterable<TxMessageRecord>.mapToTxMessages() =
         this.map { msg -> TxMessage(msg.txMessageType.type, msg.txMessage.toObjectNode(protoPrinter)) }
-
 
     private fun getTxByHash(hash: String) = getTxByHashFromCache(hash)
 
@@ -127,7 +135,7 @@ class TransactionService(
             memo = tx.tx.body.memo,
             msg = TxMessageRecord.findByHashId(txId).mapToTxMessages(),
             monikers = TxAddressJoinRecord.findValidatorsByTxHash(EntityID(txId, TxCacheTable))
-                .map { v -> v.operatorAddress to v.moniker }.toMap()
+                .associate { v -> v.operatorAddress to v.moniker }
         )
     }
 
