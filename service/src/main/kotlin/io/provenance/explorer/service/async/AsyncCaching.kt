@@ -1,6 +1,7 @@
 package io.provenance.explorer.service.async
 
 import com.google.protobuf.Timestamp
+import cosmos.base.abci.v1beta1.Abci
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.tx.v1beta1.ServiceOuterClass
 import cosmos.tx.v1beta1.TxOuterClass
@@ -97,16 +98,16 @@ class AsyncCaching(
 
     private fun tryAddTxs(blockHeight: Int, txCount: Int, blockTime: Timestamp): List<Pair<List<String>, Map<String, List<Int>>>> = try {
         txClient.getTxsByHeight(blockHeight, txCount)
-            .also { calculateBlockTxFee(it.first, blockHeight) }
-            .second
+            .also { calculateBlockTxFee(it, blockHeight) }
             .map { addTxToCache(txClient.getTxByHash(it.txhash), blockTime) }
     } catch (e: Exception) {
-        logger.error("Failed to retrieve transactions at block: $blockHeight", e.localizedMessage)
+        logger.error("Failed to retrieve transactions at block: $blockHeight", e)
         listOf()
     }
 
-    fun calculateBlockTxFee(result: List<TxOuterClass.Tx>, height: Int) = transaction {
-        result.let { list ->
+    private fun calculateBlockTxFee(result: List<Abci.TxResponse>, height: Int) = transaction {
+        result.map { it.tx.unpack(TxOuterClass.Tx::class.java) }
+            .let { list ->
             val numerator = list.sumBy { it.authInfo.fee.amountList.first().amount.toInt() }
             val denominator = list.sumBy { it.authInfo.fee.gasLimit.toInt() }
             numerator.div(denominator.toDouble())

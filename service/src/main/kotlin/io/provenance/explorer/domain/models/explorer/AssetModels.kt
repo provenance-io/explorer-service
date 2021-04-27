@@ -26,8 +26,8 @@ data class AssetDetail(
 )
 
 data class AssetSupply(
-    val circulation: String,
-    val total: String
+    val initial: String,
+    val circulation: String
 )
 
 data class TokenCounts(
