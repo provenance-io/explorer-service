@@ -39,9 +39,9 @@ class ExplorerService(
 
     protected val logger = logger(ExplorerService::class)
 
-    fun getBlockAtHeight(height: Int?) = runBlocking(Dispatchers.IO) {
+    fun getBlockAtHeight(height: Int?, checkTxs: Boolean = false) = runBlocking(Dispatchers.IO) {
         val queryHeight = height ?: blockService.getLatestBlockHeightIndex()
-        val blockResponse = async { asyncCaching.getBlock(queryHeight) }
+        val blockResponse = async { asyncCaching.getBlock(queryHeight, checkTxs) }
         val validatorsResponse = async { validatorService.getValidatorsByHeight(queryHeight) }
         hydrateBlock(blockResponse.await(), validatorsResponse.await())
     }

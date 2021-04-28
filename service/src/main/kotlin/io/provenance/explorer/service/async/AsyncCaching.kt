@@ -31,6 +31,7 @@ import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.ValidatorService
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 
 @Service
@@ -47,12 +48,13 @@ class AsyncCaching(
 
     protected var chainId: String = ""
 
-    fun getBlock(blockHeight: Int) = getBlockByHeightFromCache(blockHeight)
-
-    fun getBlockByHeightFromCache(blockHeight: Int) = transaction {
+    fun getBlock(blockHeight: Int, checkTxs: Boolean = false) = transaction {
         BlockCacheRecord.findById(blockHeight)?.also {
             BlockCacheRecord.updateHitCount(blockHeight)
-        }?.block ?: saveBlockEtc(blockService.getBlockAtHeightFromChain(blockHeight))
+        }?.block?.also {
+            if (checkTxs && it.block.data.txsCount > 0)
+                addTxsToCache(it.block.height(), it.block.data.txsCount, it.block.header.time)
+        } ?: saveBlockEtc(blockService.getBlockAtHeightFromChain(blockHeight))
     }
 
     fun getChainIdString() =
@@ -99,7 +101,7 @@ class AsyncCaching(
     private fun tryAddTxs(blockHeight: Int, txCount: Int, blockTime: Timestamp): List<Pair<List<String>, Map<String, List<Int>>>> = try {
         txClient.getTxsByHeight(blockHeight, txCount)
             .also { calculateBlockTxFee(it, blockHeight) }
-            .map { addTxToCache(txClient.getTxByHash(it.txhash), blockTime) }
+            .map { addTxToCacheWithTimestamp(txClient.getTxByHash(it.txhash), blockTime) }
     } catch (e: Exception) {
         logger.error("Failed to retrieve transactions at block: $blockHeight", e)
         listOf()
@@ -114,10 +116,13 @@ class AsyncCaching(
         }.let { BlockProposerRecord.save(height, it, null, null) }
     }
 
+    fun addTxToCacheWithTimestamp(res: ServiceOuterClass.GetTxResponse, blockTime: Timestamp) =
+        addTxToCache(res, blockTime.toDateTime())
+
     // Function that saves all the things under a transaction
-    private fun addTxToCache(
+    fun addTxToCache(
         res: ServiceOuterClass.GetTxResponse,
-        blockTime: Timestamp
+        blockTime: DateTime
     ): Pair<List<String>, Map<String, List<Int>>> {
         val txPair = TxCacheRecord.insertIgnore(res, blockTime).let { Pair(it, res) }
         saveMessages(txPair.first, txPair.second)
