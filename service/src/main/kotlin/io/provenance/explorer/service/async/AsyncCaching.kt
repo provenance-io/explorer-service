@@ -123,7 +123,7 @@ class AsyncCaching(
         saveMessages(txPair.first, txPair.second)
         val addrs = saveAddresses(txPair.first, txPair.second)
         val markers = saveMarkers(txPair.first, txPair.second)
-        saveSignatures(txPair.second)
+        saveSignaturesTx(txPair.second)
         return Pair(markers, addrs)
     }
 
@@ -179,7 +179,7 @@ class AsyncCaching(
         }
     }
 
-    private fun saveSignatures(tx: ServiceOuterClass.GetTxResponse) = transaction {
+    private fun saveSignaturesTx(tx: ServiceOuterClass.GetTxResponse) = transaction {
         tx.tx.authInfo.signerInfosList.forEach { sig ->
             SignatureJoinRecord.insert(
                 sig.publicKey,

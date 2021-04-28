@@ -69,7 +69,7 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
                 }
             }
 
-        fun insertIgnore(
+        private fun insertIgnore(
             address: String,
             type: String,
             number: Long,
@@ -91,16 +91,28 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
             acc.typeUrl.getTypeShortName().let { type ->
                 when (type) {
                     Auth.ModuleAccount::class.java.simpleName ->
-                        acc.unpack(Auth.ModuleAccount::class.java).let {
-                            this.apply { this.baseAccount = it.baseAccount }
+                        acc.unpack(Auth.ModuleAccount::class.java).let { mod ->
+                            this.apply {
+                                this.baseAccount = mod.baseAccount
+                                this.data = acc
+                            }
+                            SignatureJoinRecord.insert(mod.baseAccount.pubKey, SigJoinType.ACCOUNT, mod.baseAccount.address)
                         }
                     Auth.BaseAccount::class.java.simpleName ->
-                        acc.unpack(Auth.BaseAccount::class.java).let {
-                            this.apply { this.baseAccount = it }
+                        acc.unpack(Auth.BaseAccount::class.java).let { mod ->
+                            this.apply {
+                                this.baseAccount = mod
+                                this.data = acc
+                            }
+                            SignatureJoinRecord.insert(mod.pubKey, SigJoinType.ACCOUNT, mod.address)
                         }
                     MarkerAccount::class.java.simpleName ->
-                        acc.unpack(MarkerAccount::class.java).let {
-                            this.apply { this.baseAccount = it.baseAccount }
+                        acc.unpack(MarkerAccount::class.java).let { mod ->
+                            this.apply {
+                                this.baseAccount = mod.baseAccount
+                                this.data = acc
+                            }
+                            SignatureJoinRecord.insert(mod.baseAccount.pubKey, SigJoinType.ACCOUNT, mod.baseAccount.address)
                         }
                     else -> throw IllegalArgumentException("This account type has not been handled yet: ${acc.typeUrl}")
                 }
