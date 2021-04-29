@@ -15,6 +15,20 @@ import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest
 import io.provenance.marker.v1.AddMarkerProposal
 import io.provenance.marker.v1.ChangeStatusProposal
+import io.provenance.marker.v1.EventDenomUnit
+import io.provenance.marker.v1.EventMarkerAccess
+import io.provenance.marker.v1.EventMarkerActivate
+import io.provenance.marker.v1.EventMarkerAdd
+import io.provenance.marker.v1.EventMarkerAddAccess
+import io.provenance.marker.v1.EventMarkerBurn
+import io.provenance.marker.v1.EventMarkerCancel
+import io.provenance.marker.v1.EventMarkerDelete
+import io.provenance.marker.v1.EventMarkerDeleteAccess
+import io.provenance.marker.v1.EventMarkerFinalize
+import io.provenance.marker.v1.EventMarkerMint
+import io.provenance.marker.v1.EventMarkerSetDenomMetadata
+import io.provenance.marker.v1.EventMarkerTransfer
+import io.provenance.marker.v1.EventMarkerWithdraw
 import io.provenance.marker.v1.MarkerAccount
 import io.provenance.marker.v1.MsgActivateRequest
 import io.provenance.marker.v1.MsgAddAccessRequest
@@ -50,6 +64,8 @@ import io.provenance.metadata.v1.MsgWriteContractSpecificationRequest
 import io.provenance.metadata.v1.MsgWriteP8eContractSpecRequest
 import io.provenance.metadata.v1.MsgWriteRecordSpecificationRequest
 import io.provenance.name.v1.CreateRootNameProposal
+import io.provenance.name.v1.EventNameBound
+import io.provenance.name.v1.EventNameUnbound
 import io.provenance.name.v1.MsgBindNameRequest
 import io.provenance.name.v1.MsgDeleteNameRequest
 import org.springframework.context.annotation.Bean
@@ -71,6 +87,7 @@ class RestConfig {
             .add(pubKeyDescriptors())
             .add(msgDescriptors())
             .add(contentDescriptors())
+            .add(events())
             .build()
         return JsonFormat.printer().usingTypeRegistry(typeRegistry)
     }
@@ -82,6 +99,7 @@ class RestConfig {
             .add(pubKeyDescriptors())
             .add(msgDescriptors())
             .add(contentDescriptors())
+            .add(events())
             .build()
         return JsonFormat.parser().usingTypeRegistry(typeRegistry)
     }
@@ -213,3 +231,22 @@ fun contentDescriptors() =
         Proposal.PinCodesProposal.getDescriptor(),
         Proposal.UnpinCodesProposal.getDescriptor()
     )
+
+fun events() = listOf(
+    EventNameBound.getDescriptor(),
+    EventNameUnbound.getDescriptor(),
+    EventMarkerAdd.getDescriptor(),
+    EventMarkerAddAccess.getDescriptor(),
+    EventMarkerAccess.getDescriptor(),
+    EventMarkerDeleteAccess.getDescriptor(),
+    EventMarkerFinalize.getDescriptor(),
+    EventMarkerActivate.getDescriptor(),
+    EventMarkerCancel.getDescriptor(),
+    EventMarkerDelete.getDescriptor(),
+    EventMarkerMint.getDescriptor(),
+    EventMarkerBurn.getDescriptor(),
+    EventMarkerWithdraw.getDescriptor(),
+    EventMarkerTransfer.getDescriptor(),
+    EventMarkerSetDenomMetadata.getDescriptor(),
+    EventDenomUnit.getDescriptor(),
+)

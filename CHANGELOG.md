@@ -34,9 +34,13 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+* Updated Provenance protos to 1.2.0
+
 ### Bug Fixes
 * Now handling no rewards on a validator #76
 * Fixed no transaction on address lookup for txs #76
+* Fixed erroring asset holder count #79
 
 
 ## [v1.1.0](https://github.com/provenance-io/provenance/releases/tag/v1.1.0) - 2021-04-29

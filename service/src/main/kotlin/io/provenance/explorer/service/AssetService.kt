@@ -64,7 +64,7 @@ class AssetService(
                         detail.supply.toBigInteger().toString(),
                         accountService.getCurrentSupply(denom).toString()),
                     detail.isMintable(),
-                    markerClient.getAllMarkerHolders(denom).size,
+                    markerClient.getMarkerHolders(denom, 0, 10).pagination.total.toInt(),
                     txCount,
                     attrClient.getAllAttributesForAddress(detail.baseAccount.address)
                         .map { attr -> attr.toObjectNode(protoPrinter) },

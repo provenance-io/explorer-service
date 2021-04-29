@@ -63,8 +63,8 @@ object Versions {
     const val Kotest = "4.4.3"
 
     //external protos
-    const val Provenance = "v0.2.1"
-    const val Cosmos = "v0.42.2"
+    const val Provenance = "v1.2.0"
+    const val Cosmos = "v0.42.4"
 
 }
 
