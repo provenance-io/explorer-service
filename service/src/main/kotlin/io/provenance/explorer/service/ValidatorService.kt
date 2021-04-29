@@ -10,6 +10,7 @@ import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
 import io.provenance.explorer.domain.entities.updateHitCount
+import io.provenance.explorer.domain.extensions.HASH
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.getStatusString
 import io.provenance.explorer.domain.extensions.isActive
@@ -273,7 +274,7 @@ class ValidatorService(
         ).delegationResponse.balance
         val delegatorCount =
             grpcClient.getStakingValidatorDelegations(validator.operatorAddress, 0, 10).pagination.total
-        val rewards = grpcClient.getValidatorCommission(address).commissionList.first()
+        val rewards = grpcClient.getValidatorCommission(address).commissionList.firstOrNull()
         return ValidatorCommission(
             validator.tokens.toHash(NHASH).let { BondedTokens(it.first, null, it.second) },
             selfBondedAmount.amount.toHash(selfBondedAmount.denom)
@@ -282,7 +283,8 @@ class ValidatorService(
                 .let { BondedTokens(it.first, null, it.second) },
             delegatorCount,
             validator.delegatorShares.toDecCoin(),
-            rewards.amount.toDecCoin().toHash(rewards.denom).let { CoinStr(it.first, it.second, rewards.denom) },
+            rewards?.amount?.toDecCoin()?.toHash(rewards.denom)?.let { CoinStr(it.first, it.second, rewards.denom) }
+                ?: CoinStr("0", HASH, NHASH),
             CommissionRate(
                 validator.commission.commissionRates.rate.toDecCoin(),
                 validator.commission.commissionRates.maxRate.toDecCoin(),

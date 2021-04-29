@@ -73,7 +73,7 @@ class TransactionService(
     ): PagedResults<TxSummary> {
             val msgTypes = if (msgType != null) listOf(msgType) else module?.types ?: listOf()
             val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
-            val addr = address?.getAddressType(props)
+            val addr = transaction { address?.getAddressType(props) }
             val markerId = if (denom != null) MarkerCacheRecord.findByDenom(denom)?.id?.value else null
 
             val params =

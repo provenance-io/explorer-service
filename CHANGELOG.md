@@ -34,6 +34,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Bug Fixes
+* Now handling no rewards on a validator #76
+* Fixed no transaction on address lookup for txs #76
+
+
 ## [v1.1.0](https://github.com/provenance-io/provenance/releases/tag/v1.1.0) - 2021-04-29
 
 ### Improvements
