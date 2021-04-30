@@ -29,14 +29,14 @@ in the `./buildSrc/src/main/kotlin/io/provenance/Versions.kt` file:
 
 ```kotlin
     //external protos
-    const val Provenance = "v0.3.0"
-    const val Cosmos = "v0.41.4"
+    const val Provenance = "v1.2.0"
+    const val Cosmos = "v0.42.4"
 ```
 
 To manually specify the versions run this `gradle` task  *from the root project directory*:
 
 ```bash
-./gradlew downloadProtos --provenance-version v0.3.0 --cosmos-version v0.41.4
+./gradlew downloadProtos --provenance-version v1.2.0 --cosmos-version v0.42.4
 ```
 
 > The proto download process does not need to be run very often, 

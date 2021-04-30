@@ -41,9 +41,6 @@ class MarkerGrpcClient(channelUri: URI) {
         markerClient = QueryGrpc.newBlockingStub(channel)
     }
 
-    fun getAllMarkers(): List<MarkerAccount> =
-        markerClient.allMarkers(QueryAllMarkersRequest.getDefaultInstance()).markersList.map { it.toMarker() }
-
     fun getMarkerDetail(id: String): MarkerAccount =
         markerClient.marker(QueryMarkerRequest.newBuilder().setId(id).build()).marker.toMarker()
 
@@ -55,37 +52,8 @@ class MarkerGrpcClient(channelUri: URI) {
                 .build()
         )
 
-    fun getAllMarkerHolders(denom: String): MutableList<Balance> {
-        var offset = 0
-        val limit = 100
-
-        val results = markerClient.holding(
-            QueryHoldingRequest.newBuilder()
-                .setId(denom)
-                .setPagination(getPaginationBuilder(offset, limit))
-                .build())
-
-        val total = results.pagination?.total ?: results.balancesCount.toLong()
-        val holders = results.balancesList
-
-        while (holders.count() < total) {
-            offset += limit
-            markerClient.holding(
-                QueryHoldingRequest.newBuilder()
-                    .setId(denom)
-                    .setPagination(getPaginationBuilder(offset, limit))
-                    .build())
-                .let { holders.addAll(it.balancesList) }
-        }
-
-        return holders
-    }
-
     fun getMarkerMetadata(denom: String) =
         markerClient.denomMetadata(QueryDenomMetadataRequest.newBuilder().setDenom(denom).build()).metadata
-
-    fun getSupplyByDenom(denom: String) =
-        markerClient.supply(QuerySupplyRequest.newBuilder().setId(denom).build()).amount
 
 
 }
