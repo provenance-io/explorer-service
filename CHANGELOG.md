@@ -34,16 +34,18 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+## [v1.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.2.0) - 2021-04-30
+
 ### Improvements
-* Updated Provenance protos to 1.2.0
+* Updated Provenance protos to 1.2.0 [#80](https://github.com/provenance-io/explorer-service/issues/80)
 
 ### Bug Fixes
-* Now handling no rewards on a validator #76
-* Fixed no transaction on address lookup for txs #76
-* Fixed erroring asset holder count #79
+* Now handling no rewards on a validator [#76](https://github.com/provenance-io/explorer-service/issues/76)
+* Fixed no transaction on address lookup for txs [#76](https://github.com/provenance-io/explorer-service/issues/76)
+* Fixed erroring asset holder count [#79](https://github.com/provenance-io/explorer-service/issues/79)
 
 
-## [v1.1.0](https://github.com/provenance-io/provenance/releases/tag/v1.1.0) - 2021-04-29
+## [v1.1.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.1.0) - 2021-04-29
 
 ### Improvements
 * On asset list and asset detail, the supply object now contains `initial` and `circulation` rather than `circulation` and `total` [#52](https://github.com/provenance-io/explorer-service/issues/52)
