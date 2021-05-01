@@ -2,6 +2,7 @@ package io.provenance.explorer.grpc.extensions
 
 import com.google.protobuf.Any
 import com.google.protobuf.ByteString
+import cosmos.auth.v1beta1.Auth
 import cosmos.base.query.v1beta1.Pagination
 import cosmos.crypto.multisig.Keys
 import io.provenance.explorer.domain.core.logger
@@ -47,6 +48,12 @@ fun MarkerAccount.getManagingAccounts(): MutableMap<String, List<String>> {
         }
     }
 }
+
+// Account Extensions
+fun Any.getModuleAccName() =
+    if (this.typeUrl.getTypeShortName() == Auth.ModuleAccount::class.java.simpleName)
+        this.unpack(Auth.ModuleAccount::class.java).name
+    else null
 
 // PubKey Extensions
 fun Any.toSingleSigKeyValue() = this.toSingleSig().let { it?.toBase64() }

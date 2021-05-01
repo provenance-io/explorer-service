@@ -53,7 +53,8 @@ data class AccountDetail(
     val accountNumber: Long,
     val sequence: Int,
     val publicKeys: Signatures,
-    val balances: List<CoinStr>
+    val balances: List<CoinStr>,
+    val accountName: String?
 )
 
 data class AssetManagement(

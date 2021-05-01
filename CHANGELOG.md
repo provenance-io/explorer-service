@@ -34,6 +34,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+* Added name to AccountDetail object; applicable only for ModuleAccount type #83
+* Added ModuleAccount name to applicable moniker lists #83
+
 ## [v1.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.2.0) - 2021-04-30
 
 ### Improvements
@@ -43,7 +47,6 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Now handling no rewards on a validator [#76](https://github.com/provenance-io/explorer-service/issues/76)
 * Fixed no transaction on address lookup for txs [#76](https://github.com/provenance-io/explorer-service/issues/76)
 * Fixed erroring asset holder count [#79](https://github.com/provenance-io/explorer-service/issues/79)
-
 
 ## [v1.1.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.1.0) - 2021-04-29
 

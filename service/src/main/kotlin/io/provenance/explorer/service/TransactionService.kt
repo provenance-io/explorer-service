@@ -29,6 +29,7 @@ import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.domain.models.explorer.TxSummary
 import io.provenance.explorer.domain.models.explorer.TxType
+import io.provenance.explorer.grpc.extensions.getModuleAccName
 import io.provenance.explorer.service.async.AsyncCaching
 import io.provenance.explorer.service.async.getAddressType
 import org.jetbrains.exposed.dao.id.EntityID
@@ -87,7 +88,7 @@ class TransactionService(
                     rec.hash,
                     rec.height,
                     transaction { rec.txMessages.mapToTxMessages() },
-                    TxAddressJoinRecord.findValidatorsByTxHash(rec.id).associate { v -> v.operatorAddress to v.moniker },
+                    getMonikers(rec.id),
                     rec.txTimestamp.toString(),
                     rec.txV2.tx.authInfo.fee.amountList.first().amount
                         .toHash(rec.txV2.tx.authInfo.fee.amountList.first().denom)
@@ -134,11 +135,21 @@ class TransactionService(
             signers = TxCacheRecord.findSigsByHash(tx.txResponse.txhash).toSigObj(props.provAccPrefix()),
             memo = tx.tx.body.memo,
             msg = TxMessageRecord.findByHashId(txId).mapToTxMessages(),
-            monikers = TxAddressJoinRecord.findValidatorsByTxHash(EntityID(txId, TxCacheTable))
-                .associate { v -> v.operatorAddress to v.moniker }
+            monikers = getMonikers(EntityID(txId, TxCacheTable))
         )
     }
 
     fun getTxHistoryByQuery(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
         BlockCacheRecord.getTxCountsForParams(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
+
+    private fun getMonikers(txId: EntityID<Int>): Map<String, String> {
+        val monikers =
+            TxAddressJoinRecord.findValidatorsByTxHash(txId).associate { v -> v.operatorAddress to v.moniker }
+        val moduleNames =
+            TxAddressJoinRecord.findAccountsByTxHash(txId)
+                .filter { it.type == "ModuleAccount" }
+                .associate { a -> a.accountAddress to a.data.getModuleAccName()!! }
+
+        return monikers + moduleNames
+    }
 }
