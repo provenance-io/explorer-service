@@ -1,9 +1,8 @@
 package io.provenance.explorer.web.v2
 
-import io.provenance.explorer.domain.models.explorer.AssetDetail
-import io.provenance.explorer.domain.models.explorer.AssetListed
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.web.BaseController
+import io.provenance.marker.v1.MarkerStatus
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import org.springframework.http.MediaType
@@ -22,14 +21,17 @@ import javax.validation.constraints.Min
 @Api(value = "Asset controller", produces = "application/json", consumes = "application/json", tags = ["Assets"])
 class AssetController(private val assetService: AssetService) : BaseController() {
 
-    @ApiOperation("Returns all assets")
+    @ApiOperation("Returns paginated list of assets for selected statuses")
     @GetMapping("/all")
-    fun getMarkers(): ResponseEntity<List<AssetListed>> = ResponseEntity.ok(assetService.getAllAssets())
+    fun getMarkers(
+        @RequestParam(required = false, defaultValue = "MARKER_STATUS_ACTIVE") statuses: List<MarkerStatus>,
+        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
+    ) = ResponseEntity.ok(assetService.getAssets(statuses, page, count))
 
     @ApiOperation("Returns asset detail for denom or address")
     @GetMapping("/{id}/detail")
-    fun getMarkerDetail(@PathVariable id: String): ResponseEntity<AssetDetail> =
-        ResponseEntity.ok(assetService.getAssetDetail(id))
+    fun getMarkerDetail(@PathVariable id: String) = ResponseEntity.ok(assetService.getAssetDetail(id))
 
     @ApiOperation("Returns asset holders for denom or address")
     @GetMapping("/{id}/holders")

@@ -1,21 +1,24 @@
 package io.provenance.explorer.domain.models.explorer
 
 import com.fasterxml.jackson.databind.node.ObjectNode
+import org.joda.time.DateTime
 import java.math.BigInteger
 
 
 data class AssetListed(
     val marker: String,
     val holdingAccount: String,
-    val supply: AssetSupply,
-    val status: String
+    val supply: String,
+    val status: String,
+    val mintable: Boolean,
+    val lastTxTimestamp: String?
 )
 
 data class AssetDetail(
     val marker: String,
     val holdingAccount: String,
     val managingAccounts: AssetManagement,
-    val supply: AssetSupply,
+    val supply: String,
     val mintable: Boolean,
     val holderCount: Int,
     val txnCount: BigInteger?,
@@ -23,11 +26,6 @@ data class AssetDetail(
     val metadata: ObjectNode,
     val tokens: TokenCounts,
     val markerStatus: String
-)
-
-data class AssetSupply(
-    val initial: String,
-    val circulation: String
 )
 
 data class TokenCounts(

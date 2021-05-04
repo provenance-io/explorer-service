@@ -1,10 +1,13 @@
 package io.provenance.explorer.service
 
+import com.google.protobuf.Timestamp
 import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
+import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
@@ -12,7 +15,6 @@ import io.provenance.explorer.domain.models.explorer.AssetDetail
 import io.provenance.explorer.domain.models.explorer.AssetHolder
 import io.provenance.explorer.domain.models.explorer.AssetListed
 import io.provenance.explorer.domain.models.explorer.AssetManagement
-import io.provenance.explorer.domain.models.explorer.AssetSupply
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.TokenCounts
@@ -35,21 +37,33 @@ class AssetService(
 ) {
     protected val logger = logger(AssetService::class)
 
-    fun getAllAssets() = MarkerCacheRecord.findByStatus(listOf(MarkerStatus.MARKER_STATUS_ACTIVE))
-        .map {
-            AssetListed(
-                it.denom,
-                it.markerAddress,
-                AssetSupply(
-                    it.data.supply.toBigInteger().toString(),
-                    accountService.getCurrentSupply(it.denom).toString()),
-                it.status.prettyStatus()
-            )
-        }
+    fun getAssets(
+        statuses: List<MarkerStatus>,
+        page: Int,
+        count: Int
+    ): PagedResults<AssetListed> {
+        val list =
+            MarkerCacheRecord
+                .findByStatusPaginated(statuses, page.toOffset(count), count)
+                .map {
+                    AssetListed(
+                        it.denom,
+                        it.markerAddress,
+                        it.supply.toBigInteger().toString(),
+                        it.status.prettyStatus(),
+                        it.data.isMintable(),
+                        it.lastTx.toString()) }
+        return PagedResults(MarkerCacheRecord.findCountByStatus(statuses).pageCountOfResults(count), list)
+    }
 
     fun getAssetRaw(denom: String) = transaction {
         MarkerCacheRecord.findByDenom(denom)?.let { Pair(it.id, it.data) } ?:
-            markerClient.getMarkerDetail(denom).let { MarkerCacheRecord.insertIgnore(it) }
+            markerClient.getMarkerDetail(denom).let {
+                MarkerCacheRecord.insertIgnore(
+                    it, accountService.getCurrentSupply(denom).toBigDecimal(),
+                    TxMarkerJoinRecord.findLatestTxByDenom(denom)
+                )
+            }
     }
 
     fun getAssetDetail(denom: String) =
@@ -60,9 +74,7 @@ class AssetService(
                     detail.denom,
                     detail.baseAccount.address,
                     AssetManagement(detail.getManagingAccounts(), detail.allowGovernanceControl),
-                    AssetSupply(
-                        detail.supply.toBigInteger().toString(),
-                        accountService.getCurrentSupply(denom).toString()),
+                    detail.supply.toBigInteger().toString(),
                     detail.isMintable(),
                     markerClient.getMarkerHolders(denom, 0, 10).pagination.total.toInt(),
                     txCount,
@@ -88,17 +100,17 @@ class AssetService(
     fun getMetaData(denom: String) = protoPrinter.print(markerClient.getMarkerMetadata(denom))
 
     // Updates the Marker cache
-    fun updateAssets(denoms: Set<String>) = transaction {
+    fun updateAssets(denoms: Set<String>, txTime: Timestamp) = transaction {
         logger.info("saving assets")
         denoms.forEach { marker ->
             val data = markerClient.getMarkerDetail(marker)
             val record = MarkerCacheRecord.findByDenom(marker)!!
-            if (data != record.data)
-                record.apply {
-                    this.status = data.status.toString()
-                    this.totalSupply = data.supply.toBigDecimal()
-                    this.data = data
-                }
+            record.apply {
+                this.status = data.status.toString()
+                this.supply = accountService.getCurrentSupply(marker).toBigDecimal()
+                this.lastTx = txTime.toDateTime()
+                this.data = data
+            }
         }
     }
 }

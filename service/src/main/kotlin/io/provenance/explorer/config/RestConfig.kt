@@ -205,7 +205,8 @@ fun msgDescriptors() =
         cosmwasm.wasm.v1beta1.Tx.MsgExecuteContract.getDescriptor(),
         cosmwasm.wasm.v1beta1.Tx.MsgMigrateContract.getDescriptor(),
         cosmwasm.wasm.v1beta1.Tx.MsgUpdateAdmin.getDescriptor(),
-        cosmwasm.wasm.v1beta1.Tx.MsgClearAdmin.getDescriptor()
+        cosmwasm.wasm.v1beta1.Tx.MsgClearAdmin.getDescriptor(),
+        cosmos.crisis.v1beta1.Tx.MsgVerifyInvariant.getDescriptor()
     )
 
 fun contentDescriptors() =

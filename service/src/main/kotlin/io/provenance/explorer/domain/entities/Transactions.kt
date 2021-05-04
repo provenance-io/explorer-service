@@ -338,6 +338,17 @@ object TxMarkerJoinTable : IntIdTable(name = "tx_marker_join") {
 class TxMarkerJoinRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxMarkerJoinRecord>(TxMarkerJoinTable) {
 
+        fun findLatestTxByDenom(denom: String) = transaction {
+            TxCacheTable
+                .innerJoin(TxMarkerJoinTable, {TxCacheTable.id}, {TxMarkerJoinTable.txHashId})
+                .slice(TxCacheTable.txTimestamp)
+                .select { TxMarkerJoinTable.denom eq denom }
+                .orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
+                .limit(1, 0)
+                .firstOrNull()
+                ?.let { it[TxCacheTable.txTimestamp] }
+        }
+
         fun findCountByDenom(markerId: Int) = transaction {
             TxMarkerJoinRecord.find { TxMarkerJoinTable.markerId eq markerId }.count().toBigInteger()
         }
