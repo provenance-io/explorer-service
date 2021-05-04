@@ -74,7 +74,7 @@ class AsyncCaching(
 
     fun saveTxs(blockRes: Query.GetBlockByHeightResponse) {
         val toBeUpdated = addTxsToCache(blockRes.block.height(), blockRes.block.data.txsCount, blockRes.block.header.time)
-        toBeUpdated.flatMap { it.first }.toSet().let { assetService.updateAssets(it) }
+        toBeUpdated.flatMap { it.first }.toSet().let { assetService.updateAssets(it, blockRes.block.header.time) }
         toBeUpdated.flatMap { it.second.entries }
             .groupBy({ it.key }) { it.value }
             .mapValues { (_, values) -> values.flatten().toSet() }
@@ -135,21 +135,23 @@ class AsyncCaching(
     private fun saveMessages(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
         tx.tx.body.messagesList.forEachIndexed { idx, msg ->
             if (tx.txResponse.logsCount > 0) {
-                var type: String
-                var module: String
+                val type: String
+                val module: String
                 when (val msgType = TxMessageTypeRecord.findByProtoType(msg.typeUrl)) {
-                    null ->
-                        (try {
-                            tx.txResponse.logsList[idx].eventsList.first { event -> event.type == "message" }
-                        } catch (ex: Exception) {
-                            tx.txResponse.logsList.first().eventsList.filter { event -> event.type == "message" }[idx]
-                        }).let { event ->
-                            type = event.attributesList.first { att -> att.key == "action" }.value
-                            module = event.attributesList.firstOrNull { att -> att.key == "module" }?.value ?: "unknown"
-                        }
+                    null -> {
+                        val typePair = getMsgType(tx, idx)
+                        type = typePair.first
+                        module = typePair.second
+                    }
                     else -> {
-                        type = msgType.type
-                        module = msgType.module
+                        if (msgType.module == "unknown") {
+                            val typePair = getMsgType(tx, idx)
+                            type = typePair.first
+                            module = typePair.second
+                        } else {
+                            type = msgType.type
+                            module = msgType.module
+                        }
                     }
                 }
                 TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module)
@@ -157,6 +159,17 @@ class AsyncCaching(
                 TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, "unknown", "unknown")
         }
     }
+
+    private fun getMsgType(tx: ServiceOuterClass.GetTxResponse, idx: Int) =
+        (try {
+            tx.txResponse.logsList[idx].eventsList.first { event -> event.type == "message" }
+        } catch (ex: Exception) {
+            tx.txResponse.logsList.first().eventsList.filter { event -> event.type == "message" }[idx]
+        }).let { event ->
+            val type = event.attributesList.first { att -> att.key == "action" }.value
+            val module = event.attributesList.firstOrNull { att -> att.key == "module" }?.value ?: "unknown"
+            Pair(type, module)
+        }
 
     private fun saveAddresses(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
         tx.tx.body.messagesList.flatMap { it.getAssociatedAddresses() }.toSet().map { addr ->

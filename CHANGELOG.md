@@ -37,6 +37,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Improvements
 * Added name to AccountDetail object; applicable only for ModuleAccount type #83
 * Added ModuleAccount name to applicable moniker lists #83
+* Added pagination and status search to getAssets() API #78
+* Removed `initial supply` as it was causing confusion, and left circulation as the current total on chain #78
 
 ## [v1.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.2.0) - 2021-04-30
 

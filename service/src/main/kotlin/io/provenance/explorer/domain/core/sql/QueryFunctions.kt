@@ -2,9 +2,13 @@ package io.provenance.explorer.domain.core.sql
 
 import org.jetbrains.exposed.sql.DecimalColumnType
 import org.jetbrains.exposed.sql.Expression
+import org.jetbrains.exposed.sql.FieldSet
 import org.jetbrains.exposed.sql.Function
 import org.jetbrains.exposed.sql.IColumnType
+import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.QueryBuilder
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.append
 import org.jetbrains.exposed.sql.jodatime.CustomDateTimeFunction
 import org.jetbrains.exposed.sql.jodatime.DateColumnType
@@ -30,3 +34,12 @@ class ExtractEpoch(val expr: Expression<DateTime>): Function<BigDecimal>(Decimal
 
 fun DateTrunc(granularity: String, column: Expression<*>) =
     CustomDateTimeFunction("DATE_TRUNC", stringLiteral(granularity),  column)
+
+
+class ColumnNullsLast(private val col: Expression<*>) : Expression<String>() {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) = queryBuilder {
+            append(col, " IS NOT NULL ")
+        }
+}
+
+fun Expression<*>.nullsLast() = ColumnNullsLast(this)
