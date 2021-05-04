@@ -11,6 +11,7 @@ import cosmos.tx.v1beta1.TxOuterClass
 import cosmos.upgrade.v1beta1.Upgrade
 import cosmos.vesting.v1beta1.Vesting
 import cosmwasm.wasm.v1beta1.Proposal
+import ibc.core.client.v1.Client
 import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest
 import io.provenance.marker.v1.AddMarkerProposal
@@ -206,7 +207,26 @@ fun msgDescriptors() =
         cosmwasm.wasm.v1beta1.Tx.MsgMigrateContract.getDescriptor(),
         cosmwasm.wasm.v1beta1.Tx.MsgUpdateAdmin.getDescriptor(),
         cosmwasm.wasm.v1beta1.Tx.MsgClearAdmin.getDescriptor(),
-        cosmos.crisis.v1beta1.Tx.MsgVerifyInvariant.getDescriptor()
+        cosmos.crisis.v1beta1.Tx.MsgVerifyInvariant.getDescriptor(),
+        ibc.applications.transfer.v1.Tx.MsgTransfer.getDescriptor(),
+        ibc.core.channel.v1.Tx.MsgChannelOpenInit.getDescriptor(),
+        ibc.core.channel.v1.Tx.MsgChannelOpenTry.getDescriptor(),
+        ibc.core.channel.v1.Tx.MsgChannelOpenAck.getDescriptor(),
+        ibc.core.channel.v1.Tx.MsgChannelOpenConfirm.getDescriptor(),
+        ibc.core.channel.v1.Tx.MsgChannelCloseInit.getDescriptor(),
+        ibc.core.channel.v1.Tx.MsgChannelCloseConfirm.getDescriptor(),
+        ibc.core.channel.v1.Tx.MsgRecvPacket.getDescriptor(),
+        ibc.core.channel.v1.Tx.MsgTimeout.getDescriptor(),
+        ibc.core.channel.v1.Tx.MsgTimeoutOnClose.getDescriptor(),
+        ibc.core.channel.v1.Tx.MsgAcknowledgement.getDescriptor(),
+        ibc.core.client.v1.Tx.MsgCreateClient.getDescriptor(),
+        ibc.core.client.v1.Tx.MsgUpdateClient.getDescriptor(),
+        ibc.core.client.v1.Tx.MsgUpgradeClient.getDescriptor(),
+        ibc.core.client.v1.Tx.MsgSubmitMisbehaviour.getDescriptor(),
+        ibc.core.connection.v1.Tx.MsgConnectionOpenInit.getDescriptor(),
+        ibc.core.connection.v1.Tx.MsgConnectionOpenTry.getDescriptor(),
+        ibc.core.connection.v1.Tx.MsgConnectionOpenAck.getDescriptor(),
+        ibc.core.connection.v1.Tx.MsgConnectionOpenConfirm.getDescriptor()
     )
 
 fun contentDescriptors() =
@@ -230,7 +250,8 @@ fun contentDescriptors() =
         Proposal.UpdateAdminProposal.getDescriptor(),
         Proposal.ClearAdminProposal.getDescriptor(),
         Proposal.PinCodesProposal.getDescriptor(),
-        Proposal.UnpinCodesProposal.getDescriptor()
+        Proposal.UnpinCodesProposal.getDescriptor(),
+        Client.ClientUpdateProposal.getDescriptor()
     )
 
 fun events() = listOf(

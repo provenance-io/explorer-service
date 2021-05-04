@@ -5,7 +5,7 @@ import org.gradle.api.Project
 import org.gradle.kotlin.dsl.register
 
 /**
- * Custom gradle plugin to download Provenance and Cosmos protobuf files.
+ * Custom gradle plugin to download Provenance, Cosmos, and CosmWasm/wasmd protobuf files.
  *
  */
 class DownloadProtosPlugin: Plugin<Project> {
@@ -16,10 +16,13 @@ class DownloadProtosPlugin: Plugin<Project> {
         ) {
             this.group = "protobuf"
             this.description =
-                "Downloads Provenance and Cosmos protobuf files. " +
-                " Specify the Provenance and Cosmos versions: --provenance-version vX.Y.Z --cosmos-version vX.Y.Z." +
-                " Version information can be found at https://github.com/provenance-io/provenance/releases and " +
-                " https://github.com/cosmos/cosmos-sdk/releases."
+                """Downloads Provenance and Cosmos protobuf files. 
+                   Specify the Provenance, Cosmos, and CosmWasm versions: 
+                       --provenance-version vX.Y.Z --cosmos-version vX.Y.Z --wasmd-version vX.Y.Z
+                   Version information can be found at: 
+                       https://github.com/provenance-io/provenance/releases, 
+                       https://github.com/cosmos/cosmos-sdk/releases, and 
+                       https://github.com/CosmWasm/wasmd/tags."""
         }
     }
 }
