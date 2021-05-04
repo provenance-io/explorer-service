@@ -10,6 +10,7 @@ import io.provenance.explorer.domain.entities.TxAddressJoinType
 import io.provenance.explorer.domain.extensions.toSigObj
 import io.provenance.explorer.domain.models.explorer.AccountDetail
 import io.provenance.explorer.domain.models.explorer.toData
+import io.provenance.explorer.grpc.extensions.getModuleAccName
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
@@ -30,7 +31,8 @@ class AccountService(private val accountClient: AccountGrpcClient, private val p
             it.accountNumber,
             it.baseAccount.sequence.toInt(),
             AccountRecord.findSigsByAddress(it.accountAddress).toSigObj(props.provAccPrefix()),
-            getAccountBalances(address)
+            getAccountBalances(address),
+            it.data.getModuleAccName()
         )
     }
 

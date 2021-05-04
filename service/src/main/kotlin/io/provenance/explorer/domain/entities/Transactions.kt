@@ -289,12 +289,13 @@ class TxAddressJoinRecord(id: EntityID<Int>) : IntEntity(id) {
             ).toList()
         }
 
-        fun findByNoId() = transaction {
-            val dist = Distinct(TxAddressJoinTable.address, VarCharColumnType(128))
-            TxAddressJoinTable.slice(dist)
-                .select { (TxAddressJoinTable.addressId eq 0) }
-                .map { it[dist] }
-                .toSet()
+        fun findAccountsByTxHash(txHashId: EntityID<Int>) = transaction {
+            AccountRecord.wrapRows(
+                TxAddressJoinTable
+                    .innerJoin(AccountTable, { TxAddressJoinTable.addressId }, { AccountTable.id })
+                    .select { (TxAddressJoinTable.txHashId eq txHashId) and
+                        (TxAddressJoinTable.addressType eq TxAddressJoinType.ACCOUNT.name) }
+            ).toList()
         }
 
         fun update(addr: String, addrId: Int, addrType: String) = transaction {
