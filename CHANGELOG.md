@@ -27,8 +27,6 @@ Types of changes (Stanzas):
 "Deprecated" for soon-to-be removed features.
 "Bug Fixes" for any bug fixes.
 "Client Breaking" for breaking CLI commands and REST routes used by end-users.
-"API Breaking" for breaking exported APIs used by developers building on SDK.
-"State Machine Breaking" for any changes that result in a different AppState given same genesisState and txList.
 Ref: https://keepachangelog.com/en/1.0.0/
 -->
 
@@ -39,6 +37,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added ModuleAccount name to applicable moniker lists #83
 * Added pagination and status search to getAssets() API #78
 * Removed `initial supply` as it was causing confusion, and left circulation as the current total on chain #78
+* Updated gradle task `downloadProtos` to include CosmWasm/wasmd proto set, Cosmos ibc protos #62
 
 ## [v1.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.2.0) - 2021-04-30
 

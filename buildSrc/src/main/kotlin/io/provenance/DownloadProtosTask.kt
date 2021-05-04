@@ -36,10 +36,17 @@ open class DownloadProtosTask : DefaultTask() {
 
     @Option(
         option = "cosmos-version",
-        description = "Cosmos release version (e.g. 0.42)"
+        description = "Cosmos release version (e.g. v0.42.4)"
     )
     @Input
     var cosmosVersion: String? = null
+
+    @Option(
+        option = "wasmd-version",
+        description = "CosmWasm/wasmd release version (e.g. v0.16.0)"
+    )
+    @Input
+    var wasmdVersion: String? = null
 
 
     /**
@@ -49,7 +56,10 @@ open class DownloadProtosTask : DefaultTask() {
      * Connects directly to cosmos-sdk GitHub tarball release directory
      * and downloads the `cosmosVersion` proto gzipped tar file.
      *
-     * Both files are uncompressed into the `third_party/proto` directory
+     * Connects directly to CosmWasm/wasmd GitHub tarball release directory
+     * and downloads the `cosmWasmVersion` proto gzipped tar file.
+     *
+     * All files are uncompressed into the `third_party/proto` directory
      * of this root gradle project.
      *
      */
@@ -68,7 +78,15 @@ open class DownloadProtosTask : DefaultTask() {
             file = unGzip(toTempFile("https://github.com/cosmos/cosmos-sdk/tarball/${this.cosmosVersion}")),
             destinationDir = thirdPartyPath(),
             includePattern = Regex(".*/proto/.*\\.proto\$"),
-            excludePattern = Regex(".*testutil/.*|.*proto/ibc/.*"),
+            excludePattern = Regex(".*testutil/.*"),
+            protoRootDir = "proto"
+        )
+
+        untar(
+            file = unGzip(toTempFile("https://github.com/CosmWasm/wasmd/tarball/${this.wasmdVersion}")),
+            destinationDir = thirdPartyPath(),
+            includePattern = Regex(".*/proto/.*\\.proto\$"),
+            excludePattern = Regex(".*third_party/.*|.*proto/ibc/.*"),
             protoRootDir = "proto"
         )
     }
