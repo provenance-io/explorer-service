@@ -41,7 +41,7 @@ class ErrorFinding {
 
         fun getUnknownTxTypes() = transaction {
             TxMessageTypeRecord
-                .find { (TxMessageTypeTable.type eq "unknown") or (TxMessageTypeTable.module eq "unknown") }
+                .find { (TxMessageTypeTable.type eq UNKNOWN) or (TxMessageTypeTable.module eq UNKNOWN) }
                 .map { UnknownTxType(it.type, it.module, it.protoType) }
         }
     }

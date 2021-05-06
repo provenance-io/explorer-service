@@ -19,6 +19,7 @@ import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
+import io.provenance.explorer.domain.entities.UNKNOWN
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
@@ -144,7 +145,7 @@ class AsyncCaching(
                         module = typePair.second
                     }
                     else -> {
-                        if (msgType.module == "unknown") {
+                        if (msgType.module == UNKNOWN) {
                             val typePair = getMsgType(tx, idx)
                             type = typePair.first
                             module = typePair.second
@@ -156,7 +157,7 @@ class AsyncCaching(
                 }
                 TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module)
             } else
-                TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, "unknown", "unknown")
+                TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, UNKNOWN, UNKNOWN)
         }
     }
 
@@ -167,7 +168,7 @@ class AsyncCaching(
             tx.txResponse.logsList.first().eventsList.filter { event -> event.type == "message" }[idx]
         }).let { event ->
             val type = event.attributesList.first { att -> att.key == "action" }.value
-            val module = event.attributesList.firstOrNull { att -> att.key == "module" }?.value ?: "unknown"
+            val module = event.attributesList.firstOrNull { att -> att.key == "module" }?.value ?: UNKNOWN
             Pair(type, module)
         }
 
