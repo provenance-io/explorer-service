@@ -175,6 +175,7 @@ object TxMessageTypeTable : IntIdTable(name = "tx_message_type") {
     val category = varchar("category", 128).nullable()
 }
 
+const val UNKNOWN = "unknown"
 class TxMessageTypeRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxMessageTypeRecord>(TxMessageTypeTable) {
 
@@ -188,10 +189,9 @@ class TxMessageTypeRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun insert(type: String, module: String, protoType: String) = transaction {
             findByProtoType(protoType)?.apply {
-                this.type = type
-                this.module = module
-                if (type.getCategoryForType() != null)
-                    this.category = type.getCategoryForType()!!.mainCategory
+                if (this.type == UNKNOWN) this.type = type
+                if (this.module == UNKNOWN) this.module = module
+                if (type.getCategoryForType() != null) this.category = type.getCategoryForType()!!.mainCategory
             }?.id ?: TxMessageTypeTable.insertAndGetId {
                 it[this.type] = type
                 it[this.module] = module

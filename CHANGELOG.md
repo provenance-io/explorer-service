@@ -39,6 +39,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Removed `initial supply` as it was causing confusion, and left circulation as the current total on chain #78
 * Updated gradle task `downloadProtos` to include CosmWasm/wasmd proto set, Cosmos ibc protos #62
 
+### Bug Fixes
+* Fixed bug where Tx message types were being overwritten with "unknown"
+
 ## [v1.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.2.0) - 2021-04-30
 
 ### Improvements
