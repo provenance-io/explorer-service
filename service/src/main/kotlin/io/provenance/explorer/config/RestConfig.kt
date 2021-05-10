@@ -12,6 +12,7 @@ import cosmos.upgrade.v1beta1.Upgrade
 import cosmos.vesting.v1beta1.Vesting
 import cosmwasm.wasm.v1beta1.Proposal
 import ibc.core.client.v1.Client
+import ibc.lightclients.tendermint.v1.Tendermint
 import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest
 import io.provenance.marker.v1.AddMarkerProposal
@@ -89,6 +90,7 @@ class RestConfig {
             .add(msgDescriptors())
             .add(contentDescriptors())
             .add(events())
+            .add(miscAnys())
             .build()
         return JsonFormat.printer().usingTypeRegistry(typeRegistry)
     }
@@ -101,6 +103,7 @@ class RestConfig {
             .add(msgDescriptors())
             .add(contentDescriptors())
             .add(events())
+            .add(miscAnys())
             .build()
         return JsonFormat.parser().usingTypeRegistry(typeRegistry)
     }
@@ -271,4 +274,8 @@ fun events() = listOf(
     EventMarkerTransfer.getDescriptor(),
     EventMarkerSetDenomMetadata.getDescriptor(),
     EventDenomUnit.getDescriptor(),
+)
+
+fun miscAnys() = listOf(
+    Tendermint.Header.getDescriptor()
 )

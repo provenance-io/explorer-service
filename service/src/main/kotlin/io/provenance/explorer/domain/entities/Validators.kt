@@ -106,6 +106,7 @@ class StakingValidatorCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 "candidate" -> StakingValidatorCacheRecord.find {
                     (StakingValidatorCacheTable.status neq Staking.BondStatus.BOND_STATUS_BONDED.name) and
                         (StakingValidatorCacheTable.jailed eq false) }
+                "all" -> StakingValidatorCacheRecord.all()
                 else -> listOf<StakingValidatorCacheRecord>()
                     .also { logger.error("This status is not supported: $status") }
             }

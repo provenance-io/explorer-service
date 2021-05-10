@@ -8,7 +8,10 @@ import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @Validated
@@ -23,6 +26,10 @@ class MigrationController(private val migrationService: MigrationService) : Base
     @ApiOperation("Updates existing transactions with new data points")
     @GetMapping("/update/txs")
     fun updateTxs(): ResponseEntity<Boolean> = ResponseEntity.ok(migrationService.updateTxs())
+
+    @ApiOperation("Updates existing blocks with txs")
+    @PutMapping("/update/blocks")
+    fun updateBlocks(@RequestBody blocks: List<Int>)= ResponseEntity.ok(migrationService.updateBlocks(blocks))
 
     @ApiOperation("Updates validator cache for missing records")
     @GetMapping("/update/validatorCache")

@@ -20,9 +20,9 @@ import org.jetbrains.exposed.sql.transactions.transaction
 object AccountTable : IntIdTable(name = "account") {
     val accountAddress = varchar("account_address", 128)
     val type = varchar("type", 128)
-    val accountNumber = long("account_number")
-    val baseAccount = jsonb<AccountTable, Auth.BaseAccount>("base_account", OBJECT_MAPPER)
-    val data = jsonb<AccountTable, Any>("data", OBJECT_MAPPER)
+    val accountNumber = long("account_number").nullable()
+    val baseAccount = jsonb<AccountTable, Auth.BaseAccount>("base_account", OBJECT_MAPPER).nullable()
+    val data = jsonb<AccountTable, Any>("data", OBJECT_MAPPER).nullable()
 }
 
 class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -31,6 +31,13 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findSigsByAddress(address: String) = SignatureRecord.findByJoin(SigJoinType.ACCOUNT, address)
 
         fun findByAddress(addr: String) = AccountRecord.find { AccountTable.accountAddress eq addr }.firstOrNull()
+
+        fun insertUnknownAccount(addr: String) = transaction {
+            AccountTable.insertIgnoreAndGetId {
+                it[this.accountAddress] = addr
+                it[this.type] = "BaseAccount"
+            }.let { findById(it!!)!! }
+        }
 
         fun insertIgnore(acc: Any) =
             acc.typeUrl.getTypeShortName().let { type ->

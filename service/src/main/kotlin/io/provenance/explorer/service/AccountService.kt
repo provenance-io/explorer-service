@@ -4,9 +4,6 @@ import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.AccountRecord.Companion.update
-import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
-import io.provenance.explorer.domain.entities.TxAddressJoinRecord
-import io.provenance.explorer.domain.entities.TxAddressJoinType
 import io.provenance.explorer.domain.extensions.toSigObj
 import io.provenance.explorer.domain.models.explorer.AccountDetail
 import io.provenance.explorer.domain.models.explorer.toData
@@ -22,17 +19,19 @@ class AccountService(private val accountClient: AccountGrpcClient, private val p
 
     fun getAccountRaw(address: String) = transaction { AccountRecord.findByAddress(address) } ?: saveAccount(address)
 
-    fun saveAccount(address: String) = accountClient.getAccountInfo(address).let { AccountRecord.insertIgnore(it) }
+    fun saveAccount(address: String) =
+        accountClient.getAccountInfo(address)?.let { AccountRecord.insertIgnore(it) }
+            ?: AccountRecord.insertUnknownAccount(address)
 
     fun getAccountDetail(address: String) = getAccountRaw(address).let {
         AccountDetail(
             it.type,
             it.accountAddress,
             it.accountNumber,
-            it.baseAccount.sequence.toInt(),
+            it.baseAccount?.sequence?.toInt(),
             AccountRecord.findSigsByAddress(it.accountAddress).toSigObj(props.provAccPrefix()),
             getAccountBalances(address),
-            it.data.getModuleAccName()
+            it.data?.getModuleAccName()
         )
     }
 
@@ -45,7 +44,7 @@ class AccountService(private val accountClient: AccountGrpcClient, private val p
         accs.forEach { id ->
             val record = AccountRecord.findById(id)!!
             val data = accountClient.getAccountInfo(record.accountAddress)
-            if (data != record.data)
+            if (data != null && data != record.data)
                 record.update(data)
         }
     }

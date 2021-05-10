@@ -38,7 +38,11 @@ class AccountGrpcClient(channelUri : URI) {
     }
 
     fun getAccountInfo(address: String) =
-        authClient.account(AuthOuterClass.QueryAccountRequest.newBuilder().setAddress(address).build()).account
+        try {
+            authClient.account(AuthOuterClass.QueryAccountRequest.newBuilder().setAddress(address).build()).account
+        } catch (e: Exception) {
+            null
+        }
 
     fun getAccountBalances(address: String) =
         bankClient.allBalances(BankOuterClass.QueryAllBalancesRequest.newBuilder().setAddress(address).build()).balancesList

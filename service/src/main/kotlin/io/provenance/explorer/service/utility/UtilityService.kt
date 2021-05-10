@@ -21,8 +21,8 @@ class UtilityService(
     protected val logger = logger(UtilityService::class)
 
     // Updates a TxMsgType with the given info
-    fun updateTxMsgType(record: UnknownTxType) = transaction {
-        TxMessageTypeRecord.insert(record.type, record.module, record.protoType)
+    fun updateTxMsgType(records: List<UnknownTxType>) = transaction {
+        records.forEach { record -> TxMessageTypeRecord.insert(record.type, record.module, record.protoType) }
         "Updated"
     }
 

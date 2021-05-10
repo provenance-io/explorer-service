@@ -115,8 +115,7 @@ class AssetService(
     }
 }
 
-fun String.getDenomByAddress() =
-    MarkerCacheRecord.findByAddress(this)?.denom ?: throw IllegalArgumentException("No denom exists for address $this")
+fun String.getDenomByAddress() = MarkerCacheRecord.findByAddress(this)?.denom
 
 fun String.prettyStatus() = this.substringAfter("MARKER_STATUS_")
 

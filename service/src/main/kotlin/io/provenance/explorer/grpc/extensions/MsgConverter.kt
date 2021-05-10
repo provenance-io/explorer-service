@@ -168,7 +168,7 @@ fun Any.getAssociatedAddresses(): List<String> =
         typeUrl.contains("MsgUpdateAdmin") -> this.toMsgUpdateAdmin().let { listOf(it.sender, it.newAdmin) }
         typeUrl.contains("MsgClearAdmin") -> this.toMsgClearAdmin().let { listOf(it.sender) }
 
-        else -> listOf<String>().also { logger().error("This typeUrl is not yet supported in tx messages: $typeUrl") }
+        else -> listOf<String>().also { logger().debug("This typeUrl is not yet supported as an address-based msg: $typeUrl") }
     }
 
 fun Any.getAssociatedDenoms(): List<String> =
@@ -189,14 +189,14 @@ fun Any.getAssociatedDenoms(): List<String> =
         typeUrl.contains("MsgBurnRequest") -> this.toMsgBurnRequest().let { listOf(it.amount.denom)}
         typeUrl.contains("MsgTransferRequest") -> this.toMsgTransferRequest().let { listOf(it.amount.denom)}
         typeUrl.contains("MsgSetDenomMetadataRequest") -> this.toMsgSetDenomMetadataRequest()
-            .let { it.metadata.denomUnitsList.map { d -> d.denom }}
+            .let { listOf(it.metadata.base) }
         typeUrl.contains("MsgAddAttributeRequest") -> this.toMsgAddAttributeRequest()
-            .let { listOf(it.account.getDenomByAddress())}
+            .let { it.account.getDenomByAddress()?.let { denom -> listOf(denom) } ?: listOf() }
         typeUrl.contains("MsgDeleteAttributeRequest") -> this.toMsgDeleteAttributeRequest()
-            .let { listOf(it.account.getDenomByAddress())}
+            .let { it.account.getDenomByAddress()?.let { denom -> listOf(denom) } ?: listOf() }
         typeUrl.contains("MsgInstantiateContract") -> this.toMsgInstantiateContract().let { it.fundsList.map { c -> c.denom } }
         typeUrl.contains("MsgExecuteContract") -> this.toMsgExecuteContract().let { it.fundsList.map { c -> c.denom } }
 
         else -> listOf<String>()
-            .also { logger().debug("This typeUrl is not yet supported in as an asset-based msg: $typeUrl") }
+            .also { logger().debug("This typeUrl is not yet supported as an asset-based msg: $typeUrl") }
     }

@@ -32,6 +32,13 @@ class MigrationService(
         return true
     }
 
+    fun updateBlocks(blocks: List<Int>) =
+        blocks.forEach { block ->
+            transaction { BlockCacheRecord.findById(block) }?.let {
+                asyncCaching.saveTxs(it.block)
+            }
+        }.let { true }
+
     fun updateProposers(): Boolean {
         BlockProposerRecord.findMissingRecords().forEach { block ->
             validatorService.saveProposerRecord(block.block, block.blockTimestamp, block.height)

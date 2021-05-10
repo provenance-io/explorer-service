@@ -85,11 +85,11 @@ class ValidatorService(
     fun getValidator(address: String) =
         getValidatorOperatorAddress(address)!!.let { addr ->
             val currentHeight = blockService.getLatestBlockHeightIndex().toBigInteger()
-            val stakingValidator = getStakingValidator(addr.operatorAddress)
             val signingInfo = getSigningInfos().firstOrNull { it.address == addr.consensusAddress }
             val validatorSet = grpcClient.getLatestValidators()
             val latestValidator = validatorSet.firstOrNull { it.address == addr.consensusAddress }
             val votingPowerTotal = validatorSet.sumOf { it.votingPower.toBigInteger() }
+            val stakingValidator = validateStatus(addr.stakingValidator, latestValidator, addr.id.value)
             ValidatorDetails(
                 if (latestValidator != null) CountTotal(latestValidator.votingPower.toBigInteger(), votingPowerTotal)
                     else null,
@@ -114,6 +114,12 @@ class ValidatorService(
             )
         }
 
+    fun validateStatus(v: Staking.Validator, valSet: Query.Validator?, valId: Int) =
+        if ((valSet != null && !v.isActive()) || (valSet == null && v.isActive())) {
+            updateStakingValidators(setOf(valId))
+            getStakingValidator(v.operatorAddress)
+        } else v
+
     // Finds a validator address record from whatever address is passed in
     fun getValidatorOperatorAddress(address: String) = when {
         address.startsWith(props.provValOperPrefix()) -> findAddressByOperator(address)
@@ -123,7 +129,7 @@ class ValidatorService(
     }
 
     fun getStakingValidators(status: String) = transaction {
-        StakingValidatorCacheRecord.findByStatus(status).map { it.stakingValidator }
+        StakingValidatorCacheRecord.findByStatus(status).toList()
     }
 
     fun getSigningInfos() = grpcClient.getSigningInfos()
@@ -176,32 +182,45 @@ class ValidatorService(
 
     // In point to get validators at height
     fun getValidatorsAtHeight(height: Int, count: Int, page: Int) =
-        aggregateValidators(getValidatorsByHeight(height).validatorsList, count, page, "active")
+        aggregateValidators(getValidatorsByHeight(height).validatorsList, count, page, "all", true)
 
-    private fun aggregateValidators(validatorSet: List<Query.Validator>, count: Int, page: Int, status: String) = let {
-        val stakingValidators = getStakingValidators(status)
-        val addresses = stakingValidators.mapNotNull { findAddressByOperator(it.operatorAddress) }
-        hydrateValidators(validatorSet, stakingValidators, addresses)
-            .sortedByDescending { it.bondedTokens.count }
-            .pageOfResults(page, count)
-            .let { PagedResults(it.size.toLong().pageCountOfResults(count), it) }
-    }
+    private fun aggregateValidators(
+        validatorSet: List<Query.Validator>,
+        count: Int,
+        page: Int,
+        status: String,
+        isAtHeight: Boolean = false
+    ) =
+        let {
+            if (!isAtHeight)
+                getStakingValidators(status).forEach { v ->
+                    validateStatus(
+                        v.stakingValidator,
+                        validatorSet.firstOrNull { it.address == v.consensusAddress },
+                        v.id.value)
+                }
+            val stakingValidators = getStakingValidators(status)
+            hydrateValidators(validatorSet, stakingValidators, isAtHeight)
+                .sortedByDescending { it.bondedTokens.count }
+                .pageOfResults(page, count)
+                .let { PagedResults(it.size.toLong().pageCountOfResults(count), it) }
+        }
 
     private fun hydrateValidators(
         validators: List<Query.Validator>,
-        stakingValidators: List<Staking.Validator>,
-        addresses: List<StakingValidatorCacheRecord>
+        stakingVals: List<StakingValidatorCacheRecord>,
+        isAtHeight: Boolean = false
     ) = let {
         val signingInfos = getSigningInfos()
         val height = signingInfos.first().indexOffset
         val totalVotingPower = validators.sumOf { it.votingPower.toBigInteger() }
-        stakingValidators
+        stakingVals
+            .filter { if (isAtHeight) validators.map { v -> v.address }.contains(it.consensusAddress)  else true }
             .map { stakingVal ->
-                val address = addresses.first { it.operatorAddress == stakingVal.operatorAddress }
-                val validator = validators
-                    .firstOrNull { it.pubKey.toSingleSigKeyValue() == stakingVal.consensusPubkey.toSingleSigKeyValue() }
-                val signingInfo = signingInfos.find { it.address == address.consensusAddress }
-                hydrateValidator(validator, stakingVal, signingInfo!!, height.toBigInteger(), totalVotingPower)
+                val validatorObj = stakingVal.stakingValidator
+                val validator = validators.firstOrNull { it.address == stakingVal.consensusAddress }
+                val signingInfo = signingInfos.find { it.address == stakingVal.consensusAddress }
+                hydrateValidator(validator, validatorObj, signingInfo!!, height.toBigInteger(), totalVotingPower)
             }
     }
 

@@ -107,7 +107,9 @@ class ExplorerService(
 
     fun getBondedTokenRatio() = let {
         val totalBlockChainTokens = accountService.getCurrentSupply(NHASH).toHash(NHASH).first
-        val totalBondedTokens = validatorService.getStakingValidators("active").map { it.tokens.toLong() }.sum()
+        val totalBondedTokens = validatorService.getStakingValidators("active")
+            .map { it.stakingValidator.tokens.toLong() }
+            .sum()
         Pair<Long, String>(totalBondedTokens, totalBlockChainTokens)
     }
 
