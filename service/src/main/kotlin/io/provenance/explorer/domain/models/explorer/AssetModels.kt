@@ -48,8 +48,8 @@ data class AssetHolder(
 data class AccountDetail(
     val accountType: String,
     val address: String,
-    val accountNumber: Long,
-    val sequence: Int,
+    val accountNumber: Long?,
+    val sequence: Int?,
     val publicKeys: Signatures,
     val balances: List<CoinStr>,
     val accountName: String?

@@ -32,6 +32,16 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+* Updated tx type listing to group IBC calls together
+
+### Bug Fixes
+* Handle unknown accounts now #85
+* Fixed where code was looking for non-existent denoms
+* Fixed where a block's validators list was incorrect #91
+* Added missing explicit IBC.header proto #93
+
+
 ## [v1.3.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.3.0) - 2021-05-06
 ### Release Name: Flóki-Vilgerðarson
 

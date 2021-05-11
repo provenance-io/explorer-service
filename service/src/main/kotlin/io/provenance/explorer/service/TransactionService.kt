@@ -148,7 +148,7 @@ class TransactionService(
         val moduleNames =
             TxAddressJoinRecord.findAccountsByTxHash(txId)
                 .filter { it.type == "ModuleAccount" }
-                .associate { a -> a.accountAddress to a.data.getModuleAccName()!! }
+                .associate { a -> a.accountAddress to a.data!!.getModuleAccName()!! }
 
         return monikers + moduleNames
     }

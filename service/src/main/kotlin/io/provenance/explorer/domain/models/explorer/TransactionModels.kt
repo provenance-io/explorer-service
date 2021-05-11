@@ -104,8 +104,18 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
             "delete_contract_specification_request",
             "add_record_specification_request",
             "delete_record_specification_request"
-        )
-    )
+        )),
+    IBC(
+        "ibc",
+        listOf(
+            "transfer",
+            "update_client",
+            "channel_open_confirm",
+            "channel_open_try",
+            "connection_open_confirm",
+            "connection_open_try",
+            "create_client"
+        ))
 }
 
 fun String.getCategoryForType() = MsgTypeSet.values().firstOrNull { it.types.contains(this) }

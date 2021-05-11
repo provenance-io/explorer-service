@@ -24,9 +24,9 @@ import org.springframework.web.bind.annotation.RestController
 )
 class UtilityController(private val us: UtilityService) : BaseController() {
 
-    @ApiOperation("Updates existing transaction msg type with the given info")
+    @ApiOperation("Updates existing transaction msg types with the given info")
     @PostMapping("/update/txMsgType")
-    fun updateTxMessageType(@RequestBody txMsgType: UnknownTxType) =
+    fun updateTxMessageType(@RequestBody txMsgType: List<UnknownTxType>) =
         ResponseEntity.ok(us.updateTxMsgType(txMsgType))
 
     @ApiOperation("Fetches common error types in the data")
