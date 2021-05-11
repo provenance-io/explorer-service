@@ -34,6 +34,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Improvements
 * Updated tx type listing to group IBC calls together
+* Updated Provenance protos to v1.3.0 #94
 
 ### Bug Fixes
 * Handle unknown accounts now #85

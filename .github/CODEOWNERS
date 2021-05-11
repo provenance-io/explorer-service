@@ -3,9 +3,5 @@
 # NOTE: Order is important; the last matching pattern takes the
 # most precedence.
 
-# Secondary repo maintainers, substitutes of the primary
-# maintainers when they become MIA
-*       @iramiller @mtps
-
 # Primary repo maintainers
-*       @channa-figure @crussell-figure @arnabmitra @VigM-Figure
+*       @channa-figure @crussell-figure @arnabmitra @VigM-Figure @iramiller @mtps

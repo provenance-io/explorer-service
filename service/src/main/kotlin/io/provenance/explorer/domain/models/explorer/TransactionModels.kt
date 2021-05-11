@@ -108,7 +108,6 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
     IBC(
         "ibc",
         listOf(
-            "transfer",
             "update_client",
             "channel_open_confirm",
             "channel_open_try",

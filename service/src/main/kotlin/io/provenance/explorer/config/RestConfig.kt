@@ -13,6 +13,8 @@ import cosmos.vesting.v1beta1.Vesting
 import cosmwasm.wasm.v1beta1.Proposal
 import ibc.core.client.v1.Client
 import ibc.lightclients.tendermint.v1.Tendermint
+import io.provenance.attribute.v1.EventAttributeAdd
+import io.provenance.attribute.v1.EventAttributeDelete
 import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest
 import io.provenance.marker.v1.AddMarkerProposal
@@ -49,6 +51,30 @@ import io.provenance.marker.v1.SetAdministratorProposal
 import io.provenance.marker.v1.SupplyDecreaseProposal
 import io.provenance.marker.v1.SupplyIncreaseProposal
 import io.provenance.marker.v1.WithdrawEscrowProposal
+import io.provenance.metadata.v1.EventContractSpecificationCreated
+import io.provenance.metadata.v1.EventContractSpecificationDeleted
+import io.provenance.metadata.v1.EventContractSpecificationUpdated
+import io.provenance.metadata.v1.EventOSLocatorCreated
+import io.provenance.metadata.v1.EventOSLocatorDeleted
+import io.provenance.metadata.v1.EventOSLocatorUpdated
+import io.provenance.metadata.v1.EventRecordCreated
+import io.provenance.metadata.v1.EventRecordDeleted
+import io.provenance.metadata.v1.EventRecordSpecificationCreated
+import io.provenance.metadata.v1.EventRecordSpecificationDeleted
+import io.provenance.metadata.v1.EventRecordSpecificationUpdated
+import io.provenance.metadata.v1.EventRecordUpdated
+import io.provenance.metadata.v1.EventScopeCreated
+import io.provenance.metadata.v1.EventScopeDeleted
+import io.provenance.metadata.v1.EventScopeSpecificationCreated
+import io.provenance.metadata.v1.EventScopeSpecificationDeleted
+import io.provenance.metadata.v1.EventScopeSpecificationUpdated
+import io.provenance.metadata.v1.EventScopeUpdated
+import io.provenance.metadata.v1.EventSessionCreated
+import io.provenance.metadata.v1.EventSessionDeleted
+import io.provenance.metadata.v1.EventSessionUpdated
+import io.provenance.metadata.v1.EventTxCompleted
+import io.provenance.metadata.v1.MsgAddScopeDataAccessRequest
+import io.provenance.metadata.v1.MsgAddScopeOwnerRequest
 import io.provenance.metadata.v1.MsgBindOSLocatorRequest
 import io.provenance.metadata.v1.MsgWriteScopeRequest
 import io.provenance.metadata.v1.MsgDeleteScopeRequest
@@ -59,6 +85,8 @@ import io.provenance.metadata.v1.MsgDeleteContractSpecificationRequest
 import io.provenance.metadata.v1.MsgDeleteOSLocatorRequest
 import io.provenance.metadata.v1.MsgDeleteRecordRequest
 import io.provenance.metadata.v1.MsgDeleteRecordSpecificationRequest
+import io.provenance.metadata.v1.MsgDeleteScopeDataAccessRequest
+import io.provenance.metadata.v1.MsgDeleteScopeOwnerRequest
 import io.provenance.metadata.v1.MsgDeleteScopeSpecificationRequest
 import io.provenance.metadata.v1.MsgModifyOSLocatorRequest
 import io.provenance.metadata.v1.MsgP8eMemorializeContractRequest
@@ -229,7 +257,11 @@ fun msgDescriptors() =
         ibc.core.connection.v1.Tx.MsgConnectionOpenInit.getDescriptor(),
         ibc.core.connection.v1.Tx.MsgConnectionOpenTry.getDescriptor(),
         ibc.core.connection.v1.Tx.MsgConnectionOpenAck.getDescriptor(),
-        ibc.core.connection.v1.Tx.MsgConnectionOpenConfirm.getDescriptor()
+        ibc.core.connection.v1.Tx.MsgConnectionOpenConfirm.getDescriptor(),
+        MsgAddScopeDataAccessRequest.getDescriptor(),
+        MsgDeleteScopeDataAccessRequest.getDescriptor(),
+        MsgAddScopeOwnerRequest.getDescriptor(),
+        MsgDeleteScopeOwnerRequest.getDescriptor()
     )
 
 fun contentDescriptors() =
@@ -274,6 +306,30 @@ fun events() = listOf(
     EventMarkerTransfer.getDescriptor(),
     EventMarkerSetDenomMetadata.getDescriptor(),
     EventDenomUnit.getDescriptor(),
+    EventTxCompleted.getDescriptor(),
+    EventScopeCreated.getDescriptor(),
+    EventScopeUpdated.getDescriptor(),
+    EventScopeDeleted.getDescriptor(),
+    EventSessionCreated.getDescriptor(),
+    EventSessionUpdated.getDescriptor(),
+    EventSessionDeleted.getDescriptor(),
+    EventRecordCreated.getDescriptor(),
+    EventRecordUpdated.getDescriptor(),
+    EventRecordDeleted.getDescriptor(),
+    EventScopeSpecificationCreated.getDescriptor(),
+    EventScopeSpecificationUpdated.getDescriptor(),
+    EventScopeSpecificationDeleted.getDescriptor(),
+    EventContractSpecificationCreated.getDescriptor(),
+    EventContractSpecificationUpdated.getDescriptor(),
+    EventContractSpecificationDeleted.getDescriptor(),
+    EventRecordSpecificationCreated.getDescriptor(),
+    EventRecordSpecificationUpdated.getDescriptor(),
+    EventRecordSpecificationDeleted.getDescriptor(),
+    EventOSLocatorCreated.getDescriptor(),
+    EventOSLocatorUpdated.getDescriptor(),
+    EventOSLocatorDeleted.getDescriptor(),
+    EventAttributeAdd.getDescriptor(),
+    EventAttributeDelete.getDescriptor()
 )
 
 fun miscAnys() = listOf(
