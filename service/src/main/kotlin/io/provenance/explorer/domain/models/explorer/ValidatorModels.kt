@@ -40,9 +40,12 @@ data class ValidatorDetails (
     val jailedUntil: DateTime?
 )
 
-data class ValidatorDelegation (
-    val address: String,
+data class Delegation (
+    val delegatorAddr: String,
+    val validatorSrcAddr: String,
+    val validatorDstAddr: String?,
     val amount: CoinStr,
+    val initialBal: CoinStr?,
     val shares: String?,
     val block: Int?,
     val endTime: DateTime?

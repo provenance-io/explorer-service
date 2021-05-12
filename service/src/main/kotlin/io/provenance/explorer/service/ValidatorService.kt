@@ -29,7 +29,7 @@ import io.provenance.explorer.domain.models.explorer.CommissionRate
 import io.provenance.explorer.domain.models.explorer.CountTotal
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.ValidatorCommission
-import io.provenance.explorer.domain.models.explorer.ValidatorDelegation
+import io.provenance.explorer.domain.models.explorer.Delegation
 import io.provenance.explorer.domain.models.explorer.ValidatorDetails
 import io.provenance.explorer.domain.models.explorer.ValidatorSummary
 import io.provenance.explorer.grpc.extensions.toAddress
@@ -260,9 +260,12 @@ class ValidatorService(
     fun getBondedDelegations(address: String, page: Int, limit: Int) =
         grpcClient.getStakingValidatorDelegations(address, page.toOffset(limit), limit).let { res ->
             val list = res.delegationResponsesList.map {
-                ValidatorDelegation(
+                Delegation(
                     it.delegation.delegatorAddress,
+                    it.delegation.validatorAddress,
+                    null,
                     it.balance.amount.toHash(it.balance.denom).let { coin -> CoinStr(coin.first, coin.second, it.balance.denom) },
+                    null,
                     it.delegation.shares.toDecCoin(),
                     null,
                     null)
@@ -274,9 +277,12 @@ class ValidatorService(
         grpcClient.getStakingValidatorUnbondingDels(address, 0, 100).let { res ->
             res.unbondingResponsesList.flatMap { list ->
                 list.entriesList.map {
-                    ValidatorDelegation(
+                    Delegation(
                         list.delegatorAddress,
+                        list.validatorAddress,
+                        null,
                         it.balance.toHash(NHASH).let { coin -> CoinStr(coin.first, coin.second, NHASH) },
+                        it.initialBalance.toHash(NHASH).let { coin -> CoinStr(coin.first, coin.second, NHASH) },
                         null,
                         it.creationHeight.toInt(),
                         it.completionTime.toDateTime()

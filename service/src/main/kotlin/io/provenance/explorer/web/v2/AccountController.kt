@@ -1,6 +1,5 @@
 package io.provenance.explorer.web.v2
 
-import io.provenance.explorer.domain.models.explorer.AccountDetail
 import io.provenance.explorer.service.AccountService
 import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
@@ -11,7 +10,9 @@ import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import javax.validation.constraints.Min
 
 @Validated
 @RestController
@@ -21,7 +22,31 @@ class AccountController(private val accountService: AccountService) : BaseContro
 
     @ApiOperation("Returns account detail for account address")
     @GetMapping("/{address}")
-    fun getAccount(@PathVariable address: String): ResponseEntity<AccountDetail> =
+    fun getAccount(@PathVariable address: String) =
         ResponseEntity.ok(accountService.getAccountDetail(address))
+
+    @ApiOperation("Returns delegations for account address")
+    @GetMapping("/{address}/delegations")
+    fun getAccountDelegations(
+        @PathVariable address: String,
+        @RequestParam(required = false, defaultValue = "100") @Min(1) count: Int,
+        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int
+    ) =
+        ResponseEntity.ok(accountService.getDelegations(address, page, count))
+
+    @ApiOperation("Returns unbonding delegations for account address")
+    @GetMapping("/{address}/unbonding")
+    fun getAccountUnbondingDelegations(@PathVariable address: String) =
+        ResponseEntity.ok(accountService.getUnbondingDelegations(address))
+
+    @ApiOperation("Returns redelegations for account address")
+    @GetMapping("/{address}/redelegations")
+    fun getAccountRedelegations(@PathVariable address: String) =
+        ResponseEntity.ok(accountService.getRedelegations(address))
+
+    @ApiOperation("Returns total rewards for account address")
+    @GetMapping("/{address}/rewards")
+    fun getAccountRewards(@PathVariable address: String) =
+        ResponseEntity.ok(accountService.getRewards(address))
 
 }

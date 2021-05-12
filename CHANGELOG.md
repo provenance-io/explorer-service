@@ -32,6 +32,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Accounts can now be queried for delegations, unbonding delegations, redelegations, and rewards #96
+
 ### Improvements
 * Updated tx type listing to group IBC calls together
 * Updated Provenance protos to v1.3.0 #94
@@ -42,6 +45,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Fixed where a block's validators list was incorrect #91
 * Added missing explicit IBC.header proto #93
 
+### Client Breaking
+* ValidatorDelegation object changes #96
+  * address -> delegatorAddr
+  * ADDED validatorSrcAddr, validatorDstAddr, initialBal -> Should not be breaking
 
 ## [v1.3.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.3.0) - 2021-05-06
 ### Release Name: Flóki-Vilgerðarson
