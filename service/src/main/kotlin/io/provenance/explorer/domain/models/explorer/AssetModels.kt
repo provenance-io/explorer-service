@@ -1,6 +1,7 @@
 package io.provenance.explorer.domain.models.explorer
 
 import com.fasterxml.jackson.databind.node.ObjectNode
+import cosmos.base.v1beta1.CoinOuterClass
 import org.joda.time.DateTime
 import java.math.BigInteger
 
@@ -58,4 +59,14 @@ data class AccountDetail(
 data class AssetManagement(
     val managers: Map<String, List<String>>,
     val allowGovControl: Boolean
+)
+
+data class AccountRewards(
+    val rewards: List<Reward>,
+    val total: List<CoinStr>
+)
+
+data class Reward(
+    val validatorAddress: String,
+    val reward: List<CoinStr>
 )
