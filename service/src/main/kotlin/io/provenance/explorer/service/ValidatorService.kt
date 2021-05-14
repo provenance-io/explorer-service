@@ -10,7 +10,6 @@ import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
 import io.provenance.explorer.domain.entities.updateHitCount
-import io.provenance.explorer.domain.extensions.HASH
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.getStatusString
 import io.provenance.explorer.domain.extensions.isActive
@@ -18,7 +17,6 @@ import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.pageOfResults
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDecCoin
-import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.extensions.translateByteArray
@@ -27,9 +25,9 @@ import io.provenance.explorer.domain.models.explorer.BondedTokens
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.CommissionRate
 import io.provenance.explorer.domain.models.explorer.CountTotal
+import io.provenance.explorer.domain.models.explorer.Delegation
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.ValidatorCommission
-import io.provenance.explorer.domain.models.explorer.Delegation
 import io.provenance.explorer.domain.models.explorer.ValidatorDetails
 import io.provenance.explorer.domain.models.explorer.ValidatorSummary
 import io.provenance.explorer.grpc.extensions.toAddress
@@ -245,10 +243,8 @@ class ValidatorService(
             votingPower = (if (validator != null) CountTotal(validator.votingPower.toBigInteger(), totalVotingPower) else null),
             uptime = if (stakingValidator.isActive()) signingInfo.uptime(height) else null,
             commission = stakingValidator.commission.commissionRates.rate.toDecCoin(),
-            bondedTokens = stakingValidator.tokens.toHash(NHASH)
-                .let { BondedTokens(it.first, null, it.second) },
-            selfBonded = selfBondedAmount.amount.toHash(selfBondedAmount.denom)
-                .let { BondedTokens(it.first, null, it.second) },
+            bondedTokens = BondedTokens(stakingValidator.tokens, null, NHASH),
+            selfBonded = BondedTokens(selfBondedAmount.amount, null, selfBondedAmount.denom),
             delegators = delegatorCount,
             bondHeight = if (stakingValidator.isActive()) signingInfo.startHeight else null,
             status = stakingValidator.getStatusString(),
@@ -264,7 +260,7 @@ class ValidatorService(
                     it.delegation.delegatorAddress,
                     it.delegation.validatorAddress,
                     null,
-                    it.balance.amount.toHash(it.balance.denom).let { coin -> CoinStr(coin.first, coin.second, it.balance.denom) },
+                    CoinStr(it.balance.amount, it.balance.denom),
                     null,
                     it.delegation.shares.toDecCoin(),
                     null,
@@ -281,8 +277,8 @@ class ValidatorService(
                         list.delegatorAddress,
                         list.validatorAddress,
                         null,
-                        it.balance.toHash(NHASH).let { coin -> CoinStr(coin.first, coin.second, NHASH) },
-                        it.initialBalance.toHash(NHASH).let { coin -> CoinStr(coin.first, coin.second, NHASH) },
+                        CoinStr(it.balance, NHASH),
+                        CoinStr(it.initialBalance, NHASH),
                         null,
                         it.creationHeight.toInt(),
                         it.completionTime.toDateTime()
@@ -301,15 +297,12 @@ class ValidatorService(
             grpcClient.getStakingValidatorDelegations(validator.operatorAddress, 0, 10).pagination.total
         val rewards = grpcClient.getValidatorCommission(address).commissionList.firstOrNull()
         return ValidatorCommission(
-            validator.tokens.toHash(NHASH).let { BondedTokens(it.first, null, it.second) },
-            selfBondedAmount.amount.toHash(selfBondedAmount.denom)
-                .let { BondedTokens(it.first, null, it.second) },
-            validator.tokens.toBigInteger().minus(selfBondedAmount.amount.toBigInteger()).toHash(NHASH)
-                .let { BondedTokens(it.first, null, it.second) },
+            BondedTokens(validator.tokens, null, NHASH),
+            BondedTokens(selfBondedAmount.amount, null, selfBondedAmount.denom),
+            BondedTokens(validator.tokens.toBigInteger().minus(selfBondedAmount.amount.toBigInteger()).toString(), null, NHASH),
             delegatorCount,
             validator.delegatorShares.toDecCoin(),
-            rewards?.amount?.toDecCoin()?.toHash(rewards.denom)?.let { CoinStr(it.first, it.second, rewards.denom) }
-                ?: CoinStr("0", HASH, NHASH),
+            rewards?.amount?.toDecCoin()?.let { CoinStr(it, rewards.denom) } ?: CoinStr("0", NHASH),
             CommissionRate(
                 validator.commission.commissionRates.rate.toDecCoin(),
                 validator.commission.commissionRates.maxRate.toDecCoin(),

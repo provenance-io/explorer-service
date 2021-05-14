@@ -16,9 +16,9 @@ import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.getMinGasFee
 import io.provenance.explorer.domain.extensions.pageCountOfResults
-import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
+import io.provenance.explorer.domain.extensions.toProtoCoin
 import io.provenance.explorer.domain.extensions.toSigObj
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
@@ -99,15 +99,7 @@ class TransactionService(
                 transaction { rec.txMessages.mapToTxMessages() },
                 getMonikers(rec.id),
                 rec.txTimestamp.toString(),
-                rec.txV2.tx.authInfo.fee.amountList.first().amount
-                    .toHash(rec.txV2.tx.authInfo.fee.amountList.first().denom)
-                    .let { coin ->
-                        CoinStr(
-                            coin.first,
-                            coin.second,
-                            rec.txV2.tx.authInfo.fee.amountList.first().denom
-                        )
-                    },
+                rec.txV2.tx.authInfo.fee.amountList.toProtoCoin().let { coin -> CoinStr(coin.amount, coin.denom) },
                 TxCacheRecord.findSigsByHash(rec.hash).toSigObj(props.provAccPrefix()),
                 if (rec.errorCode == null) "success" else "failed"
             )
@@ -144,9 +136,7 @@ class TransactionService(
             errorCode = tx.txResponse.code,
             codespace = tx.txResponse.codespace,
             errorLog = if (tx.txResponse.code > 0) tx.txResponse.rawLog else null,
-            fee = tx.tx.authInfo.fee.amountList.first().amount
-                .toHash(tx.tx.authInfo.fee.amountList.first().denom)
-                .let { CoinStr(it.first, it.second, tx.tx.authInfo.fee.amountList.first().denom) },
+            fee = tx.tx.authInfo.fee.amountList.toProtoCoin().let { coin -> CoinStr(coin.amount, coin.denom) },
             signers = TxCacheRecord.findSigsByHash(tx.txResponse.txhash).toSigObj(props.provAccPrefix()),
             memo = tx.tx.body.memo,
             msg = TxMessageRecord.findByHashId(txId).mapToTxMessages(),

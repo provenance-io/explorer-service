@@ -33,6 +33,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+* Removed hash conversion #66
+  * This will now be done on the frontend
+
 ## [v1.5.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.5.0) - 2021-05-21
 ### Release Name: Dicuil
 
@@ -77,6 +81,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * ValidatorDelegation object changes [#96](https://github.com/provenance-io/explorer-service/issues/96)
   * address -> delegatorAddr
   * ADDED validatorSrcAddr, validatorDstAddr, initialBal -> Should not be breaking
+* Removed queryDenom from CoinStr object #66
 
 ## [v1.3.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.3.0) - 2021-05-06
 ### Release Name: Flóki-Vilgerðarson

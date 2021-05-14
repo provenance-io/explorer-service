@@ -41,6 +41,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
+import java.math.BigInteger
 
 @Service
 class AsyncCaching(
@@ -125,10 +126,10 @@ class AsyncCaching(
     private fun calculateBlockTxFee(result: List<Abci.TxResponse>, height: Int) = transaction {
         result.map { it.tx.unpack(TxOuterClass.Tx::class.java) }
             .let { list ->
-            val numerator = list.sumOf { it.authInfo.fee.amountList.first().amount.toBigInteger() }
-            val denominator = list.sumOf { it.authInfo.fee.gasLimit.toBigInteger() }
-            numerator.toDouble().div(denominator.toDouble())
-        }.let { BlockProposerRecord.save(height, it, null, null) }
+                val numerator = list.sumOf { it.authInfo.fee.amountList.firstOrNull()?.amount?.toBigInteger() ?: BigInteger.ZERO }
+                val denominator = list.sumOf { it.authInfo.fee.gasLimit.toBigInteger() }
+                numerator.toDouble().div(denominator.toDouble())
+            }.let { BlockProposerRecord.save(height, it, null, null) }
     }
 
     fun addTxToCacheWithTimestamp(res: ServiceOuterClass.GetTxResponse, blockTime: Timestamp) =
