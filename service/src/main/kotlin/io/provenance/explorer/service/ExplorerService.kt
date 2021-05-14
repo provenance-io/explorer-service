@@ -99,13 +99,14 @@ class ExplorerService(
             Spotlight(
                 latestBlock = getBlockAtHeight(null),
                 avgBlockTime = getAverageBlockCreationTime(),
-                bondedTokens = BondedTokens(it.first.toString(), it.second, NHASH),
+                bondedTokens = it.first.toBigInteger().toHash(NHASH)
+                    .let { coin -> BondedTokens(coin.first, it.second, coin.second) },
                 totalTxCount = TxCacheRecord.getTotalTxCount()
             )
         }.let { cacheService.addSpotlightToCache(it) }
 
     fun getBondedTokenRatio() = let {
-        val totalBlockChainTokens = accountService.getCurrentSupply(NHASH)
+        val totalBlockChainTokens = accountService.getCurrentSupply(NHASH).toHash(NHASH).first
         val totalBondedTokens = validatorService.getStakingValidators("active")
             .map { it.stakingValidator.tokens.toLong() }
             .sum()
