@@ -5,8 +5,10 @@ import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
+import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toDateTime
+import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.AssetDetail
@@ -89,8 +91,8 @@ class AssetService(
     fun getAssetHolders(denom: String, page: Int, count: Int) = accountService.getCurrentSupply(denom).let { supply ->
         val res = markerClient.getMarkerHolders(denom, page.toOffset(count), count)
         val list = res.balancesList.map { bal ->
-                val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount
-                AssetHolder(bal.address, CountStrTotal(balance, supply))
+                val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount.toBigInteger()
+                AssetHolder(bal.address, CountStrTotal(balance.toHash(denom).first, supply.toHash(denom).first))
             }.sortedByDescending { it.balance.count }
         PagedResults(res.pagination.total.pageCountOfResults(count), list)
     }
