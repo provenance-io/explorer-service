@@ -38,6 +38,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Improvements
 * Updated tx type listing to group IBC calls together
 * Updated Provenance protos to v1.3.0 #94
+* Removed hash conversion #66
+  * This will now be done on the frontend
 
 ### Bug Fixes
 * Handle unknown accounts now #85
@@ -49,6 +51,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * ValidatorDelegation object changes #96
   * address -> delegatorAddr
   * ADDED validatorSrcAddr, validatorDstAddr, initialBal -> Should not be breaking
+* Removed queryDenom from CoinStr object #66
 
 ## [v1.3.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.3.0) - 2021-05-06
 ### Release Name: Flóki-Vilgerðarson

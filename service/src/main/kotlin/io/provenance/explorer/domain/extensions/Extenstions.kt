@@ -167,7 +167,8 @@ fun Message.toObjectNode(protoPrinter: JsonFormat.Printer) =
         }
 
 // this == gas_limit
-fun TxOuterClass.Fee.getMinGasFee() = this.amountList.first().amount.toInt().div(this.gasLimit.toDouble())
+fun TxOuterClass.Fee.getMinGasFee() =
+    (this.amountList.firstOrNull()?.amount?.toInt() ?: 0).div(this.gasLimit.toDouble())
 
 /**
  * ObjectMapper extension for getting the ObjectMapper configured

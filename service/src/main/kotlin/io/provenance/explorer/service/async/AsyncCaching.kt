@@ -111,7 +111,7 @@ class AsyncCaching(
     private fun calculateBlockTxFee(result: List<Abci.TxResponse>, height: Int) = transaction {
         result.map { it.tx.unpack(TxOuterClass.Tx::class.java) }
             .let { list ->
-            val numerator = list.sumBy { it.authInfo.fee.amountList.first().amount.toInt() }
+            val numerator = list.sumBy { it.authInfo.fee.amountList.firstOrNull()?.amount?.toInt() ?: 0 }
             val denominator = list.sumBy { it.authInfo.fee.gasLimit.toInt() }
             numerator.div(denominator.toDouble())
         }.let { BlockProposerRecord.save(height, it, null, null) }
