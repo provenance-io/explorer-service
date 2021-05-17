@@ -27,10 +27,25 @@ Types of changes (Stanzas):
 "Deprecated" for soon-to-be removed features.
 "Bug Fixes" for any bug fixes.
 "Client Breaking" for breaking CLI commands and REST routes used by end-users.
+"Data" for any data changes.
 Ref: https://keepachangelog.com/en/1.0.0/
 -->
 
 ## Unreleased
+
+### Features
+* Ingesting Scope transactions #29
+
+### Improvements
+* Added MetadataAddress conversion class from Provenance repo #29
+* Updated tx type listings, now sorted on module/type
+
+### Bug Fixes
+* Casting fees to BigInteger now, as the number is too big for Int
+
+### Data
+* Added tables for NFT data and tx joins #29
+
 
 ## [v1.4.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.4.0) - 2021-05-14
 ### Release Name: Posidonius

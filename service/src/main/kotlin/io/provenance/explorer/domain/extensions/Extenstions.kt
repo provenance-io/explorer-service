@@ -13,11 +13,9 @@ import com.google.protobuf.Message
 import com.google.protobuf.Timestamp
 import com.google.protobuf.util.JsonFormat
 import com.hubspot.jackson.datatype.protobuf.ProtobufModule
-import cosmos.bank.v1beta1.Tx
 import cosmos.base.abci.v1beta1.Abci
 import cosmos.slashing.v1beta1.Slashing
 import cosmos.staking.v1beta1.Staking
-import cosmos.tx.v1beta1.ServiceOuterClass
 import cosmos.tx.v1beta1.TxOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
@@ -53,7 +51,7 @@ fun ByteString.secpPubKeyToBech32(hrpPrefix: String) = let {
     val shah256 = base64.toSha256()
     val ripemd = shah256.toRIPEMD160()
     require(ripemd.size == 20) { "RipeMD size must be 20 not ${ripemd.size}" }
-    Bech32.encode(hrpPrefix, Bech32.convertBits(ripemd, 8, 5, true))
+    Bech32.encode(hrpPrefix, ripemd)
 }
 
 //PubKeyEd25519
@@ -61,8 +59,7 @@ fun ByteString.secpPubKeyToBech32(hrpPrefix: String) = let {
 fun ByteString.edPubKeyToBech32(hrpPrefix: String) = let {
     val base64 = this.toByteArray()
     require(base64.size == 32) { "Invalid Base 64 pub key byte length must be 32 not ${base64.size}" }
-    val truncated = base64.toSha256().copyOfRange(0, 20)
-    Bech32.encode(hrpPrefix, Bech32.convertBits(truncated, 8, 5, true))
+    base64.toSha256().copyOfRange(0, 20).toBech32Data(hrpPrefix).address
 }
 
 fun ByteArray.toSha256() = Hash.sha256(this)
@@ -119,18 +116,18 @@ fun BigInteger.pageCountOfResults(count: Int): Int =
 fun String.translateAddress(props: ExplorerProperties) = this.toBech32Data().let {
     Addresses(
         it.hexData,
-        Bech32.encode(props.provAccPrefix(), it.fiveBitData),
-        Bech32.encode(props.provValOperPrefix(), it.fiveBitData),
-        Bech32.encode(props.provValConsPrefix(), it.fiveBitData),
+        Bech32.encode(props.provAccPrefix(), it.data),
+        Bech32.encode(props.provValOperPrefix(), it.data),
+        Bech32.encode(props.provValConsPrefix(), it.data),
     )
 }
 
 fun ByteString.translateByteArray(props: ExplorerProperties) = this.toByteArray().toBech32Data().let {
     Addresses(
         it.hexData,
-        Bech32.encode(props.provAccPrefix(), it.fiveBitData),
-        Bech32.encode(props.provValOperPrefix(), it.fiveBitData),
-        Bech32.encode(props.provValConsPrefix(), it.fiveBitData),
+        Bech32.encode(props.provAccPrefix(), it.data),
+        Bech32.encode(props.provValOperPrefix(), it.data),
+        Bech32.encode(props.provValConsPrefix(), it.data),
     )
 }
 
@@ -167,7 +164,7 @@ fun Message.toObjectNode(protoPrinter: JsonFormat.Printer) =
         }
 
 // this == gas_limit
-fun TxOuterClass.Fee.getMinGasFee() = this.amountList.first().amount.toInt().div(this.gasLimit.toDouble())
+fun TxOuterClass.Fee.getMinGasFee() = this.amountList.first().amount.toBigInteger().toDouble().div(this.gasLimit.toDouble())
 
 /**
  * ObjectMapper extension for getting the ObjectMapper configured

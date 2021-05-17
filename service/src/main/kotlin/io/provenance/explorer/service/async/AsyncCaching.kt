@@ -1,5 +1,6 @@
 package io.provenance.explorer.service.async
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.google.protobuf.Timestamp
 import cosmos.base.abci.v1beta1.Abci
 import cosmos.base.tendermint.v1beta1.Query
@@ -7,6 +8,7 @@ import cosmos.tx.v1beta1.ServiceOuterClass
 import cosmos.tx.v1beta1.TxOuterClass
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
@@ -19,16 +21,21 @@ import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
+import io.provenance.explorer.domain.entities.TxNftJoinRecord
 import io.provenance.explorer.domain.entities.UNKNOWN
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.grpc.extensions.getAssociatedAddresses
 import io.provenance.explorer.grpc.extensions.getAssociatedDenoms
+import io.provenance.explorer.grpc.extensions.getAssociatedMetadata
+import io.provenance.explorer.grpc.extensions.getAssociatedMetadataEvents
+import io.provenance.explorer.grpc.extensions.isMetadataDeletionMsg
 import io.provenance.explorer.grpc.v1.TransactionGrpcClient
 import io.provenance.explorer.service.AccountService
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.BlockService
+import io.provenance.explorer.service.NftService
 import io.provenance.explorer.service.ValidatorService
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -42,6 +49,7 @@ class AsyncCaching(
     private val validatorService: ValidatorService,
     private val accountService: AccountService,
     private val assetService: AssetService,
+    private val nftService: NftService,
     private val props: ExplorerProperties
 ) {
 
@@ -73,10 +81,16 @@ class AsyncCaching(
         return blockRes
     }
 
+    data class TxUpdatedItems(
+        val addresses: Map<String, List<Int>>,
+        val markers: List<String>,
+        val scopes: List<String> = listOf()
+    )
+
     fun saveTxs(blockRes: Query.GetBlockByHeightResponse) {
         val toBeUpdated = addTxsToCache(blockRes.block.height(), blockRes.block.data.txsCount, blockRes.block.header.time)
-        toBeUpdated.flatMap { it.first }.toSet().let { assetService.updateAssets(it, blockRes.block.header.time) }
-        toBeUpdated.flatMap { it.second.entries }
+        toBeUpdated.flatMap { it.markers }.toSet().let { assetService.updateAssets(it, blockRes.block.header.time) }
+        toBeUpdated.flatMap { it.addresses.entries }
             .groupBy({ it.key }) { it.value }
             .mapValues { (_, values) -> values.flatten().toSet() }
             .let {
@@ -99,7 +113,7 @@ class AsyncCaching(
             tryAddTxs(blockHeight, expectedNumTxs, blockTime)
         }
 
-    private fun tryAddTxs(blockHeight: Int, txCount: Int, blockTime: Timestamp): List<Pair<List<String>, Map<String, List<Int>>>> = try {
+    private fun tryAddTxs(blockHeight: Int, txCount: Int, blockTime: Timestamp): List<TxUpdatedItems> = try {
         txClient.getTxsByHeight(blockHeight, txCount)
             .also { calculateBlockTxFee(it, blockHeight) }
             .map { addTxToCacheWithTimestamp(txClient.getTxByHash(it.txhash), blockTime) }
@@ -111,9 +125,9 @@ class AsyncCaching(
     private fun calculateBlockTxFee(result: List<Abci.TxResponse>, height: Int) = transaction {
         result.map { it.tx.unpack(TxOuterClass.Tx::class.java) }
             .let { list ->
-            val numerator = list.sumBy { it.authInfo.fee.amountList.first().amount.toInt() }
-            val denominator = list.sumBy { it.authInfo.fee.gasLimit.toInt() }
-            numerator.div(denominator.toDouble())
+            val numerator = list.sumOf { it.authInfo.fee.amountList.first().amount.toBigInteger() }
+            val denominator = list.sumOf { it.authInfo.fee.gasLimit.toBigInteger() }
+            numerator.toDouble().div(denominator.toDouble())
         }.let { BlockProposerRecord.save(height, it, null, null) }
     }
 
@@ -124,13 +138,14 @@ class AsyncCaching(
     fun addTxToCache(
         res: ServiceOuterClass.GetTxResponse,
         blockTime: DateTime
-    ): Pair<List<String>, Map<String, List<Int>>> {
+    ): TxUpdatedItems {
         val txPair = TxCacheRecord.insertIgnore(res, blockTime).let { Pair(it, res) }
         saveMessages(txPair.first, txPair.second)
         val addrs = saveAddresses(txPair.first, txPair.second)
         val markers = saveMarkers(txPair.first, txPair.second)
+        saveNftData(txPair.first, txPair.second)
         saveSignaturesTx(txPair.second)
-        return Pair(markers, addrs)
+        return TxUpdatedItems(addrs, markers)
     }
 
     private fun saveMessages(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
@@ -196,6 +211,40 @@ class AsyncCaching(
             }
             denom
         }
+    }
+
+    private fun saveNftData(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
+        // Gather MetadataAddresses from the Msgs themselves
+        val msgAddrPairs = tx.tx.body.messagesList.map { it.getAssociatedMetadata() to it.isMetadataDeletionMsg() }
+        val msgAddrs = msgAddrPairs.mapNotNull { it.first }
+
+        // Gather event-only MetadataAddresses from the events
+        val me = tx.tx.body.messagesList.flatMap { it.getAssociatedMetadataEvents() }.toSet()
+        val meAddrs = tx.txResponse.logsList
+            .flatMap { log -> log.eventsList }
+            .filter { it.type in me.map { m -> m.event } }
+            .flatMap { e ->
+                e.attributesList
+                    .filter {
+                            a -> a.key in me.map { m -> m.idField }
+                    }
+                    .map {
+                        jacksonObjectMapper().readValue(it.value, String::class.java)
+                    } }
+            .map {
+                    addr -> addr.toMAddress()
+            }
+
+        // Save the nft addresses
+        val nfts = (msgAddrs + meAddrs).mapNotNull { md ->
+            nftService.saveMAddress(md)
+                // mark deleted if necessary
+                .also {
+                    if (tx.txResponse.code != 0 && msgAddrPairs.first { it.first == md }.second)
+                        nftService.markDeleted(md) }
+        }
+        // Save the nft joins
+        nfts.forEach { nft -> TxNftJoinRecord.insert(tx.txResponse.txhash, txId, tx.txResponse.height.toInt(), nft) }
     }
 
     private fun saveSignaturesTx(tx: ServiceOuterClass.GetTxResponse) = transaction {

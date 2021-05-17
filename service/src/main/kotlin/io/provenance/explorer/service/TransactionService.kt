@@ -58,6 +58,7 @@ class TransactionService(
             null -> TxMessageTypeRecord.all()
             else -> TxMessageTypeRecord.findByType(typeSet.types)
         }.map { TxType(it.category ?: it.module, it.type) }
+            .sortedWith(compareBy(TxType::module, TxType::type))
     }
 
     fun getTxsByQuery(
@@ -122,7 +123,7 @@ class TransactionService(
             gas = Gas(
                 tx.txResponse.gasUsed.toInt(),
                 tx.txResponse.gasWanted.toInt(),
-                tx.tx.authInfo.fee.gasLimit.toInt(),
+                tx.tx.authInfo.fee.gasLimit.toBigInteger(),
                 tx.tx.authInfo.fee.getMinGasFee()),
             time = asyncCache.getBlock(tx.txResponse.height.toInt()).block.header.time.formattedString(),
             status = if (tx.txResponse.code > 0) "failed" else "success",

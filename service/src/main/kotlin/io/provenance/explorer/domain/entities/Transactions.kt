@@ -1,15 +1,11 @@
 package io.provenance.explorer.domain.entities
 
 import com.google.protobuf.Any
-import com.google.protobuf.Timestamp
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.DateTrunc
-import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.startOfDay
-import io.provenance.explorer.domain.extensions.toDateTime
-import io.provenance.explorer.domain.extensions.toBase64
 import io.provenance.explorer.domain.extensions.toDbHash
 import io.provenance.explorer.domain.models.explorer.GasStatistics
 import io.provenance.explorer.domain.models.explorer.TxQueryParams
@@ -27,7 +23,6 @@ import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.Max
 import org.jetbrains.exposed.sql.Min
 import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.countDistinct
@@ -39,7 +34,6 @@ import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 
@@ -298,14 +292,6 @@ class TxAddressJoinRecord(id: EntityID<Int>) : IntEntity(id) {
             ).toList()
         }
 
-        fun update(addr: String, addrId: Int, addrType: String) = transaction {
-            TxAddressJoinTable.update( { (TxAddressJoinTable.address eq addr) and (TxAddressJoinTable.addressId eq 0)
-            } ) {
-                it[this.addressId] = addrId
-                it[this.addressType] = addrType
-            }
-        }
-
         fun insert(txHash: String, txId: EntityID<Int>, blockHeight: Int, addrPair: Pair<String, Int?>, address: String) =
             transaction {
                     findByHashAndAddress(txId, addrPair, address) ?: TxAddressJoinTable.insert {
@@ -375,4 +361,48 @@ class TxMarkerJoinRecord(id: EntityID<Int>) : IntEntity(id) {
     var txHash by TxMarkerJoinTable.txHash
     var markerId by TxMarkerJoinTable.markerId
     var denom by TxMarkerJoinTable.denom
+}
+
+enum class TxNftJoinType { SCOPE, SCOPE_SPEC, CONTRACT_SPEC }
+
+object TxNftJoinTable : IntIdTable(name = "tx_nft_join") {
+    val blockHeight = integer("block_height")
+    val txHashId = reference("tx_hash_id", TxCacheTable)
+    val txHash = varchar("tx_hash", 64)
+    val metadataType = varchar("metadata_type", 16)
+    val metadataId = integer("metadata_id")
+    val metadataUuid = varchar("metadata_uuid", 128)
+}
+
+class TxNftJoinRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxNftJoinRecord>(TxNftJoinTable) {
+
+        private fun findByHashIdAndUuid(txHashId: EntityID<Int>, mdTriple: Triple<TxNftJoinType, Int, String>) =
+            transaction {
+                TxNftJoinRecord
+                    .find { (TxNftJoinTable.txHashId eq txHashId) and
+                            (TxNftJoinTable.metadataType eq mdTriple.first.name) and
+                            (TxNftJoinTable.metadataId eq mdTriple.second) }
+                    .firstOrNull()
+            }
+
+        fun insert(txHash: String, txId: EntityID<Int>, blockHeight: Int, mdTriple: Triple<TxNftJoinType, Int, String>) =
+            transaction {
+                findByHashIdAndUuid(txId, mdTriple) ?: TxNftJoinTable.insert {
+                    it[this.blockHeight] = blockHeight
+                    it[this.txHashId] = txId
+                    it[this.txHash] = txHash
+                    it[this.metadataId] = mdTriple.second
+                    it[this.metadataType] = mdTriple.first.name
+                    it[this.metadataUuid] = mdTriple.third
+                }
+            }
+    }
+
+    var blockHeight by TxNftJoinTable.blockHeight
+    var txHashId by TxCacheRecord referencedOn TxNftJoinTable.txHashId
+    var txHash by TxNftJoinTable.txHash
+    var metadataType by TxNftJoinTable.metadataType
+    var metadataId by TxNftJoinTable.metadataId
+    var metadataUuid by TxNftJoinTable.metadataUuid
 }
