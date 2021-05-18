@@ -41,7 +41,7 @@ class MarkerCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.supply] = supply
                     it[this.lastTx] = txTimestamp
                     it[this.data] = marker
-                }.let { Pair(it, marker) }
+                }.let { Pair(it, findById(it!!)!!) }
             }
 
         fun findByDenom(denom: String) = transaction {

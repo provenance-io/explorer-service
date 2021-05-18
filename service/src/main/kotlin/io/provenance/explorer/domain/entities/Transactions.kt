@@ -3,7 +3,9 @@ package io.provenance.explorer.domain.entities
 import com.google.protobuf.Any
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.domain.core.MdParent
 import io.provenance.explorer.domain.core.sql.DateTrunc
+import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDbHash
@@ -23,6 +25,7 @@ import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.Max
 import org.jetbrains.exposed.sql.Min
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.countDistinct
@@ -96,9 +99,12 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
-            val columns: MutableList<Expression<*>> = mutableListOf(TxCacheTable.id, TxCacheTable.hash,
+            val columns: MutableList<Expression<*>> = mutableListOf()
+            if (!txQueryParams.onlyTxQuery())
+                columns.add(Distinct(TxCacheTable.id, IntegerColumnType()).alias("dist"))
+            columns.addAll(mutableListOf(TxCacheTable.id, TxCacheTable.hash,
                 TxCacheTable.height, TxCacheTable.gasWanted, TxCacheTable.gasUsed, TxCacheTable.txTimestamp,
-                TxCacheTable.errorCode, TxCacheTable.codespace, TxCacheTable.txV2)
+                TxCacheTable.errorCode, TxCacheTable.codespace, TxCacheTable.txV2))
             val query =
                 findByQueryParams(txQueryParams, columns)
                     .orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
@@ -124,6 +130,8 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 join = join.innerJoin(TxAddressJoinTable, { TxCacheTable.id }, { TxAddressJoinTable.txHashId })
             if (tqp.markerId != null || tqp.denom != null)
                 join = join.innerJoin(TxMarkerJoinTable, { TxCacheTable.id }, { TxMarkerJoinTable.txHashId })
+            if (tqp.nftId != null)
+                join = join.innerJoin(TxNftJoinTable, {TxCacheTable.id}, {TxNftJoinTable.txHashId})
 
             val query = if (distinctQuery != null) join.slice(distinctQuery).selectAll() else join.selectAll()
 
@@ -142,6 +150,10 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 query.andWhere { TxMarkerJoinTable.markerId eq tqp.markerId }
             else if (tqp.denom != null)
                 query.andWhere { TxMarkerJoinTable.denom eq tqp.denom }
+            if (tqp.nftId != null && tqp.nftType != null)
+                query.andWhere { (TxNftJoinTable.metadataId eq tqp.nftId) and (TxNftJoinTable.metadataType eq tqp.nftType) }
+            else if (tqp.nftUuid != null && tqp.nftType != null)
+                query.andWhere { (TxNftJoinTable.metadataUuid eq tqp.nftUuid) and (TxNftJoinTable.metadataType eq tqp.nftType) }
             if (tqp.fromDate != null)
                 query.andWhere { TxCacheTable.txTimestamp greaterEq tqp.fromDate.startOfDay() }
             if (tqp.toDate != null)
@@ -363,8 +375,6 @@ class TxMarkerJoinRecord(id: EntityID<Int>) : IntEntity(id) {
     var denom by TxMarkerJoinTable.denom
 }
 
-enum class TxNftJoinType { SCOPE, SCOPE_SPEC, CONTRACT_SPEC }
-
 object TxNftJoinTable : IntIdTable(name = "tx_nft_join") {
     val blockHeight = integer("block_height")
     val txHashId = reference("tx_hash_id", TxCacheTable)
@@ -377,7 +387,7 @@ object TxNftJoinTable : IntIdTable(name = "tx_nft_join") {
 class TxNftJoinRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxNftJoinRecord>(TxNftJoinTable) {
 
-        private fun findByHashIdAndUuid(txHashId: EntityID<Int>, mdTriple: Triple<TxNftJoinType, Int, String>) =
+        private fun findByHashIdAndUuid(txHashId: EntityID<Int>, mdTriple: Triple<MdParent, Int, String>) =
             transaction {
                 TxNftJoinRecord
                     .find { (TxNftJoinTable.txHashId eq txHashId) and
@@ -386,7 +396,7 @@ class TxNftJoinRecord(id: EntityID<Int>) : IntEntity(id) {
                     .firstOrNull()
             }
 
-        fun insert(txHash: String, txId: EntityID<Int>, blockHeight: Int, mdTriple: Triple<TxNftJoinType, Int, String>) =
+        fun insert(txHash: String, txId: EntityID<Int>, blockHeight: Int, mdTriple: Triple<MdParent, Int, String>) =
             transaction {
                 findByHashIdAndUuid(txId, mdTriple) ?: TxNftJoinTable.insert {
                     it[this.blockHeight] = blockHeight
@@ -397,6 +407,20 @@ class TxNftJoinRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.metadataUuid] = mdTriple.third
                 }
             }
+
+        fun findTxByUuid(uuid: String, offset: Int, limit: Int) = transaction {
+            val query = TxNftJoinTable.innerJoin(TxCacheTable, {TxNftJoinTable.txHashId}, {TxCacheTable.id})
+                .slice(TxCacheTable.id, TxCacheTable.hash,
+                    TxCacheTable.height, TxCacheTable.gasWanted, TxCacheTable.gasUsed, TxCacheTable.txTimestamp,
+                    TxCacheTable.errorCode, TxCacheTable.codespace)
+                .select { TxNftJoinTable.metadataUuid eq uuid }
+                .andWhere { TxNftJoinTable.metadataType eq MdParent.SCOPE.name }
+                .orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
+                .limit(limit, offset.toLong())
+            TxCacheRecord.wrapRows(query).toSet()
+        }
+
+
     }
 
     var blockHeight by TxNftJoinTable.blockHeight

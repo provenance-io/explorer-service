@@ -16,7 +16,10 @@ data class TxQueryParams(
     val count: Int,
     val offset: Int,
     val fromDate: DateTime?,
-    val toDate: DateTime?
+    val toDate: DateTime?,
+    val nftId: Int?,
+    val nftType: String?,
+    val nftUuid: String?
 )
 
 fun TxQueryParams.onlyTxQuery() = addressId == null && markerId == null && msgTypes.isEmpty()
@@ -94,7 +97,6 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
         listOf(
             "p8e_memorialize_contract_request",
             "write_p8e_contract_spec_request",
-            "change_ownership_request",
             "write_scope_request",
             "delete_scope_request",
             "add_scope_data_access_request",
@@ -109,7 +111,10 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
             "write_contract_specification_request",
             "delete_contract_specification_request",
             "write_record_specification_request",
-            "delete_record_specification_request"
+            "delete_record_specification_request",
+            "write_os_locator_request",
+            "delete_os_locator_request",
+            "modify_os_locator_request"
         )),
     IBC(
         "ibc",

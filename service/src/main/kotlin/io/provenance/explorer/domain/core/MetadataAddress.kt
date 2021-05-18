@@ -13,7 +13,7 @@ enum class MdParent(val types: List<String>) {
     CONTRACT_SPEC(listOf(PREFIX_CONTRACT_SPECIFICATION, PREFIX_RECORD_SPECIFICATION))
 }
 
-fun String.getParentForType() = MdParent.values().firstOrNull { it.types.contains(this) }
+fun MetadataAddress.getParentForType() = MdParent.values().firstOrNull { it.types.contains(this.getPrefix()) }
 
 const val PREFIX_SCOPE = "scope"
 const val PREFIX_SESSION = "session"

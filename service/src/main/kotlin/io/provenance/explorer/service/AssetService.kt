@@ -57,7 +57,7 @@ class AssetService(
     }
 
     fun getAssetRaw(denom: String) = transaction {
-        MarkerCacheRecord.findByDenom(denom)?.let { Pair(it.id, it.data) } ?:
+        MarkerCacheRecord.findByDenom(denom)?.let { Pair(it.id, it) } ?:
             markerClient.getMarkerDetail(denom).let {
                 MarkerCacheRecord.insertIgnore(
                     it, accountService.getCurrentSupply(denom).toBigDecimal(),
@@ -68,23 +68,23 @@ class AssetService(
 
     fun getAssetDetail(denom: String) =
         getAssetRaw(denom)
-            .let { (id, detail) ->
+            .let { (id, record) ->
                 val txCount = TxMarkerJoinRecord.findCountByDenom(id!!.value)
                 AssetDetail(
-                    detail.denom,
-                    detail.baseAccount.address,
-                    AssetManagement(detail.getManagingAccounts(), detail.allowGovernanceControl),
-                    detail.supply.toBigInteger().toString(),
-                    detail.isMintable(),
+                    record.denom,
+                    record.markerAddress,
+                    AssetManagement(record.data.getManagingAccounts(), record.data.allowGovernanceControl),
+                    record.supply.toBigInteger().toString(),
+                    record.data.isMintable(),
                     markerClient.getMarkerHolders(denom, 0, 10).pagination.total.toInt(),
                     txCount,
-                    attrClient.getAllAttributesForAddress(detail.baseAccount.address)
+                    attrClient.getAllAttributesForAddress(record.markerAddress)
                         .map { attr -> attr.toObjectNode(protoPrinter) },
                     markerClient.getMarkerMetadata(denom).toObjectNode(protoPrinter),
                     TokenCounts(
-                        accountService.getAccountBalances(detail.baseAccount.address).size,
-                        metadataClient.getScopesByOwner(detail.baseAccount.address).pagination.total.toInt()),
-                    detail.status.name.prettyStatus()
+                        accountService.getAccountBalances(record.markerAddress).size,
+                        metadataClient.getScopesByOwner(record.markerAddress).pagination.total.toInt()),
+                    record.status
                 )
             }
 

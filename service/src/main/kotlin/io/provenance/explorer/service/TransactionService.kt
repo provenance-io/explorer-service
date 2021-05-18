@@ -3,7 +3,9 @@ package io.provenance.explorer.service
 import com.google.protobuf.util.JsonFormat
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.domain.core.getParentForType
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
@@ -42,7 +44,8 @@ import org.springframework.stereotype.Service
 class TransactionService(
     private val protoPrinter: JsonFormat.Printer,
     private val props: ExplorerProperties,
-    private val asyncCache: AsyncCaching
+    private val asyncCache: AsyncCaching,
+    private val nftService: NftService
 ) {
 
     protected val logger = logger(TransactionService::class)
@@ -71,34 +74,45 @@ class TransactionService(
         count: Int,
         page: Int,
         fromDate: DateTime?,
-        toDate: DateTime?
+        toDate: DateTime?,
+        nftAddr: String?
     ): PagedResults<TxSummary> {
-            val msgTypes = if (msgType != null) listOf(msgType) else module?.types ?: listOf()
-            val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
-            val addr = transaction { address?.getAddressType(props) }
-            val markerId = if (denom != null) MarkerCacheRecord.findByDenom(denom)?.id?.value else null
+        val msgTypes = if (msgType != null) listOf(msgType) else module?.types ?: listOf()
+        val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
+        val addr = transaction { address?.getAddressType(props) }
+        val markerId = if (denom != null) MarkerCacheRecord.findByDenom(denom)?.id?.value else null
+        val nft = nftAddr?.toMAddress()
+            ?.let { Triple(it.getParentForType()?.name, nftService.getNftDbId(it), it.getPrimaryUuid().toString()) }
 
-            val params =
-                TxQueryParams(addr?.second, addr?.first, address, markerId, denom, msgTypeIds, txHeight, txStatus,
-                    count, page.toOffset(count), fromDate, toDate)
+        val params =
+            TxQueryParams(
+                addr?.second, addr?.first, address, markerId, denom, msgTypeIds, txHeight, txStatus,
+                count, page.toOffset(count), fromDate, toDate, nft?.second, nft?.first, nft?.third
+            )
 
-            val total = TxCacheRecord.findByQueryParamsForCount(params)
-            TxCacheRecord.findByQueryForResults(params).map {
-                val rec = checkMsgCount(it)
-                TxSummary(
-                    rec.hash,
-                    rec.height,
-                    transaction { rec.txMessages.mapToTxMessages() },
-                    getMonikers(rec.id),
-                    rec.txTimestamp.toString(),
-                    rec.txV2.tx.authInfo.fee.amountList.first().amount
-                        .toHash(rec.txV2.tx.authInfo.fee.amountList.first().denom)
-                        .let { coin -> CoinStr(coin.first, coin.second, rec.txV2.tx.authInfo.fee.amountList.first().denom) },
-                    TxCacheRecord.findSigsByHash(rec.hash).toSigObj(props.provAccPrefix()),
-                    if (rec.errorCode == null) "success" else "failed"
-                )
-            }.let { return PagedResults(total.pageCountOfResults(count), it) }
-        }
+        val total = TxCacheRecord.findByQueryParamsForCount(params)
+        TxCacheRecord.findByQueryForResults(params).map {
+            val rec = checkMsgCount(it)
+            TxSummary(
+                rec.hash,
+                rec.height,
+                transaction { rec.txMessages.mapToTxMessages() },
+                getMonikers(rec.id),
+                rec.txTimestamp.toString(),
+                rec.txV2.tx.authInfo.fee.amountList.first().amount
+                    .toHash(rec.txV2.tx.authInfo.fee.amountList.first().denom)
+                    .let { coin ->
+                        CoinStr(
+                            coin.first,
+                            coin.second,
+                            rec.txV2.tx.authInfo.fee.amountList.first().denom
+                        )
+                    },
+                TxCacheRecord.findSigsByHash(rec.hash).toSigObj(props.provAccPrefix()),
+                if (rec.errorCode == null) "success" else "failed"
+            )
+        }.let { return PagedResults(total.pageCountOfResults(count), it) }
+    }
 
     // Triple checks that the tx messages are up to date in the db
     fun checkMsgCount(curr: TxCacheRecord): TxCacheRecord =

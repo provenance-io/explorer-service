@@ -37,4 +37,11 @@ class UtilityController(private val us: UtilityService) : BaseController() {
     @GetMapping("/test/json")
     fun jsonTest(@RequestParam txHash: String) = ResponseEntity.ok(us.translateMsgAny(txHash))
 
+    @ApiOperation("Given the accounts, get the balance for the denom")
+    @GetMapping("/accounts/denom")
+    fun getAccountsWithDenom(
+        @RequestParam denom: String,
+        @RequestParam accounts: List<String>
+    ) = ResponseEntity.ok(us.searchAccountsForDenom(accounts, denom))
+
 }

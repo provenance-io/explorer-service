@@ -45,19 +45,19 @@ class AttributeGrpcClient(channelUri : URI) {
                 .build())
 
         val total = results.pagination?.total ?: results.attributesCount.toLong()
-        val holders = results.attributesList
+        val attributes = results.attributesList.toMutableList()
 
-        while (holders.count() < total) {
+        while (attributes.count() < total) {
             offset += limit
             attrClient.attributes(
                 QueryAttributesRequest.newBuilder()
                     .setAccount(address)
                     .setPagination(getPaginationBuilder(offset, limit))
                     .build())
-                .let { holders.addAll(it.attributesList) }
+                .let { attributes.addAll(it.attributesList) }
         }
 
-        return holders
+        return attributes
     }
 
 }

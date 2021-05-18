@@ -1,18 +1,13 @@
 package io.provenance.explorer.grpc.v1
 
 import cosmos.base.abci.v1beta1.Abci
-import cosmos.staking.v1beta1.QueryOuterClass
-import cosmos.staking.v1beta1.Staking
 import cosmos.tx.v1beta1.ServiceGrpc
 import cosmos.tx.v1beta1.ServiceOuterClass
-import cosmos.tx.v1beta1.TxOuterClass
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.core.logger
-import io.provenance.explorer.domain.exceptions.TendermintApiCustomException
 import io.provenance.explorer.domain.exceptions.TendermintApiException
 import io.provenance.explorer.grpc.extensions.getPaginationBuilder
-import io.provenance.explorer.service.async.AsyncService
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -36,7 +31,6 @@ class TransactionGrpcClient(channelUri: URI) {
                 .idleTimeout(60, TimeUnit.SECONDS)
                 .keepAliveTime(10, TimeUnit.SECONDS)
                 .keepAliveTimeout(10, TimeUnit.SECONDS)
-//                .maxInboundMessageSize(10485760)
                 .intercept(GrpcLoggingInterceptor())
                 .build()
 
@@ -55,7 +49,7 @@ class TransactionGrpcClient(channelUri: URI) {
                 .setPagination(getPaginationBuilder(offset, limit))
                 .build())
 
-        val txResps = results.txResponsesList
+        val txResps = results.txResponsesList.toMutableList()
 
         if (txResps.count() == 0)
             throw TendermintApiException("Blockchain failed to retrieve txs for height $height. Expected $total, " +
@@ -68,9 +62,7 @@ class TransactionGrpcClient(channelUri: URI) {
                     .addEvents("tx.height=$height")
                     .setPagination(getPaginationBuilder(offset, limit))
                     .build())
-                .let {
-                    txResps.addAll(it.txResponsesList)
-                }
+                .let { txResps.addAll(it.txResponsesList) }
         }
 
         return txResps

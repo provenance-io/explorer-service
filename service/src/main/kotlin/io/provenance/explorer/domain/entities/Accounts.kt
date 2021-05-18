@@ -12,6 +12,7 @@ import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -27,6 +28,10 @@ object AccountTable : IntIdTable(name = "account") {
 
 class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<AccountRecord>(AccountTable) {
+
+        fun findAccountsMissingNumber() = transaction {
+            AccountRecord.find { AccountTable.accountNumber.isNull() and AccountTable.baseAccount.isNotNull() }.toList()
+        }
 
         fun findSigsByAddress(address: String) = SignatureRecord.findByJoin(SigJoinType.ACCOUNT, address)
 
@@ -101,6 +106,7 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
                         acc.unpack(Auth.ModuleAccount::class.java).let { mod ->
                             this.apply {
                                 this.baseAccount = mod.baseAccount
+                                this.accountNumber = mod.baseAccount.accountNumber
                                 this.data = acc
                             }
                             SignatureJoinRecord.insert(mod.baseAccount.pubKey, SigJoinType.ACCOUNT, mod.baseAccount.address)
@@ -109,6 +115,7 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
                         acc.unpack(Auth.BaseAccount::class.java).let { mod ->
                             this.apply {
                                 this.baseAccount = mod
+                                this.accountNumber = mod.accountNumber
                                 this.data = acc
                             }
                             SignatureJoinRecord.insert(mod.pubKey, SigJoinType.ACCOUNT, mod.address)
@@ -117,6 +124,7 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
                         acc.unpack(MarkerAccount::class.java).let { mod ->
                             this.apply {
                                 this.baseAccount = mod.baseAccount
+                                this.accountNumber = mod.baseAccount.accountNumber
                                 this.data = acc
                             }
                             SignatureJoinRecord.insert(mod.baseAccount.pubKey, SigJoinType.ACCOUNT, mod.baseAccount.address)

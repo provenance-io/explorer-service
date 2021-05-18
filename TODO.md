@@ -1,51 +1,33 @@
 ACCOUNTS:
 * List Scopes where account == value owner or owner (getOwnership())
+* List Specs where account == owner
 
-SCOPE LISTVIEW:
+// FIRST
+SCOPE LISTVIEW: ##DONE
 * scopeaddr
-* scope spec addr
-* session count
-* record count
-* FILTERS: by scope spec addr
+* spec name or scope spec addr
+* Last updated from tx
 
-SCOPE SPEC LISTVIEW:
-* scope spec addr
-* name
-* contract spec count
-* FILTERS: by contract spec addr
-
-CONTRACT SPEC LISTVIEW:
-* contract spec addr
-* name
-* record spec count
-
-SCOPE DETAIL:
+SCOPE DETAIL: ##DONE
 * scope addr
-* spec addr -> link to spec page/popup, whatever
+* spec addr -> link to spec page/popup, whatever -> spec name links to address
 * description (from spec)
 * owner list w/roles
-* data access
 * value owner
 
-SCOPE SUBLISTS:
-* Records
-  * Detail: record Addr
-    * From Spec: record spec addr -> link to spec page/popup, whatever
+SCOPE SUBLISTS: ##DONE
+* Records ##DONE
+  * Detail: record name
+    * From Spec: record spec addr
     * Last Modified: Date (from session) From session addr -> link to session page/popup, whatever
-    * name
-    * process
-    * inputs
-    * outputs
-* Sessions
-  * Detail: session addr 
-    * From Spec: contract spec addr -> link to spec page/popup, whatever
-    * Last Modified: Date By account address -> link to account page
-    * name
-    * parties w/roles
-    * Records: list of record addr -> link to record page/popup, whatever OR details as above
-* Txs
+    * record addr
+    * parties that updated w/roles
+  * NOTE: will need to show unfilled records
+* Txs ##DONE
   * same tx list as always. filtered on txs connected to this scope addr
   
+
+// DO THIS LAST
 SCOPE SPEC DETAIL:
 * spec addr
 * description
