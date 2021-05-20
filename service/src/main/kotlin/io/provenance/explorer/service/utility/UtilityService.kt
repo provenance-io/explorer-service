@@ -9,13 +9,13 @@ import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.UnknownTxType
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
-import io.provenance.explorer.service.async.AsyncCaching
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 
 @Service
 class UtilityService(
-    private val protoPrinter: JsonFormat.Printer
+    private val protoPrinter: JsonFormat.Printer,
+    private val markerClient: MarkerGrpcClient
 ) {
 
     protected val logger = logger(UtilityService::class)
@@ -47,6 +47,27 @@ class UtilityService(
                         }
                 )
             }
+    }
+
+    // searches for accounts that may or may not have the denom balance
+    fun searchAccountsForDenom(accounts: List<String>, denom: String): List<Map<String, String>> {
+        var offset = 0
+        val limit = 100
+
+        val results = markerClient.getMarkerHolders(denom, offset, limit)
+        val total = results.pagination?.total ?: results.balancesCount.toLong()
+        val holders = results.balancesList.toMutableList()
+
+        while (holders.count() < total) {
+            offset += limit
+            markerClient.getMarkerHolders(denom, offset, limit).let { holders.addAll(it.balancesList) }
+        }
+
+        val map = holders.associateBy { it.address }
+
+        return accounts.toSet().map { a ->
+            mapOf("address" to a, denom to (map[a]?.coinsList?.firstOrNull { c -> c.denom == denom }?.amount ?: "Nothing"))
+        }
     }
 }
 

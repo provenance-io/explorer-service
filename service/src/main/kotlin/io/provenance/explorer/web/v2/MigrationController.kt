@@ -39,4 +39,8 @@ class MigrationController(private val migrationService: MigrationService) : Base
     @GetMapping("/update/block/proposers")
     fun updateBlockProposers(): ResponseEntity<Boolean> = ResponseEntity.ok(migrationService.updateProposers())
 
+    @ApiOperation("Updates accounts with data")
+    @PutMapping("/update/accounts")
+    fun updateAccounts() = ResponseEntity.ok(migrationService.updateAccounts())
+
 }

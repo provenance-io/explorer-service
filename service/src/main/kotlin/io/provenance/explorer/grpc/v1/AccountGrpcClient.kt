@@ -59,11 +59,16 @@ class AccountGrpcClient(channelUri : URI) {
         bankClient.supplyOf(BankOuterClass.QuerySupplyOfRequest.newBuilder().setDenom(denom).build()).amount
 
     fun getDelegations(address: String, offset: Int, limit: Int) =
-        stakingClient.delegatorDelegations(
-            StakingOuterClass.QueryDelegatorDelegationsRequest.newBuilder()
-                .setDelegatorAddr(address)
-                .setPagination(getPaginationBuilder(offset, limit))
-                .build())
+        try {
+            stakingClient.delegatorDelegations(
+                StakingOuterClass.QueryDelegatorDelegationsRequest.newBuilder()
+                    .setDelegatorAddr(address)
+                    .setPagination(getPaginationBuilder(offset, limit))
+                    .build()
+            )
+        } catch (e: Exception) {
+            StakingOuterClass.QueryDelegatorDelegationsResponse.getDefaultInstance()
+        }
 
     fun getUnbondingDelegations(address: String, offset: Int, limit: Int) =
         stakingClient.delegatorUnbondingDelegations(

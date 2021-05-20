@@ -21,11 +21,11 @@ import javax.validation.constraints.Min
 class NftController(private val nftService: NftService) : BaseController() {
 
     @ApiOperation("Returns NFT detail for address")
-    @GetMapping("/{uuid}")
-    fun getNftDetail(@PathVariable uuid: String) = ResponseEntity.ok(nftService.getScopeByUuid(uuid))
+    @GetMapping("/scope/{addr}")
+    fun getNftDetail(@PathVariable addr: String) = ResponseEntity.ok(nftService.getScopeByAddr(addr))
 
     @ApiOperation("Returns paginated list of NFTs")
-    @GetMapping("/all")
+    @GetMapping("/scope/all")
     fun getAllNfts(
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
         @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
@@ -33,7 +33,7 @@ class NftController(private val nftService: NftService) : BaseController() {
         ResponseEntity.ok(nftService.getAllScopes(page, count))
 
     @ApiOperation("Returns NFTs for owning address")
-    @GetMapping("/owner/{address}")
+    @GetMapping("/scope/owner/{address}")
     fun getNftsByOwningAddress(
         @PathVariable address: String,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
@@ -44,16 +44,10 @@ class NftController(private val nftService: NftService) : BaseController() {
     @GetMapping("/address/{addr}")
     fun getMetadataAddress(@PathVariable addr: String) = ResponseEntity.ok(nftService.translateAddress(addr))
 
+    @ApiOperation("Returns records for the NFT")
+    @GetMapping("/scope/{addr}/records")
+    fun getNftRecords(@PathVariable addr: String) = ResponseEntity.ok(nftService.getRecordsForScope(addr))
+
 
 
 }
-
-
-// Per NFT (NEW PAGE)
-//- the NFT
-//- whatever is under the NFA (I dont know yet)
-//- NFT transactions
-//  - again no clue what this would look like
-//
-//Non-Fungible Token - NFT (NEW PAGE)
-//- list of NFTs

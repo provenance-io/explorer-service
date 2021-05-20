@@ -6,7 +6,9 @@ import io.provenance.explorer.config.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.getPaginationBuilder
 import io.provenance.metadata.v1.OwnershipRequest
 import io.provenance.metadata.v1.QueryGrpc
+import io.provenance.metadata.v1.RecordSpecificationsForContractSpecificationRequest
 import io.provenance.metadata.v1.ScopeRequest
+import io.provenance.metadata.v1.ScopeSpecificationRequest
 import io.provenance.metadata.v1.ScopesAllRequest
 import io.provenance.metadata.v1.ScopesAllResponse
 import io.provenance.metadata.v1.ValueOwnershipRequest
@@ -38,25 +40,38 @@ class MetadataGrpcClient(channelUri : URI) {
         metadataClient = QueryGrpc.newBlockingStub(channel)
     }
 
-    fun getAllScopes(offset: Int = 0, limit: Int = 100) =
+    fun getAllScopes(offset: Int = 0, limit: Int = 10) =
         metadataClient.scopesAll(
             ScopesAllRequest.newBuilder()
                 .setPagination(getPaginationBuilder(offset, limit))
                 .build()
         )
 
-    fun getScopesByOwner(address: String, offset: Int = 0, limit: Int = 100) =
+    fun getScopesByOwner(address: String, offset: Int = 0, limit: Int = 10) =
         metadataClient.ownership(
             OwnershipRequest.newBuilder()
                 .setAddress(address)
                 .setPagination(getPaginationBuilder(offset, limit))
                 .build())
 
-    fun getScopeById(uuid: String) =
+    fun getScopeById(uuid: String, includeSessions: Boolean = false) =
         metadataClient.scope(
             ScopeRequest.newBuilder()
                 .setScopeId(uuid)
                 .setIncludeRecords(true)
+                .setIncludeSessions(includeSessions)
+                .build())
+
+    fun getScopeSpecById(addr: String) =
+        metadataClient.scopeSpecification(
+            ScopeSpecificationRequest.newBuilder()
+                .setSpecificationId(addr)
+                .build())
+
+    fun getRecordSpecsForContractSpec(contractSpec: String) =
+        metadataClient.recordSpecificationsForContractSpecification(
+            RecordSpecificationsForContractSpecificationRequest.newBuilder()
+                .setSpecificationId(contractSpec)
                 .build())
 }
 

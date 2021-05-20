@@ -107,7 +107,7 @@ class ValidatorGrpcClient(channelUri: URI) {
             .build())
 
         val total = results.pagination?.total ?: results.validatorsCount.toLong()
-        val validators = results.validatorsList
+        val validators = results.validatorsList.toMutableList()
 
         while (validators.count() < total) {
             offset += limit

@@ -1,6 +1,8 @@
 package io.provenance.explorer.service
 
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.AccountRecord.Companion.update
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.service.async.AsyncCaching
@@ -47,4 +49,6 @@ class MigrationService(
     }
 
     fun updateValidatorsCache() = validatorService.updateValidatorsAtHeight().let { true }
+
+    fun updateAccounts() = transaction { AccountRecord.findAccountsMissingNumber().forEach { it.update(it.data!!) } }
 }

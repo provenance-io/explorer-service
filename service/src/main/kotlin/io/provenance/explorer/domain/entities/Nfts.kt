@@ -21,6 +21,10 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
             NftScopeRecord.find { NftScopeTable.uuid eq uuid }.firstOrNull()
         }
 
+        fun findByAddr(addr: String) = transaction {
+            NftScopeRecord.find { NftScopeTable.address eq addr }.firstOrNull()
+        }
+
         fun getOrInsert(uuid: String, address: String) =
             transaction {
                 findByUuid(uuid) ?: NftScopeTable.insertAndGetId {
