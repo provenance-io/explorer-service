@@ -137,6 +137,8 @@ To create a new release:
   - Beneath that add `### Release Name: xxxxxx` and choose a unique name from [this list](https://en.wikipedia.org/wiki/List_of_explorers)
   - All links must be link-ified: `python ./scripts/linkify.py CHANGELOG.md`
   - Copy the latest release entries into a `RELEASE_CHANGELOG.md`, this is needed so the bot knows which entries to add to the release page on github.
+  - Commit changes to the `release` branch
+  - Push `release` branch up to github
 - Tag the release (use `git tag -a vx.x.x -m "vx.x.x"`)
 - Push the tag up (use `git push origin vx.x.x`)
   - The release will happen automatically in github
