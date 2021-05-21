@@ -169,6 +169,7 @@ class ValidatorService(
                     this.moniker = data.description.moniker
                     this.jailed = data.jailed
                     this.status = data.status.name
+                    this.tokenCount = data.tokens.toBigDecimal()
                     this.stakingValidator = data
                 }
         }
@@ -199,7 +200,6 @@ class ValidatorService(
                 }
             val stakingValidators = getStakingValidators(status)
             hydrateValidators(validatorSet, stakingValidators, isAtHeight)
-                .sortedByDescending { it.bondedTokens.count }
                 .pageOfResults(page, count)
                 .let { PagedResults(it.size.toLong().pageCountOfResults(count), it) }
         }

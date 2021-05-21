@@ -36,6 +36,12 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Improvements
 * Removed hash conversion #66
   * This will now be done on the frontend
+  
+### Bug Fixes
+* Properly sorting Validator listview #112
+
+### Data
+* Added token count to staking_validator_cache #112
 
 ## [v1.5.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.5.0) - 2021-05-21
 ### Release Name: Dicuil
