@@ -8,7 +8,6 @@ import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDecCoin
-import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toSigObj
 import io.provenance.explorer.domain.models.explorer.AccountDetail
@@ -60,7 +59,7 @@ class AccountService(
                     it.delegation.delegatorAddress,
                     it.delegation.validatorAddress,
                     null,
-                    it.balance.amount.toHash(it.balance.denom).let { coin -> CoinStr(coin.first, coin.second, it.balance.denom) },
+                    CoinStr(it.balance.amount, it.balance.denom),
                     null,
                     it.delegation.shares.toDecCoin(),
                     null,
@@ -77,8 +76,8 @@ class AccountService(
                         list.delegatorAddress,
                         list.validatorAddress,
                         null,
-                        it.balance.toHash(NHASH).let { coin -> CoinStr(coin.first, coin.second, NHASH) },
-                        it.initialBalance.toHash(NHASH).let { coin -> CoinStr(coin.first, coin.second, NHASH) },
+                        CoinStr(it.balance, NHASH),
+                        CoinStr(it.initialBalance, NHASH),
                         null,
                         it.creationHeight.toInt(),
                         it.completionTime.toDateTime()
@@ -95,8 +94,8 @@ class AccountService(
                         list.redelegation.delegatorAddress,
                         list.redelegation.validatorSrcAddress,
                         list.redelegation.validatorDstAddress,
-                        it.balance.toHash(NHASH).let { coin -> CoinStr(coin.first, coin.second, NHASH) },
-                        it.redelegationEntry.initialBalance.toHash(NHASH).let { coin -> CoinStr(coin.first, coin.second, NHASH) },
+                        CoinStr(it.balance, NHASH),
+                        CoinStr(it.redelegationEntry.initialBalance, NHASH),
                         it.redelegationEntry.sharesDst.toDecCoin(),
                         it.redelegationEntry.creationHeight.toInt(),
                         it.redelegationEntry.completionTime.toDateTime()
@@ -110,9 +109,9 @@ class AccountService(
             res.rewardsList.map { list ->
                 Reward(
                     list.validatorAddress,
-                    list.rewardList.map { r -> CoinStr(r.amount.toDecCoin(), r.denom, r.denom) })
+                    list.rewardList.map { r -> CoinStr(r.amount.toDecCoin(), r.denom) })
             },
-            res.totalList.map { t -> CoinStr(t.amount.toDecCoin(), t.denom, t.denom) }
+            res.totalList.map { t -> CoinStr(t.amount.toDecCoin(), t.denom) }
         )
     }
 
