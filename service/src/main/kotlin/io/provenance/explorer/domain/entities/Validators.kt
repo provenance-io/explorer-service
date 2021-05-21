@@ -9,6 +9,7 @@ import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
@@ -61,6 +62,7 @@ object StakingValidatorCacheTable : IntIdTable(name = "staking_validator_cache")
     val moniker = varchar("moniker", 128)
     val status = varchar("status", 64)
     val jailed = bool("jailed")
+    val tokenCount = decimal("token_count", 100, 0)
 }
 
 class StakingValidatorCacheRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -76,6 +78,7 @@ class StakingValidatorCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.moniker] = json.description.moniker
                     it[this.status] = json.status.name
                     it[this.jailed] = json.jailed
+                    it[this.tokenCount] = json.tokens.toBigDecimal()
                     it[this.consensusPubkey] = consensusPubkey
                     it[this.accountAddress] = account
                     it[this.consensusAddress] = consensusAddr
@@ -102,11 +105,15 @@ class StakingValidatorCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             when (status) {
                 "active" -> StakingValidatorCacheRecord.find {
                     StakingValidatorCacheTable.status eq Staking.BondStatus.BOND_STATUS_BONDED.name }
+                    .orderBy(Pair(StakingValidatorCacheTable.tokenCount, SortOrder.DESC))
                 "jailed" -> StakingValidatorCacheRecord.find { StakingValidatorCacheTable.jailed eq true }
+                    .orderBy(Pair(StakingValidatorCacheTable.tokenCount, SortOrder.DESC))
                 "candidate" -> StakingValidatorCacheRecord.find {
                     (StakingValidatorCacheTable.status neq Staking.BondStatus.BOND_STATUS_BONDED.name) and
                         (StakingValidatorCacheTable.jailed eq false) }
+                    .orderBy(Pair(StakingValidatorCacheTable.tokenCount, SortOrder.DESC))
                 "all" -> StakingValidatorCacheRecord.all()
+                    .orderBy(Pair(StakingValidatorCacheTable.tokenCount, SortOrder.DESC))
                 else -> listOf<StakingValidatorCacheRecord>()
                     .also { logger.error("This status is not supported: $status") }
             }
@@ -118,6 +125,7 @@ class StakingValidatorCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var moniker by StakingValidatorCacheTable.moniker
     var status by StakingValidatorCacheTable.status
     var jailed by StakingValidatorCacheTable.jailed
+    var tokenCount by StakingValidatorCacheTable.tokenCount
     var consensusPubkey by StakingValidatorCacheTable.consensusPubkey
     var accountAddress by StakingValidatorCacheTable.accountAddress
     var consensusAddress by StakingValidatorCacheTable.consensusAddress
