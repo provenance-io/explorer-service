@@ -1,7 +1,6 @@
 package io.provenance.explorer.domain.models.explorer
 
 import cosmos.base.v1beta1.CoinOuterClass
-import io.provenance.explorer.domain.extensions.toHash
 import java.math.BigInteger
 
 
@@ -19,9 +18,9 @@ data class Signatures(
     val threshold: Int?
 )
 
-data class CoinStr ( val amount: String, val denom: String, val queryDenom: String)
+data class CoinStr ( val amount: String, val denom: String)
 
-fun CoinOuterClass.Coin.toData() = this.amount.toHash(this.denom).let { CoinStr(it.first, it.second, this.denom) }
+fun CoinOuterClass.Coin.toData() = CoinStr(this.amount, this.denom)
 
 data class CountTotal(
     val count: BigInteger,

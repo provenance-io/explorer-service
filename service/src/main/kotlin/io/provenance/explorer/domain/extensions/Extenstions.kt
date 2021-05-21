@@ -164,11 +164,13 @@ fun Message.toObjectNode(protoPrinter: JsonFormat.Printer) =
         }
 
 // this == gas_limit
-fun TxOuterClass.Fee.getMinGasFee() = this.amountList.first().amount.toBigInteger().toDouble().div(this.gasLimit.toDouble())
+fun TxOuterClass.Fee.getMinGasFee() =
+    (this.amountList.firstOrNull()?.amount?.toBigInteger() ?: 0).toDouble().div(this.gasLimit.toDouble())
 
 /**
  * ObjectMapper extension for getting the ObjectMapper configured
- * Attach to Spring Boot via @Bean and @Primary:
+ * Attach to
+ * Spring Boot via @Bean and @Primary:
  *  @Primary
  *  @Bean
  *  fun mapper(): ObjectMapper = ObjectMapper().configureFigure()
