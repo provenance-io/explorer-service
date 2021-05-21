@@ -107,9 +107,8 @@ class ExplorerService(
     fun getBondedTokenRatio() = let {
         val totalBlockChainTokens = accountService.getCurrentSupply(NHASH)
         val totalBondedTokens = validatorService.getStakingValidators("active")
-            .map { it.stakingValidator.tokens.toLong() }
-            .sum()
-        Pair<Long, String>(totalBondedTokens, totalBlockChainTokens)
+            .sumOf { it.tokenCount }
+        Pair<BigDecimal, String>(totalBondedTokens, totalBlockChainTokens)
     }
 
     fun getGasStatistics(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
