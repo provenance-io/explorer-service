@@ -25,11 +25,19 @@ class AccountController(private val accountService: AccountService) : BaseContro
     fun getAccount(@PathVariable address: String) =
         ResponseEntity.ok(accountService.getAccountDetail(address))
 
+    @ApiOperation("Returns account balances for account address")
+    @GetMapping("/{address}/balances")
+    fun getAccountBalances(
+        @PathVariable address: String,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int
+    ) = ResponseEntity.ok(accountService.getAccountBalances(address, page, count))
+
     @ApiOperation("Returns delegations for account address")
     @GetMapping("/{address}/delegations")
     fun getAccountDelegations(
         @PathVariable address: String,
-        @RequestParam(required = false, defaultValue = "100") @Min(1) count: Int,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int
     ) =
         ResponseEntity.ok(accountService.getDelegations(address, page, count))
