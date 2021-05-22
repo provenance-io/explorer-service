@@ -39,6 +39,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
   
 ### Bug Fixes
 * Properly sorting Validator listview #112
+* Account balances are now paginated #102
 
 ### Data
 * Added token count to staking_validator_cache #112
