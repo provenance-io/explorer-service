@@ -30,7 +30,7 @@ data class AssetDetail(
 )
 
 data class TokenCounts(
-    val fungibleCount: Int,
+    val fungibleCount: Long,
     val nonFungibleCount: Int
 )
 
@@ -52,7 +52,6 @@ data class AccountDetail(
     val accountNumber: Long?,
     val sequence: Int?,
     val publicKeys: Signatures,
-    val balances: List<CoinStr>,
     val accountName: String?
 )
 

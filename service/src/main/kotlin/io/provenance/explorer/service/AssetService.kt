@@ -80,7 +80,7 @@ class AssetService(
                         .map { attr -> attr.toObjectNode(protoPrinter) },
                     markerClient.getMarkerMetadata(denom).toObjectNode(protoPrinter),
                     TokenCounts(
-                        accountService.getAccountBalances(record.markerAddress).size,
+                        accountService.getBalances(record.markerAddress, 0, 1).pagination.total,
                         metadataClient.getScopesByOwner(record.markerAddress).pagination.total.toInt()),
                     record.status
                 )

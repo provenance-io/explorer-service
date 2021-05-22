@@ -43,12 +43,18 @@ class AccountService(
             it.accountNumber,
             it.baseAccount?.sequence?.toInt(),
             AccountRecord.findSigsByAddress(it.accountAddress).toSigObj(props.provAccPrefix()),
-            getAccountBalances(address),
             it.data?.getModuleAccName()
         )
     }
 
-    fun getAccountBalances(address: String) = accountClient.getAccountBalances(address).map { it.toData()}
+    fun getBalances(address: String, page: Int, limit: Int) =
+        accountClient.getAccountBalances(address, page.toOffset(limit), limit)
+
+    fun getAccountBalances(address: String, page: Int, limit: Int) =
+        getBalances(address, page, limit).let { res ->
+            val bals = res.balancesList.map { it.toData() }
+            PagedResults(res.pagination.total.pageCountOfResults(limit), bals)
+        }
 
     fun getCurrentSupply(denom: String) = accountClient.getCurrentSupply(denom).amount
 
