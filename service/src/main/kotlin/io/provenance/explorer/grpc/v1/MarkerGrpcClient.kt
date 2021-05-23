@@ -41,16 +41,24 @@ class MarkerGrpcClient(channelUri: URI) {
         markerClient = QueryGrpc.newBlockingStub(channel)
     }
 
-    fun getMarkerDetail(id: String): MarkerAccount =
-        markerClient.marker(QueryMarkerRequest.newBuilder().setId(id).build()).marker.toMarker()
+    fun getMarkerDetail(id: String): MarkerAccount? =
+        try {
+            markerClient.marker(QueryMarkerRequest.newBuilder().setId(id).build()).marker.toMarker()
+        } catch (e: Exception) {
+            null
+        }
 
     fun getMarkerHolders(denom: String, offset: Int, count: Int): QueryHoldingResponse =
-        markerClient.holding(
-            QueryHoldingRequest.newBuilder()
-                .setId(denom)
-                .setPagination(getPaginationBuilder(offset, count))
-                .build()
-        )
+        try {
+            markerClient.holding(
+                QueryHoldingRequest.newBuilder()
+                    .setId(denom)
+                    .setPagination(getPaginationBuilder(offset, count))
+                    .build()
+            )
+        } catch (e: Exception) {
+            QueryHoldingResponse.getDefaultInstance()
+        }
 
     fun getMarkerMetadata(denom: String) =
         markerClient.denomMetadata(QueryDenomMetadataRequest.newBuilder().setDenom(denom).build()).metadata

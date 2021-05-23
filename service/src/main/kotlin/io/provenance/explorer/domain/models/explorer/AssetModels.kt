@@ -8,25 +8,26 @@ import java.math.BigInteger
 
 data class AssetListed(
     val marker: String,
-    val holdingAccount: String,
+    val holdingAccount: String?,
     val supply: String,
     val status: String,
-    val mintable: Boolean,
+    val mintable: Boolean = false,
     val lastTxTimestamp: String?
 )
 
 data class AssetDetail(
     val marker: String,
-    val holdingAccount: String,
-    val managingAccounts: AssetManagement,
+    val holdingAccount: String?,
+    val managingAccounts: AssetManagement?,
     val supply: String,
-    val mintable: Boolean,
+    val mintable: Boolean = false,
     val holderCount: Int,
     val txnCount: BigInteger?,
     val attributes: List<ObjectNode>,
     val metadata: ObjectNode,
     val tokens: TokenCounts,
-    val markerStatus: String
+    val markerStatus: String,
+    val markerType: String
 )
 
 data class TokenCounts(

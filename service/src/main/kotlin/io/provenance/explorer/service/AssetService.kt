@@ -3,6 +3,7 @@ package io.provenance.explorer.service
 import com.google.protobuf.Timestamp
 import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.entities.BaseDenomType
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.extensions.pageCountOfResults
@@ -49,20 +50,37 @@ class AssetService(
                         it.markerAddress,
                         it.supply.toBigInteger().toString(),
                         it.status.prettyStatus(),
-                        it.data.isMintable(),
-                        if (it.lastTx != null) it.lastTx.toString() else null) }
+                        it.data?.isMintable() ?: false,
+                        it.lastTx?.toString()) }
         return PagedResults(MarkerCacheRecord.findCountByStatus(statuses).pageCountOfResults(count), list)
     }
 
     fun getAssetRaw(denom: String) = transaction {
-        MarkerCacheRecord.findByDenom(denom)?.let { Pair(it.id, it) } ?:
-            markerClient.getMarkerDetail(denom).let {
+        MarkerCacheRecord.findByDenom(denom)?.let { Pair(it.id, it) } ?: getAndInsertMarker(denom)
+    }
+
+    private fun getAndInsertMarker(denom: String) =
+        markerClient.getMarkerDetail(denom)?.let {
+            MarkerCacheRecord.insertIgnore(
+                it.baseAccount.address,
+                it.markerType.name,
+                it.denom,
+                it.status.toString(),
+                it,
+                accountService.getCurrentSupply(denom).toBigDecimal(),
+                TxMarkerJoinRecord.findLatestTxByDenom(denom)
+            )
+        } ?: accountService.getCurrentSupply(denom).let {
                 MarkerCacheRecord.insertIgnore(
-                    it, accountService.getCurrentSupply(denom).toBigDecimal(),
+                    null,
+                    denom.getBaseDenomType().name,
+                    denom,
+                    MarkerStatus.MARKER_STATUS_ACTIVE.toString(),
+                    null,
+                    accountService.getCurrentSupply(denom).toBigDecimal(),
                     TxMarkerJoinRecord.findLatestTxByDenom(denom)
                 )
             }
-    }
 
     fun getAssetDetail(denom: String) =
         getAssetRaw(denom)
@@ -71,18 +89,18 @@ class AssetService(
                 AssetDetail(
                     record.denom,
                     record.markerAddress,
-                    AssetManagement(record.data.getManagingAccounts(), record.data.allowGovernanceControl),
+                    if (record.data != null) AssetManagement(record.data!!.getManagingAccounts(), record.data!!.allowGovernanceControl) else null,
                     record.supply.toBigInteger().toString(),
-                    record.data.isMintable(),
-                    markerClient.getMarkerHolders(denom, 0, 10).pagination.total.toInt(),
+                    record.data?.isMintable() ?: false,
+                    if (record.markerAddress != null) markerClient.getMarkerHolders(denom, 0, 10).pagination.total.toInt() else 0,
                     txCount,
-                    attrClient.getAllAttributesForAddress(record.markerAddress)
-                        .map { attr -> attr.toObjectNode(protoPrinter) },
-                    markerClient.getMarkerMetadata(denom).toObjectNode(protoPrinter),
+                    attrClient.getAllAttributesForAddress(record.markerAddress).map { attr -> attr.toObjectNode(protoPrinter) },
+                    accountService.getDenomMetadataSingle(denom).toObjectNode(protoPrinter),
                     TokenCounts(
-                        accountService.getBalances(record.markerAddress, 0, 1).pagination.total,
-                        metadataClient.getScopesByOwner(record.markerAddress).pagination.total.toInt()),
-                    record.status
+                        if (record.markerAddress != null) accountService.getBalances(record.markerAddress!!, 0, 1).pagination.total else 0,
+                        if (record.markerAddress != null) metadataClient.getScopesByOwner(record.markerAddress!!).pagination.total.toInt() else 0),
+                    record.status,
+                    record.markerType
                 )
             }
 
@@ -95,7 +113,7 @@ class AssetService(
         PagedResults(res.pagination.total.pageCountOfResults(count), list)
     }
 
-    fun getMetaData(denom: String) = protoPrinter.print(markerClient.getMarkerMetadata(denom))
+    fun getMetadata(denom: String?) = accountService.getDenomMetadata(denom).map { it.toObjectNode(protoPrinter) }
 
     // Updates the Marker cache
     fun updateAssets(denoms: Set<String>, txTime: Timestamp) = transaction {
@@ -104,7 +122,7 @@ class AssetService(
             val data = markerClient.getMarkerDetail(marker)
             val record = MarkerCacheRecord.findByDenom(marker)!!
             record.apply {
-                this.status = data.status.toString()
+                if (data != null) this.status = data.status.toString()
                 this.supply = accountService.getCurrentSupply(marker).toBigDecimal()
                 this.lastTx = txTime.toDateTime()
                 this.data = data
@@ -118,3 +136,9 @@ fun String.getDenomByAddress() = MarkerCacheRecord.findByAddress(this)?.denom
 fun String.prettyStatus() = this.substringAfter("MARKER_STATUS_")
 
 fun String.prettyRole() = this.substringAfter("ACCESS_")
+
+fun String.getBaseDenomType() =
+    when {
+        this.startsWith("ibc/") -> BaseDenomType.IBC_DENOM
+        else -> BaseDenomType.DENOM
+    }

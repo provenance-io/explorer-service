@@ -33,13 +33,22 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* IBC denom API #97
+  * `/ibc/all`
+
 ### Improvements
 * Removed hash conversion #66
   * This will now be done on the frontend
+* Ingesting denoms and addresses from IBC Txs #97
   
 ### Bug Fixes
 * Properly sorting Validator listview #112
 * Account balances are now paginated #102
+* Now handling IBC denoms in search #103
+  * `/assets/detail/{id}`, `/assets/detail/ibc/{id}` -> as used by FE, these should resolve naturally
+  * `/assets/{id}/holders` -> `/assets/holders?id={denom}`
+  * `/assets/{id}/metadata` -> `/assets/metadata?id={denom}` with `id` optional, returning full list of metadata
 
 ### Data
 * Added token count to staking_validator_cache #112

@@ -2,6 +2,25 @@ package io.provenance.explorer.grpc.extensions
 
 import com.google.protobuf.Any
 import cosmos.bank.v1beta1.Tx
+import ibc.applications.transfer.v1.Tx.MsgTransfer
+import ibc.core.channel.v1.Tx.MsgAcknowledgement
+import ibc.core.channel.v1.Tx.MsgChannelCloseConfirm
+import ibc.core.channel.v1.Tx.MsgChannelCloseInit
+import ibc.core.channel.v1.Tx.MsgChannelOpenAck
+import ibc.core.channel.v1.Tx.MsgChannelOpenConfirm
+import ibc.core.channel.v1.Tx.MsgChannelOpenInit
+import ibc.core.channel.v1.Tx.MsgChannelOpenTry
+import ibc.core.channel.v1.Tx.MsgRecvPacket
+import ibc.core.channel.v1.Tx.MsgTimeout
+import ibc.core.channel.v1.Tx.MsgTimeoutOnClose
+import ibc.core.client.v1.Tx.MsgCreateClient
+import ibc.core.client.v1.Tx.MsgSubmitMisbehaviour
+import ibc.core.client.v1.Tx.MsgUpdateClient
+import ibc.core.client.v1.Tx.MsgUpgradeClient
+import ibc.core.connection.v1.Tx.MsgConnectionOpenAck
+import ibc.core.connection.v1.Tx.MsgConnectionOpenConfirm
+import ibc.core.connection.v1.Tx.MsgConnectionOpenInit
+import ibc.core.connection.v1.Tx.MsgConnectionOpenTry
 import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest
 import io.provenance.explorer.domain.core.logger
@@ -113,6 +132,26 @@ fun Any.toMsgAddScopeDataAccessRequest() = this.unpack(MsgAddScopeDataAccessRequ
 fun Any.toMsgDeleteScopeDataAccessRequest() = this.unpack(MsgDeleteScopeDataAccessRequest::class.java)
 fun Any.toMsgAddScopeOwnerRequest() = this.unpack(MsgAddScopeOwnerRequest::class.java)
 fun Any.toMsgDeleteScopeOwnerRequest() = this.unpack(MsgDeleteScopeOwnerRequest::class.java)
+fun Any.toMsgTransfer() = this.unpack(MsgTransfer::class.java)
+fun Any.toMsgChannelOpenInit() = this.unpack(MsgChannelOpenInit::class.java)
+fun Any.toMsgChannelOpenTry() = this.unpack(MsgChannelOpenTry::class.java)
+fun Any.toMsgChannelOpenAck() = this.unpack(MsgChannelOpenAck::class.java)
+fun Any.toMsgChannelOpenConfirm() = this.unpack(MsgChannelOpenConfirm::class.java)
+fun Any.toMsgChannelCloseInit() = this.unpack(MsgChannelCloseInit::class.java)
+fun Any.toMsgChannelCloseConfirm() = this.unpack(MsgChannelCloseConfirm::class.java)
+fun Any.toMsgRecvPacket() = this.unpack(MsgRecvPacket::class.java)
+fun Any.toMsgTimeout() = this.unpack(MsgTimeout::class.java)
+fun Any.toMsgTimeoutOnClose() = this.unpack(MsgTimeoutOnClose::class.java)
+fun Any.toMsgAcknowledgement() = this.unpack(MsgAcknowledgement::class.java)
+fun Any.toMsgCreateClient() = this.unpack(MsgCreateClient::class.java)
+fun Any.toMsgUpdateClient() = this.unpack(MsgUpdateClient::class.java)
+fun Any.toMsgUpgradeClient() = this.unpack(MsgUpgradeClient::class.java)
+fun Any.toMsgSubmitMisbehaviour() = this.unpack(MsgSubmitMisbehaviour::class.java)
+fun Any.toMsgConnectionOpenInit() = this.unpack(MsgConnectionOpenInit::class.java)
+fun Any.toMsgConnectionOpenTry() = this.unpack(MsgConnectionOpenTry::class.java)
+fun Any.toMsgConnectionOpenAck() = this.unpack(MsgConnectionOpenAck::class.java)
+fun Any.toMsgConnectionOpenConfirm() = this.unpack(MsgConnectionOpenConfirm::class.java)
+
 
 fun Any.getAssociatedAddresses(): List<String> =
     when {
@@ -197,6 +236,25 @@ fun Any.getAssociatedAddresses(): List<String> =
             .let { it.ownersList.map { o -> o.address }  + it.signersList }
         typeUrl.contains("MsgDeleteScopeOwnerRequest") -> this.toMsgDeleteScopeOwnerRequest()
             .let { it.ownersList + it.signersList }
+        typeUrl.contains("MsgTransfer") -> this.toMsgTransfer().let { listOf(it.sender) }
+        typeUrl.contains("MsgChannelOpenInit") -> this.toMsgChannelOpenInit().let { listOf(it.signer) }
+        typeUrl.contains("MsgChannelOpenTry") -> this.toMsgChannelOpenTry().let { listOf(it.signer) }
+        typeUrl.contains("MsgChannelOpenAck") -> this.toMsgChannelOpenAck().let { listOf(it.signer) }
+        typeUrl.contains("MsgChannelOpenConfirm") -> this.toMsgChannelOpenConfirm().let { listOf(it.signer) }
+        typeUrl.contains("MsgChannelCloseInit") -> this.toMsgChannelCloseInit().let { listOf(it.signer) }
+        typeUrl.contains("MsgChannelCloseConfirm") -> this.toMsgChannelCloseConfirm().let { listOf(it.signer) }
+        typeUrl.contains("MsgRecvPacket") -> this.toMsgRecvPacket().let { listOf(it.signer) }
+        typeUrl.contains("MsgTimeout") -> this.toMsgTimeout().let { listOf(it.signer) }
+        typeUrl.contains("MsgTimeoutOnClose") -> this.toMsgTimeoutOnClose().let { listOf(it.signer) }
+        typeUrl.contains("MsgAcknowledgement") -> this.toMsgAcknowledgement().let { listOf(it.signer) }
+        typeUrl.contains("MsgCreateClient") -> this.toMsgCreateClient().let { listOf(it.signer) }
+        typeUrl.contains("MsgUpdateClient") -> this.toMsgUpdateClient().let { listOf(it.signer) }
+        typeUrl.contains("MsgUpgradeClient") -> this.toMsgUpgradeClient().let { listOf(it.signer) }
+        typeUrl.contains("MsgSubmitMisbehaviour") -> this.toMsgSubmitMisbehaviour().let { listOf(it.signer) }
+        typeUrl.contains("MsgConnectionOpenInit") -> this.toMsgConnectionOpenInit().let { listOf(it.signer) }
+        typeUrl.contains("MsgConnectionOpenTry") -> this.toMsgConnectionOpenTry().let { listOf(it.signer) }
+        typeUrl.contains("MsgConnectionOpenAck") -> this.toMsgConnectionOpenAck().let { listOf(it.signer) }
+        typeUrl.contains("MsgConnectionOpenConfirm") -> this.toMsgConnectionOpenConfirm().let { listOf(it.signer) }
 
         else -> listOf<String>().also { logger().debug("This typeUrl is not yet supported as an address-based msg: $typeUrl") }
     }
@@ -226,36 +284,32 @@ fun Any.getAssociatedDenoms(): List<String> =
             .let { it.account.getDenomByAddress()?.let { denom -> listOf(denom) } ?: listOf() }
         typeUrl.contains("MsgInstantiateContract") -> this.toMsgInstantiateContract().let { it.fundsList.map { c -> c.denom } }
         typeUrl.contains("MsgExecuteContract") -> this.toMsgExecuteContract().let { it.fundsList.map { c -> c.denom } }
+        typeUrl.contains("MsgTransfer") -> this.toMsgTransfer().let { listOf(it.token.denom) }
 
         else -> listOf<String>()
             .also { logger().debug("This typeUrl is not yet supported as an asset-based msg: $typeUrl") }
     }
 
+enum class IbcEventType{ DENOM, ADDRESS }
+
+enum class IbcDenomEvents(val eventType: IbcEventType, val event: String, val idField: String) {
+    RECV_PACKET_DENOM(IbcEventType.DENOM, "denomination_trace", "denom"),
+    RECV_PACKET_ADDR(IbcEventType.ADDRESS, "fungible_token_packet","receiver"),
+    ACKNOWLEDGE_DENOM(IbcEventType.DENOM, "fungible_token_packet", "denom")
+}
+
+fun Any.getIbcEvents() =
+    when {
+        typeUrl.contains("MsgRecvPacket") -> listOf(IbcDenomEvents.RECV_PACKET_DENOM, IbcDenomEvents.RECV_PACKET_ADDR)
+        typeUrl.contains("MsgAcknowledgement") -> listOf(IbcDenomEvents.ACKNOWLEDGE_DENOM)
+        else -> listOf<IbcDenomEvents>()
+            .also { logger().debug("This typeUrl is not yet supported in as an ibc-event-based msg: $typeUrl") }
+    }
+
 enum class MdEvents(val event: String, val idField: String) {
-    // Scope
-    SCC("provenance.metadata.v1.EventScopeCreated","scope_addr"),
-    SCU("provenance.metadata.v1.EventScopeUpdated", "scope_addr"),
-    SCO("provenance.metadata.v1.EventScopeDeleted", "scope_addr"),
-    // Session
-    SEC("provenance.metadata.v1.EventSessionCreated", "session_addr"),
-    SEU("provenance.metadata.v1.EventSessionUpdated", "session_addr"),
-    SER("provenance.metadata.v1.EventSessionDeleted", "session_addr"),
-    // Record
-    RC("provenance.metadata.v1.EventRecordCreated", "record_addr"),
-    RU("provenance.metadata.v1.EventRecordUpdated", "record_addr"),
-    RR("provenance.metadata.v1.EventRecordDeleted", "record_addr"),
-    // Scope Spec
-    SCSPC("provenance.metadata.v1.EventScopeSpecificationCreated", "scope_specification_addr"),
-    SCSPU("provenance.metadata.v1.EventScopeSpecificationUpdated", "scope_specification_addr"),
-    SCSPR("provenance.metadata.v1.EventScopeSpecificationDeleted", "scope_specification_addr"),
     // Contract Spec
     CSPC("provenance.metadata.v1.EventContractSpecificationCreated", "contract_specification_addr"),
-    CSPU("provenance.metadata.v1.EventContractSpecificationUpdated", "contract_specification_addr"),
-    CSPR("provenance.metadata.v1.EventContractSpecificationDeleted", "contract_specification_addr"),
-    // Record Spec
-    RSPC("provenance.metadata.v1.EventRecordSpecificationCreated", "record_specification_addr"),
-    RSPU("provenance.metadata.v1.EventRecordSpecificationUpdated", "record_specification_addr"),
-    RSPR("provenance.metadata.v1.EventRecordSpecificationDeleted", "record_specification_addr")
+    CSPU("provenance.metadata.v1.EventContractSpecificationUpdated", "contract_specification_addr")
 }
 
 fun Any.isMetadataDeletionMsg() =

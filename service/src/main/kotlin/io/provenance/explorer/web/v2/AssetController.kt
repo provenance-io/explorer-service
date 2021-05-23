@@ -1,6 +1,7 @@
 package io.provenance.explorer.web.v2
 
 import io.provenance.explorer.service.AssetService
+import io.provenance.explorer.service.IbcService
 import io.provenance.explorer.web.BaseController
 import io.provenance.marker.v1.MarkerStatus
 import io.swagger.annotations.Api
@@ -14,12 +15,13 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import javax.validation.constraints.Min
+import javax.websocket.server.PathParam
 
 @Validated
 @RestController
 @RequestMapping(path = ["/api/v2/assets"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Api(value = "Asset controller", produces = "application/json", consumes = "application/json", tags = ["Assets"])
-class AssetController(private val assetService: AssetService) : BaseController() {
+class AssetController(private val assetService: AssetService, private val ibcService: IbcService) : BaseController() {
 
     @ApiOperation("Returns paginated list of assets for selected statuses")
     @GetMapping("/all")
@@ -30,19 +32,23 @@ class AssetController(private val assetService: AssetService) : BaseController()
     ) = ResponseEntity.ok(assetService.getAssets(statuses, page, count))
 
     @ApiOperation("Returns asset detail for denom or address")
-    @GetMapping("/{id}/detail")
+    @GetMapping("/detail/{id}")
     fun getMarkerDetail(@PathVariable id: String) = ResponseEntity.ok(assetService.getAssetDetail(id))
 
+    @ApiOperation("Returns asset detail for denom or address")
+    @GetMapping("/detail/ibc/{id}")
+    fun getIbcDetail(@PathVariable id: String) = ResponseEntity.ok(ibcService.getIbcDetail(id))
+
     @ApiOperation("Returns asset holders for denom or address")
-    @GetMapping("/{id}/holders")
+    @GetMapping("/holders")
     fun getMarkerHolders(
-        @PathVariable id: String,
+        @RequestParam id: String,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
         @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
     ) =
         ResponseEntity.ok(assetService.getAssetHolders(id, page, count))
 
-    @ApiOperation("Returns metadata for asset")
-    @GetMapping("/{id}/metadata")
-    fun getMarkerMetadata(@PathVariable id: String) = ResponseEntity.ok(assetService.getMetaData(id))
+    @ApiOperation("Returns metadata for all or specified asset")
+    @GetMapping("/metadata")
+    fun getMarkerMetadata(@RequestParam(required = false) id: String?) = ResponseEntity.ok(assetService.getMetadata(id))
 }

@@ -62,6 +62,19 @@ class AccountGrpcClient(channelUri : URI) {
     fun getCurrentSupply(denom: String) =
         bankClient.supplyOf(BankOuterClass.QuerySupplyOfRequest.newBuilder().setDenom(denom).build()).amount
 
+    fun getDenomMetadata(denom: String) =
+        try {
+            bankClient.denomMetadata(BankOuterClass.QueryDenomMetadataRequest.newBuilder().setDenom(denom).build())
+        } catch (e: Exception) {
+            BankOuterClass.QueryDenomMetadataResponse.getDefaultInstance()
+        }
+
+    fun getAllDenomMetadata() =
+        bankClient.denomsMetadata(
+            BankOuterClass.QueryDenomsMetadataRequest.newBuilder()
+                .setPagination(getPaginationBuilder(0, 100))
+                .build())
+
     fun getDelegations(address: String, offset: Int, limit: Int) =
         try {
             stakingClient.delegatorDelegations(
