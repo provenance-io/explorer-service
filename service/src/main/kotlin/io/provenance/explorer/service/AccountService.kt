@@ -58,6 +58,12 @@ class AccountService(
 
     fun getCurrentSupply(denom: String) = accountClient.getCurrentSupply(denom).amount
 
+    fun getDenomMetadataSingle(denom: String) = accountClient.getDenomMetadata(denom).metadata
+
+    fun getDenomMetadata(denom: String?) =
+        if (denom != null) listOf(accountClient.getDenomMetadata(denom).metadata)
+        else accountClient.getAllDenomMetadata().metadatasList
+
     fun getDelegations(address: String, page: Int, limit: Int) =
         accountClient.getDelegations(address, page.toOffset(limit), limit).let { res ->
             val list = res.delegationResponsesList.map {

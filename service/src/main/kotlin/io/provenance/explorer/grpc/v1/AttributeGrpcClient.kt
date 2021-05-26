@@ -34,7 +34,8 @@ class AttributeGrpcClient(channelUri : URI) {
         attrClient = QueryGrpc.newBlockingStub(channel)
     }
 
-    fun getAllAttributesForAddress(address: String): MutableList<Attribute> {
+    fun getAllAttributesForAddress(address: String?): MutableList<Attribute> {
+        if (address == null) return mutableListOf()
         var offset = 0
         val limit = 100
 

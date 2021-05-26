@@ -74,7 +74,7 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
         listOf("submit_proposal", "deposit", "vote")),
     TRANSFER(
         "transfer",
-        listOf("send", "multisend", "transfer")),
+        listOf("send", "multisend", "transfer", "ibc_transfer")),
     ASSET(
         "asset",
         listOf(
