@@ -1,6 +1,6 @@
 ## Bugs:
 ### Dashboard
-* Tx list shows very truncated fee
+* Tx list shows very truncated fee [#62](https://github.com/provenance-io/explorer-frontend/issues/62)
   ![img.png](img.png)
 * Are timestamps in 24Hr or AM/PM?
   ![img_1.png](img_1.png)
@@ -9,7 +9,7 @@
 #### Single
 * Unbonding time should be set
   ![img_2.png](img_2.png)
-* Commission Rate Range popup should show Max Rate Change
+* Commission Rate Range popup should show Max Rate Change [#81](https://github.com/provenance-io/explorer-frontend/issues/81)
   ![img_3.png](img_3.png)
 
 ### Transactions
@@ -19,13 +19,14 @@
 #### Single
 * Tx msgs should be shown in full
 ![img_4.png](img_4.png)
-* Fee is shown extremely truncated
+* Fee is shown extremely truncated [#62](https://github.com/provenance-io/explorer-frontend/issues/62)
 ![img_5.png](img_5.png)
-* We should be showing why a tx failed. The reason is in the response
+* We should be showing why a tx failed. The reason is in the response [#70](https://github.com/provenance-io/explorer-frontend/issues/70)
 ![img_8.png](img_8.png)
   
 ### Assets
 * When searching for an asset, the url goes to `https://explorer.test.provenance.io/assets/nhash` (notices assets, not asset)
+  [#78](https://github.com/provenance-io/explorer-frontend/issues/78)
 #### Listview
 #### Single
 * We should be showing the token counts (fungible/nonfungible). It is available in the response
@@ -52,6 +53,8 @@
   
 ### Accounts
 #### Single
+* Should show account name. Its in the response [#61](https://github.com/provenance-io/explorer-frontend/issues/61)
+  ![img_9.png](img_9.png)
 * Moved balances out of the detail response to a paginated API
   * `/accounts/{address}/balances`
   
