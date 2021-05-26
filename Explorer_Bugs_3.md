@@ -25,6 +25,7 @@
 ![img_8.png](img_8.png)
   
 ### Assets
+* When searching for an asset, the url goes to `https://explorer.test.provenance.io/assets/nhash` (notices assets, not asset)
 #### Listview
 #### Single
 * We should be showing the token counts (fungible/nonfungible). It is available in the response
