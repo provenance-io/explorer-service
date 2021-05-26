@@ -2,6 +2,7 @@ package io.provenance.explorer.service
 
 import com.google.protobuf.Timestamp
 import com.google.protobuf.util.JsonFormat
+import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BaseDenomType
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
@@ -27,7 +28,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 
 @Service
-class AssetService(
+class AssetService (
     private val markerClient: MarkerGrpcClient,
     private val attrClient: AttributeGrpcClient,
     private val metadataClient: MetadataGrpcClient,
@@ -56,7 +57,11 @@ class AssetService(
     }
 
     fun getAssetRaw(denom: String) = transaction {
-        MarkerCacheRecord.findByDenom(denom)?.let { Pair(it.id, it) } ?: getAndInsertMarker(denom)
+        getAssetFromDB(denom) ?: getAndInsertMarker(denom)
+    }
+
+    fun getAssetFromDB(denom: String) = transaction {
+        MarkerCacheRecord.findByDenom(denom)?.let { Pair(it.id, it) }
     }
 
     private fun getAndInsertMarker(denom: String) =
@@ -83,9 +88,9 @@ class AssetService(
             }
 
     fun getAssetDetail(denom: String) =
-        getAssetRaw(denom)
-            .let { (id, record) ->
-                val txCount = TxMarkerJoinRecord.findCountByDenom(id!!.value)
+        getAssetFromDB(denom)
+            ?.let { (id, record) ->
+                val txCount = TxMarkerJoinRecord.findCountByDenom(id.value)
                 AssetDetail(
                     record.denom,
                     record.markerAddress,
@@ -102,7 +107,7 @@ class AssetService(
                     record.status,
                     record.markerType
                 )
-            }
+            } ?: throw ResourceNotFoundException("Asset does not exist: $denom")
 
     fun getAssetHolders(denom: String, page: Int, count: Int) = accountService.getCurrentSupply(denom).let { supply ->
         val res = markerClient.getMarkerHolders(denom, page.toOffset(count), count)

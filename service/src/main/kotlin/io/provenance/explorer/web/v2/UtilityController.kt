@@ -2,7 +2,6 @@ package io.provenance.explorer.web.v2
 
 import io.provenance.explorer.domain.entities.UnknownTxType
 import io.provenance.explorer.service.utility.UtilityService
-import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import org.springframework.http.MediaType
@@ -22,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController
     value = "Utility controller", produces = "application/json", consumes = "application/json", tags = ["Utilities"],
     description = "This should not be used by the UI"
 )
-class UtilityController(private val us: UtilityService) : BaseController() {
+class UtilityController(private val us: UtilityService) {
 
     @ApiOperation("Updates existing transaction msg types with the given info")
     @PostMapping("/update/txMsgType")

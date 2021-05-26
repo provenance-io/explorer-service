@@ -3,7 +3,6 @@ package io.provenance.explorer.web.v2
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.ValidatorSummary
 import io.provenance.explorer.service.ValidatorService
-import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import org.joda.time.DateTime
@@ -27,7 +26,7 @@ import javax.validation.constraints.Min
     consumes = "application/json",
     tags = ["Validators"]
 )
-class ValidatorController(private val validatorService: ValidatorService) : BaseController() {
+class ValidatorController(private val validatorService: ValidatorService) {
 
     @ApiOperation("Returns recent validators")
     @GetMapping("/recent")

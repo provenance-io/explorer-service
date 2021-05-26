@@ -2,10 +2,8 @@ package io.provenance.explorer.web.v2
 
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.MsgTypeSet
-import io.provenance.explorer.domain.models.explorer.TxDetails
 import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.service.TransactionService
-import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import org.joda.time.DateTime
@@ -29,7 +27,7 @@ import javax.validation.constraints.Min
     consumes = "application/json",
     tags = ["Transactions"]
 )
-class TransactionController(private val transactionService: TransactionService) : BaseController() {
+class TransactionController(private val transactionService: TransactionService) {
 
     @ApiOperation("Return the latest transactions with query params")
     @GetMapping("/recent")

@@ -3,7 +3,6 @@ package io.provenance.explorer.web.v2
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.Spotlight
 import io.provenance.explorer.service.ExplorerService
-import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import org.joda.time.DateTime
@@ -21,7 +20,7 @@ import javax.validation.constraints.Min
 @RestController
 @RequestMapping(path = ["/api/v2"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Api(value = "General controller", produces = "application/json", consumes = "application/json", tags = ["General"])
-class GeneralController(private val explorerService: ExplorerService) : BaseController() {
+class GeneralController(private val explorerService: ExplorerService) {
 
     @ApiOperation("Returns spotlight statistics")
     @GetMapping("/spotlight")

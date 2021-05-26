@@ -1,7 +1,6 @@
 package io.provenance.explorer.web.v2
 
 import io.provenance.explorer.service.NftService
-import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import org.springframework.http.MediaType
@@ -18,7 +17,7 @@ import javax.validation.constraints.Min
 @RestController
 @RequestMapping(path = ["/api/v2/nft"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Api(value = "NFT controller", produces = "application/json", consumes = "application/json", tags = ["NFTs"])
-class NftController(private val nftService: NftService) : BaseController() {
+class NftController(private val nftService: NftService) {
 
     @ApiOperation("Returns NFT detail for address")
     @GetMapping("/scope/{addr}")

@@ -1,6 +1,5 @@
 package io.provenance.explorer.web.v1
 
-import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import org.joda.time.DateTime
@@ -26,7 +25,7 @@ import javax.validation.constraints.Min
     tags = ["General V1"],
     hidden = true
 )
-class ExplorerController : BaseController() {
+class ExplorerController {
 
     @ApiOperation(value = "Return the latest block transactions")
     @GetMapping(value = ["/recent/txs"], produces = [MediaType.APPLICATION_JSON_VALUE])

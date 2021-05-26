@@ -1,7 +1,6 @@
 package io.provenance.explorer.web.v2
 
 import io.provenance.explorer.service.MigrationService
-import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import org.springframework.http.MediaType
@@ -11,7 +10,6 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @Validated
@@ -21,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController
     value = "Migration controller", produces = "application/json", consumes = "application/json", tags = ["Migrations"],
     description = "This should NEVER be used by the UI"
 )
-class MigrationController(private val migrationService: MigrationService) : BaseController() {
+class MigrationController(private val migrationService: MigrationService) {
 
     @ApiOperation("Updates existing transactions with new data points")
     @GetMapping("/update/txs")

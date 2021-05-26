@@ -1,7 +1,6 @@
 package io.provenance.explorer.web.v2
 
 import io.provenance.explorer.service.AccountService
-import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import org.springframework.http.MediaType
@@ -18,7 +17,7 @@ import javax.validation.constraints.Min
 @RestController
 @RequestMapping(path = ["/api/v2/accounts"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Api(value = "Account controller", produces = "application/json", consumes = "application/json", tags = ["Accounts"])
-class AccountController(private val accountService: AccountService) : BaseController() {
+class AccountController(private val accountService: AccountService) {
 
     @ApiOperation("Returns account detail for account address")
     @GetMapping("/{address}")
