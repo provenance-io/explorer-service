@@ -26,10 +26,12 @@ import io.provenance.explorer.domain.entities.UNKNOWN
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
+import io.provenance.explorer.grpc.extensions.IbcEventType
 import io.provenance.explorer.grpc.extensions.getAssociatedAddresses
 import io.provenance.explorer.grpc.extensions.getAssociatedDenoms
 import io.provenance.explorer.grpc.extensions.getAssociatedMetadata
 import io.provenance.explorer.grpc.extensions.getAssociatedMetadataEvents
+import io.provenance.explorer.grpc.extensions.getIbcEvents
 import io.provenance.explorer.grpc.extensions.isMetadataDeletionMsg
 import io.provenance.explorer.grpc.v1.TransactionGrpcClient
 import io.provenance.explorer.service.AccountService
@@ -189,29 +191,51 @@ class AsyncCaching(
         }
 
     private fun saveAddresses(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
-        tx.tx.body.messagesList.flatMap { it.getAssociatedAddresses() }.toSet().map { addr ->
-            val addrPair = addr.getAddressType(props)
-            var pairCopy = addrPair!!.copy()
-            if (addrPair.second == null) {
-                when (addrPair.first) {
-                    TxAddressJoinType.OPERATOR.name -> validatorService.saveValidator(addr)
-                        .let { pairCopy = addrPair.copy(second = it.first.value) }
-                    TxAddressJoinType.ACCOUNT.name -> accountService.saveAccount(addr)
-                        .let { pairCopy = addrPair.copy(second = it.id.value) }
-                }
+        val msgAddrs = tx.tx.body.messagesList.flatMap { it.getAssociatedAddresses() }.toSet()
+            .map { addr -> saveAddr(addr, txId, tx) }
+        val eventAddrs = tx.tx.body.messagesList.flatMapIndexed { idx, msg ->
+            val events = msg.getIbcEvents().filter { it.eventType == IbcEventType.ADDRESS }.associate { it.event to it.idField }
+            tx.txResponse.logsList[idx].eventsList
+                .filter { it.type in events.map { e -> e.key } }
+                .flatMap { e -> e.attributesList.filter { a -> a.key == events[e.type] }.map { it.value } }
+                .map { addr -> saveAddr(addr, txId, tx) }
+        }
+        (msgAddrs + eventAddrs).filter { it.second != null }.groupBy({ it.first }) { it.second!! }
+    }
+
+    private fun saveAddr(addr: String, txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse): Pair<String, Int?> {
+        val addrPair = addr.getAddressType(props)
+        var pairCopy = addrPair!!.copy()
+        if (addrPair.second == null) {
+            when (addrPair.first) {
+                TxAddressJoinType.OPERATOR.name -> validatorService.saveValidator(addr)
+                    .let { pairCopy = addrPair.copy(second = it.first.value) }
+                TxAddressJoinType.ACCOUNT.name -> accountService.saveAccount(addr)
+                    .let { pairCopy = addrPair.copy(second = it.id.value) }
             }
-            TxAddressJoinRecord.insert(tx.txResponse.txhash, txId, tx.txResponse.height.toInt(), pairCopy, addr)
-            addrPair
-        }.filter { it.second != null }.groupBy({ it.first }) { it.second!! }
+        }
+        TxAddressJoinRecord.insert(tx.txResponse.txhash, txId, tx.txResponse.height.toInt(), pairCopy, addr)
+        return addrPair
     }
 
     private fun saveMarkers(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
-        tx.tx.body.messagesList.flatMap { it.getAssociatedDenoms() }.toSet().map { denom ->
-            assetService.getAssetRaw(denom).let { (id, _) ->
-                TxMarkerJoinRecord.insert(tx.txResponse.txhash, txId, tx.txResponse.height.toInt(), id!!.value, denom)
-            }
-            denom
+        val msgDenoms = tx.tx.body.messagesList.flatMap { it.getAssociatedDenoms() }.toSet()
+            .map { denom -> saveDenom(denom, txId, tx) }
+        val eventDenoms = tx.tx.body.messagesList.flatMapIndexed { idx, msg ->
+            val events = msg.getIbcEvents().filter { it.eventType == IbcEventType.DENOM }.associate { it.event to it.idField }
+            tx.txResponse.logsList[idx].eventsList
+                .filter { it.type in events.map { e -> e.key } }
+                .flatMap { e -> e.attributesList.filter { a -> a.key == events[e.type] }.map { it.value } }
+                .map { denom -> saveDenom(denom, txId, tx) }
         }
+        msgDenoms + eventDenoms
+    }
+
+    private fun saveDenom(denom: String, txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse): String {
+        assetService.getAssetRaw(denom).let { (id, _) ->
+            TxMarkerJoinRecord.insert(tx.txResponse.txhash, txId, tx.txResponse.height.toInt(), id!!.value, denom)
+        }
+        return denom
     }
 
     private fun saveNftData(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
@@ -226,15 +250,9 @@ class AsyncCaching(
             .filter { it.type in me.map { m -> m.event } }
             .flatMap { e ->
                 e.attributesList
-                    .filter {
-                            a -> a.key in me.map { m -> m.idField }
-                    }
-                    .map {
-                        jacksonObjectMapper().readValue(it.value, String::class.java)
-                    } }
-            .map {
-                    addr -> addr.toMAddress()
-            }
+                    .filter { a -> a.key in me.map { m -> m.idField } }
+                    .map { jacksonObjectMapper().readValue(it.value, String::class.java) } }
+            .map { addr -> addr.toMAddress() }
 
         // Save the nft addresses
         val nfts = (msgAddrs + meAddrs).mapNotNull { md ->

@@ -330,7 +330,7 @@ object TxMarkerJoinTable : IntIdTable(name = "tx_marker_join") {
     val txHashId = reference("tx_hash_id", TxCacheTable)
     val txHash = varchar("tx_hash", 64)
     val markerId = reference("marker_id", MarkerCacheTable)
-    val denom = varchar("denom", 128)
+    val denom = varchar("denom", 256)
 }
 
 class TxMarkerJoinRecord(id: EntityID<Int>) : IntEntity(id) {
