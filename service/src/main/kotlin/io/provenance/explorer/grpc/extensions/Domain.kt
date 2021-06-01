@@ -1,14 +1,17 @@
 package io.provenance.explorer.grpc.extensions
 
+import com.google.common.io.BaseEncoding
 import com.google.protobuf.Any
 import com.google.protobuf.ByteString
 import cosmos.auth.v1beta1.Auth
 import cosmos.base.query.v1beta1.Pagination
 import cosmos.crypto.multisig.Keys
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.core.toBech32Data
 import io.provenance.explorer.domain.extensions.edPubKeyToBech32
 import io.provenance.explorer.domain.extensions.secpPubKeyToBech32
 import io.provenance.explorer.domain.extensions.toBase64
+import io.provenance.explorer.domain.extensions.toSha256
 import io.provenance.explorer.service.prettyRole
 import io.provenance.marker.v1.Access
 import io.provenance.marker.v1.MarkerAccount
@@ -80,7 +83,13 @@ fun Any.toAddress(hrpPrefix: String) =
         else -> null.also { logger().error("This typeUrl is not supported as a consensus address: $typeUrl") }
     }
 
-
+//TODO: Once cosmos-sdk implements a grpc endpoint for this we can replace this with grpc Issue: https://github.com/cosmos/cosmos-sdk/issues/9437
+fun getEscrowAccountAddress(portId: String, channelId: String, hrpPrefix: String) : String {
+    val contents = "${portId}/${channelId}".toByteArray()
+    var preImage = "ics20-1".encodeToByteArray() + 0x0.toByte() + contents
+    val hash = preImage.toSha256().copyOfRange(0, 20)
+    return hash.toBech32Data(hrpPrefix).address
+}
 
 
 fun getPaginationBuilder(offset: Int, limit: Int) =

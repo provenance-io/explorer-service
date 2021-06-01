@@ -36,6 +36,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Features
 * IBC denom API #97
   * `/ibc/all`
+* Add get escrow account address method for ibc #119
 
 ### Improvements
 * Removed hash conversion #66
