@@ -23,14 +23,6 @@ class NftController(private val nftService: NftService) {
     @GetMapping("/scope/{addr}")
     fun getNftDetail(@PathVariable addr: String) = ResponseEntity.ok(nftService.getScopeByAddr(addr))
 
-    @ApiOperation("Returns paginated list of NFTs")
-    @GetMapping("/scope/all")
-    fun getAllNfts(
-        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
-    ) =
-        ResponseEntity.ok(nftService.getAllScopes(page, count))
-
     @ApiOperation("Returns NFTs for owning address")
     @GetMapping("/scope/owner/{address}")
     fun getNftsByOwningAddress(

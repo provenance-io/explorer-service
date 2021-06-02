@@ -51,6 +51,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * `/assets/detail/{id}`, `/assets/detail/ibc/{id}` -> as used by FE, these should resolve naturally
   * `/assets/{id}/holders` -> `/assets/holders?id={denom}`
   * `/assets/{id}/metadata` -> `/assets/metadata?id={denom}` with `id` optional, returning full list of metadata
+* Removing `nft/scope/all` due to massive performance issues #118
 
 ### Data
 * Added token count to staking_validator_cache #112
