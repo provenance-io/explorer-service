@@ -290,6 +290,8 @@ fun Any.getAssociatedDenoms(): List<String> =
             .also { logger().debug("This typeUrl is not yet supported as an asset-based msg: $typeUrl") }
     }
 
+fun Any.isIbcTransferMsg() = typeUrl.contains("MsgTransfer")
+
 enum class IbcEventType{ DENOM, ADDRESS }
 
 enum class IbcDenomEvents(val eventType: IbcEventType, val event: String, val idField: String) {

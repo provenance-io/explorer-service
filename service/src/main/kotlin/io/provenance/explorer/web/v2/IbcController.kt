@@ -1,7 +1,6 @@
 package io.provenance.explorer.web.v2
 
 import io.provenance.explorer.service.IbcService
-import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import org.springframework.http.MediaType
@@ -17,7 +16,7 @@ import javax.validation.constraints.Min
 @RestController
 @RequestMapping(path = ["/api/v2/ibc"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Api(value = "IBC controller", produces = "application/json", consumes = "application/json", tags = ["IBC"])
-class IbcController(private val ibcService: IbcService) : BaseController() {
+class IbcController(private val ibcService: IbcService) {
 
     @ApiOperation("Returns paginated list of ibc denoms")
     @GetMapping("/all")
@@ -26,7 +25,5 @@ class IbcController(private val ibcService: IbcService) : BaseController() {
         @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
     ) = ResponseEntity.ok(ibcService.getIbcDenoms(page, count))
 
-//    @ApiOperation("Returns detail for ibc denom")
-//    @GetMapping("/detail")
-//    fun getIbcDetail(@RequestParam id: String) = ResponseEntity.ok(ibcService.getIbcDetail(id))
+
 }

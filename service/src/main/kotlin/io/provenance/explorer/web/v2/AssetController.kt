@@ -2,7 +2,6 @@ package io.provenance.explorer.web.v2
 
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.IbcService
-import io.provenance.explorer.web.BaseController
 import io.provenance.marker.v1.MarkerStatus
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -21,7 +20,7 @@ import javax.websocket.server.PathParam
 @RestController
 @RequestMapping(path = ["/api/v2/assets"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Api(value = "Asset controller", produces = "application/json", consumes = "application/json", tags = ["Assets"])
-class AssetController(private val assetService: AssetService, private val ibcService: IbcService) : BaseController() {
+class AssetController(private val assetService: AssetService, private val ibcService: IbcService) {
 
     @ApiOperation("Returns paginated list of assets for selected statuses")
     @GetMapping("/all")
