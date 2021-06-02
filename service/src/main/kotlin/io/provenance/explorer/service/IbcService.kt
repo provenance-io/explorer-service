@@ -1,6 +1,7 @@
 package io.provenance.explorer.service
 
 import com.google.protobuf.util.JsonFormat
+import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
@@ -38,9 +39,9 @@ class IbcService(
     }
 
     fun getIbcDetail(ibcHash: String) =
-        assetService.getAssetRaw(ibcHash.getIbcDenom())
-            .let { (id, record) ->
-                val txCount = TxMarkerJoinRecord.findCountByDenom(id!!.value)
+        assetService.getAssetFromDB(ibcHash.getIbcDenom())
+            ?.let { (id, record) ->
+                val txCount = TxMarkerJoinRecord.findCountByDenom(id.value)
                 IbcDetail(
                     record.denom,
                     record.supply.toBigInteger().toString(),
@@ -49,7 +50,7 @@ class IbcService(
                     accountService.getDenomMetadataSingle(record.denom).toObjectNode(protoPrinter),
                     ibcClient.getDenomTrace(ibcHash).toObjectNode(protoPrinter)
                 )
-            }
+            } ?: throw ResourceNotFoundException("Asset does not exist: ${ibcHash.getIbcDenom()}")
 }
 
 fun String.getIbcHash() = this.split("ibc/").last()

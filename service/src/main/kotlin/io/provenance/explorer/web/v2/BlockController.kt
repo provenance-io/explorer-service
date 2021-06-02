@@ -1,8 +1,6 @@
 package io.provenance.explorer.web.v2
 
-import io.provenance.explorer.domain.models.explorer.BlockSummary
 import io.provenance.explorer.service.ExplorerService
-import io.provenance.explorer.web.BaseController
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import org.springframework.http.MediaType
@@ -19,7 +17,7 @@ import javax.validation.constraints.Min
 @RestController
 @RequestMapping(path = ["/api/v2/blocks"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Api(value = "Block controller", produces = "application/json", consumes = "application/json", tags = ["Blocks"])
-class BlockController(private val explorerService: ExplorerService) : BaseController() {
+class BlockController(private val explorerService: ExplorerService) {
 
     @ApiOperation("Return block at current height")
     @GetMapping("/height")
