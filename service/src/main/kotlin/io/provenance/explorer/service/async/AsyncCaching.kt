@@ -203,6 +203,7 @@ class AsyncCaching(
                 else listOf()
             }
         (msgAddrs + eventAddrs).toSet()
+            .filter { !it.isNullOrEmpty() }
             .map { saveAddr(it, txId, tx) }
             .filter { it.second != null }.groupBy({ it.first }) { it.second!! }
     }
@@ -270,7 +271,7 @@ class AsyncCaching(
             nftService.saveMAddress(md)
                 // mark deleted if necessary
                 .also {
-                    if (tx.txResponse.code == 0 && msgAddrPairs.first { it.first == md }.second)
+                    if (tx.txResponse.code == 0 && (msgAddrPairs.firstOrNull { it.first == md }?.second == true))
                         nftService.markDeleted(md) }
         }
         // Save the nft joins

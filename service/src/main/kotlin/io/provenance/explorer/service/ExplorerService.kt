@@ -19,7 +19,6 @@ import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.Spotlight
 import io.provenance.explorer.service.async.AsyncCaching
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
@@ -41,9 +40,9 @@ class ExplorerService(
 
     fun getBlockAtHeight(height: Int?, checkTxs: Boolean = false) = runBlocking(Dispatchers.IO) {
         val queryHeight = height ?: blockService.getLatestBlockHeightIndex()
-        val blockResponse = async { asyncCaching.getBlock(queryHeight, checkTxs) }
-        val validatorsResponse = async { validatorService.getValidatorsByHeight(queryHeight) }
-        hydrateBlock(blockResponse.await(), validatorsResponse.await())
+        val blockResponse = asyncCaching.getBlock(queryHeight, checkTxs)
+        val validatorsResponse = validatorService.getValidatorsByHeight(queryHeight)
+        hydrateBlock(blockResponse, validatorsResponse)
     }
 
     fun getRecentBlocks(count: Int, page: Int) = let {

@@ -1,10 +1,12 @@
 package io.provenance.explorer.service
 
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.AccountRecord.Companion.update
 import io.provenance.explorer.domain.extensions.NHASH
+import io.provenance.explorer.domain.extensions.isAddressAsType
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDecCoin
@@ -34,7 +36,8 @@ class AccountService(
 
     fun saveAccount(address: String) =
         accountClient.getAccountInfo(address)?.let { AccountRecord.insertIgnore(it) }
-            ?: AccountRecord.insertUnknownAccount(address)
+            ?: if (address.isAddressAsType(props.provAccPrefix())) AccountRecord.insertUnknownAccount(address)
+                else throw ResourceNotFoundException("Invalid account: '$address'")
 
     fun getAccountDetail(address: String) = getAccountRaw(address).let {
         AccountDetail(

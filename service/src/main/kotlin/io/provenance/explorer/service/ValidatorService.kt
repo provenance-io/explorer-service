@@ -4,6 +4,7 @@ import cosmos.base.tendermint.v1beta1.Query
 import cosmos.slashing.v1beta1.Slashing
 import cosmos.staking.v1beta1.Staking
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
@@ -52,7 +53,7 @@ class ValidatorService(
         ValidatorsCacheRecord.findById(blockHeight)?.also {
             ValidatorsCacheRecord.updateHitCount(blockHeight)
         }?.validators
-    }!!
+    } ?: throw ResourceNotFoundException("Invalid height: '$blockHeight'")
 
     fun saveValidatorsAtHeight(blockHeight: Int) =
         grpcClient.getValidatorsAtHeight(blockHeight).let { ValidatorsCacheRecord.insertIgnore(blockHeight, it) }
@@ -81,7 +82,7 @@ class ValidatorService(
 
     // Returns a validator detail object for the validator
     fun getValidator(address: String) =
-        getValidatorOperatorAddress(address)!!.let { addr ->
+        getValidatorOperatorAddress(address)?.let { addr ->
             val currentHeight = blockService.getLatestBlockHeightIndex().toBigInteger()
             val signingInfo = getSigningInfos().firstOrNull { it.address == addr.consensusAddress }
             val validatorSet = grpcClient.getLatestValidators()
@@ -110,7 +111,7 @@ class ValidatorService(
                 if (!stakingValidator.isActive()) stakingValidator.unbondingHeight else null,
                 if (stakingValidator.jailed) signingInfo.jailedUntil.toDateTime() else null
             )
-        }
+        } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
     fun validateStatus(v: Staking.Validator, valSet: Query.Validator?, valId: Int) =
         if ((valSet != null && !v.isActive()) || (valSet == null && v.isActive())) {
@@ -288,7 +289,8 @@ class ValidatorService(
         }
 
     fun getCommissionInfo(address: String): ValidatorCommission {
-        val validator = grpcClient.getStakingValidator(address)
+        val validator = StakingValidatorCacheRecord.findByOperator(address)?.stakingValidator
+            ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
         val selfBondedAmount = grpcClient.getValidatorSelfDelegations(
             validator.operatorAddress,
             validator.operatorAddress.translateAddress(props).accountAddr

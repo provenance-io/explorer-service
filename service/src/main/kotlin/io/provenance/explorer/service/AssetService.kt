@@ -107,7 +107,7 @@ class AssetService (
                     record.status,
                     record.markerType
                 )
-            } ?: throw ResourceNotFoundException("Asset does not exist: $denom")
+            } ?: throw ResourceNotFoundException("Invalid asset: $denom")
 
     fun getAssetHolders(denom: String, page: Int, count: Int) = accountService.getCurrentSupply(denom).let { supply ->
         val res = markerClient.getMarkerHolders(denom, page.toOffset(count), count)

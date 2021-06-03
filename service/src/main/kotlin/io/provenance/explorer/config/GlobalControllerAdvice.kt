@@ -1,5 +1,6 @@
 package io.provenance.explorer.config
 
+import io.grpc.StatusRuntimeException
 import io.provenance.explorer.domain.exceptions.TendermintApiException
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
@@ -17,14 +18,20 @@ class GlobalControllerAdvice : ResponseEntityExceptionHandler() {
 
     @ExceptionHandler(TendermintApiException::class)
     fun endpointExceptionHandler(ex: TendermintApiException): ResponseEntity<Any> =
-        ResponseEntity<Any>(ex.message, HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR);
+        ResponseEntity<Any>(ex.message, HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR)
+
+    @ExceptionHandler(StatusRuntimeException::class)
+    fun grpcStatusException(ex: StatusRuntimeException, request: HttpServletRequest): ResponseEntity<Any> {
+        logger.info("404 on '${request.requestURI}' with error '${ex.message}'")
+        return ResponseEntity<Any>(ex.message, HttpHeaders(), HttpStatus.NOT_FOUND)
+    }
 
     /**
      * Catch ResourceNotFoundException, return 404
      */
     @ExceptionHandler(ResourceNotFoundException::class)
     fun handleNotFound(exception: ResourceNotFoundException, request: HttpServletRequest): ResponseEntity<Any> {
-        logger.debug("404 on '${request.requestURI}' with error '${exception.message}'")
+        logger.info("404 on '${request.requestURI}' with error '${exception.message}'")
         return ResponseEntity.notFound().build()
     }
 }
