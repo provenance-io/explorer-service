@@ -26,18 +26,25 @@ import io.provenance.explorer.domain.entities.UNKNOWN
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
+import io.provenance.explorer.domain.models.explorer.GovTxData
+import io.provenance.explorer.grpc.extensions.GovMsgType
 import io.provenance.explorer.grpc.extensions.IbcEventType
 import io.provenance.explorer.grpc.extensions.getAssociatedAddresses
 import io.provenance.explorer.grpc.extensions.getAssociatedDenoms
+import io.provenance.explorer.grpc.extensions.getAssociatedGovMsgs
 import io.provenance.explorer.grpc.extensions.getAssociatedMetadata
 import io.provenance.explorer.grpc.extensions.getAssociatedMetadataEvents
 import io.provenance.explorer.grpc.extensions.getIbcEvents
 import io.provenance.explorer.grpc.extensions.isIbcTransferMsg
 import io.provenance.explorer.grpc.extensions.isMetadataDeletionMsg
+import io.provenance.explorer.grpc.extensions.toMsgDeposit
+import io.provenance.explorer.grpc.extensions.toMsgSubmitProposal
+import io.provenance.explorer.grpc.extensions.toMsgVote
 import io.provenance.explorer.grpc.v1.TransactionGrpcClient
 import io.provenance.explorer.service.AccountService
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.BlockService
+import io.provenance.explorer.service.GovService
 import io.provenance.explorer.service.NftService
 import io.provenance.explorer.service.ValidatorService
 import org.jetbrains.exposed.dao.id.EntityID
@@ -54,6 +61,7 @@ class AsyncCaching(
     private val accountService: AccountService,
     private val assetService: AssetService,
     private val nftService: NftService,
+    private val govService: GovService,
     private val props: ExplorerProperties
 ) {
 
@@ -148,6 +156,7 @@ class AsyncCaching(
         val addrs = saveAddresses(txPair.first, txPair.second)
         val markers = saveMarkers(txPair.first, txPair.second)
         saveNftData(txPair.first, txPair.second)
+        saveGovData(txPair.second, blockTime)
         saveSignaturesTx(txPair.second)
         return TxUpdatedItems(addrs, markers)
     }
@@ -196,7 +205,7 @@ class AsyncCaching(
         val eventAddrs = tx.tx.body.messagesList.flatMapIndexed { idx, msg ->
                 val events = msg.getIbcEvents().filter { it.eventType == IbcEventType.ADDRESS }
                     .associate { it.event to it.idField }
-                if (tx.txResponse.logsList.size > 0)
+                if (tx.txResponse.logsCount > 0)
                     tx.txResponse.logsList[idx].eventsList
                         .filter { it.type in events.map { e -> e.key } }
                         .flatMap { e -> e.attributesList.filter { a -> a.key == events[e.type] }.map { it.value } }
@@ -228,7 +237,7 @@ class AsyncCaching(
         val denoms = msgDenoms.flatMap { it.first }
         val eventDenoms = tx.tx.body.messagesList.flatMapIndexed { idx, msg ->
                 val events = msg.getIbcEvents().filter { it.eventType == IbcEventType.DENOM }.associate { it.event to it.idField }
-                if (tx.txResponse.logsList.size > 0)
+                if (tx.txResponse.logsCount > 0)
                     tx.txResponse.logsList[idx].eventsList
                         .filter { it.type in events.map { e -> e.key } }
                         .flatMap { e -> e.attributesList.filter { a -> a.key == events[e.type] }.map { it.value } }
@@ -276,6 +285,37 @@ class AsyncCaching(
         }
         // Save the nft joins
         nfts.forEach { nft -> TxNftJoinRecord.insert(tx.txResponse.txhash, txId, tx.txResponse.height.toInt(), nft) }
+    }
+
+    private fun saveGovData(tx: ServiceOuterClass.GetTxResponse, blockTime: DateTime) = transaction {
+        if (tx.txResponse.code == 0) {
+            val txInfo = GovTxData(tx.txResponse.height.toInt(), tx.txResponse.txhash, blockTime)
+            tx.tx.body.messagesList.map { it.getAssociatedGovMsgs() }
+                .forEachIndexed fe@{ idx, pair ->
+                    if (pair == null) return@fe
+                    when (pair.first) {
+                        GovMsgType.PROPOSAL ->
+                            // Have to find the proposalId in the log events
+                            tx.txResponse.logsList[idx]
+                                .eventsList.first { it.type == "submit_proposal" }
+                                .attributesList.first { it.key == "proposal_id" }
+                                .value.toLong()
+                                .let { id -> pair.second.toMsgSubmitProposal().let {
+                                        govService.saveProposal(id, txInfo, it.proposer)
+                                        govService.saveDeposit(id, txInfo, null, it)
+                                    } }
+                        GovMsgType.DEPOSIT ->
+                            pair.second.toMsgDeposit().let {
+                                govService.saveProposal(it.proposalId, txInfo, it.depositor)
+                                govService.saveDeposit(it.proposalId, txInfo, it, null)
+                            }
+                        GovMsgType.VOTE -> pair.second.toMsgVote().let {
+                            govService.saveProposal(it.proposalId, txInfo, it.voter)
+                            govService.saveVote(txInfo, it)
+                        }
+                    }
+                }
+        }
     }
 
     private fun saveSignaturesTx(tx: ServiceOuterClass.GetTxResponse) = transaction {

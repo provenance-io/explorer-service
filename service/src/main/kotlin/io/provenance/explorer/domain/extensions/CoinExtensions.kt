@@ -6,6 +6,8 @@ import java.math.BigDecimal
 
 const val NHASH = "nhash"
 
+fun BigDecimal.stringfy() = this.stripTrailingZeros().toPlainString()
+
 fun String.toDecCoin() = BigDecimal(this.toBigInteger(), 18).stripTrailingZeros().toPlainString()
 
 fun List<CoinOuterClass.Coin>.toProtoCoin() =

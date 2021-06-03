@@ -82,7 +82,7 @@ class AssetService (
                     denom,
                     MarkerStatus.MARKER_STATUS_ACTIVE.toString(),
                     null,
-                    accountService.getCurrentSupply(denom).toBigDecimal(),
+                    it.toBigDecimal(),
                     TxMarkerJoinRecord.findLatestTxByDenom(denom)
                 )
             }

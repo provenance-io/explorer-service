@@ -23,6 +23,7 @@ import ibc.core.connection.v1.Tx.MsgConnectionOpenInit
 import ibc.core.connection.v1.Tx.MsgConnectionOpenTry
 import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest
+import io.provenance.explorer.domain.core.blankToNull
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.core.toMAddressContractSpec
@@ -153,6 +154,7 @@ fun Any.toMsgConnectionOpenAck() = this.unpack(MsgConnectionOpenAck::class.java)
 fun Any.toMsgConnectionOpenConfirm() = this.unpack(MsgConnectionOpenConfirm::class.java)
 
 
+/////////// ADDRESSES
 fun Any.getAssociatedAddresses(): List<String> =
     when {
         typeUrl.contains("MsgSend") -> this.toMsgSend().let { listOf(it.fromAddress, it.toAddress) }
@@ -259,6 +261,7 @@ fun Any.getAssociatedAddresses(): List<String> =
         else -> listOf<String>().also { logger().debug("This typeUrl is not yet supported as an address-based msg: $typeUrl") }
     }
 
+/////////// DENOMS
 fun Any.getAssociatedDenoms(): List<String> =
     when {
         typeUrl.contains("MsgSend") -> this.toMsgSend().let { it.amountList.map { am -> am.denom } }
@@ -290,6 +293,7 @@ fun Any.getAssociatedDenoms(): List<String> =
             .also { logger().debug("This typeUrl is not yet supported as an asset-based msg: $typeUrl") }
     }
 
+/////////// IBC
 fun Any.isIbcTransferMsg() = typeUrl.contains("MsgTransfer")
 
 enum class IbcEventType{ DENOM, ADDRESS }
@@ -308,6 +312,7 @@ fun Any.getIbcEvents() =
             .also { logger().debug("This typeUrl is not yet supported in as an ibc-event-based msg: $typeUrl") }
     }
 
+/////////// METADATA (NFT/SCOPES)
 enum class MdEvents(val event: String, val idField: String) {
     // Contract Spec
     CSPC("provenance.metadata.v1.EventContractSpecificationCreated", "contract_specification_addr"),
@@ -332,7 +337,7 @@ fun Any.getAssociatedMetadataEvents() =
 fun Any.getAssociatedMetadata() =
     when {
         typeUrl.contains("MsgWriteScopeRequest") -> this.toMsgWriteScopeRequest()
-            .let { it.scopeUuid?.toMAddressScope() ?: it.scope.scopeId?.toMAddress() }
+            .let { it.scopeUuid?.blankToNull()?.toMAddressScope() ?: it.scope.scopeId?.toMAddress() }
         typeUrl.contains("MsgDeleteScopeRequest") -> this.toMsgDeleteScopeRequest().scopeId.toMAddress()
         typeUrl.contains("MsgAddScopeDataAccessRequest") -> this.toMsgAddScopeDataAccessRequest().scopeId.toMAddress()
         typeUrl.contains("MsgDeleteScopeDataAccessRequest") -> this.toMsgDeleteScopeDataAccessRequest().scopeId.toMAddress()
@@ -344,15 +349,15 @@ fun Any.getAssociatedMetadata() =
             .let { it.sessionIdComponents.toMAddress() ?: it.record.sessionId.toMAddress() }
         typeUrl.contains("MsgDeleteRecordRequest") -> this.toMsgDeleteRecordRequest().recordId.toMAddress()
         typeUrl.contains("MsgWriteScopeSpecificationRequest") -> this.toMsgWriteScopeSpecificationRequest()
-            .let { it.specUuid?.toMAddressScopeSpec() ?: it.specification.specificationId?.toMAddress() }
+            .let { it.specUuid?.blankToNull()?.toMAddressScopeSpec() ?: it.specification.specificationId?.toMAddress() }
         typeUrl.contains("MsgDeleteScopeSpecificationRequest") ->
             this.toMsgDeleteScopeSpecificationRequest().specificationId.toMAddress()
         typeUrl.contains("MsgWriteContractSpecificationRequest") -> this.toMsgWriteContractSpecificationRequest()
-            .let { it.specUuid?.toMAddressContractSpec() ?: it.specification.specificationId?.toMAddress() }
+            .let { it.specUuid?.blankToNull()?.toMAddressContractSpec() ?: it.specification.specificationId?.toMAddress() }
         typeUrl.contains("MsgDeleteContractSpecificationRequest") ->
             this.toMsgDeleteContractSpecificationRequest().specificationId.toMAddress()
         typeUrl.contains("MsgWriteRecordSpecificationRequest") -> this.toMsgWriteRecordSpecificationRequest()
-            .let { it.contractSpecUuid?.toMAddressContractSpec() ?: it.specification.specificationId?.toMAddress() }
+            .let { it.contractSpecUuid?.blankToNull()?.toMAddressContractSpec() ?: it.specification.specificationId?.toMAddress() }
         typeUrl.contains("MsgDeleteRecordSpecificationRequest") ->
             this.toMsgDeleteRecordSpecificationRequest().specificationId.toMAddress()
         typeUrl.contains("MsgP8eMemorializeContractRequest") -> this.toMsgP8eMemorializeContractRequest().scopeId.toMAddressScope()
@@ -365,3 +370,15 @@ fun SessionIdComponents?.toMAddress() =
         val scope = this.scopeUuid.toUuid() ?: this.scopeAddr.toMAddress().getPrimaryUuid()
         this.sessionUuid.toMAddressSession(scope)
     } else null
+
+
+/////////// GOVERNANCE
+enum class GovMsgType { PROPOSAL, VOTE, DEPOSIT }
+
+fun Any.getAssociatedGovMsgs() =
+    when {
+        typeUrl.contains("MsgSubmitProposal") -> GovMsgType.PROPOSAL to this
+        typeUrl.contains("MsgVote") -> GovMsgType.VOTE to this
+        typeUrl.contains("MsgDeposit") -> GovMsgType.DEPOSIT to this
+        else -> null.also { logger().debug("This typeUrl is not a governance-based msg: $typeUrl") }
+    }
