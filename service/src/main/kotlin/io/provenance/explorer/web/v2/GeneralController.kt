@@ -39,7 +39,7 @@ class GeneralController(private val explorerService: ExplorerService) {
     fun getChainId(): ResponseEntity<String> = ResponseEntity.ok(explorerService.getChainId())
 
     @ApiOperation("Returns statistics on min gas fees for the chain")
-    @GetMapping("/gas/fees/statstics")
+    @GetMapping("/gas/fees/statistics")
     fun getGasFeeStatistics(
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?,

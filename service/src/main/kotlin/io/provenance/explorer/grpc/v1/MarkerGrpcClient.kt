@@ -4,15 +4,11 @@ import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.getPaginationBuilder
 import io.provenance.explorer.grpc.extensions.toMarker
-import io.provenance.marker.v1.Balance
 import io.provenance.marker.v1.MarkerAccount
-import io.provenance.marker.v1.QueryAllMarkersRequest
-import io.provenance.marker.v1.QueryDenomMetadataRequest
 import io.provenance.marker.v1.QueryGrpc
 import io.provenance.marker.v1.QueryHoldingRequest
 import io.provenance.marker.v1.QueryHoldingResponse
 import io.provenance.marker.v1.QueryMarkerRequest
-import io.provenance.marker.v1.QuerySupplyRequest
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -59,9 +55,6 @@ class MarkerGrpcClient(channelUri: URI) {
         } catch (e: Exception) {
             QueryHoldingResponse.getDefaultInstance()
         }
-
-    fun getMarkerMetadata(denom: String) =
-        markerClient.denomMetadata(QueryDenomMetadataRequest.newBuilder().setDenom(denom).build()).metadata
 
 
 }

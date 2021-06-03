@@ -3,6 +3,7 @@ package io.provenance.explorer.service
 import com.google.protobuf.util.JsonFormat
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.getParentForType
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toMAddress
@@ -118,9 +119,11 @@ class TransactionService(
 
     private fun getTxByHash(hash: String) = getTxByHashFromCache(hash)
 
-    fun getTransactionJson(txnHash: String) = protoPrinter.print(getTxByHash(txnHash)?.second)
+    fun getTransactionJson(txnHash: String) = getTxByHash(txnHash)?.second?.let { protoPrinter.print(it) }
+        ?: throw ResourceNotFoundException("Invalid transaction hash: '$txnHash'")
 
     fun getTransactionByHash(hash: String) = getTxByHash(hash)?.let { hydrateTxDetails(it.first.value, it.second) }
+        ?: throw ResourceNotFoundException("Invalid transaction hash: '$hash'")
 
     private fun hydrateTxDetails(txId: Int, tx: ServiceOuterClass.GetTxResponse) = transaction {
         TxDetails(

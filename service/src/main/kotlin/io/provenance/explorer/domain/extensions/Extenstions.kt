@@ -113,6 +113,9 @@ fun BigInteger.pageCountOfResults(count: Int): Int =
     if (this < count.toBigInteger()) 1
     else ceil(this.toDouble() / count).toInt()
 
+
+fun String.isAddressAsType(type: String) = this.toBech32Data().hrp == type
+
 fun String.translateAddress(props: ExplorerProperties) = this.toBech32Data().let {
     Addresses(
         it.hexData,

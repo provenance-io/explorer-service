@@ -43,6 +43,30 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Removed hash conversion #66
   * This will now be done on the frontend
 * Ingesting denoms and addresses from IBC Txs #97
+* Improved failure statuses for APIs #120
+  * Now returning 404s, no message -> Typically due to no record from the db
+    * `/api/v2/accounts/{address}` -> checks for a valid account address
+    * `/api/v2/assets/detail/{id}`
+    * `/api/v2/assets/detail/ibc/{id}`
+    * `/api/v2/txs/{hash}`
+    * `/api/v2/txs/{hash}/json`
+    * `/api/v2/validators/height/{blockHeight}`
+    * `/api/v2/validators/{id}`
+    * `/api/v2/validators/{id}/commission`
+  * Now returning 404s, with message -> This is due to the error coming from chain queries
+    * `/api/v2/accounts/{address}/balances`
+    * `/api/v2/accounts/{address}/delegations`
+    * `/api/v2/accounts/{address}/unbonding`
+    * `/api/v2/accounts/{address}/redelegations`
+    * `/api/v2/accounts/{address}/rewards`
+    * `/api/v2/assets/holders?id={id}`
+    * `/api/v2/assets/metadata?id={id}`
+    * `/api/v2/blocks/height/{height}`
+    * `/api/v2/nft/scope/{addr}`
+    * `/api/v2/nft/scope/owner/{addr}` -> returns 404 if invalid address
+    * `/api/v2/nft/scope/{addr}/records`
+    * `/api/v2/nft/validators/{id}/delegations/bonded`
+    * `/api/v2/nft/validators/{id}/delegations/unbonding`
   
 ### Bug Fixes
 * Properly sorting Validator listview #112
@@ -52,6 +76,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * `/assets/{id}/holders` -> `/assets/holders?id={denom}`
   * `/assets/{id}/metadata` -> `/assets/metadata?id={denom}` with `id` optional, returning full list of metadata
 * Removing `nft/scope/all` due to massive performance issues #118
+* Filtering out blanks when associating addresses to txs
+* Fixed boolean check on NFT delete messages
+* Added an address check on unknown accounts being requested -> checking for proper address prefix
 
 ### Data
 * Added token count to staking_validator_cache #112

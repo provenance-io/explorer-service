@@ -50,7 +50,7 @@ class IbcService(
                     accountService.getDenomMetadataSingle(record.denom).toObjectNode(protoPrinter),
                     ibcClient.getDenomTrace(ibcHash).toObjectNode(protoPrinter)
                 )
-            } ?: throw ResourceNotFoundException("Asset does not exist: ${ibcHash.getIbcDenom()}")
+            } ?: throw ResourceNotFoundException("Invalid asset: ${ibcHash.getIbcDenom()}")
 }
 
 fun String.getIbcHash() = this.split("ibc/").last()

@@ -40,7 +40,8 @@ class TransactionController(private val transactionService: TransactionService) 
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
     ) =
         ResponseEntity.ok(
-            transactionService.getTxsByQuery(null, null, null, msgType, null, txStatus, count, page, fromDate,
+            transactionService.getTxsByQuery(
+                null, null, null, msgType, null, txStatus, count, page, fromDate,
                 toDate, null))
 
     @ApiOperation("Return transaction by hash value")
