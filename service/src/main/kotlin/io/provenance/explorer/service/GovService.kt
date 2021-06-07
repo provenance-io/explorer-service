@@ -1,0 +1,178 @@
+package io.provenance.explorer.service
+
+import com.google.protobuf.util.JsonFormat
+import cosmos.gov.v1beta1.Gov
+import cosmos.gov.v1beta1.Tx
+import io.provenance.explorer.config.ResourceNotFoundException
+import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.DepositType
+import io.provenance.explorer.domain.entities.GovDepositRecord
+import io.provenance.explorer.domain.entities.GovProposalRecord
+import io.provenance.explorer.domain.entities.GovVoteRecord
+import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
+import io.provenance.explorer.domain.extensions.NHASH
+import io.provenance.explorer.domain.extensions.formattedString
+import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.stringfy
+import io.provenance.explorer.domain.extensions.toDecCoin
+import io.provenance.explorer.domain.extensions.toOffset
+import io.provenance.explorer.domain.models.explorer.CoinStr
+import io.provenance.explorer.domain.models.explorer.DepositPercentage
+import io.provenance.explorer.domain.models.explorer.DepositRecord
+import io.provenance.explorer.domain.models.explorer.GovAddrData
+import io.provenance.explorer.domain.models.explorer.GovAddress
+import io.provenance.explorer.domain.models.explorer.GovParamType
+import io.provenance.explorer.domain.models.explorer.GovProposalDetail
+import io.provenance.explorer.domain.models.explorer.GovTimeFrame
+import io.provenance.explorer.domain.models.explorer.GovTxData
+import io.provenance.explorer.domain.models.explorer.GovVotesDetail
+import io.provenance.explorer.domain.models.explorer.PagedResults
+import io.provenance.explorer.domain.models.explorer.ProposalHeader
+import io.provenance.explorer.domain.models.explorer.ProposalTimings
+import io.provenance.explorer.domain.models.explorer.Tally
+import io.provenance.explorer.domain.models.explorer.TallyParams
+import io.provenance.explorer.domain.models.explorer.VoteDbRecord
+import io.provenance.explorer.domain.models.explorer.VoteRecord
+import io.provenance.explorer.domain.models.explorer.VotesTally
+import io.provenance.explorer.grpc.v1.GovGrpcClient
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.springframework.stereotype.Service
+
+@Service
+class GovService(
+    private val govClient: GovGrpcClient,
+    private val protoPrinter: JsonFormat.Printer,
+    private val valService: ValidatorService
+) {
+    protected val logger = logger(GovService::class)
+
+    fun saveProposal(proposalId: Long, txInfo: GovTxData, addr: String) = transaction {
+        govClient.getProposal(proposalId).let {
+            GovProposalRecord.getOrInsert(it.proposal, protoPrinter, txInfo, getAddressDetails(addr))
+        }
+    }
+
+    private fun getAddressDetails(addr: String) = transaction {
+        val addrId = AccountRecord.findByAddress(addr)!!.id.value
+        val isValidator = StakingValidatorCacheRecord.findByAccount(addr) != null
+        GovAddrData(addr, addrId, isValidator)
+    }
+
+    fun saveDeposit(proposalId: Long, txInfo: GovTxData, deposit: Tx.MsgDeposit?, initial: Tx.MsgSubmitProposal?) =
+        transaction {
+            val addrInfo = getAddressDetails(deposit?.depositor ?: initial!!.proposer)
+            val amountList = deposit?.amountList?.toList() ?: initial!!.initialDepositList.toList()
+            val depositType = if (deposit != null) DepositType.DEPOSIT else DepositType.INITIAL_DEPOSIT
+
+            GovDepositRecord.insertAndGet(txInfo, proposalId, depositType, amountList, addrInfo)
+        }
+
+    fun saveVote(txInfo: GovTxData, vote: Tx.MsgVote) =
+        transaction { GovVoteRecord.getOrInsert(txInfo, vote, getAddressDetails(vote.voter)) }
+
+    private fun getParams(param: GovParamType) = govClient.getParams(param)
+
+    private fun getDepositPercentage(proposalId: Long) = transaction {
+        val (initial, current) = GovDepositRecord.findByProposalId(proposalId).filter { it.denom == NHASH }
+            .let { list ->
+                val current = list.sumOf { it.amount }
+                val initial = list.first { it.depositType == DepositType.INITIAL_DEPOSIT.name }.amount
+                initial to current
+            }
+        val needed = getParams(GovParamType.deposit).depositParams.minDepositList.first { it.denom == NHASH }.amount
+        DepositPercentage(initial.stringfy(), current.stringfy(), needed, NHASH)
+    }
+
+    private fun getAddressObj(addr: String, isValidator: Boolean) = transaction {
+        val (operatorAddress, moniker) =
+            if (isValidator) StakingValidatorCacheRecord.findByAccount(addr)!!.let { it.operatorAddress to it.moniker }
+            else null to null
+        GovAddress(addr, operatorAddress, moniker)
+    }
+
+    private fun mapProposalRecord(record: GovProposalRecord) = GovProposalDetail(
+        ProposalHeader(
+            record.proposalId,
+            record.status,
+            getAddressObj(record.address, record.isValidator),
+            record.proposalType,
+            record.title,
+            record.description,
+            record.content),
+        ProposalTimings(
+            getDepositPercentage(record.proposalId),
+            record.data.submitTime.formattedString(),
+            record.data.depositEndTime.formattedString(),
+            GovTimeFrame(record.data.votingStartTime.formattedString(), record.data.votingEndTime.formattedString()))
+    )
+
+    fun getProposalsList(page: Int, count: Int) =
+        GovProposalRecord.getAllPaginated(page.toOffset(count), count)
+            .map { mapProposalRecord(it) }
+            .let { PagedResults(GovProposalRecord.getAllCount().pageCountOfResults(count), it) }
+
+    fun getProposalDetail(proposalId: Long) = transaction {
+        GovProposalRecord.findByProposalId(proposalId)?.let { mapProposalRecord(it) }
+            ?: throw ResourceNotFoundException("Invalid proposal id: '$proposalId'")
+    }
+
+    fun getProposalVotes(proposalId: Long) = transaction {
+        val params = getParams(GovParamType.tallying).tallyParams.let { param ->
+            TallyParams(
+                CoinStr(valService.getStakingValidators("active").sumOf { it.tokenCount }.stringfy(), NHASH),
+                param.quorum.toStringUtf8().toDecCoin(),
+                param.threshold.toStringUtf8().toDecCoin(),
+                param.vetoThreshold.toStringUtf8().toDecCoin())
+        }
+        val dbRecords = GovVoteRecord.findByProposalId(proposalId)
+        val voteRecords = dbRecords.map { mapVoteRecord((it)) }
+        val indTallies = dbRecords.groupingBy { it.answer }.eachCount()
+        val tallies = govClient.getTally(proposalId).tally
+        val tally = VotesTally(
+            Tally(indTallies.getOrDefault(Gov.VoteOption.VOTE_OPTION_YES.name, 0), CoinStr(tallies.yes, NHASH)),
+            Tally(indTallies.getOrDefault(Gov.VoteOption.VOTE_OPTION_NO.name, 0), CoinStr(tallies.no, NHASH)),
+            Tally(indTallies.getOrDefault(Gov.VoteOption.VOTE_OPTION_NO_WITH_VETO.name, 0), CoinStr(tallies.noWithVeto, NHASH)),
+            Tally(indTallies.getOrDefault(Gov.VoteOption.VOTE_OPTION_ABSTAIN.name, 0), CoinStr(tallies.abstain, NHASH)),
+            Tally(dbRecords.count(), CoinStr(tallies.sum().stringfy(), NHASH))
+        )
+        GovVotesDetail(params, tally, voteRecords)
+    }
+
+    fun Gov.TallyResult.sum() =
+        this.yes.toBigDecimal().plus(this.no.toBigDecimal()).plus(this.noWithVeto.toBigDecimal())
+            .plus(this.abstain.toBigDecimal())
+
+    private fun mapVoteRecord(record: VoteDbRecord) = VoteRecord(
+        getAddressObj(record.voter, record.isValidator),
+        record.answer,
+        record.blockHeight,
+        record.txHash,
+        record.txTimestamp.toString(),
+        record.proposalId,
+        record.proposalTitle,
+        record.proposalStatus
+    )
+
+    fun getProposalDeposits(proposalId: Long, page: Int, count: Int) = transaction {
+        GovDepositRecord.getByProposalIdPaginated(proposalId, count, page.toOffset(count)).map {
+            DepositRecord(
+                getAddressObj(it.address, it.isValidator),
+                it.depositType,
+                CoinStr(it.amount.stringfy(), it.denom),
+                it.blockHeight,
+                it.txHash,
+                it.txTimestamp.toString()
+            )
+        }.let { PagedResults(GovDepositRecord.getByProposalIdCount(proposalId).pageCountOfResults(count), it) }
+    }
+
+    fun getAddressVotes(address: String, page: Int, count: Int) = transaction {
+        val addr = AccountRecord.findByAddress(address)
+            ?: throw ResourceNotFoundException("Invalid account address: '$address'")
+        GovVoteRecord.getByAddrIdPaginated(addr.id.value, count, page.toOffset(count)).map {
+            mapVoteRecord(it)
+        }.let { PagedResults(GovVoteRecord.getByAddrIdCount(addr.id.value).pageCountOfResults(count), it) }
+
+    }
+}

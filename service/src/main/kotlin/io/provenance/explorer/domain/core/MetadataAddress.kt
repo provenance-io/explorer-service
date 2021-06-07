@@ -182,3 +182,5 @@ fun String.toMAddressScopeSpec() = MetadataAddress.forScopeSpecification(this.to
 fun UUID.toMAddressScopeSpec() = MetadataAddress.forScopeSpecification(this)
 fun String.toMAddressContractSpec() = MetadataAddress.forContractSpecification(this.toUuid())
 fun UUID.toMAddressContractSpec() = MetadataAddress.forContractSpecification(this)
+
+fun String.blankToNull() = this.ifBlank { null }

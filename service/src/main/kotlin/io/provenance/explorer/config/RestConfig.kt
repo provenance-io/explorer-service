@@ -271,6 +271,7 @@ fun contentDescriptors() =
         Upgrade.SoftwareUpgradeProposal.getDescriptor(),
         Upgrade.CancelSoftwareUpgradeProposal.getDescriptor(),
         Distribution.CommunityPoolSpendProposal.getDescriptor(),
+        Distribution.CommunityPoolSpendProposalWithDeposit.getDescriptor(),
         AddMarkerProposal.getDescriptor(),
         SupplyIncreaseProposal.getDescriptor(),
         SupplyDecreaseProposal.getDescriptor(),
