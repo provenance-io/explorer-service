@@ -52,7 +52,8 @@ class AssetService (
                         it.supply.toBigInteger().toString(),
                         it.status.prettyStatus(),
                         it.data?.isMintable() ?: false,
-                        it.lastTx?.toString()) }
+                        it.lastTx?.toString(),
+                        it.markerType.prettyMarkerType()) }
         return PagedResults(MarkerCacheRecord.findCountByStatus(statuses).pageCountOfResults(count), list)
     }
 
@@ -104,8 +105,8 @@ class AssetService (
                     TokenCounts(
                         if (record.markerAddress != null) accountService.getBalances(record.markerAddress!!, 0, 1).pagination.total else 0,
                         if (record.markerAddress != null) metadataClient.getScopesByOwner(record.markerAddress!!).pagination.total.toInt() else 0),
-                    record.status,
-                    record.markerType
+                    record.status.prettyStatus(),
+                    record.markerType.prettyMarkerType()
                 )
             } ?: throw ResourceNotFoundException("Invalid asset: $denom")
 
@@ -125,8 +126,7 @@ class AssetService (
         logger.info("saving assets")
         denoms.forEach { marker ->
             val data = markerClient.getMarkerDetail(marker)
-            val record = MarkerCacheRecord.findByDenom(marker)!!
-            record.apply {
+            MarkerCacheRecord.findByDenom(marker)?.apply {
                 if (data != null) this.status = data.status.toString()
                 this.supply = accountService.getCurrentSupply(marker).toBigDecimal()
                 this.lastTx = txTime.toDateTime()
@@ -139,6 +139,7 @@ class AssetService (
 fun String.getDenomByAddress() = MarkerCacheRecord.findByAddress(this)?.denom
 
 fun String.prettyStatus() = this.substringAfter("MARKER_STATUS_")
+fun String.prettyMarkerType() = if (this.startsWith("MARKER_TYPE")) this.substringAfter("MARKER_TYPE_") else this
 
 fun String.prettyRole() = this.substringAfter("ACCESS_")
 

@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import javax.validation.constraints.Min
-import javax.websocket.server.PathParam
 
 @Validated
 @RestController
@@ -36,7 +35,7 @@ class AssetController(private val assetService: AssetService, private val ibcSer
 
     @ApiOperation("Returns asset detail for denom or address")
     @GetMapping("/detail/ibc/{id}")
-    fun getIbcDetail(@PathVariable id: String) = ResponseEntity.ok(ibcService.getIbcDetail(id))
+    fun getIbcDetail(@PathVariable id: String) = ResponseEntity.ok(ibcService.getIbcDenomDetail(id))
 
     @ApiOperation("Returns asset holders for denom or address")
     @GetMapping("/holders")

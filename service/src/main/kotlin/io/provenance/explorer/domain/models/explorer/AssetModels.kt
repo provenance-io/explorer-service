@@ -12,7 +12,8 @@ data class AssetListed(
     val supply: String,
     val status: String,
     val mintable: Boolean = false,
-    val lastTxTimestamp: String?
+    val lastTxTimestamp: String?,
+    val markerType: String
 )
 
 data class AssetDetail(

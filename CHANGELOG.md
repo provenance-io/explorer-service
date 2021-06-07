@@ -43,6 +43,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * `/gov/proposals/{id}/votes`
   * `/gov/proposals/{id}/deposits?page={page}&count={count}`
   * `/gov/address/{address}/votes?page={page}&count={count}`
+* IBC Channel API #122
+  * `/ibc/channels/balances`
+  * `/ibc/channels/status?status={status]`
 
 ### Improvements
 * Removed hash conversion #66
@@ -74,6 +77,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
     * `/api/v2/nft/validators/{id}/delegations/unbonding`
 * Created a `docs` folder to store design docs
 * Ingesting proposals, votes, deposits for Gov tx msgs #64
+* Updated protos - Provenance to v1.4.1, cosmos sdk to 0.42.5 #128
+* Ingesting IBC channels for IBC tx msgs #122
   
 ### Bug Fixes
 * Properly sorting Validator listview #112
@@ -82,6 +87,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Fixed boolean check on NFT delete messages
 * Added an address check on unknown accounts being requested -> checking for proper address prefix
 * Adding blank check to NFT uuids
+* Added `markerType` to asset listview response #131
 
 ## Client Breaking
 * Account balances are now paginated #102
@@ -95,7 +101,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Data
 * Added migration 14 for token count to staking_validator_cache #112
 * Added migration 15 for increasing denom length, marker_cache holding non-marker denoms #103
-* Added migration 16 for string Gov data #64
+* Added migration 16 for storing Gov data #64
+* Added migration 17 for storing IBC Channel data #122
 
 ## [v1.5.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.5.0) - 2021-05-21
 ### Release Name: Dicuil

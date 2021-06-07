@@ -6,13 +6,13 @@ import org.joda.time.DateTime
 import java.math.BigInteger
 
 
-data class IbcListed(
+data class IbcDenomListed(
     val marker: String,
     val supply: String,
     val lastTxTimestamp: String?
 )
 
-data class IbcDetail(
+data class IbcDenomDetail(
     val marker: String,
     val supply: String,
     val holderCount: Int,
@@ -21,3 +21,29 @@ data class IbcDetail(
     val trace: ObjectNode
 )
 
+data class IbcChannelBalance(
+    val dstChainId: String,
+    val channels: List<ChannelBalance>
+)
+
+data class ChannelBalance(
+    val srcChannel: Channel,
+    val dstChannel: Channel,
+    val balances: List<CoinStr>
+)
+
+data class Channel(
+    val port: String,
+    val channel: String
+)
+
+data class IbcChannelStatus(
+    val dstChainId: String,
+    val channels: List<ChannelStatus>
+)
+
+data class ChannelStatus(
+    val srcChannel: Channel,
+    val dstChannel: Channel,
+    val status: String
+)

@@ -21,6 +21,9 @@ import ibc.core.connection.v1.Tx.MsgConnectionOpenAck
 import ibc.core.connection.v1.Tx.MsgConnectionOpenConfirm
 import ibc.core.connection.v1.Tx.MsgConnectionOpenInit
 import ibc.core.connection.v1.Tx.MsgConnectionOpenTry
+import ibc.lightclients.localhost.v1.Localhost
+import ibc.lightclients.solomachine.v1.Solomachine
+import ibc.lightclients.tendermint.v1.Tendermint
 import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest
 import io.provenance.explorer.domain.core.blankToNull
@@ -152,6 +155,9 @@ fun Any.toMsgConnectionOpenInit() = this.unpack(MsgConnectionOpenInit::class.jav
 fun Any.toMsgConnectionOpenTry() = this.unpack(MsgConnectionOpenTry::class.java)
 fun Any.toMsgConnectionOpenAck() = this.unpack(MsgConnectionOpenAck::class.java)
 fun Any.toMsgConnectionOpenConfirm() = this.unpack(MsgConnectionOpenConfirm::class.java)
+fun Any.toTendermintClientState() = this.unpack(Tendermint.ClientState::class.java)
+fun Any.toLocalhostClientState() = this.unpack(Localhost.ClientState::class.java)
+fun Any.toSoloMachineClientState() = this.unpack(Solomachine.ClientState::class.java)
 
 
 /////////// ADDRESSES
@@ -304,13 +310,33 @@ enum class IbcDenomEvents(val eventType: IbcEventType, val event: String, val id
     ACKNOWLEDGE_DENOM(IbcEventType.DENOM, "fungible_token_packet", "denom")
 }
 
-fun Any.getIbcEvents() =
+fun Any.getIbcDenomEvents() =
     when {
         typeUrl.contains("MsgRecvPacket") -> listOf(IbcDenomEvents.RECV_PACKET_DENOM, IbcDenomEvents.RECV_PACKET_ADDR)
         typeUrl.contains("MsgAcknowledgement") -> listOf(IbcDenomEvents.ACKNOWLEDGE_DENOM)
         else -> listOf<IbcDenomEvents>()
             .also { logger().debug("This typeUrl is not yet supported in as an ibc-event-based msg: $typeUrl") }
     }
+
+// Returns Pair(Event type, Pair(port, channel))
+fun Any.getIbcChannelEvents() =
+    when {
+        typeUrl.contains("MsgTransfer") -> "send_packet" to Pair("packet_src_port", "packet_src_channel")
+        typeUrl.contains("MsgChannelOpenInit") -> "channel_open_init" to Pair("port_id", "channel_id")
+        typeUrl.contains("MsgChannelOpenTry") -> "channel_open_try" to Pair("port_id", "channel_id")
+        typeUrl.contains("MsgChannelOpenAck") -> "channel_open_ack" to Pair("port_id", "channel_id")
+        typeUrl.contains("MsgChannelOpenConfirm") -> "channel_open_confirm" to Pair("port_id", "channel_id")
+        typeUrl.contains("MsgChannelCloseInit") -> "channel_close_init" to Pair("port_id", "channel_id")
+        typeUrl.contains("MsgChannelCloseConfirm") -> "channel_close_confirm" to Pair("port_id", "channel_id")
+        typeUrl.contains("MsgRecvPacket") -> "recv_packet" to Pair("packet_dst_port", "packet_dst_channel")
+        typeUrl.contains("MsgTimeout") -> "timeout_packet" to Pair("packet_src_port", "packet_src_channel")
+        typeUrl.contains("MsgAcknowledgement") -> "acknowledge_packet" to Pair("packet_src_port", "packet_src_channel")
+        else -> null.also { logger().debug("This typeUrl is not yet supported in as an ibc-event-based msg: $typeUrl") }
+    }
+
+// The only case where a channel is not in the events, because no events get emitted
+fun Any.isIbcTimeoutOnClose() = typeUrl.contains("MsgTimeoutOnClose")
+
 
 /////////// METADATA (NFT/SCOPES)
 enum class MdEvents(val event: String, val idField: String) {
