@@ -29,14 +29,14 @@ open class DownloadProtosTask : DefaultTask() {
 
     @Option(
         option = "provenance-version",
-        description = "Provenance release version (e.g. v1.3.0)"
+        description = "Provenance release version (e.g. v1.4.1)"
     )
     @Input
     var provenanceVersion: String? = null
 
     @Option(
         option = "cosmos-version",
-        description = "Cosmos release version (e.g. v0.42.4)"
+        description = "Cosmos release version (e.g. v0.42.5)"
     )
     @Input
     var cosmosVersion: String? = null
