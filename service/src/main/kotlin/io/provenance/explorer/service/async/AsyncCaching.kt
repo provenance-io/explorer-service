@@ -34,17 +34,21 @@ import io.provenance.explorer.grpc.extensions.getAssociatedDenoms
 import io.provenance.explorer.grpc.extensions.getAssociatedGovMsgs
 import io.provenance.explorer.grpc.extensions.getAssociatedMetadata
 import io.provenance.explorer.grpc.extensions.getAssociatedMetadataEvents
-import io.provenance.explorer.grpc.extensions.getIbcEvents
+import io.provenance.explorer.grpc.extensions.getIbcChannelEvents
+import io.provenance.explorer.grpc.extensions.getIbcDenomEvents
+import io.provenance.explorer.grpc.extensions.isIbcTimeoutOnClose
 import io.provenance.explorer.grpc.extensions.isIbcTransferMsg
 import io.provenance.explorer.grpc.extensions.isMetadataDeletionMsg
 import io.provenance.explorer.grpc.extensions.toMsgDeposit
 import io.provenance.explorer.grpc.extensions.toMsgSubmitProposal
+import io.provenance.explorer.grpc.extensions.toMsgTimeoutOnClose
 import io.provenance.explorer.grpc.extensions.toMsgVote
 import io.provenance.explorer.grpc.v1.TransactionGrpcClient
 import io.provenance.explorer.service.AccountService
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.GovService
+import io.provenance.explorer.service.IbcService
 import io.provenance.explorer.service.NftService
 import io.provenance.explorer.service.ValidatorService
 import org.jetbrains.exposed.dao.id.EntityID
@@ -62,6 +66,7 @@ class AsyncCaching(
     private val assetService: AssetService,
     private val nftService: NftService,
     private val govService: GovService,
+    private val ibcService: IbcService,
     private val props: ExplorerProperties
 ) {
 
@@ -157,6 +162,7 @@ class AsyncCaching(
         val markers = saveMarkers(txPair.first, txPair.second)
         saveNftData(txPair.first, txPair.second)
         saveGovData(txPair.second, blockTime)
+        saveIbcChannelData(txPair.second)
         saveSignaturesTx(txPair.second)
         return TxUpdatedItems(addrs, markers)
     }
@@ -203,7 +209,7 @@ class AsyncCaching(
     private fun saveAddresses(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
         val msgAddrs = tx.tx.body.messagesList.flatMap { it.getAssociatedAddresses() }
         val eventAddrs = tx.tx.body.messagesList.flatMapIndexed { idx, msg ->
-                val events = msg.getIbcEvents().filter { it.eventType == IbcEventType.ADDRESS }
+                val events = msg.getIbcDenomEvents().filter { it.eventType == IbcEventType.ADDRESS }
                     .associate { it.event to it.idField }
                 if (tx.txResponse.logsCount > 0)
                     tx.txResponse.logsList[idx].eventsList
@@ -236,7 +242,7 @@ class AsyncCaching(
         val msgDenoms = tx.tx.body.messagesList.map { it.getAssociatedDenoms() to it.isIbcTransferMsg() }
         val denoms = msgDenoms.flatMap { it.first }
         val eventDenoms = tx.tx.body.messagesList.flatMapIndexed { idx, msg ->
-                val events = msg.getIbcEvents().filter { it.eventType == IbcEventType.DENOM }.associate { it.event to it.idField }
+                val events = msg.getIbcDenomEvents().filter { it.eventType == IbcEventType.DENOM }.associate { it.event to it.idField }
                 if (tx.txResponse.logsCount > 0)
                     tx.txResponse.logsList[idx].eventsList
                         .filter { it.type in events.map { e -> e.key } }
@@ -244,12 +250,12 @@ class AsyncCaching(
                 else listOf()
             }
         (denoms + eventDenoms).toSet().mapNotNull { de ->
-            if (msgDenoms.first { it.first.contains(de) }.second)
+            val denom = msgDenoms.firstOrNull { it.first.contains(de) }
+            if (denom != null && denom.second)
                 if (tx.txResponse.code == 0) saveDenom(de, txId, tx) else null
             else
                 saveDenom(de, txId, tx)
         }
-        denoms + eventDenoms
     }
 
     private fun saveDenom(denom: String, txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse): String {
@@ -314,6 +320,24 @@ class AsyncCaching(
                             govService.saveVote(txInfo, it)
                         }
                     }
+                }
+        }
+    }
+
+    private fun saveIbcChannelData(tx: ServiceOuterClass.GetTxResponse) = transaction {
+        if (tx.txResponse.code == 0) {
+            tx.tx.body.messagesList.filter { it.isIbcTimeoutOnClose() }
+                .forEach { msg -> msg.toMsgTimeoutOnClose().packet.let { ibcService.saveIbcChannel(it.sourcePort, it.sourceChannel) } }
+            tx.tx.body.messagesList.map { it.getIbcChannelEvents() }
+                .forEachIndexed fe@{ idx, pair ->
+                    if (pair == null) return@fe
+                    val portAttr = pair.second.first
+                    val channelAttr = pair.second.second
+                    val (port, channel) = tx.txResponse.logsList[idx]
+                        .eventsList.first { it.type == pair.first }
+                        .attributesList.let { list ->
+                            list.first { it.key == portAttr }.value to list.first { it.key == channelAttr }.value }
+                    ibcService.saveIbcChannel(port, channel)
                 }
         }
     }

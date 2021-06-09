@@ -86,7 +86,7 @@ fun Any.toAddress(hrpPrefix: String) =
 //TODO: Once cosmos-sdk implements a grpc endpoint for this we can replace this with grpc Issue: https://github.com/cosmos/cosmos-sdk/issues/9437
 fun getEscrowAccountAddress(portId: String, channelId: String, hrpPrefix: String) : String {
     val contents = "${portId}/${channelId}".toByteArray()
-    var preImage = "ics20-1".encodeToByteArray() + 0x0.toByte() + contents
+    val preImage = "ics20-1".encodeToByteArray() + 0x0.toByte() + contents
     val hash = preImage.toSha256().copyOfRange(0, 20)
     return hash.toBech32Data(hrpPrefix).address
 }
