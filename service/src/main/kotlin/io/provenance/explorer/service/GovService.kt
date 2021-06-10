@@ -25,13 +25,13 @@ import io.provenance.explorer.domain.models.explorer.GovAddress
 import io.provenance.explorer.domain.models.explorer.GovParamType
 import io.provenance.explorer.domain.models.explorer.GovProposalDetail
 import io.provenance.explorer.domain.models.explorer.GovTimeFrame
-import io.provenance.explorer.domain.models.explorer.GovTxData
 import io.provenance.explorer.domain.models.explorer.GovVotesDetail
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.ProposalHeader
 import io.provenance.explorer.domain.models.explorer.ProposalTimings
 import io.provenance.explorer.domain.models.explorer.Tally
 import io.provenance.explorer.domain.models.explorer.TallyParams
+import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.VoteDbRecord
 import io.provenance.explorer.domain.models.explorer.VoteRecord
 import io.provenance.explorer.domain.models.explorer.VotesTally
@@ -47,7 +47,7 @@ class GovService(
 ) {
     protected val logger = logger(GovService::class)
 
-    fun saveProposal(proposalId: Long, txInfo: GovTxData, addr: String) = transaction {
+    fun saveProposal(proposalId: Long, txInfo: TxData, addr: String) = transaction {
         govClient.getProposal(proposalId).let {
             GovProposalRecord.getOrInsert(it.proposal, protoPrinter, txInfo, getAddressDetails(addr))
         }
@@ -59,7 +59,7 @@ class GovService(
         GovAddrData(addr, addrId, isValidator)
     }
 
-    fun saveDeposit(proposalId: Long, txInfo: GovTxData, deposit: Tx.MsgDeposit?, initial: Tx.MsgSubmitProposal?) =
+    fun saveDeposit(proposalId: Long, txInfo: TxData, deposit: Tx.MsgDeposit?, initial: Tx.MsgSubmitProposal?) =
         transaction {
             val addrInfo = getAddressDetails(deposit?.depositor ?: initial!!.proposer)
             val amountList = deposit?.amountList?.toList() ?: initial!!.initialDepositList.toList()
@@ -68,7 +68,7 @@ class GovService(
             GovDepositRecord.insertAndGet(txInfo, proposalId, depositType, amountList, addrInfo)
         }
 
-    fun saveVote(txInfo: GovTxData, vote: Tx.MsgVote) =
+    fun saveVote(txInfo: TxData, vote: Tx.MsgVote) =
         transaction { GovVoteRecord.getOrInsert(txInfo, vote, getAddressDetails(vote.voter)) }
 
     private fun getParams(param: GovParamType) = govClient.getParams(param)

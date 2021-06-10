@@ -4,6 +4,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import org.joda.time.DateTime
 import java.math.BigInteger
 
+data class TxData(
+    val blockHeight: Int,
+    val txHashId: Int?,
+    val txHash: String,
+    val txTimestamp: DateTime
+)
+
 data class TxQueryParams(
     val addressId: Int?,
     val addressType: String?,
@@ -128,9 +135,14 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
             "connection_open_try",
             "connection_open_ack",
             "connection_open_init",
+            "channel_close_init",
+            "channel_close_confirm",
             "create_client",
+            "upgrade_client",
+            "client_misbehaviour",
             "acknowledge_packet",
-            "recv_packet"
+            "recv_packet",
+            "ibc_transfer"
         ))
 }
 

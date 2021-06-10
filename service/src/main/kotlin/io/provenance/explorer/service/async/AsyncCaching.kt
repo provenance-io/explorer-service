@@ -12,6 +12,7 @@ import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
+import io.provenance.explorer.domain.entities.IbcChannelRecord
 import io.provenance.explorer.domain.entities.SigJoinType
 import io.provenance.explorer.domain.entities.SignatureJoinRecord
 import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
@@ -24,9 +25,12 @@ import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.TxNftJoinRecord
 import io.provenance.explorer.domain.entities.UNKNOWN
 import io.provenance.explorer.domain.entities.updateHitCount
+import io.provenance.explorer.domain.extensions.fromBase64
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
-import io.provenance.explorer.domain.models.explorer.GovTxData
+import io.provenance.explorer.domain.extensions.toObjectNode
+import io.provenance.explorer.domain.models.explorer.LedgerInfo
+import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.grpc.extensions.GovMsgType
 import io.provenance.explorer.grpc.extensions.IbcEventType
 import io.provenance.explorer.grpc.extensions.getAssociatedAddresses
@@ -36,12 +40,16 @@ import io.provenance.explorer.grpc.extensions.getAssociatedMetadata
 import io.provenance.explorer.grpc.extensions.getAssociatedMetadataEvents
 import io.provenance.explorer.grpc.extensions.getIbcChannelEvents
 import io.provenance.explorer.grpc.extensions.getIbcDenomEvents
+import io.provenance.explorer.grpc.extensions.getIbcLedgerMsgs
 import io.provenance.explorer.grpc.extensions.isIbcTimeoutOnClose
 import io.provenance.explorer.grpc.extensions.isIbcTransferMsg
 import io.provenance.explorer.grpc.extensions.isMetadataDeletionMsg
+import io.provenance.explorer.grpc.extensions.toMsgAcknowledgement
 import io.provenance.explorer.grpc.extensions.toMsgDeposit
+import io.provenance.explorer.grpc.extensions.toMsgRecvPacket
 import io.provenance.explorer.grpc.extensions.toMsgSubmitProposal
 import io.provenance.explorer.grpc.extensions.toMsgTimeoutOnClose
+import io.provenance.explorer.grpc.extensions.toMsgTransfer
 import io.provenance.explorer.grpc.extensions.toMsgVote
 import io.provenance.explorer.grpc.v1.TransactionGrpcClient
 import io.provenance.explorer.service.AccountService
@@ -162,7 +170,7 @@ class AsyncCaching(
         val markers = saveMarkers(txPair.first, txPair.second)
         saveNftData(txPair.first, txPair.second)
         saveGovData(txPair.second, blockTime)
-        saveIbcChannelData(txPair.second)
+        saveIbcChannelData(txPair.first, txPair.second, blockTime)
         saveSignaturesTx(txPair.second)
         return TxUpdatedItems(addrs, markers)
     }
@@ -295,7 +303,7 @@ class AsyncCaching(
 
     private fun saveGovData(tx: ServiceOuterClass.GetTxResponse, blockTime: DateTime) = transaction {
         if (tx.txResponse.code == 0) {
-            val txInfo = GovTxData(tx.txResponse.height.toInt(), tx.txResponse.txhash, blockTime)
+            val txInfo = TxData(tx.txResponse.height.toInt(), null, tx.txResponse.txhash, blockTime)
             tx.tx.body.messagesList.map { it.getAssociatedGovMsgs() }
                 .forEachIndexed fe@{ idx, pair ->
                     if (pair == null) return@fe
@@ -324,7 +332,8 @@ class AsyncCaching(
         }
     }
 
-    private fun saveIbcChannelData(tx: ServiceOuterClass.GetTxResponse) = transaction {
+    private fun saveIbcChannelData(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse, blockTime: DateTime) =
+        transaction {
         if (tx.txResponse.code == 0) {
             tx.tx.body.messagesList.filter { it.isIbcTimeoutOnClose() }
                 .forEach { msg -> msg.toMsgTimeoutOnClose().packet.let { ibcService.saveIbcChannel(it.sourcePort, it.sourceChannel) } }
@@ -338,6 +347,53 @@ class AsyncCaching(
                         .attributesList.let { list ->
                             list.first { it.key == portAttr }.value to list.first { it.key == channelAttr }.value }
                     ibcService.saveIbcChannel(port, channel)
+                }
+
+            val txInfo = TxData(tx.txResponse.height.toInt(), txId.value, tx.txResponse.txhash, blockTime)
+            tx.tx.body.messagesList
+                .map { msg -> msg.getIbcLedgerMsgs() }
+                .forEachIndexed fe@{ idx, any ->
+                    if (any == null) return@fe
+                    val ledger = when {
+                        any.typeUrl.contains("MsgTransfer") -> {
+                                val msg = any.toMsgTransfer()
+                                val channel = IbcChannelRecord.findBySrcPortSrcChannel(msg.sourcePort, msg.sourceChannel)
+                                ibcService.parseTransfer(
+                                    LedgerInfo(
+                                        channel = channel!!,
+                                        denom = msg.token.denom,
+                                        logs = tx.txResponse.logsList[idx],
+                                        balanceOut = msg.token.amount))
+                            }
+                        any.typeUrl.contains("MsgRecvPacket") -> {
+                                val msg = any.toMsgRecvPacket()
+                                val channel = IbcChannelRecord.findBySrcPortSrcChannel(
+                                    msg.packet.destinationPort,
+                                    msg.packet.destinationChannel
+                                )
+                                ibcService.parseRecv(
+                                    LedgerInfo(
+                                        channel = channel!!,
+                                        logs = tx.txResponse.logsList[idx]))
+                            }
+                        any.typeUrl.contains("MsgAcknowledgement") -> {
+                                val msg = any.toMsgAcknowledgement()
+                                val channel = IbcChannelRecord.findBySrcPortSrcChannel(
+                                    msg.packet.sourcePort,
+                                    msg.packet.sourceChannel
+                                )
+                                val byteStr = msg.packet.data.toStringUtf8()
+                                val data = msg.packet.data.toStringUtf8().toObjectNode()
+                                ibcService.parseAcknowledge(
+                                    LedgerInfo(
+                                        channel = channel!!,
+                                        logs = tx.txResponse.logsList[idx]),
+                                    data)
+                            }
+                        else -> logger.debug("This typeUrl is not yet supported in as an ibc ledger msg: ${any.typeUrl}")
+                            .let { return@fe }
+                    }
+                    ibcService.saveIbcLedger(ledger, txInfo)
                 }
         }
     }

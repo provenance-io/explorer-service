@@ -44,8 +44,12 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * `/gov/proposals/{id}/deposits?page={page}&count={count}`
   * `/gov/address/{address}/votes?page={page}&count={count}`
 * IBC Channel API #122
-  * `/ibc/channels/balances`
+  * ~~`/ibc/channels/balances`~~
   * `/ibc/channels/status?status={status]`
+* IBC Balance API #132
+  * `/ibc/channels/balances` -> `/ibc/balances/channel` -> Balances broken down by chain/channel/denom
+  * `/ibc/balances/chain` -> Balances broken down by chain/denom
+  * `/ibc/balances/denom` -> Balances broken down by denom
 
 ### Improvements
 * Removed hash conversion #66
@@ -103,6 +107,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added migration 15 for increasing denom length, marker_cache holding non-marker denoms #103
 * Added migration 16 for storing Gov data #64
 * Added migration 17 for storing IBC Channel data #122
+* Added migration 18 for storing IBC Balance Ledger data #132
 
 ## [v1.5.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.5.0) - 2021-05-21
 ### Release Name: Dicuil

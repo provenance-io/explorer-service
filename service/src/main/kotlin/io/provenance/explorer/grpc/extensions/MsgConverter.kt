@@ -315,7 +315,7 @@ fun Any.getIbcDenomEvents() =
         typeUrl.contains("MsgRecvPacket") -> listOf(IbcDenomEvents.RECV_PACKET_DENOM, IbcDenomEvents.RECV_PACKET_ADDR)
         typeUrl.contains("MsgAcknowledgement") -> listOf(IbcDenomEvents.ACKNOWLEDGE_DENOM)
         else -> listOf<IbcDenomEvents>()
-            .also { logger().debug("This typeUrl is not yet supported in as an ibc-event-based msg: $typeUrl") }
+            .also { logger().debug("This typeUrl is not yet supported in as an ibc denom event-based msg: $typeUrl") }
     }
 
 // Returns Pair(Event type, Pair(port, channel))
@@ -331,11 +331,20 @@ fun Any.getIbcChannelEvents() =
         typeUrl.contains("MsgRecvPacket") -> "recv_packet" to Pair("packet_dst_port", "packet_dst_channel")
         typeUrl.contains("MsgTimeout") -> "timeout_packet" to Pair("packet_src_port", "packet_src_channel")
         typeUrl.contains("MsgAcknowledgement") -> "acknowledge_packet" to Pair("packet_src_port", "packet_src_channel")
-        else -> null.also { logger().debug("This typeUrl is not yet supported in as an ibc-event-based msg: $typeUrl") }
+        else ->
+            null.also { logger().debug("This typeUrl is not yet supported in as an ibc channel event-based msg: $typeUrl") }
     }
 
 // The only case where a channel is not in the events, because no events get emitted
 fun Any.isIbcTimeoutOnClose() = typeUrl.contains("MsgTimeoutOnClose")
+
+fun Any.getIbcLedgerMsgs() =
+    when {
+        typeUrl.contains("MsgTransfer")
+            || typeUrl.contains("MsgRecvPacket")
+            || typeUrl.contains("MsgAcknowledgement") -> this
+        else -> null.also { logger().debug("This typeUrl is not yet supported in as an ibc ledger msg: $typeUrl") }
+    }
 
 
 /////////// METADATA (NFT/SCOPES)

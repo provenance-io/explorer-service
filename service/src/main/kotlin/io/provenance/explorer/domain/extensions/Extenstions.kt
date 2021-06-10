@@ -27,6 +27,7 @@ import io.provenance.explorer.domain.models.explorer.Addresses
 import io.provenance.explorer.domain.models.explorer.Signatures
 import io.provenance.explorer.grpc.extensions.toAddress
 import io.provenance.explorer.grpc.extensions.toMultiSig
+import org.apache.commons.text.StringEscapeUtils
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
@@ -40,6 +41,7 @@ import java.util.Base64
 import kotlin.math.ceil
 
 fun ByteString.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
+fun String.fromBase64() = Base64.getDecoder().decode(this)
 fun ByteString.toDbHash() = Hashing.sha512().hashBytes(this.toByteArray()).asBytes().toString()
 fun ByteString.toHash() = this.toByteArray().toBech32Data().hexData
 
@@ -165,6 +167,8 @@ fun Message.toObjectNode(protoPrinter: JsonFormat.Printer) =
             node.remove("@type")
             node
         }
+
+fun String.toObjectNode() = OBJECT_MAPPER.readValue(StringEscapeUtils.unescapeJson(this), ObjectNode::class.java)
 
 // this == gas_limit
 fun TxOuterClass.Fee.getMinGasFee() =
