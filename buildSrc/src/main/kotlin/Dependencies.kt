@@ -43,6 +43,7 @@ object Versions {
     const val KotlinXCoroutines = "1.4.3"
 
     // 3rd Party
+    const val ApacheCommonsText = "1.9"
     const val BouncyCastle = "1.63"
     const val Exposed = "0.29.1"
     const val Flyway = PluginVersions.Flyway
@@ -86,6 +87,7 @@ object Libraries {
     const val JacksonProtobuf = "com.hubspot.jackson:jackson-datatype-protobuf:${Versions.JacksonProtobuf}"
     const val Postgres = "org.postgresql:postgresql:${Versions.Postgres}"
     const val BouncyCastle = "org.bouncycastle:bcprov-jdk15on:${Versions.BouncyCastle}"
+    const val ApacheCommonsText = "org.apache.commons:commons-text:${Versions.ApacheCommonsText}"
 
     // Logging
     const val LogbackCore = "ch.qos.logback.contrib:logback-json-core:${Versions.Logback}"

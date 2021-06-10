@@ -45,6 +45,7 @@ dependencies {
 
     api(Libraries.BouncyCastle)
     api(Libraries.KotlinXCoRoutinesCore)
+    api(Libraries.ApacheCommonsText)
 
     implementation(Libraries.GrpcNetty)
     implementation(Libraries.GrpcStart)

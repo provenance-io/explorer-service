@@ -9,7 +9,7 @@ import cosmos.gov.v1beta1.Tx
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.models.explorer.GovAddrData
-import io.provenance.explorer.domain.models.explorer.GovTxData
+import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.VoteDbRecord
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
@@ -72,7 +72,7 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
         fun getOrInsert(
             proposal: Gov.Proposal,
             protoPrinter: JsonFormat.Printer,
-            txInfo: GovTxData,
+            txInfo: TxData,
             addrInfo: GovAddrData
         ) =
             transaction {
@@ -173,7 +173,7 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun getOrInsert(
-            txInfo: GovTxData,
+            txInfo: TxData,
             vote: Tx.MsgVote,
             addrInfo: GovAddrData
         ) = transaction {
@@ -240,7 +240,7 @@ class GovDepositRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun insertAndGet(
-            txInfo: GovTxData,
+            txInfo: TxData,
             proposalId: Long,
             depositType: DepositType,
             amountList: List<CoinOuterClass.Coin>,

@@ -140,7 +140,6 @@ fun String.getDenomByAddress() = MarkerCacheRecord.findByAddress(this)?.denom
 
 fun String.prettyStatus() = this.substringAfter("MARKER_STATUS_")
 fun String.prettyMarkerType() = if (this.startsWith("MARKER_TYPE")) this.substringAfter("MARKER_TYPE_") else this
-
 fun String.prettyRole() = this.substringAfter("ACCESS_")
 
 fun String.getBaseDenomType() =

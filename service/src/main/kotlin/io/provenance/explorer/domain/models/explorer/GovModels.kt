@@ -5,12 +5,6 @@ import org.joda.time.DateTime
 
 enum class GovParamType { voting, tallying, deposit }
 
-data class GovTxData(
-    val blockHeight: Int,
-    val txHash: String,
-    val txTimestamp: DateTime
-)
-
 data class GovAddrData(
     val addr: String,
     val addrId: Int,

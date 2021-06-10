@@ -26,14 +26,21 @@ class IbcController(private val ibcService: IbcService) {
         @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
     ) = ResponseEntity.ok(ibcService.getIbcDenomList(page, count))
 
-    @ApiOperation("Returns list of all channels with balances, grouped by dst chain")
-    @GetMapping("/channels/balances")
-    fun getIbcChannelBalancesList() = ResponseEntity.ok(ibcService.getBalanceList())
-
     @ApiOperation("Returns list of all available channels with status, grouped by dst chain")
     @GetMapping("/channels/status")
     fun getIbcChannelStatusList(
         @RequestParam(defaultValue = "STATE_OPEN") status: ChannelOuterClass.State
     ) = ResponseEntity.ok(ibcService.getChannelsByStatus(status))
 
+    @ApiOperation("Returns list of balances, grouped by denom")
+    @GetMapping("/balances/denom")
+    fun getIbcBalancesListByDenom() = ResponseEntity.ok(ibcService.getBalanceListByDenom())
+
+    @ApiOperation("Returns list of balances, grouped by chain")
+    @GetMapping("/balances/chain")
+    fun getIbcBalancesListByChain() = ResponseEntity.ok(ibcService.getBalanceListByChain())
+
+    @ApiOperation("Returns list of balances, grouped by chain/channel")
+    @GetMapping("/balances/channel")
+    fun getIbcBalancesListByChannel() = ResponseEntity.ok(ibcService.getBalanceListByChannel())
 }
