@@ -18,7 +18,7 @@ data class BlockSummary(
 data class Spotlight(
     val latestBlock: BlockSummary,
     val avgBlockTime: BigDecimal,
-    val bondedTokens: BondedTokens,
+    val bondedTokens: CountStrTotal,
     val totalTxCount: BigInteger
 )
 

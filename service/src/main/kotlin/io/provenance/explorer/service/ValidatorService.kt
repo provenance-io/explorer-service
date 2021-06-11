@@ -22,9 +22,9 @@ import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.extensions.translateByteArray
 import io.provenance.explorer.domain.extensions.uptime
-import io.provenance.explorer.domain.models.explorer.BondedTokens
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.CommissionRate
+import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.CountTotal
 import io.provenance.explorer.domain.models.explorer.Delegation
 import io.provenance.explorer.domain.models.explorer.PagedResults
@@ -83,7 +83,7 @@ class ValidatorService(
     // Returns a validator detail object for the validator
     fun getValidator(address: String) =
         getValidatorOperatorAddress(address)?.let { addr ->
-            val currentHeight = blockService.getLatestBlockHeightIndex().toBigInteger()
+            val currentHeight = blockService.getLatestBlockHeight().toBigInteger()
             val signingInfo = getSigningInfos().firstOrNull { it.address == addr.consensusAddress }
             val validatorSet = grpcClient.getLatestValidators()
             val latestValidator = validatorSet.firstOrNull { it.address == addr.consensusAddress }
@@ -211,7 +211,7 @@ class ValidatorService(
         isAtHeight: Boolean = false
     ) = let {
         val signingInfos = getSigningInfos()
-        val height = signingInfos.first().indexOffset
+        val height = blockService.getLatestBlockHeight()
         val totalVotingPower = validators.sumOf { it.votingPower.toBigInteger() }
         stakingVals
             .filter { if (isAtHeight) validators.map { v -> v.address }.contains(it.consensusAddress)  else true }
@@ -244,8 +244,8 @@ class ValidatorService(
             votingPower = (if (validator != null) CountTotal(validator.votingPower.toBigInteger(), totalVotingPower) else null),
             uptime = if (stakingValidator.isActive()) signingInfo.uptime(height) else null,
             commission = stakingValidator.commission.commissionRates.rate.toDecCoin(),
-            bondedTokens = BondedTokens(stakingValidator.tokens, null, NHASH),
-            selfBonded = BondedTokens(selfBondedAmount.amount, null, selfBondedAmount.denom),
+            bondedTokens = CountStrTotal(stakingValidator.tokens, null, NHASH),
+            selfBonded = CountStrTotal(selfBondedAmount.amount, null, selfBondedAmount.denom),
             delegators = delegatorCount,
             bondHeight = if (stakingValidator.isActive()) signingInfo.startHeight else null,
             status = stakingValidator.getStatusString(),
@@ -299,9 +299,9 @@ class ValidatorService(
             grpcClient.getStakingValidatorDelegations(validator.operatorAddress, 0, 10).pagination.total
         val rewards = grpcClient.getValidatorCommission(address).commissionList.firstOrNull()
         return ValidatorCommission(
-            BondedTokens(validator.tokens, null, NHASH),
-            BondedTokens(selfBondedAmount.amount, null, selfBondedAmount.denom),
-            BondedTokens(validator.tokens.toBigInteger().minus(selfBondedAmount.amount.toBigInteger()).toString(), null, NHASH),
+            CountStrTotal(validator.tokens, null, NHASH),
+            CountStrTotal(selfBondedAmount.amount, null, selfBondedAmount.denom),
+            CountStrTotal(validator.tokens.toBigInteger().minus(selfBondedAmount.amount.toBigInteger()).toString(), null, NHASH),
             delegatorCount,
             validator.delegatorShares.toDecCoin(),
             rewards?.amount?.toDecCoin()?.let { CoinStr(it, rewards.denom) } ?: CoinStr("0", NHASH),

@@ -12,7 +12,7 @@ import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.translateByteArray
 import io.provenance.explorer.domain.models.explorer.BlockSummary
-import io.provenance.explorer.domain.models.explorer.BondedTokens
+import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.CountTotal
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.PagedResults
@@ -98,7 +98,7 @@ class ExplorerService(
             Spotlight(
                 latestBlock = getBlockAtHeight(null),
                 avgBlockTime = getAverageBlockCreationTime(),
-                bondedTokens = BondedTokens(it.first.toString(), it.second, NHASH),
+                bondedTokens = CountStrTotal(it.first.toString(), it.second, NHASH),
                 totalTxCount = TxCacheRecord.getTotalTxCount()
             )
         }.let { cacheService.addSpotlightToCache(it) }

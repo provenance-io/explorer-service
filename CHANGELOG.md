@@ -95,6 +95,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added an address check on unknown accounts being requested -> checking for proper address prefix
 * Adding blank check to NFT uuids
 * Added `markerType` to asset listview response #131
+* Updated `AssetDetail.supply` from String to CoinStr #137
+* Updated `AssetHolder.balance` to include `denom` #137
 
 ## Client Breaking
 * Account balances are now paginated #102

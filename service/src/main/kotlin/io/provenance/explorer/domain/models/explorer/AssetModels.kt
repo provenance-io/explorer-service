@@ -18,7 +18,7 @@ data class AssetDetail(
     val marker: String,
     val holdingAccount: String?,
     val managingAccounts: AssetManagement?,
-    val supply: String,
+    val supply: CoinStr,
     val mintable: Boolean = false,
     val holderCount: Int,
     val txnCount: BigInteger?,
