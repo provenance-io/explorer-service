@@ -100,7 +100,7 @@ class AssetService (
                     record.data?.isMintable() ?: false,
                     if (record.markerAddress != null) markerClient.getMarkerHolders(denom, 0, 10).pagination.total.toInt() else 0,
                     txCount,
-                    attrClient.getAllAttributesForAddress(record.markerAddress).map { attr -> attr.toObjectNode(protoPrinter) },
+                    attrClient.getAllAttributesForAddress(record.markerAddress).map { attr -> attr.toResponse() },
                     accountService.getDenomMetadataSingle(denom).toObjectNode(protoPrinter),
                     TokenCounts(
                         if (record.markerAddress != null) accountService.getBalances(record.markerAddress!!, 0, 1).pagination.total else 0,

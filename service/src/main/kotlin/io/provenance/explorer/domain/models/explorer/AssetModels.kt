@@ -1,8 +1,6 @@
 package io.provenance.explorer.domain.models.explorer
 
 import com.fasterxml.jackson.databind.node.ObjectNode
-import cosmos.base.v1beta1.CoinOuterClass
-import org.joda.time.DateTime
 import java.math.BigInteger
 
 
@@ -24,7 +22,7 @@ data class AssetDetail(
     val mintable: Boolean = false,
     val holderCount: Int,
     val txnCount: BigInteger?,
-    val attributes: List<ObjectNode>,
+    val attributes: List<AttributeObj>,
     val metadata: ObjectNode,
     val tokens: TokenCounts,
     val markerStatus: String,
@@ -34,13 +32,6 @@ data class AssetDetail(
 data class TokenCounts(
     val fungibleCount: Long,
     val nonFungibleCount: Int
-)
-
-data class Attribute(
-    val createdBy: String,
-    val name: String,
-    val value: String,
-    val valueType: String
 )
 
 data class AssetHolder(
@@ -54,7 +45,8 @@ data class AccountDetail(
     val accountNumber: Long?,
     val sequence: Int?,
     val publicKeys: Signatures,
-    val accountName: String?
+    val accountName: String?,
+    val attributes: List<AttributeObj>
 )
 
 data class AssetManagement(
@@ -70,4 +62,9 @@ data class AccountRewards(
 data class Reward(
     val validatorAddress: String,
     val reward: List<CoinStr>
+)
+
+data class AttributeObj(
+    val attribute: String,
+    val data: String
 )

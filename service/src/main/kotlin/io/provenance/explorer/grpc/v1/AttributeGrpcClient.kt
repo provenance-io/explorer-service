@@ -3,17 +3,20 @@ package io.provenance.explorer.grpc.v1
 import io.grpc.ManagedChannelBuilder
 import io.provenance.attribute.v1.Attribute
 import io.provenance.attribute.v1.QueryAttributesRequest
-import io.provenance.attribute.v1.QueryGrpc
 import io.provenance.explorer.config.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.getPaginationBuilder
+import io.provenance.name.v1.QueryReverseLookupRequest
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
+import io.provenance.attribute.v1.QueryGrpc as AttrQueryGrpc
+import io.provenance.name.v1.QueryGrpc as NameQueryGrpc
 
 @Component
 class AttributeGrpcClient(channelUri : URI) {
 
-    private val attrClient: QueryGrpc.QueryBlockingStub
+    private val attrClient: AttrQueryGrpc.QueryBlockingStub
+    private val nameClient: NameQueryGrpc.QueryBlockingStub
 
     init {
         val channel =
@@ -31,7 +34,8 @@ class AttributeGrpcClient(channelUri : URI) {
                 .intercept(GrpcLoggingInterceptor())
                 .build()
 
-        attrClient = QueryGrpc.newBlockingStub(channel)
+        attrClient = AttrQueryGrpc.newBlockingStub(channel)
+        nameClient = NameQueryGrpc.newBlockingStub(channel)
     }
 
     fun getAllAttributesForAddress(address: String?): MutableList<Attribute> {
@@ -61,4 +65,11 @@ class AttributeGrpcClient(channelUri : URI) {
         return attributes
     }
 
+    fun getNamesForAddress(address: String, offset: Int, limit: Int) =
+        nameClient.reverseLookup(
+            QueryReverseLookupRequest.newBuilder()
+                .setAddress(address)
+                .setPagination(getPaginationBuilder(offset, limit))
+                .build()
+        )
 }

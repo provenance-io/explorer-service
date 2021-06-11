@@ -38,8 +38,7 @@ class AccountController(private val accountService: AccountService) {
         @PathVariable address: String,
         @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int
-    ) =
-        ResponseEntity.ok(accountService.getDelegations(address, page, count))
+    ) = ResponseEntity.ok(accountService.getDelegations(address, page, count))
 
     @ApiOperation("Returns unbonding delegations for account address")
     @GetMapping("/{address}/unbonding")
@@ -53,7 +52,14 @@ class AccountController(private val accountService: AccountService) {
 
     @ApiOperation("Returns total rewards for account address")
     @GetMapping("/{address}/rewards")
-    fun getAccountRewards(@PathVariable address: String) =
-        ResponseEntity.ok(accountService.getRewards(address))
+    fun getAccountRewards(@PathVariable address: String) = ResponseEntity.ok(accountService.getRewards(address))
+
+    @ApiOperation("Returns attribute names owned by the account address")
+    @GetMapping("/{address}/attributes/owned")
+    fun getAccountNamesOwned(
+        @PathVariable address: String,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int
+    ) = ResponseEntity.ok(accountService.getNamesOwnedByAccount(address, page, count))
 
 }
