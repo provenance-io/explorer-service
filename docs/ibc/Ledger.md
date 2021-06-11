@@ -1,5 +1,11 @@
 # IBC Ledger
 
+- [IBC Ledger](#ibc-ledger)
+  * [Data Changes](#data-changes)
+  * [Ingestion](#ingestion)
+  * [API Changes](#api-changes)
+  * [New API](#new-api)
+
 Tracking movement of money in and out of ibc channels is not a thing. In order to accurately show the movement of denoms,
 we should have a ledger that tracks each in and out on a channel. This would replace the old `/ibc/channels/balances` api.
 

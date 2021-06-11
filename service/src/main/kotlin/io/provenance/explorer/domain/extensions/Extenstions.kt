@@ -41,7 +41,8 @@ import java.util.Base64
 import kotlin.math.ceil
 
 fun ByteString.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
-fun String.fromBase64() = Base64.getDecoder().decode(this)
+fun String.fromBase64() = Base64.getDecoder().decode(this).decodeToString()
+fun String.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
 fun ByteString.toDbHash() = Hashing.sha512().hashBytes(this.toByteArray()).asBytes().toString()
 fun ByteString.toHash() = this.toByteArray().toBech32Data().hexData
 
@@ -150,6 +151,8 @@ fun Timestamp.toDateTime() = DateTime(Instant.ofEpochSecond( this.seconds, this.
 fun Timestamp.formattedString() = DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond( this.seconds, this.nanos.toLong()))
 
 fun DateTime.startOfDay() = this.withZone(DateTimeZone.UTC).withTimeAtStartOfDay()
+
+fun String.toDateTime() = DateTime.parse(this)
 
 fun BlockOuterClass.Block.height() = this.header.height.toInt()
 

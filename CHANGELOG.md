@@ -50,6 +50,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * `/ibc/channels/balances` -> `/ibc/balances/channel` -> Balances broken down by chain/channel/denom
   * `/ibc/balances/chain` -> Balances broken down by chain/denom
   * `/ibc/balances/denom` -> Balances broken down by denom
+* Address-owned Names API #92
+  * `/accounts/{address}/attributes/owned`
 
 ### Improvements
 * Removed hash conversion #66
@@ -83,6 +85,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Ingesting proposals, votes, deposits for Gov tx msgs #64
 * Updated protos - Provenance to v1.4.1, cosmos sdk to 0.42.5 #128
 * Ingesting IBC channels for IBC tx msgs #122
+* Added attributes assigned to an address, formatted to make sense #92
   
 ### Bug Fixes
 * Properly sorting Validator listview #112

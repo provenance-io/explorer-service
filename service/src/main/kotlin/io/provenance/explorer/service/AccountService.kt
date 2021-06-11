@@ -1,19 +1,24 @@
 package io.provenance.explorer.service
 
+import io.provenance.attribute.v1.Attribute
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.AccountRecord.Companion.update
 import io.provenance.explorer.domain.extensions.NHASH
+import io.provenance.explorer.domain.extensions.fromBase64
 import io.provenance.explorer.domain.extensions.isAddressAsType
 import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.toBase64
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDecCoin
+import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toSigObj
 import io.provenance.explorer.domain.models.explorer.AccountDetail
 import io.provenance.explorer.domain.models.explorer.AccountRewards
+import io.provenance.explorer.domain.models.explorer.AttributeObj
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.Delegation
 import io.provenance.explorer.domain.models.explorer.PagedResults
@@ -21,13 +26,15 @@ import io.provenance.explorer.domain.models.explorer.Reward
 import io.provenance.explorer.domain.models.explorer.toData
 import io.provenance.explorer.grpc.extensions.getModuleAccName
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
+import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 
 @Service
 class AccountService(
     private val accountClient: AccountGrpcClient,
-    private val props: ExplorerProperties
+    private val props: ExplorerProperties,
+    private val attrClient: AttributeGrpcClient,
 ) {
 
     protected val logger = logger(AccountService::class)
@@ -46,9 +53,16 @@ class AccountService(
             it.accountNumber,
             it.baseAccount?.sequence?.toInt(),
             AccountRecord.findSigsByAddress(it.accountAddress).toSigObj(props.provAccPrefix()),
-            it.data?.getModuleAccName()
+            it.data?.getModuleAccName(),
+            attrClient.getAllAttributesForAddress(it.accountAddress).map { attr -> attr.toResponse() },
         )
     }
+
+    fun getNamesOwnedByAccount(address: String, page: Int, limit: Int) =
+        attrClient.getNamesForAddress(address, page.toOffset(limit), limit).let { res ->
+            val names = res.nameList.toList()
+            PagedResults(res.pagination.total.pageCountOfResults(limit), names)
+        }
 
     fun getBalances(address: String, page: Int, limit: Int) =
         accountClient.getAccountBalances(address, page.toOffset(limit), limit)
@@ -142,3 +156,23 @@ class AccountService(
 }
 
 fun String.getAccountType() = this.split(".").last()
+
+fun Attribute.toResponse(): AttributeObj {
+    val data = when {
+        this.name.contains("passport") -> this.value.toStringUtf8().fromBase64().toObjectNode().let { node ->
+            try {
+                // Try to parse out passport details
+                when {
+                    node["pending"].asBoolean() -> "pending"
+                    node["expirationDate"].asText().toDateTime().isBeforeNow -> "expired"
+                    else -> "active"
+                }
+            } catch (e: Exception) {
+                // If it fails, just pass back the encoded string
+                this.value.toStringUtf8().toBase64()
+            }
+        }
+        else -> this.value.toStringUtf8().toBase64()
+    }
+    return AttributeObj(this.name, data)
+}
