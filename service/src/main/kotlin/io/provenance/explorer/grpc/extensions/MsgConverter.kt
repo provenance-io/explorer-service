@@ -163,106 +163,106 @@ fun Any.toSoloMachineClientState() = this.unpack(Solomachine.ClientState::class.
 /////////// ADDRESSES
 fun Any.getAssociatedAddresses(): List<String> =
     when {
-        typeUrl.contains("MsgSend") -> this.toMsgSend().let { listOf(it.fromAddress, it.toAddress) }
-        typeUrl.contains("MsgMultiSend") -> this.toMsgMultiSend()
+        typeUrl.endsWith("MsgSend") -> this.toMsgSend().let { listOf(it.fromAddress, it.toAddress) }
+        typeUrl.endsWith("MsgMultiSend") -> this.toMsgMultiSend()
             .let { it.inputsList.map { inp -> inp.address } + it.outputsList.map { out -> out.address } }
-        typeUrl.contains("MsgSetWithdrawAddress") -> this.toMsgSetWithdrawAddress()
+        typeUrl.endsWith("MsgSetWithdrawAddress") -> this.toMsgSetWithdrawAddress()
             .let { listOf(it.delegatorAddress, it.withdrawAddress) }
-        typeUrl.contains("MsgWithdrawDelegatorReward") -> this.toMsgWithdrawDelegatorReward()
+        typeUrl.endsWith("MsgWithdrawDelegatorReward") -> this.toMsgWithdrawDelegatorReward()
             .let { listOf(it.delegatorAddress, it.validatorAddress) }
-        typeUrl.contains("MsgWithdrawValidatorCommission") -> this.toMsgWithdrawValidatorCommission()
+        typeUrl.endsWith("MsgWithdrawValidatorCommission") -> this.toMsgWithdrawValidatorCommission()
             .let { listOf(it.validatorAddress) }
-        typeUrl.contains("MsgFundCommunityPool") -> this.toMsgFundCommunityPool().let { listOf(it.depositor) }
-        typeUrl.contains("MsgSubmitEvidence") -> this.toMsgSubmitEvidence().let { listOf(it.submitter) }
-        typeUrl.contains("MsgSubmitProposal") -> this.toMsgSubmitProposal().let { listOf(it.proposer) }
-        typeUrl.contains("MsgVote") -> this.toMsgVote().let { listOf(it.voter) }
-        typeUrl.contains("MsgDeposit") -> this.toMsgDeposit().let { listOf(it.depositor) }
-        typeUrl.contains("MsgUnjail") -> this.toMsgUnjail().let { listOf(it.validatorAddr) }
-        typeUrl.contains("MsgCreateValidator") -> this.toMsgCreateValidator()
+        typeUrl.endsWith("MsgFundCommunityPool") -> this.toMsgFundCommunityPool().let { listOf(it.depositor) }
+        typeUrl.endsWith("MsgSubmitEvidence") -> this.toMsgSubmitEvidence().let { listOf(it.submitter) }
+        typeUrl.endsWith("MsgSubmitProposal") -> this.toMsgSubmitProposal().let { listOf(it.proposer) }
+        typeUrl.endsWith("MsgVote") -> this.toMsgVote().let { listOf(it.voter) }
+        typeUrl.endsWith("MsgDeposit") -> this.toMsgDeposit().let { listOf(it.depositor) }
+        typeUrl.endsWith("MsgUnjail") -> this.toMsgUnjail().let { listOf(it.validatorAddr) }
+        typeUrl.endsWith("MsgCreateValidator") -> this.toMsgCreateValidator()
             .let { listOf(it.validatorAddress, it.delegatorAddress) }
-        typeUrl.contains("MsgEditValidator") -> this.toMsgEditValidator().let { listOf(it.validatorAddress) }
-        typeUrl.contains("MsgDelegate") -> this.toMsgDelegate().let { listOf(it.validatorAddress, it.delegatorAddress) }
-        typeUrl.contains("MsgBeginRedelegate") -> this.toMsgBeginRedelegate()
+        typeUrl.endsWith("MsgEditValidator") -> this.toMsgEditValidator().let { listOf(it.validatorAddress) }
+        typeUrl.endsWith("MsgDelegate") -> this.toMsgDelegate().let { listOf(it.validatorAddress, it.delegatorAddress) }
+        typeUrl.endsWith("MsgBeginRedelegate") -> this.toMsgBeginRedelegate()
             .let { listOf(it.delegatorAddress, it.validatorDstAddress, it.validatorSrcAddress) }
-        typeUrl.contains("MsgUndelegate") -> this.toMsgUndelegate()
+        typeUrl.endsWith("MsgUndelegate") -> this.toMsgUndelegate()
             .let { listOf(it.delegatorAddress, it.validatorAddress) }
-        typeUrl.contains("MsgCreateVestingAccount") -> this.toMsgCreateVestingAccount()
+        typeUrl.endsWith("MsgCreateVestingAccount") -> this.toMsgCreateVestingAccount()
             .let { listOf(it.fromAddress, it.toAddress) }
-        typeUrl.contains("MsgWithdrawRequest") -> this.toMsgWithdrawRequest()
+        typeUrl.endsWith("MsgWithdrawRequest") -> this.toMsgWithdrawRequest()
             .let { listOf(it.toAddress, it.administrator)}
-        typeUrl.contains("MsgAddMarkerRequest") -> this.toMsgAddMarkerRequest()
+        typeUrl.endsWith("MsgAddMarkerRequest") -> this.toMsgAddMarkerRequest()
             .let { listOf(it.fromAddress, it.manager) + it.accessListList.map { acc -> acc.address }}
-        typeUrl.contains("MsgAddAccessRequest") -> this.toMsgAddAccessRequest()
+        typeUrl.endsWith("MsgAddAccessRequest") -> this.toMsgAddAccessRequest()
             .let { it.accessList.map { l -> l.address } + it.administrator }
-        typeUrl.contains("MsgDeleteAccessRequest") -> this.toMsgDeleteAccessRequest()
+        typeUrl.endsWith("MsgDeleteAccessRequest") -> this.toMsgDeleteAccessRequest()
             .let { listOf(it.administrator, it.removedAddress)}
-        typeUrl.contains("MsgFinalizeRequest") -> this.toMsgFinalizeRequest().let { listOf(it.administrator)}
-        typeUrl.contains("MsgActivateRequest") -> this.toMsgActivateRequest().let { listOf(it.administrator)}
-        typeUrl.contains("MsgCancelRequest") -> this.toMsgCancelRequest().let { listOf(it.administrator)}
-        typeUrl.contains("MsgDeleteRequest") -> this.toMsgDeleteRequest().let { listOf(it.administrator)}
-        typeUrl.contains("MsgMintRequest") -> this.toMsgMintRequest().let { listOf(it.administrator)}
-        typeUrl.contains("MsgBurnRequest") -> this.toMsgBurnRequest().let { listOf(it.administrator)}
-        typeUrl.contains("MsgTransferRequest") -> this.toMsgTransferRequest()
+        typeUrl.endsWith("MsgFinalizeRequest") -> this.toMsgFinalizeRequest().let { listOf(it.administrator)}
+        typeUrl.endsWith("MsgActivateRequest") -> this.toMsgActivateRequest().let { listOf(it.administrator)}
+        typeUrl.endsWith("MsgCancelRequest") -> this.toMsgCancelRequest().let { listOf(it.administrator)}
+        typeUrl.endsWith("MsgDeleteRequest") -> this.toMsgDeleteRequest().let { listOf(it.administrator)}
+        typeUrl.endsWith("MsgMintRequest") -> this.toMsgMintRequest().let { listOf(it.administrator)}
+        typeUrl.endsWith("MsgBurnRequest") -> this.toMsgBurnRequest().let { listOf(it.administrator)}
+        typeUrl.endsWith("MsgTransferRequest") -> this.toMsgTransferRequest()
             .let { listOf(it.administrator, it.toAddress, it.fromAddress)}
-        typeUrl.contains("MsgSetDenomMetadataRequest") -> this.toMsgSetDenomMetadataRequest().let { listOf(it.administrator)}
-        typeUrl.contains("MsgBindNameRequest") -> this.toMsgBindNameRequest().let { listOf(it.parent.address, it.record.address)}
-        typeUrl.contains("MsgDeleteNameRequest") -> this.toMsgDeleteNameRequest().let { listOf(it.record.address)}
-        typeUrl.contains("MsgAddAttributeRequest") -> this.toMsgAddAttributeRequest().let { listOf(it.account, it.owner)}
-        typeUrl.contains("MsgDeleteAttributeRequest") -> this.toMsgDeleteAttributeRequest().let { listOf(it.account, it.owner)}
-        typeUrl.contains("MsgP8eMemorializeContractRequest") -> this.toMsgP8eMemorializeContractRequest().let { listOf(it.invoker) }
-        typeUrl.contains("MsgWriteP8eContractSpecRequest") -> this.toMsgWriteP8eContractSpecRequest().signersList
-        typeUrl.contains("MsgWriteScopeRequest") -> this.toMsgWriteScopeRequest()
+        typeUrl.endsWith("MsgSetDenomMetadataRequest") -> this.toMsgSetDenomMetadataRequest().let { listOf(it.administrator)}
+        typeUrl.endsWith("MsgBindNameRequest") -> this.toMsgBindNameRequest().let { listOf(it.parent.address, it.record.address)}
+        typeUrl.endsWith("MsgDeleteNameRequest") -> this.toMsgDeleteNameRequest().let { listOf(it.record.address)}
+        typeUrl.endsWith("MsgAddAttributeRequest") -> this.toMsgAddAttributeRequest().let { listOf(it.account, it.owner)}
+        typeUrl.endsWith("MsgDeleteAttributeRequest") -> this.toMsgDeleteAttributeRequest().let { listOf(it.account, it.owner)}
+        typeUrl.endsWith("MsgP8eMemorializeContractRequest") -> this.toMsgP8eMemorializeContractRequest().let { listOf(it.invoker) }
+        typeUrl.endsWith("MsgWriteP8eContractSpecRequest") -> this.toMsgWriteP8eContractSpecRequest().signersList
+        typeUrl.endsWith("MsgWriteScopeRequest") -> this.toMsgWriteScopeRequest()
             .let { it.signersList + it.scope.ownersList.map { o -> o.address } + listOf(it.scope.valueOwnerAddress) }
-        typeUrl.contains("MsgDeleteScopeRequest") -> this.toMsgDeleteScopeRequest().signersList
-        typeUrl.contains("MsgWriteSessionRequest") -> this.toMsgWriteSessionRequest()
+        typeUrl.endsWith("MsgDeleteScopeRequest") -> this.toMsgDeleteScopeRequest().signersList
+        typeUrl.endsWith("MsgWriteSessionRequest") -> this.toMsgWriteSessionRequest()
             .let { it.signersList + it.session.partiesList.map { o -> o.address } }
-        typeUrl.contains("MsgWriteRecordRequest") -> this.toMsgWriteRecordRequest()
+        typeUrl.endsWith("MsgWriteRecordRequest") -> this.toMsgWriteRecordRequest()
             .let { it.signersList + it.partiesList.map { o -> o.address } }
-        typeUrl.contains("MsgDeleteRecordRequest") -> this.toMsgDeleteRecordRequest().signersList
-        typeUrl.contains("MsgWriteScopeSpecificationRequest") -> this.toMsgWriteScopeSpecificationRequest()
+        typeUrl.endsWith("MsgDeleteRecordRequest") -> this.toMsgDeleteRecordRequest().signersList
+        typeUrl.endsWith("MsgWriteScopeSpecificationRequest") -> this.toMsgWriteScopeSpecificationRequest()
             .let { it.signersList + it.specification.ownerAddressesList }
-        typeUrl.contains("MsgDeleteScopeSpecificationRequest") -> this.toMsgDeleteScopeSpecificationRequest().signersList
-        typeUrl.contains("MsgWriteContractSpecificationRequest") -> this.toMsgWriteContractSpecificationRequest()
+        typeUrl.endsWith("MsgDeleteScopeSpecificationRequest") -> this.toMsgDeleteScopeSpecificationRequest().signersList
+        typeUrl.endsWith("MsgWriteContractSpecificationRequest") -> this.toMsgWriteContractSpecificationRequest()
             .let { it.signersList + it.specification.ownerAddressesList }
-        typeUrl.contains("MsgDeleteContractSpecificationRequest") -> this.toMsgDeleteContractSpecificationRequest().signersList
-        typeUrl.contains("MsgWriteRecordSpecificationRequest") -> this.toMsgWriteRecordSpecificationRequest().signersList
-        typeUrl.contains("MsgDeleteRecordSpecificationRequest") -> this.toMsgDeleteRecordSpecificationRequest().signersList
-        typeUrl.contains("MsgBindOSLocatorRequest") -> this.toMsgBindOSLocatorRequest().let { listOf(it.locator.owner) }
-        typeUrl.contains("MsgDeleteOSLocatorRequest") -> this.toMsgDeleteOSLocatorRequest().let { listOf(it.locator.owner) }
-        typeUrl.contains("MsgModifyOSLocatorRequest") -> this.toMsgModifyOSLocatorRequest().let { listOf(it.locator.owner) }
-        typeUrl.contains("MsgStoreCode") -> this.toMsgStoreCode().let { listOf(it.sender) }
-        typeUrl.contains("MsgInstantiateContract") -> this.toMsgInstantiateContract().let { listOf(it.sender, it.admin) }
-        typeUrl.contains("MsgExecuteContract") -> this.toMsgExecuteContract().let { listOf(it.sender) }
-        typeUrl.contains("MsgMigrateContract") -> this.toMsgMigrateContract().let { listOf(it.sender) }
-        typeUrl.contains("MsgUpdateAdmin") -> this.toMsgUpdateAdmin().let { listOf(it.sender, it.newAdmin) }
-        typeUrl.contains("MsgClearAdmin") -> this.toMsgClearAdmin().let { listOf(it.sender) }
-        typeUrl.contains("MsgAddScopeDataAccessRequest") -> this.toMsgAddScopeDataAccessRequest()
+        typeUrl.endsWith("MsgDeleteContractSpecificationRequest") -> this.toMsgDeleteContractSpecificationRequest().signersList
+        typeUrl.endsWith("MsgWriteRecordSpecificationRequest") -> this.toMsgWriteRecordSpecificationRequest().signersList
+        typeUrl.endsWith("MsgDeleteRecordSpecificationRequest") -> this.toMsgDeleteRecordSpecificationRequest().signersList
+        typeUrl.endsWith("MsgBindOSLocatorRequest") -> this.toMsgBindOSLocatorRequest().let { listOf(it.locator.owner) }
+        typeUrl.endsWith("MsgDeleteOSLocatorRequest") -> this.toMsgDeleteOSLocatorRequest().let { listOf(it.locator.owner) }
+        typeUrl.endsWith("MsgModifyOSLocatorRequest") -> this.toMsgModifyOSLocatorRequest().let { listOf(it.locator.owner) }
+        typeUrl.endsWith("MsgStoreCode") -> this.toMsgStoreCode().let { listOf(it.sender) }
+        typeUrl.endsWith("MsgInstantiateContract") -> this.toMsgInstantiateContract().let { listOf(it.sender, it.admin) }
+        typeUrl.endsWith("MsgExecuteContract") -> this.toMsgExecuteContract().let { listOf(it.sender) }
+        typeUrl.endsWith("MsgMigrateContract") -> this.toMsgMigrateContract().let { listOf(it.sender) }
+        typeUrl.endsWith("MsgUpdateAdmin") -> this.toMsgUpdateAdmin().let { listOf(it.sender, it.newAdmin) }
+        typeUrl.endsWith("MsgClearAdmin") -> this.toMsgClearAdmin().let { listOf(it.sender) }
+        typeUrl.endsWith("MsgAddScopeDataAccessRequest") -> this.toMsgAddScopeDataAccessRequest()
             .let { it.signersList + it.dataAccessList }
-        typeUrl.contains("MsgDeleteScopeDataAccessRequest") -> this.toMsgDeleteScopeDataAccessRequest()
+        typeUrl.endsWith("MsgDeleteScopeDataAccessRequest") -> this.toMsgDeleteScopeDataAccessRequest()
             .let { it.signersList + it.dataAccessList }
-        typeUrl.contains("MsgAddScopeOwnerRequest") -> this.toMsgAddScopeOwnerRequest()
+        typeUrl.endsWith("MsgAddScopeOwnerRequest") -> this.toMsgAddScopeOwnerRequest()
             .let { it.ownersList.map { o -> o.address }  + it.signersList }
-        typeUrl.contains("MsgDeleteScopeOwnerRequest") -> this.toMsgDeleteScopeOwnerRequest()
+        typeUrl.endsWith("MsgDeleteScopeOwnerRequest") -> this.toMsgDeleteScopeOwnerRequest()
             .let { it.ownersList + it.signersList }
-        typeUrl.contains("MsgTransfer") -> this.toMsgTransfer().let { listOf(it.sender) }
-        typeUrl.contains("MsgChannelOpenInit") -> this.toMsgChannelOpenInit().let { listOf(it.signer) }
-        typeUrl.contains("MsgChannelOpenTry") -> this.toMsgChannelOpenTry().let { listOf(it.signer) }
-        typeUrl.contains("MsgChannelOpenAck") -> this.toMsgChannelOpenAck().let { listOf(it.signer) }
-        typeUrl.contains("MsgChannelOpenConfirm") -> this.toMsgChannelOpenConfirm().let { listOf(it.signer) }
-        typeUrl.contains("MsgChannelCloseInit") -> this.toMsgChannelCloseInit().let { listOf(it.signer) }
-        typeUrl.contains("MsgChannelCloseConfirm") -> this.toMsgChannelCloseConfirm().let { listOf(it.signer) }
-        typeUrl.contains("MsgRecvPacket") -> this.toMsgRecvPacket().let { listOf(it.signer) }
-        typeUrl.contains("MsgTimeout") -> this.toMsgTimeout().let { listOf(it.signer) }
-        typeUrl.contains("MsgTimeoutOnClose") -> this.toMsgTimeoutOnClose().let { listOf(it.signer) }
-        typeUrl.contains("MsgAcknowledgement") -> this.toMsgAcknowledgement().let { listOf(it.signer) }
-        typeUrl.contains("MsgCreateClient") -> this.toMsgCreateClient().let { listOf(it.signer) }
-        typeUrl.contains("MsgUpdateClient") -> this.toMsgUpdateClient().let { listOf(it.signer) }
-        typeUrl.contains("MsgUpgradeClient") -> this.toMsgUpgradeClient().let { listOf(it.signer) }
-        typeUrl.contains("MsgSubmitMisbehaviour") -> this.toMsgSubmitMisbehaviour().let { listOf(it.signer) }
-        typeUrl.contains("MsgConnectionOpenInit") -> this.toMsgConnectionOpenInit().let { listOf(it.signer) }
-        typeUrl.contains("MsgConnectionOpenTry") -> this.toMsgConnectionOpenTry().let { listOf(it.signer) }
-        typeUrl.contains("MsgConnectionOpenAck") -> this.toMsgConnectionOpenAck().let { listOf(it.signer) }
-        typeUrl.contains("MsgConnectionOpenConfirm") -> this.toMsgConnectionOpenConfirm().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgTransfer") -> this.toMsgTransfer().let { listOf(it.sender) }
+        typeUrl.endsWith("MsgChannelOpenInit") -> this.toMsgChannelOpenInit().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgChannelOpenTry") -> this.toMsgChannelOpenTry().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgChannelOpenAck") -> this.toMsgChannelOpenAck().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgChannelOpenConfirm") -> this.toMsgChannelOpenConfirm().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgChannelCloseInit") -> this.toMsgChannelCloseInit().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgChannelCloseConfirm") -> this.toMsgChannelCloseConfirm().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgRecvPacket") -> this.toMsgRecvPacket().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgTimeout") -> this.toMsgTimeout().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgTimeoutOnClose") -> this.toMsgTimeoutOnClose().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgAcknowledgement") -> this.toMsgAcknowledgement().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgCreateClient") -> this.toMsgCreateClient().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgUpdateClient") -> this.toMsgUpdateClient().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgUpgradeClient") -> this.toMsgUpgradeClient().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgSubmitMisbehaviour") -> this.toMsgSubmitMisbehaviour().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgConnectionOpenInit") -> this.toMsgConnectionOpenInit().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgConnectionOpenTry") -> this.toMsgConnectionOpenTry().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgConnectionOpenAck") -> this.toMsgConnectionOpenAck().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgConnectionOpenConfirm") -> this.toMsgConnectionOpenConfirm().let { listOf(it.signer) }
 
         else -> listOf<String>().also { logger().debug("This typeUrl is not yet supported as an address-based msg: $typeUrl") }
     }
@@ -270,37 +270,37 @@ fun Any.getAssociatedAddresses(): List<String> =
 /////////// DENOMS
 fun Any.getAssociatedDenoms(): List<String> =
     when {
-        typeUrl.contains("MsgSend") -> this.toMsgSend().let { it.amountList.map { am -> am.denom } }
-        typeUrl.contains("MsgMultiSend") -> this.toMsgMultiSend()
+        typeUrl.endsWith("MsgSend") -> this.toMsgSend().let { it.amountList.map { am -> am.denom } }
+        typeUrl.endsWith("MsgMultiSend") -> this.toMsgMultiSend()
             .let { it.inputsList.flatMap { inp -> inp.coinsList.map { c -> c.denom } } +
                 it.outputsList.flatMap { out -> out.coinsList.map { c -> c.denom } } }
-        typeUrl.contains("MsgWithdrawRequest") -> this.toMsgWithdrawRequest().let { listOf(it.denom)}
-        typeUrl.contains("MsgAddMarkerRequest") -> this.toMsgAddMarkerRequest().let { listOf(it.amount.denom) }
-        typeUrl.contains("MsgAddAccessRequest") -> this.toMsgAddAccessRequest().let { listOf(it.denom) }
-        typeUrl.contains("MsgDeleteAccessRequest") -> this.toMsgDeleteAccessRequest().let { listOf(it.denom)}
-        typeUrl.contains("MsgFinalizeRequest") -> this.toMsgFinalizeRequest().let { listOf(it.denom)}
-        typeUrl.contains("MsgActivateRequest") -> this.toMsgActivateRequest().let { listOf(it.denom)}
-        typeUrl.contains("MsgCancelRequest") -> this.toMsgCancelRequest().let { listOf(it.denom)}
-        typeUrl.contains("MsgDeleteRequest") -> this.toMsgDeleteRequest().let { listOf(it.denom)}
-        typeUrl.contains("MsgMintRequest") -> this.toMsgMintRequest().let { listOf(it.amount.denom)}
-        typeUrl.contains("MsgBurnRequest") -> this.toMsgBurnRequest().let { listOf(it.amount.denom)}
-        typeUrl.contains("MsgTransferRequest") -> this.toMsgTransferRequest().let { listOf(it.amount.denom)}
-        typeUrl.contains("MsgSetDenomMetadataRequest") -> this.toMsgSetDenomMetadataRequest()
+        typeUrl.endsWith("MsgWithdrawRequest") -> this.toMsgWithdrawRequest().let { listOf(it.denom)}
+        typeUrl.endsWith("MsgAddMarkerRequest") -> this.toMsgAddMarkerRequest().let { listOf(it.amount.denom) }
+        typeUrl.endsWith("MsgAddAccessRequest") -> this.toMsgAddAccessRequest().let { listOf(it.denom) }
+        typeUrl.endsWith("MsgDeleteAccessRequest") -> this.toMsgDeleteAccessRequest().let { listOf(it.denom)}
+        typeUrl.endsWith("MsgFinalizeRequest") -> this.toMsgFinalizeRequest().let { listOf(it.denom)}
+        typeUrl.endsWith("MsgActivateRequest") -> this.toMsgActivateRequest().let { listOf(it.denom)}
+        typeUrl.endsWith("MsgCancelRequest") -> this.toMsgCancelRequest().let { listOf(it.denom)}
+        typeUrl.endsWith("MsgDeleteRequest") -> this.toMsgDeleteRequest().let { listOf(it.denom)}
+        typeUrl.endsWith("MsgMintRequest") -> this.toMsgMintRequest().let { listOf(it.amount.denom)}
+        typeUrl.endsWith("MsgBurnRequest") -> this.toMsgBurnRequest().let { listOf(it.amount.denom)}
+        typeUrl.endsWith("MsgTransferRequest") -> this.toMsgTransferRequest().let { listOf(it.amount.denom)}
+        typeUrl.endsWith("MsgSetDenomMetadataRequest") -> this.toMsgSetDenomMetadataRequest()
             .let { listOf(it.metadata.base) }
-        typeUrl.contains("MsgAddAttributeRequest") -> this.toMsgAddAttributeRequest()
+        typeUrl.endsWith("MsgAddAttributeRequest") -> this.toMsgAddAttributeRequest()
             .let { it.account.getDenomByAddress()?.let { denom -> listOf(denom) } ?: listOf() }
-        typeUrl.contains("MsgDeleteAttributeRequest") -> this.toMsgDeleteAttributeRequest()
+        typeUrl.endsWith("MsgDeleteAttributeRequest") -> this.toMsgDeleteAttributeRequest()
             .let { it.account.getDenomByAddress()?.let { denom -> listOf(denom) } ?: listOf() }
-        typeUrl.contains("MsgInstantiateContract") -> this.toMsgInstantiateContract().let { it.fundsList.map { c -> c.denom } }
-        typeUrl.contains("MsgExecuteContract") -> this.toMsgExecuteContract().let { it.fundsList.map { c -> c.denom } }
-        typeUrl.contains("MsgTransfer") -> this.toMsgTransfer().let { listOf(it.token.denom) }
+        typeUrl.endsWith("MsgInstantiateContract") -> this.toMsgInstantiateContract().let { it.fundsList.map { c -> c.denom } }
+        typeUrl.endsWith("MsgExecuteContract") -> this.toMsgExecuteContract().let { it.fundsList.map { c -> c.denom } }
+        typeUrl.endsWith("MsgTransfer") -> this.toMsgTransfer().let { listOf(it.token.denom) }
 
         else -> listOf<String>()
             .also { logger().debug("This typeUrl is not yet supported as an asset-based msg: $typeUrl") }
     }
 
 /////////// IBC
-fun Any.isIbcTransferMsg() = typeUrl.contains("MsgTransfer")
+fun Any.isIbcTransferMsg() = typeUrl.endsWith("MsgTransfer")
 
 enum class IbcEventType{ DENOM, ADDRESS }
 
@@ -312,8 +312,8 @@ enum class IbcDenomEvents(val eventType: IbcEventType, val event: String, val id
 
 fun Any.getIbcDenomEvents() =
     when {
-        typeUrl.contains("MsgRecvPacket") -> listOf(IbcDenomEvents.RECV_PACKET_DENOM, IbcDenomEvents.RECV_PACKET_ADDR)
-        typeUrl.contains("MsgAcknowledgement") -> listOf(IbcDenomEvents.ACKNOWLEDGE_DENOM)
+        typeUrl.endsWith("MsgRecvPacket") -> listOf(IbcDenomEvents.RECV_PACKET_DENOM, IbcDenomEvents.RECV_PACKET_ADDR)
+        typeUrl.endsWith("MsgAcknowledgement") -> listOf(IbcDenomEvents.ACKNOWLEDGE_DENOM)
         else -> listOf<IbcDenomEvents>()
             .also { logger().debug("This typeUrl is not yet supported in as an ibc denom event-based msg: $typeUrl") }
     }
@@ -321,28 +321,28 @@ fun Any.getIbcDenomEvents() =
 // Returns Pair(Event type, Pair(port, channel))
 fun Any.getIbcChannelEvents() =
     when {
-        typeUrl.contains("MsgTransfer") -> "send_packet" to Pair("packet_src_port", "packet_src_channel")
-        typeUrl.contains("MsgChannelOpenInit") -> "channel_open_init" to Pair("port_id", "channel_id")
-        typeUrl.contains("MsgChannelOpenTry") -> "channel_open_try" to Pair("port_id", "channel_id")
-        typeUrl.contains("MsgChannelOpenAck") -> "channel_open_ack" to Pair("port_id", "channel_id")
-        typeUrl.contains("MsgChannelOpenConfirm") -> "channel_open_confirm" to Pair("port_id", "channel_id")
-        typeUrl.contains("MsgChannelCloseInit") -> "channel_close_init" to Pair("port_id", "channel_id")
-        typeUrl.contains("MsgChannelCloseConfirm") -> "channel_close_confirm" to Pair("port_id", "channel_id")
-        typeUrl.contains("MsgRecvPacket") -> "recv_packet" to Pair("packet_dst_port", "packet_dst_channel")
-        typeUrl.contains("MsgTimeout") -> "timeout_packet" to Pair("packet_src_port", "packet_src_channel")
-        typeUrl.contains("MsgAcknowledgement") -> "acknowledge_packet" to Pair("packet_src_port", "packet_src_channel")
+        typeUrl.endsWith("MsgTransfer") -> "send_packet" to Pair("packet_src_port", "packet_src_channel")
+        typeUrl.endsWith("MsgChannelOpenInit") -> "channel_open_init" to Pair("port_id", "channel_id")
+        typeUrl.endsWith("MsgChannelOpenTry") -> "channel_open_try" to Pair("port_id", "channel_id")
+        typeUrl.endsWith("MsgChannelOpenAck") -> "channel_open_ack" to Pair("port_id", "channel_id")
+        typeUrl.endsWith("MsgChannelOpenConfirm") -> "channel_open_confirm" to Pair("port_id", "channel_id")
+        typeUrl.endsWith("MsgChannelCloseInit") -> "channel_close_init" to Pair("port_id", "channel_id")
+        typeUrl.endsWith("MsgChannelCloseConfirm") -> "channel_close_confirm" to Pair("port_id", "channel_id")
+        typeUrl.endsWith("MsgRecvPacket") -> "recv_packet" to Pair("packet_dst_port", "packet_dst_channel")
+        typeUrl.endsWith("MsgTimeout") -> "timeout_packet" to Pair("packet_src_port", "packet_src_channel")
+        typeUrl.endsWith("MsgAcknowledgement") -> "acknowledge_packet" to Pair("packet_src_port", "packet_src_channel")
         else ->
             null.also { logger().debug("This typeUrl is not yet supported in as an ibc channel event-based msg: $typeUrl") }
     }
 
 // The only case where a channel is not in the events, because no events get emitted
-fun Any.isIbcTimeoutOnClose() = typeUrl.contains("MsgTimeoutOnClose")
+fun Any.isIbcTimeoutOnClose() = typeUrl.endsWith("MsgTimeoutOnClose")
 
 fun Any.getIbcLedgerMsgs() =
     when {
-        typeUrl.contains("MsgTransfer")
-            || typeUrl.contains("MsgRecvPacket")
-            || typeUrl.contains("MsgAcknowledgement") -> this
+        typeUrl.endsWith("MsgTransfer")
+            || typeUrl.endsWith("MsgRecvPacket")
+            || typeUrl.endsWith("MsgAcknowledgement") -> this
         else -> null.also { logger().debug("This typeUrl is not yet supported in as an ibc ledger msg: $typeUrl") }
     }
 
@@ -356,46 +356,46 @@ enum class MdEvents(val event: String, val idField: String) {
 
 fun Any.isMetadataDeletionMsg() =
     when {
-        typeUrl.contains("MsgDeleteScopeRequest")
-            || typeUrl.contains("MsgDeleteScopeSpecificationRequest")
-            || typeUrl.contains("MsgDeleteContractSpecificationRequest") -> true
+        typeUrl.endsWith("MsgDeleteScopeRequest")
+            || typeUrl.endsWith("MsgDeleteScopeSpecificationRequest")
+            || typeUrl.endsWith("MsgDeleteContractSpecificationRequest") -> true
         else -> false
     }
 
 fun Any.getAssociatedMetadataEvents() =
     when {
-        typeUrl.contains("MsgWriteP8eContractSpecRequest") -> listOf(CSPC,CSPU)
+        typeUrl.endsWith("MsgWriteP8eContractSpecRequest") -> listOf(CSPC,CSPU)
         else -> listOf<MdEvents>()
             .also { logger().debug("This typeUrl is not yet supported in as an metadata-event-based msg: $typeUrl") }
     }
 
 fun Any.getAssociatedMetadata() =
     when {
-        typeUrl.contains("MsgWriteScopeRequest") -> this.toMsgWriteScopeRequest()
+        typeUrl.endsWith("MsgWriteScopeRequest") -> this.toMsgWriteScopeRequest()
             .let { it.scopeUuid?.blankToNull()?.toMAddressScope() ?: it.scope.scopeId?.toMAddress() }
-        typeUrl.contains("MsgDeleteScopeRequest") -> this.toMsgDeleteScopeRequest().scopeId.toMAddress()
-        typeUrl.contains("MsgAddScopeDataAccessRequest") -> this.toMsgAddScopeDataAccessRequest().scopeId.toMAddress()
-        typeUrl.contains("MsgDeleteScopeDataAccessRequest") -> this.toMsgDeleteScopeDataAccessRequest().scopeId.toMAddress()
-        typeUrl.contains("MsgAddScopeOwnerRequest") -> this.toMsgAddScopeOwnerRequest().scopeId.toMAddress()
-        typeUrl.contains("MsgDeleteScopeOwnerRequest") -> this.toMsgDeleteScopeOwnerRequest().scopeId.toMAddress()
-        typeUrl.contains("MsgWriteSessionRequest") -> this.toMsgWriteSessionRequest()
+        typeUrl.endsWith("MsgDeleteScopeRequest") -> this.toMsgDeleteScopeRequest().scopeId.toMAddress()
+        typeUrl.endsWith("MsgAddScopeDataAccessRequest") -> this.toMsgAddScopeDataAccessRequest().scopeId.toMAddress()
+        typeUrl.endsWith("MsgDeleteScopeDataAccessRequest") -> this.toMsgDeleteScopeDataAccessRequest().scopeId.toMAddress()
+        typeUrl.endsWith("MsgAddScopeOwnerRequest") -> this.toMsgAddScopeOwnerRequest().scopeId.toMAddress()
+        typeUrl.endsWith("MsgDeleteScopeOwnerRequest") -> this.toMsgDeleteScopeOwnerRequest().scopeId.toMAddress()
+        typeUrl.endsWith("MsgWriteSessionRequest") -> this.toMsgWriteSessionRequest()
             .let { it.sessionIdComponents.toMAddress() ?: it.session.sessionId.toMAddress() }
-        typeUrl.contains("MsgWriteRecordRequest") -> this.toMsgWriteRecordRequest()
+        typeUrl.endsWith("MsgWriteRecordRequest") -> this.toMsgWriteRecordRequest()
             .let { it.sessionIdComponents.toMAddress() ?: it.record.sessionId.toMAddress() }
-        typeUrl.contains("MsgDeleteRecordRequest") -> this.toMsgDeleteRecordRequest().recordId.toMAddress()
-        typeUrl.contains("MsgWriteScopeSpecificationRequest") -> this.toMsgWriteScopeSpecificationRequest()
+        typeUrl.endsWith("MsgDeleteRecordRequest") -> this.toMsgDeleteRecordRequest().recordId.toMAddress()
+        typeUrl.endsWith("MsgWriteScopeSpecificationRequest") -> this.toMsgWriteScopeSpecificationRequest()
             .let { it.specUuid?.blankToNull()?.toMAddressScopeSpec() ?: it.specification.specificationId?.toMAddress() }
-        typeUrl.contains("MsgDeleteScopeSpecificationRequest") ->
+        typeUrl.endsWith("MsgDeleteScopeSpecificationRequest") ->
             this.toMsgDeleteScopeSpecificationRequest().specificationId.toMAddress()
-        typeUrl.contains("MsgWriteContractSpecificationRequest") -> this.toMsgWriteContractSpecificationRequest()
+        typeUrl.endsWith("MsgWriteContractSpecificationRequest") -> this.toMsgWriteContractSpecificationRequest()
             .let { it.specUuid?.blankToNull()?.toMAddressContractSpec() ?: it.specification.specificationId?.toMAddress() }
-        typeUrl.contains("MsgDeleteContractSpecificationRequest") ->
+        typeUrl.endsWith("MsgDeleteContractSpecificationRequest") ->
             this.toMsgDeleteContractSpecificationRequest().specificationId.toMAddress()
-        typeUrl.contains("MsgWriteRecordSpecificationRequest") -> this.toMsgWriteRecordSpecificationRequest()
+        typeUrl.endsWith("MsgWriteRecordSpecificationRequest") -> this.toMsgWriteRecordSpecificationRequest()
             .let { it.contractSpecUuid?.blankToNull()?.toMAddressContractSpec() ?: it.specification.specificationId?.toMAddress() }
-        typeUrl.contains("MsgDeleteRecordSpecificationRequest") ->
+        typeUrl.endsWith("MsgDeleteRecordSpecificationRequest") ->
             this.toMsgDeleteRecordSpecificationRequest().specificationId.toMAddress()
-        typeUrl.contains("MsgP8eMemorializeContractRequest") -> this.toMsgP8eMemorializeContractRequest().scopeId.toMAddressScope()
+        typeUrl.endsWith("MsgP8eMemorializeContractRequest") -> this.toMsgP8eMemorializeContractRequest().scopeId.toMAddressScope()
         else -> null
             .also { logger().debug("This typeUrl is not yet supported in as an metadata-based msg: $typeUrl") }
     }
@@ -412,8 +412,8 @@ enum class GovMsgType { PROPOSAL, VOTE, DEPOSIT }
 
 fun Any.getAssociatedGovMsgs() =
     when {
-        typeUrl.contains("MsgSubmitProposal") -> GovMsgType.PROPOSAL to this
-        typeUrl.contains("MsgVote") -> GovMsgType.VOTE to this
-        typeUrl.contains("MsgDeposit") -> GovMsgType.DEPOSIT to this
+        typeUrl.endsWith("MsgSubmitProposal") -> GovMsgType.PROPOSAL to this
+        typeUrl.endsWith("MsgVote") -> GovMsgType.VOTE to this
+        typeUrl.endsWith("MsgDeposit") -> GovMsgType.DEPOSIT to this
         else -> null.also { logger().debug("This typeUrl is not a governance-based msg: $typeUrl") }
     }

@@ -22,6 +22,7 @@ import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.Bech32
 import io.provenance.explorer.domain.core.Hash
 import io.provenance.explorer.domain.core.toBech32Data
+import io.provenance.explorer.domain.entities.MissedBlocksRecord
 import io.provenance.explorer.domain.entities.SignatureRecord
 import io.provenance.explorer.domain.models.explorer.Addresses
 import io.provenance.explorer.domain.models.explorer.Signatures
@@ -29,6 +30,7 @@ import io.provenance.explorer.grpc.extensions.toAddress
 import io.provenance.explorer.grpc.extensions.toMultiSig
 import org.apache.commons.text.StringEscapeUtils
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import tendermint.types.BlockOuterClass
@@ -81,14 +83,12 @@ fun Abci.TxResponse.type() = this.logsList?.flatMap { it.eventsList }
     ?.firstOrNull { it.key == "action" }
     ?.value
 
-fun Slashing.ValidatorSigningInfo.uptime(currentHeight: BigInteger) = let {
-    val startHeight = this.startHeight.toBigInteger()
-    val missingBlockCounter = this.missedBlocksCounter.toBigInteger()
-    BigDecimal(currentHeight - startHeight - missingBlockCounter)
-            .divide(BigDecimal(currentHeight - startHeight), 2, RoundingMode.CEILING)
+fun String.validatorUptime(bondingHeight: BigInteger, currentHeight: BigInteger) =
+    (MissedBlocksRecord.findLatestForVal(this)?.totalCount ?: 0).let {
+        BigDecimal(currentHeight - bondingHeight - it.toBigInteger())
+            .divide(BigDecimal(currentHeight - bondingHeight), 2, RoundingMode.CEILING)
             .multiply(BigDecimal(100.00))
-
-}
+    }
 
 fun Long.isPastDue(currentMillis: Long) = DateTime.now().millis - this > currentMillis
 

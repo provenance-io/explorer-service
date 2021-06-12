@@ -13,6 +13,7 @@ import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
+import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
 import org.jetbrains.exposed.sql.and
@@ -188,4 +189,43 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
     var proposerOperatorAddress by BlockProposerTable.proposerOperatorAddress
     var minGasFee by BlockProposerTable.minGasFee
     var blockTimestamp by BlockProposerTable.blockTimestamp
+}
+
+object MissedBlocksTable : IntIdTable(name = "missed_blocks") {
+    val blockHeight = integer("block_height")
+    val valConsAddr = varchar("val_cons_address", 128)
+    val runningCount = integer("running_count")
+    val totalCount = integer("total_count")
+}
+
+class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<MissedBlocksRecord>(MissedBlocksTable) {
+
+        fun findLatestForVal(valconsAddr: String) = transaction {
+            MissedBlocksRecord.find { MissedBlocksTable.valConsAddr eq valconsAddr }
+                .orderBy(Pair(MissedBlocksTable.blockHeight, SortOrder.DESC))
+                .firstOrNull()
+        }
+
+        fun insert(
+            height: Int,
+            valconsAddr: String
+        ) = transaction {
+            val (running, total) = findLatestForVal(valconsAddr)?.let {
+                (if (it.blockHeight == height - 1) it.runningCount else 0) to it.totalCount
+            } ?: 0 to 0
+            MissedBlocksTable.insertIgnore {
+                it[this.blockHeight] = height
+                it[this.valConsAddr] = valconsAddr
+                it[this.runningCount] = running + 1
+                it[this.totalCount] = total + 1
+            }
+        }
+
+    }
+
+    var blockHeight by MissedBlocksTable.blockHeight
+    var valConsAddr by MissedBlocksTable.valConsAddr
+    var runningCount by MissedBlocksTable.runningCount
+    var totalCount by MissedBlocksTable.totalCount
 }

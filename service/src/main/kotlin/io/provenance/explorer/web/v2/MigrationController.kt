@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @Validated
@@ -39,6 +40,12 @@ class MigrationController(private val migrationService: MigrationService) {
 
     @ApiOperation("Updates accounts with data")
     @PutMapping("/update/accounts")
-    fun updateAccounts() = ResponseEntity.ok(migrationService.updateAccounts())
+    fun updateAccounts(@RequestBody accounts: List<String>) =
+        ResponseEntity.ok(migrationService.updateAccounts(accounts))
+
+    @ApiOperation("Updates missed blocks")
+    @GetMapping("/update/blocks/missed")
+    fun updateMissedBlocks(@RequestParam start: Int, @RequestParam end: Int, @RequestParam inc: Int) =
+        ResponseEntity.ok(migrationService.updateMissedBlocks(start, end, inc))
 
 }

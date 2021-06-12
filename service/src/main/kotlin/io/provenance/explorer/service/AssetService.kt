@@ -50,7 +50,7 @@ class AssetService (
                     AssetListed(
                         it.denom,
                         it.markerAddress,
-                        it.supply.toBigInteger().toString(),
+                        CoinStr(it.supply.toBigInteger().toString(), it.denom),
                         it.status.prettyStatus(),
                         it.data?.isMintable() ?: false,
                         it.lastTx?.toString(),

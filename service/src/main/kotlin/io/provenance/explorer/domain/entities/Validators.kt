@@ -118,6 +118,11 @@ class StakingValidatorCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                     .also { logger.error("This status is not supported: $status") }
             }
         }
+
+        fun findNotJailed() = transaction {
+            StakingValidatorCacheRecord.find { StakingValidatorCacheTable.jailed eq false }
+                .orderBy(Pair(StakingValidatorCacheTable.tokenCount, SortOrder.DESC))
+        }
     }
 
     var operatorAddress by StakingValidatorCacheTable.operatorAddress
