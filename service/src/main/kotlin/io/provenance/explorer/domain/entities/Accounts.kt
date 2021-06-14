@@ -37,6 +37,8 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findByAddress(addr: String) = AccountRecord.find { AccountTable.accountAddress eq addr }.firstOrNull()
 
+        fun findListByAddress(list: List<String>) = AccountRecord.find { AccountTable.accountAddress.inList(list) }
+
         fun insertUnknownAccount(addr: String) = transaction {
             AccountTable.insertIgnoreAndGetId {
                 it[this.accountAddress] = addr

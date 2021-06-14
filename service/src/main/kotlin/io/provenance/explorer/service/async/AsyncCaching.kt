@@ -101,6 +101,7 @@ class AsyncCaching(
             blockRes.block.height(), blockRes.block.data.txsCount, blockRes.block.header.time.toDateTime(), blockRes)
         validatorService.saveProposerRecord(blockRes, blockRes.block.header.time.toDateTime(), blockRes.block.height())
         validatorService.saveValidatorsAtHeight(blockRes.block.height())
+        validatorService.saveMissedBlocks(blockRes)
         if (blockRes.block.data.txsCount > 0)
             saveTxs(blockRes)
         return blockRes
@@ -355,7 +356,7 @@ class AsyncCaching(
                 .forEachIndexed fe@{ idx, any ->
                     if (any == null) return@fe
                     val ledger = when {
-                        any.typeUrl.contains("MsgTransfer") -> {
+                        any.typeUrl.endsWith("MsgTransfer") -> {
                                 val msg = any.toMsgTransfer()
                                 val channel = IbcChannelRecord.findBySrcPortSrcChannel(msg.sourcePort, msg.sourceChannel)
                                 ibcService.parseTransfer(
@@ -365,7 +366,7 @@ class AsyncCaching(
                                         logs = tx.txResponse.logsList[idx],
                                         balanceOut = msg.token.amount))
                             }
-                        any.typeUrl.contains("MsgRecvPacket") -> {
+                        any.typeUrl.endsWith("MsgRecvPacket") -> {
                                 val msg = any.toMsgRecvPacket()
                                 val channel = IbcChannelRecord.findBySrcPortSrcChannel(
                                     msg.packet.destinationPort,
@@ -376,13 +377,12 @@ class AsyncCaching(
                                         channel = channel!!,
                                         logs = tx.txResponse.logsList[idx]))
                             }
-                        any.typeUrl.contains("MsgAcknowledgement") -> {
+                        any.typeUrl.endsWith("MsgAcknowledgement") -> {
                                 val msg = any.toMsgAcknowledgement()
                                 val channel = IbcChannelRecord.findBySrcPortSrcChannel(
                                     msg.packet.sourcePort,
                                     msg.packet.sourceChannel
                                 )
-                                val byteStr = msg.packet.data.toStringUtf8()
                                 val data = msg.packet.data.toStringUtf8().toObjectNode()
                                 ibcService.parseAcknowledge(
                                     LedgerInfo(
@@ -417,3 +417,4 @@ fun String.getAddressType(props: ExplorerProperties) = when {
         Pair(TxAddressJoinType.ACCOUNT.name, AccountRecord.findByAddress(this)?.id?.value)
     else -> logger().debug("Address type is not supported: Addr $this").let { null }
 }
+

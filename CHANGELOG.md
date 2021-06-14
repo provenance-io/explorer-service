@@ -86,6 +86,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Updated protos - Provenance to v1.4.1, cosmos sdk to 0.42.5 #128
 * Ingesting IBC channels for IBC tx msgs #122
 * Added attributes assigned to an address, formatted to make sense #92
+* Updated missed_blocks count to pull from DB #136
   
 ### Bug Fixes
 * Properly sorting Validator listview #112
@@ -96,7 +97,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Adding blank check to NFT uuids
 * Added `markerType` to asset listview response #131
 * Updated `AssetDetail.supply` from String to CoinStr #137
+* Updated `AssetList.supply` from String to CoinStr #137
 * Updated `AssetHolder.balance` to include `denom` #137
+* Updated MsgConverter `typeUrl.contains()` to `typeUrl.endsWith()` due to some msgs containing names of other msgs
 
 ## Client Breaking
 * Account balances are now paginated #102
@@ -113,6 +116,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added migration 16 for storing Gov data #64
 * Added migration 17 for storing IBC Channel data #122
 * Added migration 18 for storing IBC Balance Ledger data #132
+* Added migration 19 for storing missed blocks data #136
 
 ## [v1.5.0](https://github.com/provenance-io/explorer-service/releases/tag/v1.5.0) - 2021-05-21
 ### Release Name: Dicuil

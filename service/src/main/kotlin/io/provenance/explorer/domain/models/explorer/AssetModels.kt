@@ -7,7 +7,7 @@ import java.math.BigInteger
 data class AssetListed(
     val marker: String,
     val holdingAccount: String?,
-    val supply: String,
+    val supply: CoinStr,
     val status: String,
     val mintable: Boolean = false,
     val lastTxTimestamp: String?,

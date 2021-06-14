@@ -7,6 +7,7 @@ import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockProposerRecord
+import io.provenance.explorer.domain.entities.MissedBlocksRecord
 import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
@@ -21,7 +22,7 @@ import io.provenance.explorer.domain.extensions.toDecCoin
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.extensions.translateByteArray
-import io.provenance.explorer.domain.extensions.uptime
+import io.provenance.explorer.domain.extensions.validatorUptime
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.CommissionRate
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
@@ -80,6 +81,8 @@ class ValidatorService(
                     it) }
     }
 
+    fun getMissedBlocks(valConsAddr: String) = MissedBlocksRecord.findLatestForVal(valConsAddr)
+
     // Returns a validator detail object for the validator
     fun getValidator(address: String) =
         getValidatorOperatorAddress(address)?.let { addr ->
@@ -98,10 +101,10 @@ class ValidatorService(
                 grpcClient.getDelegatorWithdrawalAddress(addr.accountAddress),
                 stakingValidator.consensusPubkey.toAddress(props.provValConsPrefix()) ?: "",
                 CountTotal(
-                    signingInfo!!.missedBlocksCounter.toBigInteger(),
-                    currentHeight - signingInfo.startHeight.toBigInteger()),
+                    (getMissedBlocks(addr.consensusAddress)?.totalCount ?: 0).toBigInteger(),
+                    currentHeight - signingInfo!!.startHeight.toBigInteger()),
                 signingInfo.startHeight,
-                signingInfo.uptime(currentHeight),
+                addr.consensusAddress.validatorUptime(signingInfo.startHeight.toBigInteger(), currentHeight),
                 null,  // TODO: Update when we can get images going
                 stakingValidator.description.details,
                 stakingValidator.description.website,
@@ -242,7 +245,7 @@ class ValidatorService(
             consensusAddress = signingInfo.address,
             proposerPriority = validator?.proposerPriority?.toInt(),
             votingPower = (if (validator != null) CountTotal(validator.votingPower.toBigInteger(), totalVotingPower) else null),
-            uptime = if (stakingValidator.isActive()) signingInfo.uptime(height) else null,
+            uptime = if (stakingValidator.isActive()) signingInfo.address.validatorUptime(signingInfo.startHeight.toBigInteger(), height) else null,
             commission = stakingValidator.commission.commissionRates.rate.toDecCoin(),
             bondedTokens = CountStrTotal(stakingValidator.tokens, null, NHASH),
             selfBonded = CountStrTotal(selfBondedAmount.amount, null, selfBondedAmount.denom),
@@ -324,4 +327,17 @@ class ValidatorService(
             val proposer = findAddressByConsensus(consAddr)!!.operatorAddress
             BlockProposerRecord.save(blockHeight, null, timestamp, proposer)
         }
+
+    fun saveMissedBlocks(blockMeta: Query.GetBlockByHeightResponse) = transaction {
+        val lastBlock = blockMeta.block.lastCommit
+        val signatures = lastBlock.signaturesList
+            .map { it.validatorAddress.translateByteArray(props).consensusAccountAddr }
+        val currentVals = ValidatorsCacheRecord.findById(lastBlock.height.toInt())?.validators
+            ?: grpcClient.getValidatorsAtHeight(lastBlock.height.toInt())
+
+        currentVals.validatorsList.forEach { vali ->
+            if (!signatures.contains(vali.address))
+                MissedBlocksRecord.insert(lastBlock.height.toInt(), vali.address)
+        }
+    }
 }
