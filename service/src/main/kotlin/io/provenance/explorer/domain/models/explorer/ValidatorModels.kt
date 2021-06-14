@@ -11,8 +11,8 @@ data class ValidatorSummary (
     val uptime: BigDecimal?,
     val votingPower: CountTotal?,
     val commission: String,
-    val bondedTokens: BondedTokens,
-    val selfBonded: BondedTokens,
+    val bondedTokens: CountStrTotal,
+    val selfBonded: CountStrTotal,
     val delegators: Long?,
     val bondHeight: Long?,
     val status: String,
@@ -52,9 +52,9 @@ data class Delegation (
 )
 
 data class ValidatorCommission (
-    val bondedTokens: BondedTokens,
-    val selfBonded: BondedTokens,
-    val delegatorBonded: BondedTokens,
+    val bondedTokens: CountStrTotal,
+    val selfBonded: CountStrTotal,
+    val delegatorBonded: CountStrTotal,
     val delegatorCount: Long,
     val totalShares: String,
     val commissionRewards: CoinStr,

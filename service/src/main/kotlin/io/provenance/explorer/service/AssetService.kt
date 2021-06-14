@@ -15,6 +15,7 @@ import io.provenance.explorer.domain.models.explorer.AssetDetail
 import io.provenance.explorer.domain.models.explorer.AssetHolder
 import io.provenance.explorer.domain.models.explorer.AssetListed
 import io.provenance.explorer.domain.models.explorer.AssetManagement
+import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.TokenCounts
@@ -96,7 +97,7 @@ class AssetService (
                     record.denom,
                     record.markerAddress,
                     if (record.data != null) AssetManagement(record.data!!.getManagingAccounts(), record.data!!.allowGovernanceControl) else null,
-                    record.supply.toBigInteger().toString(),
+                    CoinStr(record.supply.toBigInteger().toString(), record.denom),
                     record.data?.isMintable() ?: false,
                     if (record.markerAddress != null) markerClient.getMarkerHolders(denom, 0, 10).pagination.total.toInt() else 0,
                     txCount,
@@ -114,7 +115,7 @@ class AssetService (
         val res = markerClient.getMarkerHolders(denom, page.toOffset(count), count)
         val list = res.balancesList.map { bal ->
                 val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount
-                AssetHolder(bal.address, CountStrTotal(balance, supply))
+                AssetHolder(bal.address, CountStrTotal(balance, supply, denom))
             }.sortedByDescending { it.balance.count }
         PagedResults(res.pagination.total.pageCountOfResults(count), list)
     }

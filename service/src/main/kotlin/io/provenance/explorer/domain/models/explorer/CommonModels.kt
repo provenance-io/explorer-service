@@ -29,11 +29,6 @@ data class CountTotal(
 
 data class CountStrTotal(
     val count: String,
-    val total: String
-)
-
-data class BondedTokens(
-    val count: String,
     val total: String?,
     val denom: String
 )
