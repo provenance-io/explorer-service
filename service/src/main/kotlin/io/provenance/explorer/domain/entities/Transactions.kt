@@ -230,8 +230,15 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
             TxMessageRecord.find { TxMessageTable.txHash eq hash }
         }
 
-        fun findByHashId(hashId: Int) = transaction {
+        fun getCountByHashId(hashId: Int) = transaction {
+            TxMessageRecord.find { TxMessageTable.txHashId eq hashId }.count()
+        }
+
+        fun findByHashIdPaginated(hashId: Int, limit: Int, offset: Int) = transaction {
             TxMessageRecord.find { TxMessageTable.txHashId eq hashId }
+                .orderBy(Pair(TxMessageTable.id, SortOrder.ASC))
+                .limit(limit, offset.toLong())
+                .toMutableList()
         }
 
         private fun findByTxHashAndMessageHash(txHashId: Int, messageHash: String) = transaction {

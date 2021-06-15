@@ -48,6 +48,14 @@ class TransactionController(private val transactionService: TransactionService) 
     @GetMapping("/{hash}")
     fun txByHash(@PathVariable hash: String) = ResponseEntity.ok(transactionService.getTransactionByHash(hash))
 
+    @ApiOperation("Return transaction msgs by hash value")
+    @GetMapping("/{hash}/msgs")
+    fun txMsgsByHash(
+        @PathVariable hash: String,
+        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+    ) = ResponseEntity.ok(transactionService.getTxMsgsPaginated(hash, page, count))
+
     @ApiOperation("Returns transaction json by hash value")
     @GetMapping("/{hash}/json")
     fun transactionJson(@PathVariable hash: String) = ResponseEntity.ok(transactionService.getTransactionJson(hash))

@@ -44,7 +44,6 @@ data class TxDetails(
     val fee: CoinStr,
     val signers: Signatures,
     val memo: String,
-    val msg: List<TxMessage>,
     val monikers: Map<String, String>
 )
 
@@ -151,12 +150,17 @@ fun String.getCategoryForType() = MsgTypeSet.values().firstOrNull { it.types.con
 data class TxSummary(
     val txHash: String,
     val block: Int,
-    val msg: List<TxMessage>,
+    val msg: MsgInfo,
     val monikers: Map<String, String>,
     val time: String,
     val fee: CoinStr,
     val signers: Signatures,
     val status: String,
+)
+
+data class MsgInfo(
+    val msgCount: Long,
+    val displayMsgType: String
 )
 
 data class TxMessage(

@@ -33,6 +33,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Bug Fixes
+* HOTFIX: Removed tx msgs from listview and detail responses into a paginated API #142
+  * `/api/v2/txs/{hash}/msgs?page={page}&count={count}`
+
 ## [v2.0.0](https://github.com/provenance-io/explorer-service/releases/tag/v2.0.0) - 2021-06-14
 ### Release Name: Leif Eriksson
 
