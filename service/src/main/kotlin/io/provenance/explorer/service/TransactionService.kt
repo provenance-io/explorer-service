@@ -24,6 +24,7 @@ import io.provenance.explorer.domain.extensions.toSigObj
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.Gas
+import io.provenance.explorer.domain.models.explorer.MsgInfo
 import io.provenance.explorer.domain.models.explorer.MsgTypeSet
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.TxDetails
@@ -94,10 +95,12 @@ class TransactionService(
         val total = TxCacheRecord.findByQueryParamsForCount(params)
         TxCacheRecord.findByQueryForResults(params).map {
             val rec = checkMsgCount(it)
+            val displayMsgType = if (msgTypes.isNotEmpty()) msgTypes.first()
+                else transaction { rec.txMessages.first().txMessageType.type }
             TxSummary(
                 rec.hash,
                 rec.height,
-                transaction { rec.txMessages.mapToTxMessages() },
+                MsgInfo(transaction { rec.txMessages.count() }, displayMsgType),
                 getMonikers(rec.id),
                 rec.txTimestamp.toString(),
                 rec.txV2.tx.authInfo.fee.amountList.toProtoCoin().let { coin -> CoinStr(coin.amount, coin.denom) },
@@ -114,7 +117,7 @@ class TransactionService(
             TxCacheRecord.findByEntityId(curr.id)!!
         } else curr
 
-    fun SizedIterable<TxMessageRecord>.mapToTxMessages() =
+    fun MutableList<TxMessageRecord>.mapToTxMessages() =
         this.map { msg -> TxMessage(msg.txMessageType.type, msg.txMessage.toObjectNode(protoPrinter)) }
 
     private fun getTxByHash(hash: String) = getTxByHashFromCache(hash)
@@ -142,9 +145,16 @@ class TransactionService(
             fee = tx.tx.authInfo.fee.amountList.toProtoCoin().let { coin -> CoinStr(coin.amount, coin.denom) },
             signers = TxCacheRecord.findSigsByHash(tx.txResponse.txhash).toSigObj(props.provAccPrefix()),
             memo = tx.tx.body.memo,
-            msg = TxMessageRecord.findByHashId(txId).mapToTxMessages(),
             monikers = getMonikers(EntityID(txId, TxCacheTable))
         )
+    }
+
+    fun getTxMsgsPaginated(hash: String, page: Int, count: Int) = transaction {
+        TxCacheRecord.findByHash(hash)?.id?.value?.let { id ->
+            val msgs = TxMessageRecord.findByHashIdPaginated(id, count, page.toOffset(count)).mapToTxMessages()
+            val total = TxMessageRecord.getCountByHashId(id)
+            PagedResults(total.pageCountOfResults(count), msgs)
+        } ?: throw ResourceNotFoundException("Invalid transaction hash: '$hash'")
     }
 
     fun getTxHistoryByQuery(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
