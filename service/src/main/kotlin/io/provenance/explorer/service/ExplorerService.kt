@@ -56,7 +56,7 @@ class ExplorerService(
             blockHeight = block.block.height()
             blockHeight--
         }
-        PagedResults((currentHeight / count) + 1, result)
+        PagedResults((currentHeight / count) + 1, result, count.toLong())
     }
 
     private fun hydrateBlock(

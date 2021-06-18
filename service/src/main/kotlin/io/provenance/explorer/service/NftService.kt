@@ -1,6 +1,5 @@
 package io.provenance.explorer.service
 
-import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.domain.core.MdParent
 import io.provenance.explorer.domain.core.MetadataAddress
 import io.provenance.explorer.domain.core.getParentForType
@@ -12,7 +11,6 @@ import io.provenance.explorer.domain.core.toMAddressScopeSpec
 import io.provenance.explorer.domain.entities.NftContractSpecRecord
 import io.provenance.explorer.domain.entities.NftScopeRecord
 import io.provenance.explorer.domain.entities.NftScopeSpecRecord
-import io.provenance.explorer.domain.entities.TxNftJoinRecord
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toOffset
@@ -22,12 +20,9 @@ import io.provenance.explorer.domain.models.explorer.RecordDetail
 import io.provenance.explorer.domain.models.explorer.RecordSpecDetail
 import io.provenance.explorer.domain.models.explorer.RecordStatus
 import io.provenance.explorer.domain.models.explorer.ScopeDetail
-import io.provenance.explorer.domain.models.explorer.ScopeListview
 import io.provenance.explorer.domain.models.explorer.ScopeRecord
 import io.provenance.explorer.domain.models.explorer.toOwnerRoles
 import io.provenance.explorer.domain.models.explorer.toSpecDescrip
-import io.provenance.explorer.grpc.v1.AttributeGrpcClient
-import io.provenance.explorer.grpc.v1.MarkerGrpcClient
 import io.provenance.explorer.grpc.v1.MetadataGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
@@ -35,32 +30,14 @@ import org.springframework.stereotype.Service
 @Service
 class NftService(
     private val metadataClient: MetadataGrpcClient,
-    private val markerClient: MarkerGrpcClient,
-    private val attrClient: AttributeGrpcClient,
-    private val accountService: AccountService,
-    private val protoPrinter: JsonFormat.Printer
 ) {
 
     fun getScopeDescrip(addr: String) =
         metadataClient.getScopeSpecById(addr).scopeSpecification.specification.description
 
-    fun getAllScopes(page: Int, count: Int) =
-        metadataClient.getAllScopes(page.toOffset(count), count).let { res ->
-            val rows = res.scopesList.map { s ->
-                val lastTx = TxNftJoinRecord.findTxByUuid(s.scopeIdInfo.scopeUuid, 0, 1).firstOrNull()
-                ScopeListview(
-                    s.scopeIdInfo.scopeAddr,
-                    getScopeDescrip(s.scopeSpecIdInfo.scopeSpecAddr)?.name,
-                    s.scopeSpecIdInfo.scopeSpecAddr,
-                    lastTx?.txTimestamp?.toString() ?: ""
-                )
-            }
-            PagedResults(res.pagination.total.pageCountOfResults(count), rows)
-        }
-
     fun getScopesForOwningAddress(address: String, page: Int, count: Int) =
         metadataClient.getScopesByOwner(address, page.toOffset(count), count).let {
-            PagedResults(it.pagination.total.pageCountOfResults(count), it.scopeUuidsList)
+            PagedResults(it.pagination.total.pageCountOfResults(count), it.scopeUuidsList, it.pagination.total)
         }
 
     fun getScopeByAddr(addr: String) = metadataClient.getScopeById(addr)

@@ -20,10 +20,12 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Avg
 import org.jetbrains.exposed.sql.ColumnSet
+import org.jetbrains.exposed.sql.EntityIDColumnType
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.Max
 import org.jetbrains.exposed.sql.Min
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
@@ -193,6 +195,10 @@ class TxMessageTypeRecord(id: EntityID<Int>) : IntEntity(id) {
             TxMessageTypeRecord.find { TxMessageTypeTable.type inList types }
         }
 
+        fun findByIdIn(idList: List<Int>) = transaction {
+            TxMessageTypeRecord.find { TxMessageTypeTable.id inList idList }.toList()
+        }
+
         fun insert(type: String, module: String, protoType: String) = transaction {
             findByProtoType(protoType)?.apply {
                 if (this.type == UNKNOWN) this.type = type
@@ -230,15 +236,24 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
             TxMessageRecord.find { TxMessageTable.txHash eq hash }
         }
 
-        fun getCountByHashId(hashId: Int) = transaction {
-            TxMessageRecord.find { TxMessageTable.txHashId eq hashId }.count()
+        fun getCountByHashId(hashId: Int, msgTypes: List<Int>) = transaction {
+            TxMessageRecord.find { (TxMessageTable.txHashId eq hashId) and
+                (if (msgTypes.isNotEmpty()) (TxMessageTable.txMessageType inList msgTypes) else ( Op.TRUE )) }
+                .count()
         }
 
-        fun findByHashIdPaginated(hashId: Int, limit: Int, offset: Int) = transaction {
-            TxMessageRecord.find { TxMessageTable.txHashId eq hashId }
+        fun findByHashIdPaginated(hashId: Int, msgTypes: List<Int>, limit: Int, offset: Int) = transaction {
+            TxMessageRecord.find { (TxMessageTable.txHashId eq hashId) and
+                (if (msgTypes.isNotEmpty()) (TxMessageTable.txMessageType inList msgTypes) else ( Op.TRUE )) }
                 .orderBy(Pair(TxMessageTable.id, SortOrder.ASC))
                 .limit(limit, offset.toLong())
                 .toMutableList()
+        }
+
+        fun getDistinctTxMsgTypesByTxHash(txHashId: EntityID<Int>) = transaction {
+            val msgIdDist = Distinct(TxMessageTable.txMessageType, IntegerColumnType()).alias("dist")
+            TxMessageTable.slice(msgIdDist, TxMessageTable.txMessageType).select { TxMessageTable.txHashId eq txHashId }
+                .map { it[TxMessageTable.txMessageType].value }
         }
 
         private fun findByTxHashAndMessageHash(txHashId: Int, messageHash: String) = transaction {

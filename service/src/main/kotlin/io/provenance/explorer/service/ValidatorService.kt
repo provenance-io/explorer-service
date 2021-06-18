@@ -205,7 +205,7 @@ class ValidatorService(
             val stakingValidators = getStakingValidators(status)
             hydrateValidators(validatorSet, stakingValidators, isAtHeight)
                 .pageOfResults(page, count)
-                .let { PagedResults(it.size.toLong().pageCountOfResults(count), it) }
+                .let { PagedResults(it.size.toLong().pageCountOfResults(count), it, it.size.toLong()) }
         }
 
     private fun hydrateValidators(
@@ -270,7 +270,7 @@ class ValidatorService(
                     null,
                     null)
             }
-            PagedResults(res.pagination.total.pageCountOfResults(limit), list)
+            PagedResults(res.pagination.total.pageCountOfResults(limit), list, res.pagination.total)
         }
 
     fun getUnbondingDelegations(address: String) =

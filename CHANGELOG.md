@@ -33,6 +33,14 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Added `msgType={msgType}` to `/api/v2/txs/{hash}/msgs` to allow for filtering based on `msgType` #146
+* Added `/api/v2/txs/types/tx/{hash}` to fetch msg types applicable to a single tx #146
+
+### Improvements
+* Added `PagedResults.total` to return total record count #146
+
+
 ## [v2.0.1](https://github.com/provenance-io/explorer-service/releases/tag/v2.0.1) - 2021-06-16
 ### Release Name: Nehsi
 

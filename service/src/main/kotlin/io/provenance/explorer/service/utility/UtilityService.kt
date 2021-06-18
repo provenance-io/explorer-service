@@ -1,7 +1,6 @@
 package io.provenance.explorer.service.utility
 
 import com.fasterxml.jackson.databind.node.ObjectNode
-import com.google.protobuf.ByteString
 import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.logger
@@ -12,10 +11,8 @@ import io.provenance.explorer.domain.entities.UnknownTxType
 import io.provenance.explorer.domain.extensions.fromBase64
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
-import org.apache.commons.text.StringEscapeUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
-import java.util.Base64
 
 @Service
 class UtilityService(

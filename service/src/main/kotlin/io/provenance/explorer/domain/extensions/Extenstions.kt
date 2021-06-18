@@ -14,7 +14,6 @@ import com.google.protobuf.Timestamp
 import com.google.protobuf.util.JsonFormat
 import com.hubspot.jackson.datatype.protobuf.ProtobufModule
 import cosmos.base.abci.v1beta1.Abci
-import cosmos.slashing.v1beta1.Slashing
 import cosmos.staking.v1beta1.Staking
 import cosmos.tx.v1beta1.TxOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
@@ -30,7 +29,6 @@ import io.provenance.explorer.grpc.extensions.toAddress
 import io.provenance.explorer.grpc.extensions.toMultiSig
 import org.apache.commons.text.StringEscapeUtils
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import tendermint.types.BlockOuterClass

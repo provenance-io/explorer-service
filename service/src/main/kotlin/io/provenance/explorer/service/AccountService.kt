@@ -61,7 +61,7 @@ class AccountService(
     fun getNamesOwnedByAccount(address: String, page: Int, limit: Int) =
         attrClient.getNamesForAddress(address, page.toOffset(limit), limit).let { res ->
             val names = res.nameList.toList()
-            PagedResults(res.pagination.total.pageCountOfResults(limit), names)
+            PagedResults(res.pagination.total.pageCountOfResults(limit), names, res.pagination.total)
         }
 
     fun getBalances(address: String, page: Int, limit: Int) =
@@ -70,7 +70,7 @@ class AccountService(
     fun getAccountBalances(address: String, page: Int, limit: Int) =
         getBalances(address, page, limit).let { res ->
             val bals = res.balancesList.map { it.toData() }
-            PagedResults(res.pagination.total.pageCountOfResults(limit), bals)
+            PagedResults(res.pagination.total.pageCountOfResults(limit), bals, res.pagination.total)
         }
 
     fun getCurrentSupply(denom: String) = accountClient.getCurrentSupply(denom).amount
@@ -94,7 +94,7 @@ class AccountService(
                     null,
                     null)
             }
-            PagedResults(res.pagination.total.pageCountOfResults(limit), list)
+            PagedResults(res.pagination.total.pageCountOfResults(limit), list, res.pagination.total)
         }
 
     fun getUnbondingDelegations(address: String) =

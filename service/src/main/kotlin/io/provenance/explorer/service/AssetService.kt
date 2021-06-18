@@ -55,7 +55,8 @@ class AssetService (
                         it.data?.isMintable() ?: false,
                         it.lastTx?.toString(),
                         it.markerType.prettyMarkerType()) }
-        return PagedResults(MarkerCacheRecord.findCountByStatus(statuses).pageCountOfResults(count), list)
+        val total = MarkerCacheRecord.findCountByStatus(statuses)
+        return PagedResults(total.pageCountOfResults(count), list, total)
     }
 
     fun getAssetRaw(denom: String) = transaction {
@@ -117,7 +118,7 @@ class AssetService (
                 val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount
                 AssetHolder(bal.address, CountStrTotal(balance, supply, denom))
             }.sortedByDescending { it.balance.count }
-        PagedResults(res.pagination.total.pageCountOfResults(count), list)
+        PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
     }
 
     fun getMetadata(denom: String?) = accountService.getDenomMetadata(denom).map { it.toObjectNode(protoPrinter) }
