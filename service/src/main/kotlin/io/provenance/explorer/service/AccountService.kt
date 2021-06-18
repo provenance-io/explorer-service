@@ -23,10 +23,12 @@ import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.Delegation
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.Reward
+import io.provenance.explorer.domain.models.explorer.TokenCounts
 import io.provenance.explorer.domain.models.explorer.toData
 import io.provenance.explorer.grpc.extensions.getModuleAccName
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
+import io.provenance.explorer.grpc.v1.MetadataGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 
@@ -35,6 +37,7 @@ class AccountService(
     private val accountClient: AccountGrpcClient,
     private val props: ExplorerProperties,
     private val attrClient: AttributeGrpcClient,
+    private val metadataClient: MetadataGrpcClient
 ) {
 
     protected val logger = logger(AccountService::class)
@@ -55,6 +58,9 @@ class AccountService(
             AccountRecord.findSigsByAddress(it.accountAddress).toSigObj(props.provAccPrefix()),
             it.data?.getModuleAccName(),
             attrClient.getAllAttributesForAddress(it.accountAddress).map { attr -> attr.toResponse() },
+            TokenCounts(
+                getBalances(it.accountAddress, 0, 1).pagination.total,
+                metadataClient.getScopesByOwner(it.accountAddress).pagination.total.toInt()),
         )
     }
 
