@@ -46,7 +46,8 @@ data class AccountDetail(
     val sequence: Int?,
     val publicKeys: Signatures,
     val accountName: String?,
-    val attributes: List<AttributeObj>
+    val attributes: List<AttributeObj>,
+    val tokens: TokenCounts
 )
 
 data class AssetManagement(

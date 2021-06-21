@@ -21,7 +21,7 @@ class NftController(private val nftService: NftService) {
 
     @ApiOperation("Returns NFT detail for address")
     @GetMapping("/scope/{addr}")
-    fun getNftDetail(@PathVariable addr: String) = ResponseEntity.ok(nftService.getScopeByAddr(addr))
+    fun getNftDetail(@PathVariable addr: String) = ResponseEntity.ok(nftService.getScopeDetail(addr))
 
     @ApiOperation("Returns NFTs for owning address")
     @GetMapping("/scope/owner/{address}")

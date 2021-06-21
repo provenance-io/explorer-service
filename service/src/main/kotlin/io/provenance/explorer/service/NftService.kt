@@ -11,6 +11,7 @@ import io.provenance.explorer.domain.core.toMAddressScopeSpec
 import io.provenance.explorer.domain.entities.NftContractSpecRecord
 import io.provenance.explorer.domain.entities.NftScopeRecord
 import io.provenance.explorer.domain.entities.NftScopeSpecRecord
+import io.provenance.explorer.domain.entities.TxNftJoinRecord
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toOffset
@@ -20,6 +21,7 @@ import io.provenance.explorer.domain.models.explorer.RecordDetail
 import io.provenance.explorer.domain.models.explorer.RecordSpecDetail
 import io.provenance.explorer.domain.models.explorer.RecordStatus
 import io.provenance.explorer.domain.models.explorer.ScopeDetail
+import io.provenance.explorer.domain.models.explorer.ScopeListview
 import io.provenance.explorer.domain.models.explorer.ScopeRecord
 import io.provenance.explorer.domain.models.explorer.toOwnerRoles
 import io.provenance.explorer.domain.models.explorer.toSpecDescrip
@@ -37,10 +39,22 @@ class NftService(
 
     fun getScopesForOwningAddress(address: String, page: Int, count: Int) =
         metadataClient.getScopesByOwner(address, page.toOffset(count), count).let {
-            PagedResults(it.pagination.total.pageCountOfResults(count), it.scopeUuidsList, it.pagination.total)
+            val records = it.scopeUuidsList.map { uuid -> scopeToListview(uuid) }
+            PagedResults(it.pagination.total.pageCountOfResults(count), records, it.pagination.total)
         }
 
-    fun getScopeByAddr(addr: String) = metadataClient.getScopeById(addr)
+    private fun scopeToListview(addr: String) =
+        metadataClient.getScopeById(addr).let {
+            val lastTx = TxNftJoinRecord.findTxByUuid(it.scope.scopeIdInfo.scopeUuid, 0, 1).firstOrNull()
+            ScopeListview(
+                it.scope.scopeIdInfo.scopeAddr,
+                getScopeDescrip(it.scope.scopeSpecIdInfo.scopeSpecAddr)?.name,
+                it.scope.scopeSpecIdInfo.scopeSpecAddr,
+                lastTx?.txTimestamp?.toString() ?: ""
+            )
+        }
+
+    fun getScopeDetail(addr: String) = metadataClient.getScopeById(addr)
         .let {
             val spec = getScopeDescrip(it.scope.scopeSpecIdInfo.scopeSpecAddr)
             ScopeDetail(

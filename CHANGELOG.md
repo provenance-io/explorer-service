@@ -36,10 +36,13 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Features
 * Added `msgType={msgType}` to `/api/v2/txs/{hash}/msgs` to allow for filtering based on `msgType` #146
 * Added `/api/v2/txs/types/tx/{hash}` to fetch msg types applicable to a single tx #146
+* Updated `/api/v2/accounts/{address}` to return `TokenCount` object #140
+  * Shows count of fungible and non-fungible tokens
 
 ### Improvements
 * Added `PagedResults.total` to return total record count #146
-
+* Updated `/api/v2/nft/scope/owner/{address}` to return a listview rather than list of `Scope.uuid` #140
+* Updated `NFTs.md` design doc to match newer design doc layouts
 
 ## [v2.0.1](https://github.com/provenance-io/explorer-service/releases/tag/v2.0.1) - 2021-06-16
 ### Release Name: Nehsi
