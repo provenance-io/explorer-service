@@ -43,6 +43,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added `PagedResults.total` to return total record count #146
 * Updated `/api/v2/nft/scope/owner/{address}` to return a listview rather than list of `Scope.uuid` #140
 * Updated `NFTs.md` design doc to match newer design doc layouts
+* Updated MissedBlocks insert to accommodate for out-of-sequence blocks (eg service playing catchup) #143
 
 ### Data
 * Added migration 20 for indices on `block_cache` #117
