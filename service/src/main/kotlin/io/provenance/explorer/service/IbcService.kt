@@ -109,7 +109,8 @@ class IbcService(
                         it.denom,
                         it.supply.toBigInteger().toString(),
                         it.lastTx?.toString()) }
-        return PagedResults(MarkerCacheRecord.findCountByIbc().pageCountOfResults(count), list)
+        val total = MarkerCacheRecord.findCountByIbc()
+        return PagedResults(total.pageCountOfResults(count), list, total)
     }
 
     fun getIbcDenomDetail(ibcHash: String) =

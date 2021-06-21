@@ -62,8 +62,13 @@ class TransactionService(
         when (typeSet) {
             null -> TxMessageTypeRecord.all()
             else -> TxMessageTypeRecord.findByType(typeSet.types)
-        }.map { TxType(it.category ?: it.module, it.type) }
-            .sortedWith(compareBy(TxType::module, TxType::type))
+        }.toList().mapToRes()
+    }
+
+    fun getTxTypesByTxHash(txHash: String) = transaction {
+        getTxByHash(txHash)?.let { tx ->
+            TxMessageRecord.getDistinctTxMsgTypesByTxHash(tx.first).let { TxMessageTypeRecord.findByIdIn(it) }.mapToRes()
+        } ?: throw ResourceNotFoundException("Invalid transaction hash: '$txHash'")
     }
 
     fun getTxsByQuery(
@@ -107,7 +112,7 @@ class TransactionService(
                 TxCacheRecord.findSigsByHash(rec.hash).toSigObj(props.provAccPrefix()),
                 if (rec.errorCode == null) "success" else "failed"
             )
-        }.let { return PagedResults(total.pageCountOfResults(count), it) }
+        }.let { return PagedResults(total.pageCountOfResults(count), it, total.toLong()) }
     }
 
     // Triple checks that the tx messages are up to date in the db
@@ -149,11 +154,15 @@ class TransactionService(
         )
     }
 
-    fun getTxMsgsPaginated(hash: String, page: Int, count: Int) = transaction {
+    fun getTxMsgsPaginated(hash: String, msgType: String?, page: Int, count: Int) = transaction {
+        val msgTypes = if (msgType != null) listOf(msgType) else listOf()
+        val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
+
         TxCacheRecord.findByHash(hash)?.id?.value?.let { id ->
-            val msgs = TxMessageRecord.findByHashIdPaginated(id, count, page.toOffset(count)).mapToTxMessages()
-            val total = TxMessageRecord.getCountByHashId(id)
-            PagedResults(total.pageCountOfResults(count), msgs)
+            val msgs = TxMessageRecord.findByHashIdPaginated(id, msgTypeIds, count, page.toOffset(count))
+                .mapToTxMessages()
+            val total = TxMessageRecord.getCountByHashId(id, msgTypeIds)
+            PagedResults(total.pageCountOfResults(count), msgs, total)
         } ?: throw ResourceNotFoundException("Invalid transaction hash: '$hash'")
     }
 
@@ -171,3 +180,6 @@ class TransactionService(
         return monikers + moduleNames
     }
 }
+
+fun List<TxMessageTypeRecord>.mapToRes() =
+    this.map { TxType(it.category ?: it.module, it.type) }.sortedWith(compareBy(TxType::module, TxType::type))

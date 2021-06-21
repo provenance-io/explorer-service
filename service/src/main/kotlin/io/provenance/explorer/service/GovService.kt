@@ -110,7 +110,10 @@ class GovService(
     fun getProposalsList(page: Int, count: Int) =
         GovProposalRecord.getAllPaginated(page.toOffset(count), count)
             .map { mapProposalRecord(it) }
-            .let { PagedResults(GovProposalRecord.getAllCount().pageCountOfResults(count), it) }
+            .let {
+                val total = GovProposalRecord.getAllCount()
+                PagedResults(total.pageCountOfResults(count), it, total)
+            }
 
     fun getProposalDetail(proposalId: Long) = transaction {
         GovProposalRecord.findByProposalId(proposalId)?.let { mapProposalRecord(it) }
@@ -164,7 +167,10 @@ class GovService(
                 it.txHash,
                 it.txTimestamp.toString()
             )
-        }.let { PagedResults(GovDepositRecord.getByProposalIdCount(proposalId).pageCountOfResults(count), it) }
+        }.let {
+            val total = GovDepositRecord.getByProposalIdCount(proposalId)
+            PagedResults(total.pageCountOfResults(count), it, total)
+        }
     }
 
     fun getAddressVotes(address: String, page: Int, count: Int) = transaction {
@@ -172,7 +178,10 @@ class GovService(
             ?: throw ResourceNotFoundException("Invalid account address: '$address'")
         GovVoteRecord.getByAddrIdPaginated(addr.id.value, count, page.toOffset(count)).map {
             mapVoteRecord(it)
-        }.let { PagedResults(GovVoteRecord.getByAddrIdCount(addr.id.value).pageCountOfResults(count), it) }
+        }.let {
+            val total = GovVoteRecord.getByAddrIdCount(addr.id.value)
+            PagedResults(total.pageCountOfResults(count), it, total)
+        }
 
     }
 }

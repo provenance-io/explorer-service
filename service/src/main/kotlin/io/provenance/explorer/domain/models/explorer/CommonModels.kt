@@ -4,7 +4,7 @@ import cosmos.base.v1beta1.CoinOuterClass
 import java.math.BigInteger
 
 
-data class PagedResults<T>(val pages: Int, val results: List<T>)
+data class PagedResults<T>(val pages: Int, val results: List<T>, val total: Long)
 
 data class Addresses(
     val baseHash : String,
