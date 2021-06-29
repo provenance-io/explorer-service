@@ -52,6 +52,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Release Name: Nehsi
 
 ### Bug Fixes
+* Fixed wrong error message being populated on commission when an operator is jailed #156
 * HOTFIX: Removed tx msgs from listview and detail responses into a paginated API #142
   * `/api/v2/txs/{hash}/msgs?page={page}&count={count}`
 

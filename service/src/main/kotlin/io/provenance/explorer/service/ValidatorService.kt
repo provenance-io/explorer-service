@@ -294,17 +294,27 @@ class ValidatorService(
     fun getCommissionInfo(address: String): ValidatorCommission {
         val validator = StakingValidatorCacheRecord.findByOperator(address)?.stakingValidator
             ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
-        val selfBondedAmount = grpcClient.getValidatorSelfDelegations(
-            validator.operatorAddress,
-            validator.operatorAddress.translateAddress(props).accountAddr
-        ).delegationResponse.balance
+        var amount = "0"
+        var denom = ""
+        try {
+            val selfBondedAmount = grpcClient.getValidatorSelfDelegations(
+                validator.operatorAddress,
+                validator.operatorAddress.translateAddress(props).accountAddr
+            ).delegationResponse.balance
+
+            amount = selfBondedAmount.amount
+            denom = selfBondedAmount.denom
+        } catch (e: Exception) {
+            // Just use the default values if we are unable to find the validator
+        }
+
         val delegatorCount =
             grpcClient.getStakingValidatorDelegations(validator.operatorAddress, 0, 10).pagination.total
         val rewards = grpcClient.getValidatorCommission(address).commissionList.firstOrNull()
         return ValidatorCommission(
             CountStrTotal(validator.tokens, null, NHASH),
-            CountStrTotal(selfBondedAmount.amount, null, selfBondedAmount.denom),
-            CountStrTotal(validator.tokens.toBigInteger().minus(selfBondedAmount.amount.toBigInteger()).toString(), null, NHASH),
+            CountStrTotal(amount, null, denom),
+            CountStrTotal(validator.tokens.toBigInteger().minus(amount.toBigInteger()).toString(), null, NHASH),
             delegatorCount,
             validator.delegatorShares.toDecCoin(),
             rewards?.amount?.toDecCoin()?.let { CoinStr(it, rewards.denom) } ?: CoinStr("0", NHASH),
