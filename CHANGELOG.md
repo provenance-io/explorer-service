@@ -52,6 +52,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Release Name: Nehsi
 
 ### Bug Fixes
+* Handled 500 error from jailed operators and used default value of 0 instead #155
 * HOTFIX: Removed tx msgs from listview and detail responses into a paginated API #142
   * `/api/v2/txs/{hash}/msgs?page={page}&count={count}`
 
