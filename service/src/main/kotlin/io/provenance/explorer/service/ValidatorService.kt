@@ -233,10 +233,21 @@ class ValidatorService(
         height: BigInteger,
         totalVotingPower: BigInteger
     ) = let {
-        val selfBondedAmount = grpcClient.getValidatorSelfDelegations(
-            stakingValidator.operatorAddress,
-            stakingValidator.operatorAddress.translateAddress(props).accountAddr
-        ).delegationResponse.balance
+        var amount = "0"
+        var denom = ""
+
+        try {
+            val selfBondedAmount = grpcClient.getValidatorSelfDelegations(
+                stakingValidator.operatorAddress,
+                stakingValidator.operatorAddress.translateAddress(props).accountAddr
+            ).delegationResponse.balance
+
+            amount = selfBondedAmount.amount
+            denom = selfBondedAmount.denom
+        } catch (e: Exception) {
+            // allow the default values for amount and demon to be used
+        }
+
         val delegatorCount =
             grpcClient.getStakingValidatorDelegations(stakingValidator.operatorAddress, 0, 10).pagination.total
         ValidatorSummary(
@@ -248,7 +259,7 @@ class ValidatorService(
             uptime = if (stakingValidator.isActive()) signingInfo.address.validatorUptime(signingInfo.startHeight.toBigInteger(), height) else null,
             commission = stakingValidator.commission.commissionRates.rate.toDecCoin(),
             bondedTokens = CountStrTotal(stakingValidator.tokens, null, NHASH),
-            selfBonded = CountStrTotal(selfBondedAmount.amount, null, selfBondedAmount.denom),
+            selfBonded = CountStrTotal(amount, null, denom),
             delegators = delegatorCount,
             bondHeight = if (stakingValidator.isActive()) signingInfo.startHeight else null,
             status = stakingValidator.getStatusString(),
