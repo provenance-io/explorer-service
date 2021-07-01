@@ -65,7 +65,7 @@ object Versions {
 
     //external protos
     const val Provenance = "v1.5.0"
-    const val Cosmos = "v0.42.6" // v0.42.5
+    const val Cosmos = "v0.42.6"
     const val Wasmd = "v0.17.0"
 
 }
