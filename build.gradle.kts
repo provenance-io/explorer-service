@@ -9,7 +9,9 @@ plugins {
     id(PluginIds.DependencyAnalysis) version PluginVersions.DependencyAnalysis
     id(PluginIds.Protobuf) version PluginVersions.Protobuf
     id(PluginIds.ProvenanceDownloadProtos)
+    id(PluginIds.AutoDepUpgrades) version PluginVersions.AutoDeps
 }
+
 
 allprojects {
     group = "io.provenance.explorer"
@@ -87,3 +89,5 @@ subprojects {
         testImplementation(Libraries.KotestAssert)
     }
 }
+
+

@@ -19,6 +19,7 @@ object PluginIds { // please keep this sorted in sections
 
     // Provenance
     const val ProvenanceDownloadProtos = "io.provenance.download-protos"
+    const val AutoDepUpgrades = "com.dipien.releaseshub.gradle.plugin"
 }
 
 object PluginVersions { // please keep this sorted in sections
@@ -35,6 +36,7 @@ object PluginVersions { // please keep this sorted in sections
     const val SpringDependency = "1.0.11.RELEASE"
     const val SpringBoot = "2.4.3"
     const val Protobuf = "0.8.11"
+    const val AutoDeps = "2.0.2"
 }
 
 object Versions {
