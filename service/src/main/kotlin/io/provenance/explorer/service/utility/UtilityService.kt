@@ -74,7 +74,7 @@ class UtilityService(
 
     fun stringToJson(str: String) = str.toObjectNode()
 
-    fun decodeToString(str: String) = str.fromBase64()
+    fun decodeToString(str: String) = str.fromBase64() // do I want to get rid of this?
 }
 
 data class MsgObj(

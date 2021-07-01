@@ -175,7 +175,7 @@ fun Attribute.toResponse(): AttributeObj {
                 }
             } catch (e: Exception) {
                 // If it fails, just pass back the encoded string
-                this.value.toStringUtf8().toBase64()
+                this.value.toStringUtf8().toBase64() // is this a double base 64 encoding?
             }
         }
         else -> this.value.toStringUtf8().toBase64()
