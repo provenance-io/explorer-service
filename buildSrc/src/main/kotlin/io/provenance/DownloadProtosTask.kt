@@ -29,21 +29,21 @@ open class DownloadProtosTask : DefaultTask() {
 
     @Option(
         option = "provenance-version",
-        description = "Provenance release version (e.g. v1.4.1)"
+        description = "Provenance release version (e.g. v1.5.0)"
     )
     @Input
     var provenanceVersion: String? = null
 
     @Option(
         option = "cosmos-version",
-        description = "Cosmos release version (e.g. v0.42.5)"
+        description = "Cosmos release version (e.g. v0.42.6)"
     )
     @Input
     var cosmosVersion: String? = null
 
     @Option(
         option = "wasmd-version",
-        description = "CosmWasm/wasmd release version (e.g. v0.16.0)"
+        description = "CosmWasm/wasmd release version (e.g. v0.17.0)"
     )
     @Input
     var wasmdVersion: String? = null
