@@ -17,6 +17,8 @@ import io.provenance.attribute.v1.EventAttributeAdd
 import io.provenance.attribute.v1.EventAttributeDelete
 import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest
+import io.provenance.attribute.v1.MsgUpdateAttributeRequest
+import io.provenance.attribute.v1.MsgDeleteDistinctAttributeRequest
 import io.provenance.marker.v1.AddMarkerProposal
 import io.provenance.marker.v1.ChangeStatusProposal
 import io.provenance.marker.v1.EventDenomUnit
@@ -73,6 +75,8 @@ import io.provenance.metadata.v1.EventSessionCreated
 import io.provenance.metadata.v1.EventSessionDeleted
 import io.provenance.metadata.v1.EventSessionUpdated
 import io.provenance.metadata.v1.EventTxCompleted
+import io.provenance.metadata.v1.MsgAddContractSpecToScopeSpecRequest
+import io.provenance.metadata.v1.MsgDeleteContractSpecFromScopeSpecRequest
 import io.provenance.metadata.v1.MsgAddScopeDataAccessRequest
 import io.provenance.metadata.v1.MsgAddScopeOwnerRequest
 import io.provenance.metadata.v1.MsgBindOSLocatorRequest
@@ -261,7 +265,11 @@ fun msgDescriptors() =
         MsgAddScopeDataAccessRequest.getDescriptor(),
         MsgDeleteScopeDataAccessRequest.getDescriptor(),
         MsgAddScopeOwnerRequest.getDescriptor(),
-        MsgDeleteScopeOwnerRequest.getDescriptor()
+        MsgDeleteScopeOwnerRequest.getDescriptor(),
+        MsgUpdateAttributeRequest.getDescriptor(),
+        MsgDeleteDistinctAttributeRequest.getDescriptor(),
+        MsgAddContractSpecToScopeSpecRequest.getDescriptor(),
+        MsgDeleteContractSpecFromScopeSpecRequest.getDescriptor(),
     )
 
 fun contentDescriptors() =
