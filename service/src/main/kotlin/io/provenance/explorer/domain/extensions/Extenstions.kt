@@ -40,6 +40,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Base64
 import kotlin.math.ceil
 
+// Is this where we are messing up our Base64 encoding?
 fun ByteString.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
 fun String.fromBase64() = Base64.getDecoder().decode(this).decodeToString()
 fun String.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())

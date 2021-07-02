@@ -122,6 +122,7 @@ class TransactionService(
             TxCacheRecord.findByEntityId(curr.id)!!
         } else curr
 
+    // Is this related?  What is the protoPrinter?
     fun MutableList<TxMessageRecord>.mapToTxMessages() =
         this.map { msg -> TxMessage(msg.txMessageType.type, msg.txMessage.toObjectNode(protoPrinter)) }
 
