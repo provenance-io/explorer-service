@@ -1,5 +1,6 @@
 package io.provenance.explorer.service
 
+import cosmos.auth.v1beta1.QueryGrpc
 import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
@@ -37,7 +38,8 @@ class ExplorerService(
     private val accountService: AccountService,
     private val validatorService: ValidatorService,
     private val asyncCaching: AsyncCaching,
-    private val paramGrpcClient: ParamGrpcClient
+    private val paramGrpcClient: ParamGrpcClient // IDK if this is the right approach?
+    private val authClient: QueryGrpc.QueryBlockingStub
 ) {
 
     protected val logger = logger(ExplorerService::class)
@@ -121,5 +123,8 @@ class ExplorerService(
 
     fun getChainId() = asyncCaching.getChainIdString()
 
-    fun getParams(types: Types) = paramGrpcClient.getParams(types)
+    fun getParams(types: Types) {
+       authClient.params()
+       paramGrpcClient.getParams(types)
+    }
 }

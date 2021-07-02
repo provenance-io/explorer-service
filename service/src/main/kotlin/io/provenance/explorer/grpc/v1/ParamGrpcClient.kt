@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
 
+// Do we actually want a seperate GrpcClient or to build off of the others?
 @Component
 class ParamGrpcClient(channelUri: URI) {
     private val paramClient: QueryGrpc.QueryBlockingStub
