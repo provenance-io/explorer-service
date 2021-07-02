@@ -22,6 +22,12 @@ import javax.validation.constraints.Min
 @Api(value = "General controller", produces = "application/json", consumes = "application/json", tags = ["General"])
 class GeneralController(private val explorerService: ExplorerService) {
 
+    // todo figure out how to get this working:
+    @ApiOperation("Returns parameters for modules")
+    @GetMapping("/param")
+    fun param(): ResponseEntity<Spotlight> = ResponseEntity.ok(explorerService.getParams())
+
+
     @ApiOperation("Returns spotlight statistics")
     @GetMapping("/spotlight")
     fun spotlight(): ResponseEntity<Spotlight> = ResponseEntity.ok(explorerService.getSpotlightStatistics())

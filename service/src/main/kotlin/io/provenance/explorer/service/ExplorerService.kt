@@ -17,7 +17,10 @@ import io.provenance.explorer.domain.models.explorer.CountTotal
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.Spotlight
+import io.provenance.explorer.grpc.v1.ParamGrpcClient
+import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import io.provenance.explorer.service.async.AsyncCaching
+import io.provenance.metadata.v0.Types
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
@@ -33,7 +36,8 @@ class ExplorerService(
     private val blockService: BlockService,
     private val accountService: AccountService,
     private val validatorService: ValidatorService,
-    private val asyncCaching: AsyncCaching
+    private val asyncCaching: AsyncCaching,
+    private val paramGrpcClient: ParamGrpcClient
 ) {
 
     protected val logger = logger(ExplorerService::class)
@@ -116,4 +120,6 @@ class ExplorerService(
         ChainGasFeeCacheRecord.findForDates(fromDate, toDate, count).reversed()
 
     fun getChainId() = asyncCaching.getChainIdString()
+
+    fun getParams(types: Types) = paramGrpcClient.getParams(types)
 }
