@@ -16,6 +16,7 @@ object PluginIds { // please keep this sorted in sections
     const val SpringBoot = "org.springframework.boot"
     const val Protobuf = "com.google.protobuf"
     const val Grpc = "grpc"
+    const val KtLint = "org.jlleitschuh.gradle.ktlint"
 
     // Provenance
     const val ProvenanceDownloadProtos = "io.provenance.download-protos"
@@ -35,6 +36,7 @@ object PluginVersions { // please keep this sorted in sections
     const val SpringDependency = "1.0.11.RELEASE"
     const val SpringBoot = "2.4.3"
     const val Protobuf = "0.8.11"
+    const val KtLint = "10.1.0"
 }
 
 object Versions {
