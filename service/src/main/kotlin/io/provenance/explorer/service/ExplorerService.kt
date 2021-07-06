@@ -38,7 +38,7 @@ class ExplorerService(
     private val accountService: AccountService,
     private val validatorService: ValidatorService,
     private val asyncCaching: AsyncCaching,
-    private val paramGrpcClient: ParamGrpcClient // IDK if this is the right approach?
+    private val paramGrpcClient: ParamGrpcClient, // IDK if this is the right approach?
     private val authClient: QueryGrpc.QueryBlockingStub
 ) {
 
@@ -123,8 +123,10 @@ class ExplorerService(
 
     fun getChainId() = asyncCaching.getChainIdString()
 
-    fun getParams(types: Types) {
+    // Is this what I should be doing?
+    // How do I get params from the different modules, cosmos and provenance?
+    fun getParams(types: Types) QueryParamsResponse? {
        authClient.params()
-       paramGrpcClient.getParams(types)
+       return paramGrpcClient.getParams(types)
     }
 }
