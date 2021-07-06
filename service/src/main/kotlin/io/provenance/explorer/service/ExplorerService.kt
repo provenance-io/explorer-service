@@ -1,5 +1,6 @@
 package io.provenance.explorer.service
 
+import cosmos.auth.v1beta1.QueryGrpc
 import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
@@ -17,7 +18,10 @@ import io.provenance.explorer.domain.models.explorer.CountTotal
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.Spotlight
+import io.provenance.explorer.grpc.v1.ParamGrpcClient
+import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import io.provenance.explorer.service.async.AsyncCaching
+import io.provenance.metadata.v0.Types
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
@@ -33,7 +37,9 @@ class ExplorerService(
     private val blockService: BlockService,
     private val accountService: AccountService,
     private val validatorService: ValidatorService,
-    private val asyncCaching: AsyncCaching
+    private val asyncCaching: AsyncCaching,
+    private val paramGrpcClient: ParamGrpcClient, // IDK if this is the right approach?
+    private val authClient: QueryGrpc.QueryBlockingStub
 ) {
 
     protected val logger = logger(ExplorerService::class)
@@ -116,4 +122,11 @@ class ExplorerService(
         ChainGasFeeCacheRecord.findForDates(fromDate, toDate, count).reversed()
 
     fun getChainId() = asyncCaching.getChainIdString()
+
+    // Is this what I should be doing?
+    // How do I get params from the different modules, cosmos and provenance?
+    fun getParams(types: Types) QueryParamsResponse? {
+       authClient.params()
+       return paramGrpcClient.getParams(types)
+    }
 }
