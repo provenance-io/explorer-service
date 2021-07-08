@@ -19,6 +19,7 @@ import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Avg
+import org.jetbrains.exposed.sql.StdDevPop
 import org.jetbrains.exposed.sql.ColumnSet
 import org.jetbrains.exposed.sql.EntityIDColumnType
 import org.jetbrains.exposed.sql.Expression
@@ -41,6 +42,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
+import kotlin.math.sqrt
 
 object TxCacheTable : IntIdTable(name = "tx_cache") {
     val hash = varchar("hash", 64)
@@ -84,19 +86,23 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun getGasStats(startDate: DateTime, endDate: DateTime, granularity: String) = transaction {
             val dateTrunc = DateTrunc(granularity, TxCacheTable.txTimestamp)
+            val type = TxCacheTable.tableName // idk what we should use here for the type?
             val minGas = Min(TxCacheTable.gasUsed, IntegerColumnType())
             val maxGas = Max(TxCacheTable.gasUsed, IntegerColumnType())
             val avgGas = Avg(TxCacheTable.gasUsed, 5)
+            val stdDev = StdDevPop(TxCacheTable.gasUsed, 5)
 
-            TxCacheTable.slice(dateTrunc, minGas, maxGas, avgGas)
+            TxCacheTable.slice(dateTrunc, minGas, maxGas, avgGas, stdDev)
                 .select { TxCacheTable.txTimestamp.between(startDate.startOfDay(), endDate.startOfDay().plusDays(1)) }
                 .groupBy(dateTrunc)
                 .orderBy(dateTrunc, SortOrder.DESC)
                 .map { GasStatistics(
                     it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
+                    type,
                     it[minGas]!!,
                     it[maxGas]!!,
-                    it[avgGas]!!
+                    it[avgGas]!!,
+                    it[stdDev]!!,
                 ) }
         }
 
