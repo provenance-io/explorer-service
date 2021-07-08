@@ -22,9 +22,12 @@ data class Spotlight(
     val totalTxCount: BigInteger
 )
 
+// we want to use this for specific message types
 data class GasStatistics(
     val time: String,
+    val messageType: String, // idk if we want to use a string or some typed variable somewhere?
     val minGasPrice: Int,
     val maxGasPrice: Int,
-    val averageGasPrice: BigDecimal
+    val averageGasPrice: BigDecimal,
+    val stdDevGasPrice: BigDecimal,
 )
