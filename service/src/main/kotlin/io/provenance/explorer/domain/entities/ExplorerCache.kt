@@ -90,6 +90,7 @@ class ValidatorGasFeeCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         }
     }
 
+    // Should we be using these somewhere?
     var operatorAddress by ValidatorGasFeeCacheTable.operatorAddress
     var minGasFee by ValidatorGasFeeCacheTable.minGasFee
     var maxGasFee by ValidatorGasFeeCacheTable.maxGasFee

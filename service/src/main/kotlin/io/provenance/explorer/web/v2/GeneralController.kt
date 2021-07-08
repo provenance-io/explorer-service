@@ -38,6 +38,7 @@ class GeneralController(private val explorerService: ExplorerService) {
     @GetMapping("/chain/id")
     fun getChainId(): ResponseEntity<String> = ResponseEntity.ok(explorerService.getChainId())
 
+    // Are we using this anywhere in explorer frontend?
     @ApiOperation("Returns statistics on min gas fees for the chain")
     @GetMapping("/gas/fees/statistics")
     fun getGasFeeStatistics(
