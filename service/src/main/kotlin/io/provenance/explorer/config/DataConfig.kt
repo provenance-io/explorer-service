@@ -12,11 +12,13 @@ import org.springframework.context.annotation.Profile
 import java.sql.Connection
 import javax.sql.DataSource
 
+// looks like this isn't used anywhere?
 @Configuration
 class DataConfig {
 
     protected val logger = logger(DataConfig::class)
 
+    // is this where we would connect to a database?
     @Bean("databaseConnect")
     fun dataConnect(dataSource: DataSource): Database =
         Database.connect(dataSource)
