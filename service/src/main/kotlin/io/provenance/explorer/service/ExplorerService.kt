@@ -18,8 +18,6 @@ import io.provenance.explorer.domain.models.explorer.CountTotal
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.Spotlight
-import io.provenance.explorer.grpc.v1.ParamGrpcClient
-import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import io.provenance.explorer.service.async.AsyncCaching
 import io.provenance.metadata.v0.Types
 import kotlinx.coroutines.Dispatchers
@@ -38,7 +36,6 @@ class ExplorerService(
     private val accountService: AccountService,
     private val validatorService: ValidatorService,
     private val asyncCaching: AsyncCaching,
-    private val paramGrpcClient: ParamGrpcClient, // IDK if this is the right approach?
     private val authClient: QueryGrpc.QueryBlockingStub
 ) {
 
@@ -126,7 +123,6 @@ class ExplorerService(
     // Is this what I should be doing?
     // How do I get params from the different modules, cosmos and provenance?
     fun getParams(types: Types) QueryParamsResponse? {
-       authClient.params()
-       return paramGrpcClient.getParams(types)
+//       authClient.params()
     }
 }
