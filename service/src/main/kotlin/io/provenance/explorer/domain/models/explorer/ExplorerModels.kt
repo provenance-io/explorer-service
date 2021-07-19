@@ -12,6 +12,7 @@ import io.provenance.metadata.v1.QueryParamsResponse as MetadataResponse
 import io.provenance.marker.v1.QueryParamsResponse as MarkerResponse
 import cosmos.slashing.v1beta1.QueryOuterClass as SlashingOuterClass
 import cosmos.gov.v1beta1.QueryOuterClass as GovClass
+import cosmos.mint.v1beta1.QueryOuterClass as MintOuterClass
 import java.math.BigDecimal
 import java.math.BigInteger
 
@@ -51,7 +52,7 @@ data class CosmosParams(
     val bankParams: BankOuterClass.QueryParamsResponse,
     val distParams: DistOuterClass.QueryParamsResponse,
     val govParams: GovParams,
-    // mint
+    val mint: MintOuterClass.QueryParamsResponse,
     val slashingParams: SlashingOuterClass.QueryParamsResponse,
     val stakingParams: StakingOuterClass.QueryParamsResponse,
     val ibc: IBCParams,

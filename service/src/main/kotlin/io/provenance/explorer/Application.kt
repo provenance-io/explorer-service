@@ -27,7 +27,6 @@ fun main(args: Array<String>) {
     ).build().run(*args)
 }
 
-// Is this where I would want to map from param to description?
 val OBJECT_MAPPER = ObjectMapper()
     .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE)
     .configureProvenance()

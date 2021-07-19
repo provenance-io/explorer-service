@@ -1,6 +1,5 @@
 package io.provenance.explorer.service
 
-import cosmos.auth.v1beta1.QueryGrpc
 import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
@@ -21,7 +20,6 @@ import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
-
 
 @Service
 class ExplorerService(
@@ -121,8 +119,6 @@ class ExplorerService(
 
     fun getChainId() = asyncCaching.getChainIdString()
 
-    // Is this what I should be doing?
-    // How do I get params from the different modules, cosmos and provenance?
     fun getParams() = Params(
         CosmosParams(
             accountClient.getAuthParams(),
@@ -132,6 +128,7 @@ class ExplorerService(
                 govClient.getParams(GovParamType.voting),
                 govClient.getParams(GovParamType.tallying),
                 govClient.getParams(GovParamType.deposit)),
+            accountClient.getMintParams(),
             validatorClient.getSlashingParams(),
             accountClient.getStakingParams(),
             IBCParams(
