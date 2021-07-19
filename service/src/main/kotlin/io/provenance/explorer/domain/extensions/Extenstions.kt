@@ -2,6 +2,7 @@ package io.provenance.explorer.domain.extensions
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -17,10 +18,12 @@ import cosmos.base.abci.v1beta1.Abci
 import cosmos.staking.v1beta1.Staking
 import cosmos.tx.v1beta1.TxOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.JSON_NODE_FACTORY
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.Bech32
 import io.provenance.explorer.domain.core.Hash
 import io.provenance.explorer.domain.core.toBech32Data
+import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.entities.MissedBlocksRecord
 import io.provenance.explorer.domain.entities.SignatureRecord
 import io.provenance.explorer.domain.models.explorer.Addresses
@@ -37,11 +40,13 @@ import java.math.BigInteger
 import java.math.RoundingMode
 import java.time.Instant
 import java.time.format.DateTimeFormatter
-import java.util.Base64
+import java.util.*
 import kotlin.math.ceil
 
+fun ByteArray.toByteString() = ByteString.copyFrom(this)
 fun ByteString.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
 fun String.fromBase64() = Base64.getDecoder().decode(this).decodeToString()
+fun String.fromBase64ToMAddress() = Base64.getDecoder().decode(this).toByteString().toMAddress()
 fun String.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
 fun ByteString.toDbHash() = Hashing.sha512().hashBytes(this.toByteArray()).asBytes().toString()
 fun ByteString.toHash() = this.toByteArray().toBech32Data().hexData
@@ -162,12 +167,62 @@ fun List<SignatureRecord>.toSigObj(hrpPrefix: String) =
         )
     else Signatures(listOf(), null)
 
+val protoTypesToCheck = arrayOf(
+    "/provenance.metadata.v1.MsgWriteScopeRequest",
+    "/provenance.metadata.v1.MsgDeleteScopeRequest",
+    "/provenance.metadata.v1.MsgWriteRecordSpecificationRequest",
+    "/provenance.metadata.v1.MsgDeleteRecordSpecificationRequest",
+    "/provenance.metadata.v1.MsgWriteScopeSpecificationRequest",
+    "/provenance.metadata.v1.MsgDeleteScopeSpecificationRequest",
+    "/provenance.metadata.v1.MsgWriteContractSpecificationRequest",
+    "/provenance.metadata.v1.MsgDeleteContractSpecificationRequest",
+    "/provenance.metadata.v1.MsgAddScopeDataAccessRequest",
+    "/provenance.metadata.v1.MsgDeleteScopeDataAccessRequest",
+    "/provenance.metadata.v1.MsgAddScopeOwnerRequest",
+    "/provenance.metadata.v1.MsgDeleteScopeOwnerRequest",
+    "/provenance.metadata.v1.MsgWriteSessionRequest",
+    "/provenance.metadata.v1.MsgWriteRecordRequest",
+    "/provenance.metadata.v1.MsgDeleteRecordRequest",
+    "/provenance.metadata.v1.MsgAddContractSpecToScopeSpecRequest",
+    "/provenance.metadata.v1.MsgDeleteContractSpecFromScopeSpecRequest",
+)
+
+val protoTypesFieldsToCheck = arrayOf(
+    "scopeId",
+    "specificationId",
+    "recordId",
+    "sessionId",
+    "contractSpecificationId",
+    "scopeSpecificationId",
+)
+
 fun Message.toObjectNode(protoPrinter: JsonFormat.Printer) =
     OBJECT_MAPPER.readValue(protoPrinter.print(this), ObjectNode::class.java)
         .let { node ->
+            val protoType = node.get("@type").asText()
+
+            // Bug: Tx Msgs being printed treat ByteString as Base64 encoded #145
+            if (protoTypesToCheck.contains(protoType)) {
+                protoTypesFieldsToCheck.forEach { fromBase64ToMAddress(node, it) }
+            }
+
             node.remove("@type")
             node
         }
+
+fun fromBase64ToMAddress(jsonNode: JsonNode, fieldName: String) {
+    var found = false
+
+    if (jsonNode.has(fieldName)) {
+        val newValue = jsonNode.get(fieldName).asText().fromBase64ToMAddress().toString()
+        (jsonNode as ObjectNode).replace(fieldName, JSON_NODE_FACTORY.textNode(newValue))
+        found = true // stop after first find
+    }
+
+    if (!found) {
+        jsonNode.forEach { fromBase64ToMAddress(it, fieldName) }
+    }
+}
 
 fun String.toObjectNode() = OBJECT_MAPPER.readValue(StringEscapeUtils.unescapeJson(this), ObjectNode::class.java)
 

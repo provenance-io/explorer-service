@@ -33,6 +33,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Bug Fixes
+* Tx Msgs MetadataAddress types displayed as Base64 strings in UI #145
+
 ### Features
 * Added `msgType={msgType}` to `/api/v2/txs/{hash}/msgs` to allow for filtering based on `msgType` #146
 * Added `/api/v2/txs/types/tx/{hash}` to fetch msg types applicable to a single tx #146
