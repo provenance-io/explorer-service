@@ -53,7 +53,7 @@ class AccountGrpcClient(channelUri : URI) {
         }
 
     // TODO: how do I build an appropriate: QueryParamsRequest request for this guy
-    fun getAuthParams() = authClient.params()
+//    fun getAuthParams() = authClient.params()
 
     fun getAccountBalances(address: String, offset: Int, limit: Int) =
         bankClient.allBalances(

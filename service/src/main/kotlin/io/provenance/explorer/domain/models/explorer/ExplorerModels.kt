@@ -1,5 +1,7 @@
 package io.provenance.explorer.domain.models.explorer
 
+import cosmos.gov.v1beta1.Gov
+import cosmos.gov.v1beta1.QueryOuterClass
 import java.math.BigDecimal
 import java.math.BigInteger
 
@@ -27,4 +29,9 @@ data class GasStatistics(
     val minGasPrice: Int,
     val maxGasPrice: Int,
     val averageGasPrice: BigDecimal
+)
+
+data class Params(
+    // probably need to change this name
+    val votingParams: QueryOuterClass.QueryParamsResponse
 )

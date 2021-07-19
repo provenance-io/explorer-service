@@ -12,14 +12,9 @@ import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.translateByteArray
-import io.provenance.explorer.domain.models.explorer.BlockSummary
-import io.provenance.explorer.domain.models.explorer.CountStrTotal
-import io.provenance.explorer.domain.models.explorer.CountTotal
-import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
-import io.provenance.explorer.domain.models.explorer.PagedResults
-import io.provenance.explorer.domain.models.explorer.Spotlight
+import io.provenance.explorer.domain.models.explorer.*
+import io.provenance.explorer.grpc.v1.GovGrpcClient
 import io.provenance.explorer.service.async.AsyncCaching
-import io.provenance.metadata.v0.Types
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
@@ -36,7 +31,8 @@ class ExplorerService(
     private val accountService: AccountService,
     private val validatorService: ValidatorService,
     private val asyncCaching: AsyncCaching,
-    private val authClient: QueryGrpc.QueryBlockingStub
+    private val authClient: QueryGrpc.QueryBlockingStub,
+    private val govClient: GovGrpcClient,
 ) {
 
     protected val logger = logger(ExplorerService::class)
@@ -122,7 +118,6 @@ class ExplorerService(
 
     // Is this what I should be doing?
     // How do I get params from the different modules, cosmos and provenance?
-    fun getParams(types: Types) QueryParamsResponse? {
+    fun getParams() = Params(govClient.getParams(GovParamType.voting))
 //       authClient.params()
-    }
 }
