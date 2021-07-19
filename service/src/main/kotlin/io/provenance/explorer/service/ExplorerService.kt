@@ -13,7 +13,7 @@ import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.translateByteArray
 import io.provenance.explorer.domain.models.explorer.*
-import io.provenance.explorer.grpc.v1.GovGrpcClient
+import io.provenance.explorer.grpc.v1.*
 import io.provenance.explorer.service.async.AsyncCaching
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -31,8 +31,13 @@ class ExplorerService(
     private val accountService: AccountService,
     private val validatorService: ValidatorService,
     private val asyncCaching: AsyncCaching,
-    private val authClient: QueryGrpc.QueryBlockingStub,
     private val govClient: GovGrpcClient,
+    private val accountClient: AccountGrpcClient,
+    private val ibcClient: IbcGrpcClient,
+    private val attrClient: AttributeGrpcClient,
+    private val metadataClient: MetadataGrpcClient,
+    private val markerClient: MarkerGrpcClient,
+    private val validatorClient: ValidatorGrpcClient
 ) {
 
     protected val logger = logger(ExplorerService::class)
@@ -118,6 +123,25 @@ class ExplorerService(
 
     // Is this what I should be doing?
     // How do I get params from the different modules, cosmos and provenance?
-    fun getParams() = Params(govClient.getParams(GovParamType.voting))
-//       authClient.params()
+    fun getParams() = Params(
+        CosmosParams(
+            accountClient.getAuthParams(),
+            accountClient.getBankParams(),
+            accountClient.getDistParams(),
+            GovParams(
+                govClient.getParams(GovParamType.voting),
+                govClient.getParams(GovParamType.tallying),
+                govClient.getParams(GovParamType.deposit)),
+            validatorClient.getSlashingParams(),
+            accountClient.getStakingParams(),
+            IBCParams(
+                ibcClient.getTransferParams(),
+                ibcClient.getClientParams()),
+        ),
+        ProvParams(
+            attrClient.getAttrParams(),
+            markerClient.getMarkerParams(),
+            metadataClient.getMetadataParams(),
+            attrClient.getNameParams())
+    )
 }

@@ -1,5 +1,6 @@
 package io.provenance.explorer.grpc.v1
 
+import cosmos.gov.v1beta1.QueryOuterClass
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.getPaginationBuilder
@@ -110,4 +111,11 @@ class AccountGrpcClient(channelUri : URI) {
                 .setDelegatorAddress(delAddr)
                 .build())
 
+    fun getBankParams() = bankClient.params(BankOuterClass.QueryParamsRequest.newBuilder().build())
+
+    fun getAuthParams() = authClient.params(AuthOuterClass.QueryParamsRequest.newBuilder().build())
+
+    fun getDistParams() = distClient.params(DistOuterClass.QueryParamsRequest.newBuilder().build())
+
+    fun getStakingParams() = stakingClient.params(StakingOuterClass.QueryParamsRequest.newBuilder().build())
 }

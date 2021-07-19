@@ -10,6 +10,7 @@ import io.provenance.metadata.v1.RecordSpecificationsForContractSpecificationReq
 import io.provenance.metadata.v1.ScopeRequest
 import io.provenance.metadata.v1.ScopeSpecificationRequest
 import io.provenance.metadata.v1.ScopesAllRequest
+import io.provenance.metadata.v1.QueryParamsRequest as MetadataRequest
 import io.provenance.metadata.v1.ScopesAllResponse
 import io.provenance.metadata.v1.ValueOwnershipRequest
 import org.springframework.stereotype.Component
@@ -73,5 +74,7 @@ class MetadataGrpcClient(channelUri : URI) {
             RecordSpecificationsForContractSpecificationRequest.newBuilder()
                 .setSpecificationId(contractSpec)
                 .build())
+
+    fun getMetadataParams() = metadataClient.params(MetadataRequest.newBuilder().build())
 }
 

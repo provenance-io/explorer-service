@@ -1,7 +1,17 @@
 package io.provenance.explorer.domain.models.explorer
 
-import cosmos.gov.v1beta1.Gov
-import cosmos.gov.v1beta1.QueryOuterClass
+import cosmos.bank.v1beta1.QueryOuterClass as BankOuterClass
+import cosmos.auth.v1beta1.QueryOuterClass as AuthOuterClass
+import cosmos.distribution.v1beta1.QueryOuterClass as DistOuterClass
+import cosmos.staking.v1beta1.QueryOuterClass as StakingOuterClass
+import ibc.applications.transfer.v1.QueryOuterClass as TransferOuterClass
+import ibc.core.client.v1.QueryOuterClass as ClientOuterClass
+import io.provenance.attribute.v1.QueryParamsResponse as AttrResponse
+import io.provenance.name.v1.QueryParamsResponse as NameResponse
+import io.provenance.metadata.v1.QueryParamsResponse as MetadataResponse
+import io.provenance.marker.v1.QueryParamsResponse as MarkerResponse
+import cosmos.slashing.v1beta1.QueryOuterClass as SlashingOuterClass
+import cosmos.gov.v1beta1.QueryOuterClass as GovClass
 import java.math.BigDecimal
 import java.math.BigInteger
 
@@ -32,6 +42,35 @@ data class GasStatistics(
 )
 
 data class Params(
-    // probably need to change this name
-    val votingParams: QueryOuterClass.QueryParamsResponse
+    val cosmos: CosmosParams,
+    val prov: ProvParams,
+)
+
+data class CosmosParams(
+    val authParams: AuthOuterClass.QueryParamsResponse,
+    val bankParams: BankOuterClass.QueryParamsResponse,
+    val distParams: DistOuterClass.QueryParamsResponse,
+    val govParams: GovParams,
+    // mint
+    val slashingParams: SlashingOuterClass.QueryParamsResponse,
+    val stakingParams: StakingOuterClass.QueryParamsResponse,
+    val ibc: IBCParams,
+)
+
+data class GovParams(
+    val voting: GovClass.QueryParamsResponse,
+    val tallying: GovClass.QueryParamsResponse,
+    val deposit: GovClass.QueryParamsResponse,
+)
+
+data class IBCParams(
+    val transferParams: TransferOuterClass.QueryParamsResponse,
+    val clientParams: ClientOuterClass.QueryClientParamsResponse,
+)
+
+data class ProvParams(
+    val attribute: AttrResponse,
+    val marker: MarkerResponse,
+    val metadata: MetadataResponse,
+    val name: NameResponse,
 )

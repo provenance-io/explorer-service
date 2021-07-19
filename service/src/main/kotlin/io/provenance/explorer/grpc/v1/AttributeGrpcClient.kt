@@ -10,7 +10,9 @@ import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
 import io.provenance.attribute.v1.QueryGrpc as AttrQueryGrpc
+import io.provenance.attribute.v1.QueryParamsRequest as AttrRequest
 import io.provenance.name.v1.QueryGrpc as NameQueryGrpc
+import io.provenance.name.v1.QueryParamsRequest as NameRequest
 
 @Component
 class AttributeGrpcClient(channelUri : URI) {
@@ -72,4 +74,7 @@ class AttributeGrpcClient(channelUri : URI) {
                 .setPagination(getPaginationBuilder(offset, limit))
                 .build()
         )
+
+    fun getAttrParams() = attrClient.params(AttrRequest.newBuilder().build())
+    fun getNameParams() = nameClient.params(NameRequest.newBuilder().build())
 }
