@@ -36,11 +36,11 @@ class GovGrpcClient(channelUri: URI) {
     fun getProposal(proposalId: Long) =
         govClient.proposal(QueryOuterClass.QueryProposalRequest.newBuilder().setProposalId(proposalId).build())
 
+    // yeah!
     fun getParams(param: GovParamType) =
         govClient.params(QueryOuterClass.QueryParamsRequest.newBuilder().setParamsType(param.name).build())
 
     fun getTally(proposalId: Long) =
         govClient.tallyResult(QueryOuterClass.QueryTallyResultRequest.newBuilder().setProposalId(proposalId).build())
-
 
 }
