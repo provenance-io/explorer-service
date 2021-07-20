@@ -351,14 +351,16 @@ class ValidatorService(
 
     fun saveMissedBlocks(blockMeta: Query.GetBlockByHeightResponse) = transaction {
         val lastBlock = blockMeta.block.lastCommit
-        val signatures = lastBlock.signaturesList
-            .map { it.validatorAddress.translateByteArray(props).consensusAccountAddr }
-        val currentVals = ValidatorsCacheRecord.findById(lastBlock.height.toInt())?.validators
-            ?: grpcClient.getValidatorsAtHeight(lastBlock.height.toInt())
+        if (lastBlock.height.toInt() > 0) {
+            val signatures = lastBlock.signaturesList
+                .map { it.validatorAddress.translateByteArray(props).consensusAccountAddr }
+            val currentVals = ValidatorsCacheRecord.findById(lastBlock.height.toInt())?.validators
+                ?: grpcClient.getValidatorsAtHeight(lastBlock.height.toInt())
 
-        currentVals.validatorsList.forEach { vali ->
-            if (!signatures.contains(vali.address))
-                MissedBlocksRecord.insert(lastBlock.height.toInt(), vali.address)
+            currentVals.validatorsList.forEach { vali ->
+                if (!signatures.contains(vali.address))
+                    MissedBlocksRecord.insert(lastBlock.height.toInt(), vali.address)
+            }
         }
     }
 }

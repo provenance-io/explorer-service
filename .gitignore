@@ -150,3 +150,9 @@ Desktop.ini
 
 database/bin
 /.history/
+
+######################
+# IntelliJ Datasources
+######################
+.ideaDataSources
+dataSources
