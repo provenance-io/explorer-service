@@ -57,8 +57,8 @@ data class ValidatorCommission(
     val delegatorBonded: CountStrTotal,
     val delegatorCount: Long,
     val totalShares: String,
-    val commissionRewards: CoinStr,
-    val commissionRate:	CommissionRate
+    val commissionRate:	CommissionRate,
+    val commissionRewards: CoinStr
 )
 
 data class CommissionRate(

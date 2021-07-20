@@ -134,7 +134,7 @@ fun ByteString.translateByteArray(props: ExplorerProperties) = this.toByteArray(
         it.hexData,
         Bech32.encode(props.provAccPrefix(), it.data),
         Bech32.encode(props.provValOperPrefix(), it.data),
-        Bech32.encode(props.provValConsPrefix(), it.data),
+        Bech32.encode(props.provValConsPrefix(), it.data)
     )
 }
 
