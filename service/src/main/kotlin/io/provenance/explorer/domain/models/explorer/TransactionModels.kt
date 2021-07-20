@@ -162,7 +162,7 @@ data class TxSummary(
     val time: String,
     val fee: CoinStr,
     val signers: Signatures,
-    val status: String,
+    val status: String
 )
 
 data class MsgInfo(

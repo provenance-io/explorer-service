@@ -31,7 +31,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class NftService(
-    private val metadataClient: MetadataGrpcClient,
+    private val metadataClient: MetadataGrpcClient
 ) {
 
     fun getScopeDescrip(addr: String) =

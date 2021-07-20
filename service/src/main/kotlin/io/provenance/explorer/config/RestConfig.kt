@@ -269,7 +269,7 @@ fun msgDescriptors() =
         MsgUpdateAttributeRequest.getDescriptor(),
         MsgDeleteDistinctAttributeRequest.getDescriptor(),
         MsgAddContractSpecToScopeSpecRequest.getDescriptor(),
-        MsgDeleteContractSpecFromScopeSpecRequest.getDescriptor(),
+        MsgDeleteContractSpecFromScopeSpecRequest.getDescriptor()
     )
 
 fun contentDescriptors() =

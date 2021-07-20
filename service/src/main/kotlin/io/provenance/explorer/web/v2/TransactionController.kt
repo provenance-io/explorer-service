@@ -56,7 +56,7 @@ class TransactionController(private val transactionService: TransactionService) 
         @PathVariable hash: String,
         @RequestParam(required = false) msgType: String?,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
     ) = ResponseEntity.ok(transactionService.getTxMsgsPaginated(hash, msgType, page, count))
 
     @ApiOperation("Returns transaction json by hash value")

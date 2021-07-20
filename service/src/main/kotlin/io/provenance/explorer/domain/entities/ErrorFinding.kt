@@ -16,7 +16,7 @@ data class TxError(
 data class UnknownTxType(
     val type: String,
     val module: String,
-    val protoType: String,
+    val protoType: String
 )
 
 class ErrorFinding {

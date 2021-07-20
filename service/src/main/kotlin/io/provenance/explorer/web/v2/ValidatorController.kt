@@ -43,7 +43,7 @@ class ValidatorController(private val validatorService: ValidatorService) {
     fun validatorsAtHeight(
         @PathVariable blockHeight: Int,
         @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
-        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
+        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int
     ):
         ResponseEntity<PagedResults<ValidatorSummary>> =
         ResponseEntity.ok(validatorService.getValidatorsAtHeight(blockHeight, count, page))

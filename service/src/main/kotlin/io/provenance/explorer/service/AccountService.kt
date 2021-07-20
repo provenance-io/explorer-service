@@ -61,7 +61,7 @@ class AccountService(
             TokenCounts(
                 getBalances(it.accountAddress, 0, 1).pagination.total,
                 metadataClient.getScopesByOwner(it.accountAddress).pagination.total.toInt()
-            ),
+            )
         )
     }
 

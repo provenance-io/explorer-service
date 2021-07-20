@@ -125,7 +125,7 @@ fun String.translateAddress(props: ExplorerProperties) = this.toBech32Data().let
         it.hexData,
         Bech32.encode(props.provAccPrefix(), it.data),
         Bech32.encode(props.provValOperPrefix(), it.data),
-        Bech32.encode(props.provValConsPrefix(), it.data),
+        Bech32.encode(props.provValConsPrefix(), it.data)
     )
 }
 
