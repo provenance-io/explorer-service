@@ -77,14 +77,14 @@ class Bech32 {
         val gen = intArrayOf(0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3)
 
         // Mainnet account prefixes
-        const val PROVENANCE_MAINNET_PREFIX                   = "pb"
-        const val PROVENANCE_MAINNET_ACCOUNT_PREFIX           = PROVENANCE_MAINNET_PREFIX
+        const val PROVENANCE_MAINNET_PREFIX = "pb"
+        const val PROVENANCE_MAINNET_ACCOUNT_PREFIX = PROVENANCE_MAINNET_PREFIX
         const val PROVENANCE_MAINNET_VALIDATOR_ACCOUNT_PREFIX = PROVENANCE_MAINNET_PREFIX + "valoper"
         const val PROVENANCE_MAINNET_CONSENSUS_ACCOUNT_PREFIX = PROVENANCE_MAINNET_PREFIX + "valcons"
 
         // Test net account prefixes are broken out separately so keys/accounts used for test can be easily identified
-        const val PROVENANCE_TESTNET_PREFIX                   = "tp"
-        const val PROVENANCE_TESTNET_ACCOUNT_PREFIX           = PROVENANCE_TESTNET_PREFIX
+        const val PROVENANCE_TESTNET_PREFIX = "tp"
+        const val PROVENANCE_TESTNET_ACCOUNT_PREFIX = PROVENANCE_TESTNET_PREFIX
         const val PROVENANCE_TESTNET_VALIDATOR_ACCOUNT_PREFIX = PROVENANCE_TESTNET_PREFIX + "valoper"
         const val PROVENANCE_TESTNET_CONSENSUS_ACCOUNT_PREFIX = PROVENANCE_TESTNET_PREFIX + "valcons"
 
@@ -99,18 +99,20 @@ class Bech32 {
         /** Decodes a Bech32 String */
         fun decode(bech32: String): Bech32Data {
             require(bech32.length in MIN_VALID_LENGTH..MAX_VALID_LENGTH) { "invalid bech32 string length" }
-            require(bech32.toCharArray().none { c -> c.toInt() < MIN_VALID_CODEPOINT || c.toInt() > MAX_VALID_CODEPOINT })
-            { "invalid character in bech32: ${bech32.toCharArray().map { c -> c.toInt() }
-                .filter { c -> c < MIN_VALID_CODEPOINT || c > MAX_VALID_CODEPOINT }}" }
+            require(bech32.toCharArray().none { c -> c.toInt() < MIN_VALID_CODEPOINT || c.toInt() > MAX_VALID_CODEPOINT }) {
+                "invalid character in bech32: ${bech32.toCharArray().map { c -> c.toInt() }
+                .filter { c -> c < MIN_VALID_CODEPOINT || c > MAX_VALID_CODEPOINT }}"
+            }
 
-            require(bech32 == bech32.toLowerCase() || bech32 == bech32.toUpperCase())
-            { "bech32 must be either all upper or lower case" }
+            require(bech32 == bech32.toLowerCase() || bech32 == bech32.toUpperCase()) {
+                "bech32 must be either all upper or lower case"
+            }
             require(bech32.substring(1).dropLast(CHECKSUM_SIZE).contains('1')) { "invalid index of '1'" }
 
             val hrp = bech32.substringBeforeLast('1').toLowerCase()
             val dataString = bech32.substringAfterLast('1').toLowerCase()
 
-            require(dataString.toCharArray().all { c -> charset.contains(c) }) { "invalid data encoding character in bech32"}
+            require(dataString.toCharArray().all { c -> charset.contains(c) }) { "invalid data encoding character in bech32" }
 
             val dataBytes = dataString.map { c -> charset.indexOf(c).toByte() }.toByteArray()
             val checkBytes = dataString.takeLast(CHECKSUM_SIZE).map { c -> charset.indexOf(c).toByte() }.toByteArray()
@@ -140,7 +142,7 @@ class Bech32 {
          * This process is used to convert from base64 (from 8) to base32 (to 5) or the inverse.
          */
         private fun convertBits(data: ByteArray, fromBits: Int, toBits: Int, pad: Boolean): ByteArray {
-            require (fromBits in 1..8 && toBits in 1..8) { "only bit groups between 1 and 8 are supported"}
+            require(fromBits in 1..8 && toBits in 1..8) { "only bit groups between 1 and 8 are supported" }
 
             var acc = 0
             var bits = 0
@@ -174,12 +176,12 @@ class Bech32 {
         private fun checksum(hrp: String, data: Array<Byte>): ByteArray {
             val values = expandHrp(hrp)
                 .plus(data.map { d -> d.toInt() })
-                .plus(Array(6){ 0 }.toIntArray())
+                .plus(Array(6) { 0 }.toIntArray())
 
             val poly = polymod(values) xor 1
 
             return (0..5).map {
-                ((poly shr (5 * (5-it))) and 31).toByte()
+                ((poly shr (5 * (5 - it))) and 31).toByte()
             }.toByteArray()
         }
 

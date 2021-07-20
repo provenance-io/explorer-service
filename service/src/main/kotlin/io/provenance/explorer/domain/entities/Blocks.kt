@@ -31,7 +31,6 @@ import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import java.math.BigDecimal
 
-
 object BlockCacheTable : CacheIdTable<Int>(name = "block_cache") {
     val height = integer("height")
     override val id = height.entityId()
@@ -181,7 +180,7 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findForDates(fromDate: DateTime, toDate: DateTime, address: String?) = transaction {
             val query = BlockProposerTable
                 .select { BlockProposerTable.blockTimestamp.between(fromDate, toDate.plusDays(1)) }
-            if ( address != null)
+            if (address != null)
                 query.andWhere { BlockProposerTable.proposerOperatorAddress eq address }
             BlockProposerRecord.wrapRows(query)
         }
@@ -224,7 +223,7 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
                     rec.blockHeight > height ->
                         // If current height is under the found height, find the last one directly under current
                         // height, and see if it follows the sequence
-                        when( val last = findForValFirstUnderHeight(valconsAddr, height - 1)) {
+                        when (val last = findForValFirstUnderHeight(valconsAddr, height - 1)) {
                             null -> listOf(0, 0, height)
                             else -> listOf(
                                 if (last.blockHeight == height - 1) last.runningCount else 0,
@@ -270,8 +269,6 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
                 execute(TransactionManager.current())
             }
         }
-
-
     }
 
     var blockHeight by MissedBlocksTable.blockHeight

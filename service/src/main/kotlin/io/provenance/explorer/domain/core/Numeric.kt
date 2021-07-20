@@ -2,7 +2,7 @@ package io.provenance.explorer.domain.core
 
 import java.math.BigDecimal
 import java.math.BigInteger
-import java.util.*
+import java.util.Arrays
 import kotlin.experimental.and
 
 /**
@@ -66,8 +66,8 @@ object Numeric {
     }
 
     fun containsHexPrefix(input: String): Boolean {
-        return (!Strings.isEmpty(input)
-            && input.length > 1 && input[0] == '0' && input[1] == 'x')
+        return (!Strings.isEmpty(input) &&
+                input.length > 1 && input[0] == '0' && input[1] == 'x')
     }
 
     fun toBigInt(value: ByteArray?, offset: Int, length: Int): BigInteger {
@@ -157,8 +157,8 @@ object Numeric {
         }
         var i = startIdx
         while (i < len) {
-            data[(i + 1) / 2] = ((Character.digit(cleanInput[i], 16) shl 4)
-                + Character.digit(cleanInput[i + 1], 16)).toByte()
+            data[(i + 1) / 2] = ((Character.digit(cleanInput[i], 16) shl 4) +
+                    Character.digit(cleanInput[i + 1], 16)).toByte()
             i += 2
         }
         return data
@@ -188,6 +188,4 @@ object Numeric {
     fun isIntegerValue(value: BigDecimal): Boolean {
         return value.signum() == 0 || value.scale() <= 0 || value.stripTrailingZeros().scale() <= 0
     }
-
-
 }

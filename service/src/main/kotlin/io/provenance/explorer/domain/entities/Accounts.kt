@@ -5,7 +5,6 @@ import cosmos.auth.v1beta1.Auth
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.grpc.extensions.getTypeShortName
-import io.provenance.explorer.grpc.extensions.toMarker
 import io.provenance.explorer.service.getAccountType
 import io.provenance.marker.v1.MarkerAccount
 import org.jetbrains.exposed.dao.IntEntity
@@ -13,10 +12,8 @@ import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
 import org.jetbrains.exposed.sql.transactions.transaction
-
 
 object AccountTable : IntIdTable(name = "account") {
     val accountAddress = varchar("account_address", 128)

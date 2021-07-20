@@ -23,7 +23,6 @@ import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 
-
 object GovProposalTable : IntIdTable(name = "gov_proposal") {
     val proposalId = long("proposal_id")
     val proposalType = varchar("proposal_type", 128)
@@ -212,7 +211,7 @@ object GovDepositTable : IntIdTable(name = "gov_deposit") {
     val address = varchar("address", 128)
     val isValidator = bool("is_validator").default(false)
     val depositType = varchar("deposit_type", 128)
-    val amount = decimal("amount", 100,10)
+    val amount = decimal("amount", 100, 10)
     val denom = varchar("denom", 256)
     val blockHeight = integer("block_height")
     val txHash = varchar("tx_hash", 64)

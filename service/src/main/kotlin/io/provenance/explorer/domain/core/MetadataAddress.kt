@@ -1,8 +1,6 @@
 package io.provenance.explorer.domain.core
 
 import com.google.protobuf.ByteString
-import io.provenance.explorer.domain.models.explorer.MsgTypeSet
-import io.provenance.explorer.domain.models.explorer.getCategoryForType
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.util.UUID
@@ -72,7 +70,7 @@ data class MetadataAddress internal constructor(val bytes: ByteArray) {
             validateBytes(data)
             val prefix = getPrefixFromKey(data[0])
             if (hrp != prefix) {
-                throw IllegalArgumentException("Incorrect HRP: Expected ${prefix}, Actual: ${hrp}.")
+                throw IllegalArgumentException("Incorrect HRP: Expected $prefix, Actual: $hrp.")
             }
             return MetadataAddress(data)
         }
@@ -111,7 +109,7 @@ data class MetadataAddress internal constructor(val bytes: ByteArray) {
                 }
             }
             if (expectedLength != bytes.size) {
-                throw IllegalArgumentException("Incorrect data length for type ${getPrefixFromKey(bytes[0])}: Expected ${expectedLength}, Actual: ${bytes.size}.")
+                throw IllegalArgumentException("Incorrect data length for type ${getPrefixFromKey(bytes[0])}: Expected $expectedLength, Actual: ${bytes.size}.")
             }
         }
 
@@ -149,7 +147,7 @@ data class MetadataAddress internal constructor(val bytes: ByteArray) {
     fun getPrefix() = getPrefixFromKey(this.bytes[0])
 
     /** Gets the set of bytes for the primary uuid part of this MetadataAddress as a UUID. */
-    fun getPrimaryUuid() = byteArrayAsUuid(this.bytes.copyOfRange(1,17))
+    fun getPrimaryUuid() = byteArrayAsUuid(this.bytes.copyOfRange(1, 17))
 
     /** Gets the set of bytes for the secondary part of this MetadataAddress. */
     fun getSecondaryBytes() = if (this.bytes.size <= 17) byteArrayOf() else bytes.copyOfRange(17, this.bytes.size)

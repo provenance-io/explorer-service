@@ -28,7 +28,6 @@ import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 
-
 object IbcChannelTable : IntIdTable(name = "ibc_channel") {
     val client = varchar("client", 128)
     val dstChainName = varchar("dst_chain_name", 256)
@@ -108,8 +107,8 @@ object IbcLedgerTable : IntIdTable(name = "ibc_ledger") {
     val channelId = integer("channel_id")
     val denom = varchar("denom", 256)
     val denomTrace = text("denom_trace")
-    val balanceIn = decimal("balance_in", 100,10).nullable()
-    val balanceOut = decimal("balance_out", 100,10).nullable()
+    val balanceIn = decimal("balance_in", 100, 10).nullable()
+    val balanceOut = decimal("balance_out", 100, 10).nullable()
     val fromAddress = varchar("from_address", 256)
     val toAddress = varchar("to_address", 256)
     val passThroughAddrId = integer("pass_through_address_id")
@@ -185,11 +184,11 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
         val balanceOutSum = Sum(IbcLedgerTable.balanceOut, DecimalColumnType(100, 10))
 
         fun getByChannel() = transaction {
-            IbcLedgerTable.innerJoin(IbcChannelTable, {IbcLedgerTable.channelId}, {IbcChannelTable.id})
+            IbcLedgerTable.innerJoin(IbcChannelTable, { IbcLedgerTable.channelId }, { IbcChannelTable.id })
                 .slice(IbcLedgerTable.dstChainName, IbcChannelTable.srcPort, IbcChannelTable.srcChannel,
                     IbcChannelTable.dstPort, IbcChannelTable.dstChannel, IbcLedgerTable.denom, balanceInSum,
                     balanceOutSum, lastTxTime)
-                .select { IbcLedgerTable.acknowledged and  IbcLedgerTable.ackSuccess }
+                .select { IbcLedgerTable.acknowledged and IbcLedgerTable.ackSuccess }
                 .groupBy(IbcLedgerTable.dstChainName, IbcChannelTable.srcPort, IbcChannelTable.srcChannel,
                     IbcChannelTable.dstPort, IbcChannelTable.dstChannel, IbcLedgerTable.denom)
                 .orderBy(
@@ -213,7 +212,7 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
         fun getByChain() = transaction {
             IbcLedgerTable
                 .slice(IbcLedgerTable.dstChainName, IbcLedgerTable.denom, balanceInSum, balanceOutSum, lastTxTime)
-                .select { IbcLedgerTable.acknowledged and  IbcLedgerTable.ackSuccess }
+                .select { IbcLedgerTable.acknowledged and IbcLedgerTable.ackSuccess }
                 .groupBy(IbcLedgerTable.dstChainName, IbcLedgerTable.denom)
                 .orderBy(
                     Pair(IbcLedgerTable.dstChainName, SortOrder.ASC),
