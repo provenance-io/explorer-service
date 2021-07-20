@@ -139,7 +139,13 @@ class ExplorerService(
 
         return Params(
             CosmosParams(
-                authParams.toString(),
+                AuthParams(
+                    authParams.maxMemoCharacters,
+                    authParams.txSigLimit,
+                    authParams.txSigLimit,
+                    authParams.sigVerifyCostEd25519,
+                    authParams.sigVerifyCostSecp256K1,
+                ),
                 bankParams.toString(),
                 distParams.toString(),
                 GovParams(

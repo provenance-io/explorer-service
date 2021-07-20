@@ -44,28 +44,13 @@ data class GasStatistics(
     val averageGasPrice: BigDecimal
 )
 
-//data class Params(
-//    val govParams: GovParams
-////    val deposit: String, //cosmos.gov.v1beta1.Gov.DepositParams //GovClass.QueryParamsResponse,
-////    val depositParams: String,
-////    val depositVal: Duration
-////    val depositParams: Map<Descriptors.FieldDescriptor, Object> // cosmos.gov.v1beta1.Gov.DepositParams,
-//)
-
-data class DepositParams(
-    val isInitialized: Boolean,
-    val maxDepositPeriod: com.google.protobuf.Duration,
-    val minDepositCount: Int,
-    val minDepositList: List<cosmos.base.v1beta1.CoinOuterClass.Coin>,
-)
-
 data class Params(
     val cosmos: CosmosParams,
     val prov: ProvParams,
 )
 
 data class CosmosParams(
-    val authParams: String, //AuthOuterClass.QueryParamsResponse,
+    val authParams: AuthParams,
     val bankParams: String, //BankOuterClass.QueryParamsResponse,
     val distParams: String, //DistOuterClass.QueryParamsResponse,
     val govParams: GovParams,
@@ -73,6 +58,21 @@ data class CosmosParams(
     val slashingParams: String, //SlashingOuterClass.QueryParamsResponse,
     val stakingParams: String, //StakingOuterClass.QueryParamsResponse,
     val ibc: IBCParams,
+)
+
+data class AuthParams(
+    val max_memo_characters: Long,
+    val tx_sig_limit: Long,
+    val tx_size_cost_per_byte: Long,
+    val sig_verify_cost_ed25519: Long,
+    val sig_verify_cost_secp256k1: Long,
+)
+
+data class DepositParams(
+    val isInitialized: Boolean,
+    val maxDepositPeriod: com.google.protobuf.Duration,
+    val minDepositCount: Int,
+    val minDepositList: List<cosmos.base.v1beta1.CoinOuterClass.Coin>,
 )
 
 data class GovParams(
