@@ -26,6 +26,9 @@ import ibc.lightclients.solomachine.v1.Solomachine
 import ibc.lightclients.tendermint.v1.Tendermint
 import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest
+import io.provenance.attribute.v1.MsgDeleteDistinctAttributeRequest
+import io.provenance.attribute.v1.MsgUpdateAttributeRequest
+import io.provenance.explorer.domain.core.MetadataAddress
 import io.provenance.explorer.domain.core.blankToNull
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toMAddress
@@ -49,9 +52,11 @@ import io.provenance.marker.v1.MsgMintRequest
 import io.provenance.marker.v1.MsgSetDenomMetadataRequest
 import io.provenance.marker.v1.MsgTransferRequest
 import io.provenance.marker.v1.MsgWithdrawRequest
+import io.provenance.metadata.v1.MsgAddContractSpecToScopeSpecRequest
 import io.provenance.metadata.v1.MsgAddScopeDataAccessRequest
 import io.provenance.metadata.v1.MsgAddScopeOwnerRequest
 import io.provenance.metadata.v1.MsgBindOSLocatorRequest
+import io.provenance.metadata.v1.MsgDeleteContractSpecFromScopeSpecRequest
 import io.provenance.metadata.v1.MsgDeleteContractSpecificationRequest
 import io.provenance.metadata.v1.MsgDeleteOSLocatorRequest
 import io.provenance.metadata.v1.MsgDeleteRecordRequest
@@ -136,6 +141,10 @@ fun Any.toMsgAddScopeDataAccessRequest() = this.unpack(MsgAddScopeDataAccessRequ
 fun Any.toMsgDeleteScopeDataAccessRequest() = this.unpack(MsgDeleteScopeDataAccessRequest::class.java)
 fun Any.toMsgAddScopeOwnerRequest() = this.unpack(MsgAddScopeOwnerRequest::class.java)
 fun Any.toMsgDeleteScopeOwnerRequest() = this.unpack(MsgDeleteScopeOwnerRequest::class.java)
+fun Any.toMsgUpdateAttributeRequest() = this.unpack(MsgUpdateAttributeRequest::class.java)
+fun Any.toMsgDeleteDistinctAttributeRequest() = this.unpack(MsgDeleteDistinctAttributeRequest::class.java)
+fun Any.toMsgAddContractSpecToScopeSpecRequest() = this.unpack(MsgAddContractSpecToScopeSpecRequest::class.java)
+fun Any.toMsgDeleteContractSpecFromScopeSpecRequest() = this.unpack(MsgDeleteContractSpecFromScopeSpecRequest::class.java)
 fun Any.toMsgTransfer() = this.unpack(MsgTransfer::class.java)
 fun Any.toMsgChannelOpenInit() = this.unpack(MsgChannelOpenInit::class.java)
 fun Any.toMsgChannelOpenTry() = this.unpack(MsgChannelOpenTry::class.java)
@@ -243,6 +252,12 @@ fun Any.getAssociatedAddresses(): List<String> =
             .let { it.ownersList.map { o -> o.address } + it.signersList }
         typeUrl.endsWith("MsgDeleteScopeOwnerRequest") -> this.toMsgDeleteScopeOwnerRequest()
             .let { it.ownersList + it.signersList }
+        typeUrl.endsWith("MsgUpdateAttributeRequest") -> this.toMsgUpdateAttributeRequest()
+            .let { listOf(it.account, it.owner)}
+        typeUrl.endsWith("MsgDeleteDistinctAttributeRequest") -> this.toMsgDeleteDistinctAttributeRequest()
+            .let { listOf(it.account, it.owner)}
+        typeUrl.endsWith("MsgAddContractSpecToScopeSpecRequest") -> this.toMsgAddContractSpecToScopeSpecRequest().signersList
+        typeUrl.endsWith("MsgDeleteContractSpecFromScopeSpecRequest") -> this.toMsgDeleteContractSpecFromScopeSpecRequest().signersList
         typeUrl.endsWith("MsgTransfer") -> this.toMsgTransfer().let { listOf(it.sender) }
         typeUrl.endsWith("MsgChannelOpenInit") -> this.toMsgChannelOpenInit().let { listOf(it.signer) }
         typeUrl.endsWith("MsgChannelOpenTry") -> this.toMsgChannelOpenTry().let { listOf(it.signer) }
@@ -369,36 +384,41 @@ fun Any.getAssociatedMetadataEvents() =
             .also { logger().debug("This typeUrl is not yet supported in as an metadata-event-based msg: $typeUrl") }
     }
 
+fun MetadataAddress.toList() = listOf(this)
+
 fun Any.getAssociatedMetadata() =
     when {
         typeUrl.endsWith("MsgWriteScopeRequest") -> this.toMsgWriteScopeRequest()
-            .let { it.scopeUuid?.blankToNull()?.toMAddressScope() ?: it.scope.scopeId?.toMAddress() }
-        typeUrl.endsWith("MsgDeleteScopeRequest") -> this.toMsgDeleteScopeRequest().scopeId.toMAddress()
-        typeUrl.endsWith("MsgAddScopeDataAccessRequest") -> this.toMsgAddScopeDataAccessRequest().scopeId.toMAddress()
-        typeUrl.endsWith("MsgDeleteScopeDataAccessRequest") -> this.toMsgDeleteScopeDataAccessRequest().scopeId.toMAddress()
-        typeUrl.endsWith("MsgAddScopeOwnerRequest") -> this.toMsgAddScopeOwnerRequest().scopeId.toMAddress()
-        typeUrl.endsWith("MsgDeleteScopeOwnerRequest") -> this.toMsgDeleteScopeOwnerRequest().scopeId.toMAddress()
+            .let { (it.scopeUuid?.blankToNull()?.toMAddressScope() ?: it.scope.scopeId?.toMAddress())?.toList() ?: listOf(null) }
+        typeUrl.endsWith("MsgDeleteScopeRequest") -> this.toMsgDeleteScopeRequest().scopeId.toMAddress().toList()
+        typeUrl.endsWith("MsgAddScopeDataAccessRequest") -> this.toMsgAddScopeDataAccessRequest().scopeId.toMAddress().toList()
+        typeUrl.endsWith("MsgDeleteScopeDataAccessRequest") -> this.toMsgDeleteScopeDataAccessRequest().scopeId.toMAddress().toList()
+        typeUrl.endsWith("MsgAddScopeOwnerRequest") -> this.toMsgAddScopeOwnerRequest().scopeId.toMAddress().toList()
+        typeUrl.endsWith("MsgDeleteScopeOwnerRequest") -> this.toMsgDeleteScopeOwnerRequest().scopeId.toMAddress().toList()
         typeUrl.endsWith("MsgWriteSessionRequest") -> this.toMsgWriteSessionRequest()
-            .let { it.sessionIdComponents.toMAddress() ?: it.session.sessionId.toMAddress() }
+            .let { it.sessionIdComponents.toMAddress() ?: it.session.sessionId.toMAddress() }.toList()
         typeUrl.endsWith("MsgWriteRecordRequest") -> this.toMsgWriteRecordRequest()
-            .let { it.sessionIdComponents.toMAddress() ?: it.record.sessionId.toMAddress() }
-        typeUrl.endsWith("MsgDeleteRecordRequest") -> this.toMsgDeleteRecordRequest().recordId.toMAddress()
+            .let { it.sessionIdComponents.toMAddress() ?: it.record.sessionId.toMAddress() }.toList()
+        typeUrl.endsWith("MsgDeleteRecordRequest") -> this.toMsgDeleteRecordRequest().recordId.toMAddress().toList()
         typeUrl.endsWith("MsgWriteScopeSpecificationRequest") -> this.toMsgWriteScopeSpecificationRequest()
-            .let { it.specUuid?.blankToNull()?.toMAddressScopeSpec() ?: it.specification.specificationId?.toMAddress() }
+            .let { (it.specUuid?.blankToNull()?.toMAddressScopeSpec() ?: it.specification.specificationId?.toMAddress())?.toList() ?: listOf(null) }
         typeUrl.endsWith("MsgDeleteScopeSpecificationRequest") ->
-            this.toMsgDeleteScopeSpecificationRequest().specificationId.toMAddress()
+            this.toMsgDeleteScopeSpecificationRequest().specificationId.toMAddress().toList()
         typeUrl.endsWith("MsgWriteContractSpecificationRequest") -> this.toMsgWriteContractSpecificationRequest()
-            .let { it.specUuid?.blankToNull()?.toMAddressContractSpec() ?: it.specification.specificationId?.toMAddress() }
+            .let { (it.specUuid?.blankToNull()?.toMAddressContractSpec() ?: it.specification.specificationId?.toMAddress())?.toList() ?: listOf(null) }
         typeUrl.endsWith("MsgDeleteContractSpecificationRequest") ->
-            this.toMsgDeleteContractSpecificationRequest().specificationId.toMAddress()
+            this.toMsgDeleteContractSpecificationRequest().specificationId.toMAddress().toList()
         typeUrl.endsWith("MsgWriteRecordSpecificationRequest") -> this.toMsgWriteRecordSpecificationRequest()
-            .let { it.contractSpecUuid?.blankToNull()?.toMAddressContractSpec() ?: it.specification.specificationId?.toMAddress() }
+            .let { (it.contractSpecUuid?.blankToNull()?.toMAddressContractSpec() ?: it.specification.specificationId?.toMAddress())?.toList() ?: listOf(null) }
         typeUrl.endsWith("MsgDeleteRecordSpecificationRequest") ->
-            this.toMsgDeleteRecordSpecificationRequest().specificationId.toMAddress()
-        typeUrl.endsWith("MsgP8eMemorializeContractRequest") -> this.toMsgP8eMemorializeContractRequest().scopeId.toMAddressScope()
-        else ->
-            null
-                .also { logger().debug("This typeUrl is not yet supported in as an metadata-based msg: $typeUrl") }
+            this.toMsgDeleteRecordSpecificationRequest().specificationId.toMAddress().toList()
+        typeUrl.endsWith("MsgP8eMemorializeContractRequest") -> this.toMsgP8eMemorializeContractRequest().scopeId.toMAddressScope().toList()
+        typeUrl.endsWith("MsgAddContractSpecToScopeSpecRequest") ->
+            this.toMsgAddContractSpecToScopeSpecRequest().let { listOf(it.contractSpecificationId.toMAddress(), it.scopeSpecificationId.toMAddress()) }
+        typeUrl.endsWith("MsgDeleteContractSpecFromScopeSpecRequest") ->
+            this.toMsgDeleteContractSpecFromScopeSpecRequest().let { listOf(it.contractSpecificationId.toMAddress(), it.scopeSpecificationId.toMAddress()) }
+        else -> listOf(null)
+            .also { logger().debug("This typeUrl is not yet supported in as an metadata-based msg: $typeUrl") }
     }
 
 fun SessionIdComponents?.toMAddress() =

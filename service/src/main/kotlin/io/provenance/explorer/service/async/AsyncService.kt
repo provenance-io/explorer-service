@@ -5,11 +5,13 @@ import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
+import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.ValidatorGasFeeCacheRecord
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.service.BlockService
+import io.provenance.explorer.service.GovService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.LocalDate
@@ -22,6 +24,7 @@ import java.math.BigDecimal
 class AsyncService(
     private val explorerProperties: ExplorerProperties,
     private val blockService: BlockService,
+    private val govService: GovService,
     private val asyncCache: AsyncCaching
 ) {
 
@@ -99,5 +102,10 @@ class AsyncService(
             else
                 ChainGasFeeCacheRecord.save(null, null, null, date)
         }
+    }
+
+    @Scheduled(cron = "0 0 0 * * ?") // Everyday at 12 am
+    fun updateProposalStatus() = transaction {
+        GovProposalRecord.getNonFinalProposals().forEach { govService.updateProposal(it) }
     }
 }

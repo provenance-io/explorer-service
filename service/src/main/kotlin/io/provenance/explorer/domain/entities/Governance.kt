@@ -69,6 +69,16 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
             GovProposalRecord.find { GovProposalTable.proposalId eq proposalId }.firstOrNull()
         }
 
+        fun getNonFinalProposals() = transaction {
+            GovProposalRecord.find {
+                GovProposalTable.status notInList listOf(
+                    Gov.ProposalStatus.PROPOSAL_STATUS_FAILED.name,
+                    Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name,
+                    Gov.ProposalStatus.PROPOSAL_STATUS_REJECTED.name
+                )
+            }.toList()
+        }
+
         fun getOrInsert(
             proposal: Gov.Proposal,
             protoPrinter: JsonFormat.Printer,

@@ -224,16 +224,17 @@ class ValidatorService(
         stakingVals
             .filter { if (isAtHeight) validators.map { v -> v.address }.contains(it.consensusAddress) else true }
             .map { stakingVal ->
-                val validatorObj = stakingVal.stakingValidator
+                val validatorObj = stakingVal
                 val validator = validators.firstOrNull { it.address == stakingVal.consensusAddress }
                 val signingInfo = signingInfos.find { it.address == stakingVal.consensusAddress }
-                hydrateValidator(validator, validatorObj, signingInfo!!, height.toBigInteger(), totalVotingPower)
+                    ?: Slashing.ValidatorSigningInfo.getDefaultInstance()
+                hydrateValidator(validator, validatorObj, signingInfo, height.toBigInteger(), totalVotingPower)
             }
     }
 
     private fun hydrateValidator(
         validator: Query.Validator?,
-        stakingValidator: Staking.Validator,
+        stakingVal: StakingValidatorCacheRecord,
         signingInfo: Slashing.ValidatorSigningInfo,
         height: BigInteger,
         totalVotingPower: BigInteger
@@ -243,8 +244,8 @@ class ValidatorService(
 
         try {
             val selfBondedAmount = grpcClient.getValidatorSelfDelegations(
-                stakingValidator.operatorAddress,
-                stakingValidator.operatorAddress.translateAddress(props).accountAddr
+                stakingVal.stakingValidator.operatorAddress,
+                stakingVal.stakingValidator.operatorAddress.translateAddress(props).accountAddr
             ).delegationResponse.balance
 
             amount = selfBondedAmount.amount
@@ -254,22 +255,22 @@ class ValidatorService(
         }
 
         val delegatorCount =
-            grpcClient.getStakingValidatorDelegations(stakingValidator.operatorAddress, 0, 10).pagination.total
+            grpcClient.getStakingValidatorDelegations(stakingVal.operatorAddress, 0, 10).pagination.total
         ValidatorSummary(
-            moniker = stakingValidator.description.moniker,
-            addressId = stakingValidator.operatorAddress,
-            consensusAddress = signingInfo.address,
+            moniker = stakingVal.stakingValidator.description.moniker,
+            addressId = stakingVal.operatorAddress,
+            consensusAddress = stakingVal.consensusAddress,
             proposerPriority = validator?.proposerPriority?.toInt(),
             votingPower = (if (validator != null) CountTotal(validator.votingPower.toBigInteger(), totalVotingPower) else null),
-            uptime = if (stakingValidator.isActive()) signingInfo.address.validatorUptime(signingInfo.startHeight.toBigInteger(), height) else null,
-            commission = stakingValidator.commission.commissionRates.rate.toDecCoin(),
-            bondedTokens = CountStrTotal(stakingValidator.tokens, null, NHASH),
+            uptime = if (stakingVal.stakingValidator.isActive()) signingInfo.address.validatorUptime(signingInfo.startHeight.toBigInteger(), height) else null,
+            commission = stakingVal.stakingValidator.commission.commissionRates.rate.toDecCoin(),
+            bondedTokens = CountStrTotal(stakingVal.stakingValidator.tokens, null, NHASH),
             selfBonded = CountStrTotal(amount, null, denom),
             delegators = delegatorCount,
-            bondHeight = if (stakingValidator.isActive()) signingInfo.startHeight else null,
-            status = stakingValidator.getStatusString(),
-            currentGasFee = BlockProposerRecord.findCurrentFeeForAddress(stakingValidator.operatorAddress)?.minGasFee,
-            unbondingHeight = if (!stakingValidator.isActive()) stakingValidator.unbondingHeight else null
+            bondHeight = if (stakingVal.stakingValidator.isActive()) signingInfo.startHeight else null,
+            status = stakingVal.stakingValidator.getStatusString(),
+            currentGasFee = BlockProposerRecord.findCurrentFeeForAddress(stakingVal.operatorAddress)?.minGasFee,
+            unbondingHeight = if (!stakingVal.stakingValidator.isActive()) stakingVal.stakingValidator.unbondingHeight else null
         )
     }
 
@@ -358,14 +359,16 @@ class ValidatorService(
 
     fun saveMissedBlocks(blockMeta: Query.GetBlockByHeightResponse) = transaction {
         val lastBlock = blockMeta.block.lastCommit
-        val signatures = lastBlock.signaturesList
-            .map { it.validatorAddress.translateByteArray(props).consensusAccountAddr }
-        val currentVals = ValidatorsCacheRecord.findById(lastBlock.height.toInt())?.validators
-            ?: grpcClient.getValidatorsAtHeight(lastBlock.height.toInt())
+        if (lastBlock.height.toInt() > 0) {
+            val signatures = lastBlock.signaturesList
+                .map { it.validatorAddress.translateByteArray(props).consensusAccountAddr }
+            val currentVals = ValidatorsCacheRecord.findById(lastBlock.height.toInt())?.validators
+                ?: grpcClient.getValidatorsAtHeight(lastBlock.height.toInt())
 
-        currentVals.validatorsList.forEach { vali ->
-            if (!signatures.contains(vali.address))
-                MissedBlocksRecord.insert(lastBlock.height.toInt(), vali.address)
+            currentVals.validatorsList.forEach { vali ->
+                if (!signatures.contains(vali.address))
+                    MissedBlocksRecord.insert(lastBlock.height.toInt(), vali.address)
+            }
         }
     }
 }

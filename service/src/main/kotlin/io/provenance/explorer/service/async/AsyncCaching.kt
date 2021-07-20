@@ -279,7 +279,7 @@ class AsyncCaching(
     private fun saveNftData(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
         // Gather MetadataAddresses from the Msgs themselves
         val msgAddrPairs = tx.tx.body.messagesList.map { it.getAssociatedMetadata() to it.isMetadataDeletionMsg() }
-        val msgAddrs = msgAddrPairs.mapNotNull { it.first }
+        val msgAddrs = msgAddrPairs.flatMap { it.first }.filterNotNull()
 
         // Gather event-only MetadataAddresses from the events
         val me = tx.tx.body.messagesList.flatMap { it.getAssociatedMetadataEvents() }.toSet()
@@ -298,9 +298,8 @@ class AsyncCaching(
             nftService.saveMAddress(md)
                 // mark deleted if necessary
                 .also {
-                    if (tx.txResponse.code == 0 && (msgAddrPairs.firstOrNull { it.first == md }?.second == true))
-                        nftService.markDeleted(md)
-                }
+                    if (tx.txResponse.code == 0 && (msgAddrPairs.firstOrNull { it.first == listOf(md) }?.second == true))
+                        nftService.markDeleted(md) }
         }
         // Save the nft joins
         nfts.forEach { nft -> TxNftJoinRecord.insert(tx.txResponse.txhash, txId, tx.txResponse.height.toInt(), nft) }
