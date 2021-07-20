@@ -34,4 +34,3 @@ val OBJECT_MAPPER = ObjectMapper()
 
 /* Singleton instance that can safely be shared globally */
 val JSON_NODE_FACTORY: JsonNodeFactory = JsonNodeFactory.instance
-

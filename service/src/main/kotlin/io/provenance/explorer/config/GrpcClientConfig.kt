@@ -13,5 +13,4 @@ class GrpcClientConfig(val props: ExplorerProperties) {
 
     @Bean
     fun channelUri() = URI(props.pbUrl)
-
 }

@@ -10,7 +10,6 @@ import io.provenance.explorer.domain.core.logger
 import org.springframework.stereotype.Component
 import java.util.concurrent.TimeUnit
 
-
 @Component
 class GrpcLoggingInterceptor : ClientInterceptor {
     private val logger = logger()
@@ -33,8 +32,7 @@ class GrpcLoggingInterceptor : ClientInterceptor {
     private open class BackendForwardingClientCall<M, R> constructor(
         method: MethodDescriptor<M, R>,
         delegate: ClientCall<*, *>?
-    ) :
-        SimpleForwardingClientCall<M, R>(delegate as ClientCall<M, R>?) {
-            var methodName: String = method.bareMethodName ?: method.fullMethodName
-        }
+    ) : SimpleForwardingClientCall<M, R>(delegate as ClientCall<M, R>?) {
+        var methodName: String = method.bareMethodName ?: method.fullMethodName
+    }
 }

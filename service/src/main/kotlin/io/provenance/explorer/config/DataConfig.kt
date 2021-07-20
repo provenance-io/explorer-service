@@ -44,5 +44,4 @@ class DataConfig {
         flyway.clean()
         return flyway.migrate().migrationsExecuted
     }
-
 }
