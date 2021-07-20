@@ -53,6 +53,13 @@ class GovService(
         }
     }
 
+    fun updateProposal(record: GovProposalRecord) = transaction {
+        govClient.getProposal(record.proposalId).let { res ->
+            if (res.proposal.status.name != record.status)
+                record.apply { this.status = res.proposal.status.name }
+        }
+    }
+
     private fun getAddressDetails(addr: String) = transaction {
         val addrId = AccountRecord.findByAddress(addr)!!.id.value
         val isValidator = StakingValidatorCacheRecord.findByAccount(addr) != null
