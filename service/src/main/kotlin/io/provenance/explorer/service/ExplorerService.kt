@@ -1,5 +1,6 @@
 package io.provenance.explorer.service
 
+import com.google.protobuf.Descriptors
 import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
@@ -119,26 +120,47 @@ class ExplorerService(
 
     fun getChainId() = asyncCaching.getChainIdString()
 
-    fun getParams() = Params(
-        CosmosParams(
-            accountClient.getAuthParams(),
-            accountClient.getBankParams(),
-            accountClient.getDistParams(),
-            GovParams(
-                govClient.getParams(GovParamType.voting),
-                govClient.getParams(GovParamType.tallying),
-                govClient.getParams(GovParamType.deposit)),
-            accountClient.getMintParams(),
-            validatorClient.getSlashingParams(),
-            accountClient.getStakingParams(),
-            IBCParams(
-                ibcClient.getTransferParams(),
-                ibcClient.getClientParams()),
-        ),
-        ProvParams(
-            attrClient.getAttrParams(),
-            markerClient.getMarkerParams(),
-            metadataClient.getMetadataParams(),
-            attrClient.getNameParams())
-    )
+    fun getParams() : Params {
+        val authParams = accountClient.getAuthParams().params
+        val bankParams = accountClient.getBankParams().params
+        val distParams = accountClient.getDistParams().params
+        val votingParams = govClient.getParams(GovParamType.voting).votingParams
+        val tallyParams = govClient.getParams(GovParamType.tallying).tallyParams
+        val depositParams = govClient.getParams(GovParamType.deposit).depositParams
+        val mintParams = accountClient.getMintParams().params
+        val slashingParams = validatorClient.getSlashingParams().params
+        val stakingParams = accountClient.getStakingParams().params
+        val transferParams = ibcClient.getTransferParams().params
+        val clientParams = ibcClient.getClientParams().params
+        val attrParams = attrClient.getAttrParams().params
+        val markerParams = markerClient.getMarkerParams().params
+        val metadataParams = metadataClient.getMetadataParams().params
+        val nameParams = attrClient.getNameParams().params
+
+        return Params(
+            CosmosParams(
+                authParams.toString(),
+                bankParams.toString(),
+                distParams.toString(),
+                GovParams(
+                    votingParams.toString(),
+                    tallyParams.toString(),
+                    depositParams.toString()
+                ),
+                mintParams.toString(),
+                slashingParams.toString(),
+                stakingParams.toString(),
+                IBCParams(
+                    transferParams.toString(),
+                    clientParams.toString(),
+                ),
+            ),
+            ProvParams(
+                attrParams.toString(),
+                markerParams.toString(),
+                metadataParams.toString(),
+                nameParams.toString(),
+            ),
+        )
+    }
 }
