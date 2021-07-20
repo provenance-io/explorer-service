@@ -147,8 +147,8 @@ fun Staking.Validator.getStatusString() =
 
 fun Staking.Validator.isActive() = this.status == Staking.BondStatus.BOND_STATUS_BONDED && !this.jailed
 
-fun Timestamp.toDateTime() = DateTime(Instant.ofEpochSecond( this.seconds, this.nanos.toLong()).toEpochMilli())
-fun Timestamp.formattedString() = DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond( this.seconds, this.nanos.toLong()))
+fun Timestamp.toDateTime() = DateTime(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()).toEpochMilli())
+fun Timestamp.formattedString() = DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()))
 fun DateTime.startOfDay() = this.withZone(DateTimeZone.UTC).withTimeAtStartOfDay()
 fun String.toDateTime() = DateTime.parse(this)
 

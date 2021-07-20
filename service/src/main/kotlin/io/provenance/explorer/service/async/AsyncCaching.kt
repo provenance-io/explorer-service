@@ -299,7 +299,8 @@ class AsyncCaching(
                 // mark deleted if necessary
                 .also {
                     if (tx.txResponse.code == 0 && (msgAddrPairs.firstOrNull { it.first == listOf(md) }?.second == true))
-                        nftService.markDeleted(md) }
+                        nftService.markDeleted(md)
+                }
         }
         // Save the nft joins
         nfts.forEach { nft -> TxNftJoinRecord.insert(tx.txResponse.txhash, txId, tx.txResponse.height.toInt(), nft) }

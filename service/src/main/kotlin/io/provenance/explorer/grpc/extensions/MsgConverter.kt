@@ -253,9 +253,9 @@ fun Any.getAssociatedAddresses(): List<String> =
         typeUrl.endsWith("MsgDeleteScopeOwnerRequest") -> this.toMsgDeleteScopeOwnerRequest()
             .let { it.ownersList + it.signersList }
         typeUrl.endsWith("MsgUpdateAttributeRequest") -> this.toMsgUpdateAttributeRequest()
-            .let { listOf(it.account, it.owner)}
+            .let { listOf(it.account, it.owner) }
         typeUrl.endsWith("MsgDeleteDistinctAttributeRequest") -> this.toMsgDeleteDistinctAttributeRequest()
-            .let { listOf(it.account, it.owner)}
+            .let { listOf(it.account, it.owner) }
         typeUrl.endsWith("MsgAddContractSpecToScopeSpecRequest") -> this.toMsgAddContractSpecToScopeSpecRequest().signersList
         typeUrl.endsWith("MsgDeleteContractSpecFromScopeSpecRequest") -> this.toMsgDeleteContractSpecFromScopeSpecRequest().signersList
         typeUrl.endsWith("MsgTransfer") -> this.toMsgTransfer().let { listOf(it.sender) }
