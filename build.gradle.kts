@@ -9,7 +9,6 @@ plugins {
     id(PluginIds.DependencyAnalysis) version PluginVersions.DependencyAnalysis
     id(PluginIds.Protobuf) version PluginVersions.Protobuf
     id(PluginIds.ProvenanceDownloadProtos)
-    id(PluginIds.KtLint) version PluginVersions.KtLint
 }
 
 allprojects {
@@ -35,7 +34,6 @@ subprojects {
         plugin(PluginIds.Idea)
         plugin(PluginIds.TestLogger)
         plugin(PluginIds.Protobuf)
-        plugin(PluginIds.KtLint)
     }
 
     repositories {
