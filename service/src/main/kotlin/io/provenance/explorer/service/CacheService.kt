@@ -23,5 +23,4 @@ class CacheService(private val explorerProperties: ExplorerProperties) {
             } else it.spotlight
         }
     }
-
 }

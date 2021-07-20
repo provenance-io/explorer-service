@@ -100,7 +100,4 @@ class AsyncService(
                 ChainGasFeeCacheRecord.save(null, null, null, date)
         }
     }
-
-
-
 }

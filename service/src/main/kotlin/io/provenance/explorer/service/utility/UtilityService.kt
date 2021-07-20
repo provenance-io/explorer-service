@@ -81,5 +81,3 @@ data class MsgObj(
     val type: String,
     val msg: ObjectNode
 )
-
-

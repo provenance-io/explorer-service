@@ -108,7 +108,9 @@ class IbcService(
                     IbcDenomListed(
                         it.denom,
                         it.supply.toBigInteger().toString(),
-                        it.lastTx?.toString()) }
+                        it.lastTx?.toString()
+                    )
+                }
         val total = MarkerCacheRecord.findCountByIbc()
         return PagedResults(total.pageCountOfResults(count), list, total)
     }
@@ -130,11 +132,13 @@ class IbcService(
     fun getDenomTrace(ibcHash: String) = ibcClient.getDenomTrace(ibcHash)
 
     fun getBalanceListByDenom() = transaction {
-        IbcLedgerRecord.getByDenom().map { Balance(
-            it.denom,
-            it.balanceIn?.toCoinStr(it.denom),
-            it.balanceOut?.toCoinStr(it.denom),
-            it.lastTx.toString())
+        IbcLedgerRecord.getByDenom().map {
+            Balance(
+                it.denom,
+                it.balanceIn?.toCoinStr(it.denom),
+                it.balanceOut?.toCoinStr(it.denom),
+                it.lastTx.toString()
+            )
         }
     }
 
@@ -185,10 +189,8 @@ class IbcService(
                 IbcChannelStatus(chain, channels)
             }.sortedBy { it.dstChainId }
     }
-
 }
 
 fun String.getIbcHash() = this.split("ibc/").last()
 fun String.getIbcDenom() = "ibc/$this"
 fun Transfer.DenomTrace.toFullPath() = if (this.path == "") this.baseDenom else "${this.path}/${this.baseDenom}"
-

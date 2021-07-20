@@ -16,7 +16,7 @@ import cosmos.staking.v1beta1.QueryGrpc as StakingGrpc
 import cosmos.staking.v1beta1.QueryOuterClass as StakingOuterClass
 
 @Component
-class AccountGrpcClient(channelUri : URI) {
+class AccountGrpcClient(channelUri: URI) {
 
     private val authClient: AuthQueryGrpc.QueryBlockingStub
     private val bankClient: BankQueryGrpc.QueryBlockingStub
@@ -57,7 +57,8 @@ class AccountGrpcClient(channelUri : URI) {
             BankOuterClass.QueryAllBalancesRequest.newBuilder()
                 .setAddress(address)
                 .setPagination(getPaginationBuilder(offset, limit))
-                .build())
+                .build()
+        )
 
     fun getCurrentSupply(denom: String) =
         bankClient.supplyOf(BankOuterClass.QuerySupplyOfRequest.newBuilder().setDenom(denom).build()).amount
@@ -73,7 +74,8 @@ class AccountGrpcClient(channelUri : URI) {
         bankClient.denomsMetadata(
             BankOuterClass.QueryDenomsMetadataRequest.newBuilder()
                 .setPagination(getPaginationBuilder(0, 100))
-                .build())
+                .build()
+        )
 
     fun getDelegations(address: String, offset: Int, limit: Int) =
         try {
@@ -92,19 +94,21 @@ class AccountGrpcClient(channelUri : URI) {
             StakingOuterClass.QueryDelegatorUnbondingDelegationsRequest.newBuilder()
                 .setDelegatorAddr(address)
                 .setPagination(getPaginationBuilder(offset, limit))
-                .build())
+                .build()
+        )
 
     fun getRedelegations(address: String, offset: Int, limit: Int) =
         stakingClient.redelegations(
             StakingOuterClass.QueryRedelegationsRequest.newBuilder()
                 .setDelegatorAddr(address)
                 .setPagination(getPaginationBuilder(offset, limit))
-                .build())
+                .build()
+        )
 
     fun getRewards(delAddr: String) =
         distClient.delegationTotalRewards(
             DistOuterClass.QueryDelegationTotalRewardsRequest.newBuilder()
                 .setDelegatorAddress(delAddr)
-                .build())
-
+                .build()
+        )
 }

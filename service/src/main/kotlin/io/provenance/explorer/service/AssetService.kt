@@ -29,7 +29,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 
 @Service
-class AssetService (
+class AssetService(
     private val markerClient: MarkerGrpcClient,
     private val attrClient: AttributeGrpcClient,
     private val metadataClient: MetadataGrpcClient,
@@ -54,7 +54,9 @@ class AssetService (
                         it.status.prettyStatus(),
                         it.data?.isMintable() ?: false,
                         it.lastTx?.toString(),
-                        it.markerType.prettyMarkerType()) }
+                        it.markerType.prettyMarkerType()
+                    )
+                }
         val total = MarkerCacheRecord.findCountByStatus(statuses)
         return PagedResults(total.pageCountOfResults(count), list, total)
     }
@@ -79,16 +81,16 @@ class AssetService (
                 TxMarkerJoinRecord.findLatestTxByDenom(denom)
             )
         } ?: accountService.getCurrentSupply(denom).let {
-                MarkerCacheRecord.insertIgnore(
-                    null,
-                    denom.getBaseDenomType().name,
-                    denom,
-                    MarkerStatus.MARKER_STATUS_ACTIVE.toString(),
-                    null,
-                    it.toBigDecimal(),
-                    TxMarkerJoinRecord.findLatestTxByDenom(denom)
-                )
-            }
+            MarkerCacheRecord.insertIgnore(
+                null,
+                denom.getBaseDenomType().name,
+                denom,
+                MarkerStatus.MARKER_STATUS_ACTIVE.toString(),
+                null,
+                it.toBigDecimal(),
+                TxMarkerJoinRecord.findLatestTxByDenom(denom)
+            )
+        }
 
     fun getAssetDetail(denom: String) =
         getAssetFromDB(denom)
@@ -106,7 +108,8 @@ class AssetService (
                     accountService.getDenomMetadataSingle(denom).toObjectNode(protoPrinter),
                     TokenCounts(
                         if (record.markerAddress != null) accountService.getBalances(record.markerAddress!!, 0, 1).pagination.total else 0,
-                        if (record.markerAddress != null) metadataClient.getScopesByOwner(record.markerAddress!!).pagination.total.toInt() else 0),
+                        if (record.markerAddress != null) metadataClient.getScopesByOwner(record.markerAddress!!).pagination.total.toInt() else 0
+                    ),
                     record.status.prettyStatus(),
                     record.markerType.prettyMarkerType()
                 )
@@ -115,9 +118,9 @@ class AssetService (
     fun getAssetHolders(denom: String, page: Int, count: Int) = accountService.getCurrentSupply(denom).let { supply ->
         val res = markerClient.getMarkerHolders(denom, page.toOffset(count), count)
         val list = res.balancesList.map { bal ->
-                val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount
-                AssetHolder(bal.address, CountStrTotal(balance, supply, denom))
-            }.sortedByDescending { it.balance.count }
+            val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount
+            AssetHolder(bal.address, CountStrTotal(balance, supply, denom))
+        }.sortedByDescending { it.balance.count }
         PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
     }
 

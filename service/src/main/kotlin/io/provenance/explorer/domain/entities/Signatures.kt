@@ -17,7 +17,6 @@ import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 
-
 object SignatureTable : IntIdTable(name = "signature") {
     val base64Sig = varchar("base_64_sig", 128)
     val pubkeyType = varchar("pubkey_type", 128)
@@ -37,7 +36,7 @@ class SignatureRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findByJoin(joinType: SigJoinType, joinKey: String) = transaction {
             SignatureRecord.wrapRows(
-                SignatureTable.join(SJT, JoinType.INNER, SignatureTable.id, SJT.signatureId )
+                SignatureTable.join(SJT, JoinType.INNER, SignatureTable.id, SJT.signatureId)
                     .select { SJT.joinType eq joinType.name }
                     .andWhere { SJT.joinKey eq joinKey }
             ).toList()
@@ -47,17 +46,23 @@ class SignatureRecord(id: EntityID<Int>) : IntEntity(id) {
             when {
                 pubkey.typeUrl.contains("secp256k1") ->
                     pubkey.unpack(cosmos.crypto.secp256k1.Keys.PubKey::class.java)
-                        .let { key -> listOf(
-                            insertAndGetId(key.key.toBase64(), pubkey.typeUrl, pubkey, multiSig)) }
+                        .let { key ->
+                            listOf(
+                                insertAndGetId(key.key.toBase64(), pubkey.typeUrl, pubkey, multiSig)
+                            )
+                        }
                 pubkey.typeUrl.contains("ed25519") ->
                     pubkey.unpack(cosmos.crypto.ed25519.Keys.PubKey::class.java)
-                        .let { key -> listOf(
-                            insertAndGetId(key.key.toBase64(), pubkey.typeUrl, pubkey, multiSig)) }
+                        .let { key ->
+                            listOf(
+                                insertAndGetId(key.key.toBase64(), pubkey.typeUrl, pubkey, multiSig)
+                            )
+                        }
                 pubkey.typeUrl.contains("LegacyAminoPubKey") ->
                     pubkey.unpack(Keys.LegacyAminoPubKey::class.java).let { multi ->
                         multi.publicKeysList
-                        .flatMap { insertAndGetIds(it, pubkey) }
-                        .toList()
+                            .flatMap { insertAndGetIds(it, pubkey) }
+                            .toList()
                     }
                 else -> listOf()
             }

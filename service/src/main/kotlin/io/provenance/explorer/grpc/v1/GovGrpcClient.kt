@@ -41,6 +41,4 @@ class GovGrpcClient(channelUri: URI) {
 
     fun getTally(proposalId: Long) =
         govClient.tallyResult(QueryOuterClass.QueryTallyResultRequest.newBuilder().setProposalId(proposalId).build())
-
-
 }

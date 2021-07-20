@@ -99,12 +99,14 @@ class GovService(
             record.proposalType,
             record.title,
             record.description,
-            record.content),
+            record.content
+        ),
         ProposalTimings(
             getDepositPercentage(record.proposalId),
             record.data.submitTime.formattedString(),
             record.data.depositEndTime.formattedString(),
-            GovTimeFrame(record.data.votingStartTime.formattedString(), record.data.votingEndTime.formattedString()))
+            GovTimeFrame(record.data.votingStartTime.formattedString(), record.data.votingEndTime.formattedString())
+        )
     )
 
     fun getProposalsList(page: Int, count: Int) =
@@ -126,7 +128,8 @@ class GovService(
                 CoinStr(valService.getStakingValidators("active").sumOf { it.tokenCount }.stringfy(), NHASH),
                 param.quorum.toStringUtf8().toDecCoin(),
                 param.threshold.toStringUtf8().toDecCoin(),
-                param.vetoThreshold.toStringUtf8().toDecCoin())
+                param.vetoThreshold.toStringUtf8().toDecCoin()
+            )
         }
         val dbRecords = GovVoteRecord.findByProposalId(proposalId)
         val voteRecords = dbRecords.map { mapVoteRecord((it)) }
@@ -182,6 +185,5 @@ class GovService(
             val total = GovVoteRecord.getByAddrIdCount(addr.id.value)
             PagedResults(total.pageCountOfResults(count), it, total)
         }
-
     }
 }

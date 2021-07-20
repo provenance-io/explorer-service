@@ -13,7 +13,7 @@ import io.provenance.attribute.v1.QueryGrpc as AttrQueryGrpc
 import io.provenance.name.v1.QueryGrpc as NameQueryGrpc
 
 @Component
-class AttributeGrpcClient(channelUri : URI) {
+class AttributeGrpcClient(channelUri: URI) {
 
     private val attrClient: AttrQueryGrpc.QueryBlockingStub
     private val nameClient: NameQueryGrpc.QueryBlockingStub
@@ -47,7 +47,8 @@ class AttributeGrpcClient(channelUri : URI) {
             QueryAttributesRequest.newBuilder()
                 .setAccount(address)
                 .setPagination(getPaginationBuilder(offset, limit))
-                .build())
+                .build()
+        )
 
         val total = results.pagination?.total ?: results.attributesCount.toLong()
         val attributes = results.attributesList.toMutableList()
@@ -58,7 +59,8 @@ class AttributeGrpcClient(channelUri : URI) {
                 QueryAttributesRequest.newBuilder()
                     .setAccount(address)
                     .setPagination(getPaginationBuilder(offset, limit))
-                    .build())
+                    .build()
+            )
                 .let { attributes.addAll(it.attributesList) }
         }
 

@@ -1,22 +1,22 @@
-//package io.provenance.explorer.service
+// package io.provenance.explorer.service
 //
-//import io.provenance.explorer.Application
-//import org.junit.jupiter.api.Assertions
-//import org.junit.jupiter.api.Disabled
-//import org.junit.jupiter.api.Test
-//import org.junit.jupiter.api.assertThrows
-//import org.junit.jupiter.api.extension.ExtendWith
-//import org.springframework.beans.factory.annotation.Autowired
-//import org.springframework.boot.test.context.SpringBootTest
-//import org.springframework.test.context.ActiveProfiles
-//import org.springframework.test.context.junit.jupiter.SpringExtension
-//import org.springframework.transaction.annotation.Transactional
+// import io.provenance.explorer.Application
+// import org.junit.jupiter.api.Assertions
+// import org.junit.jupiter.api.Disabled
+// import org.junit.jupiter.api.Test
+// import org.junit.jupiter.api.assertThrows
+// import org.junit.jupiter.api.extension.ExtendWith
+// import org.springframework.beans.factory.annotation.Autowired
+// import org.springframework.boot.test.context.SpringBootTest
+// import org.springframework.test.context.ActiveProfiles
+// import org.springframework.test.context.junit.jupiter.SpringExtension
+// import org.springframework.transaction.annotation.Transactional
 //
-//@ExtendWith(SpringExtension::class)
-//@SpringBootTest(classes = [Application::class], webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-//@ActiveProfiles("test")
-//@Transactional
-//open class ValidatorServiceTest{
+// @ExtendWith(SpringExtension::class)
+// @SpringBootTest(classes = [Application::class], webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+// @ActiveProfiles("test")
+// @Transactional
+// open class ValidatorServiceTest{
 //
 //    @Autowired
 //    lateinit var validatorService: ValidatorService
@@ -34,4 +34,4 @@
 //        val result = validatorService.findAddressByConsensus("tpvalcons1pkj6cy0a6acmm3q2augsgkj27h79k6ywqj35gu")
 //        Assertions.assertEquals("tpvaloper14neg0whj7puhwks6536a8lqp7msvd9p028p7jm", result)
 //    }
-//}
+// }

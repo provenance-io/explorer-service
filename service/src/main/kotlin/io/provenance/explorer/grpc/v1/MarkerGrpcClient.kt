@@ -55,6 +55,4 @@ class MarkerGrpcClient(channelUri: URI) {
         } catch (e: Exception) {
             QueryHoldingResponse.getDefaultInstance()
         }
-
-
 }

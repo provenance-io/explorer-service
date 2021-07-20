@@ -4,14 +4,11 @@ import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockIndexRecord
-import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.height
-import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.grpc.v1.BlockGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
-
 
 @Service
 class BlockService(private val blockClient: BlockGrpcClient) {

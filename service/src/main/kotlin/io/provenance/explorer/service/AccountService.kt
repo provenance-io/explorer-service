@@ -47,7 +47,7 @@ class AccountService(
     fun saveAccount(address: String) =
         accountClient.getAccountInfo(address)?.let { AccountRecord.insertIgnore(it) }
             ?: if (address.isAddressAsType(props.provAccPrefix())) AccountRecord.insertUnknownAccount(address)
-                else throw ResourceNotFoundException("Invalid account: '$address'")
+            else throw ResourceNotFoundException("Invalid account: '$address'")
 
     fun getAccountDetail(address: String) = getAccountRaw(address).let {
         AccountDetail(
@@ -60,7 +60,8 @@ class AccountService(
             attrClient.getAllAttributesForAddress(it.accountAddress).map { attr -> attr.toResponse() },
             TokenCounts(
                 getBalances(it.accountAddress, 0, 1).pagination.total,
-                metadataClient.getScopesByOwner(it.accountAddress).pagination.total.toInt()),
+                metadataClient.getScopesByOwner(it.accountAddress).pagination.total.toInt()
+            ),
         )
     }
 
@@ -98,7 +99,8 @@ class AccountService(
                     null,
                     it.delegation.shares.toDecCoin(),
                     null,
-                    null)
+                    null
+                )
             }
             PagedResults(res.pagination.total.pageCountOfResults(limit), list, res.pagination.total)
         }
@@ -144,7 +146,8 @@ class AccountService(
             res.rewardsList.map { list ->
                 Reward(
                     list.validatorAddress,
-                    list.rewardList.map { r -> CoinStr(r.amount.toDecCoin(), r.denom) })
+                    list.rewardList.map { r -> CoinStr(r.amount.toDecCoin(), r.denom) }
+                )
             },
             res.totalList.map { t -> CoinStr(t.amount.toDecCoin(), t.denom) }
         )

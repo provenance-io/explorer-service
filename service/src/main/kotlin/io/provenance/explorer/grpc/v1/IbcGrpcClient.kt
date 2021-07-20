@@ -54,14 +54,14 @@ class IbcGrpcClient(channelUri: URI) {
             ChannelOuterClass.QueryChannelRequest.newBuilder()
                 .setPortId(port)
                 .setChannelId(channel)
-                .build())
+                .build()
+        )
 
     fun getClientForChannel(port: String, channel: String) =
         channelClient.channelClientState(
             ChannelOuterClass.QueryChannelClientStateRequest.newBuilder()
                 .setPortId(port)
                 .setChannelId(channel)
-                .build())
-
-
+                .build()
+        )
 }

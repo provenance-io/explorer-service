@@ -7,7 +7,6 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.transactions.transaction
 
-
 object NftScopeTable : IntIdTable(name = "nft_scope") {
     val uuid = varchar("uuid", 128)
     val address = varchar("address", 128)

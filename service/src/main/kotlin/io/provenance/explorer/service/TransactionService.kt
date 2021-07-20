@@ -37,7 +37,6 @@ import io.provenance.explorer.grpc.extensions.getModuleAccName
 import io.provenance.explorer.service.async.AsyncCaching
 import io.provenance.explorer.service.async.getAddressType
 import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
@@ -53,10 +52,12 @@ class TransactionService(
     protected val logger = logger(TransactionService::class)
 
     private fun getTxByHashFromCache(hash: String) =
-        transaction { TxCacheRecord.findByHash(hash)?.let {
-            val rec = checkMsgCount(it)
-            Pair(rec.id, rec.txV2)
-        } }
+        transaction {
+            TxCacheRecord.findByHash(hash)?.let {
+                val rec = checkMsgCount(it)
+                Pair(rec.id, rec.txV2)
+            }
+        }
 
     fun getTxTypes(typeSet: MsgTypeSet?) = transaction {
         when (typeSet) {
@@ -101,7 +102,7 @@ class TransactionService(
         TxCacheRecord.findByQueryForResults(params).map {
             val rec = checkMsgCount(it)
             val displayMsgType = if (msgTypes.isNotEmpty()) msgTypes.first()
-                else transaction { rec.txMessages.first().txMessageType.type }
+            else transaction { rec.txMessages.first().txMessageType.type }
             TxSummary(
                 rec.hash,
                 rec.height,
@@ -141,7 +142,8 @@ class TransactionService(
                 tx.txResponse.gasUsed.toInt(),
                 tx.txResponse.gasWanted.toInt(),
                 tx.tx.authInfo.fee.gasLimit.toBigInteger(),
-                tx.tx.authInfo.fee.getMinGasFee()),
+                tx.tx.authInfo.fee.getMinGasFee()
+            ),
             time = asyncCache.getBlock(tx.txResponse.height.toInt()).block.header.time.formattedString(),
             status = if (tx.txResponse.code > 0) "failed" else "success",
             errorCode = tx.txResponse.code,

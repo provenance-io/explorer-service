@@ -58,7 +58,7 @@ class NftService(
         .let {
             val spec = getScopeDescrip(it.scope.scopeSpecIdInfo.scopeSpecAddr)
             ScopeDetail(
-               it.scope.scopeIdInfo.scopeAddr,
+                it.scope.scopeIdInfo.scopeAddr,
                 spec?.name,
                 it.scope.scopeSpecIdInfo.scopeSpecAddr,
                 spec?.toSpecDescrip(),
@@ -113,7 +113,6 @@ class NftService(
                 v.map { it.recordSpecIdInfo.recordSpecAddr }.contains(record.recordSpecIdInfo.recordSpecAddr) ->
                     ScopeRecord(RecordStatus.FILLED, k, null, recDetail)
                 else -> ScopeRecord(RecordStatus.NON_CONFORMING, k, null, recDetail)
-
             }
         }
         // For any remaining records that do not match a spec name, set the record, status ORPHAN
@@ -131,46 +130,49 @@ class NftService(
 
         // Sort by name
         return (list + noSpecOrphans).sortedBy { it.recordName }
-
     }
 
     fun translateAddress(addr: String) = MetadataAddress.fromBech32(addr)
 
     fun saveMAddress(md: MetadataAddress) = transaction {
-        when(md.getParentForType()) {
-            MdParent.SCOPE -> NftScopeRecord
-                .getOrInsert(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressScope().toString())
-                .let { Triple(MdParent.SCOPE, it.id.value, it.uuid) }
-            MdParent.SCOPE_SPEC -> NftScopeSpecRecord
-                .getOrInsert(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressScopeSpec().toString())
-                .let { Triple(MdParent.SCOPE_SPEC, it.id.value, it.uuid) }
-            MdParent.CONTRACT_SPEC -> NftContractSpecRecord
-                .getOrInsert(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressContractSpec().toString())
-                .let { Triple(MdParent.CONTRACT_SPEC, it.id.value, it.uuid) }
+        when (md.getParentForType()) {
+            MdParent.SCOPE ->
+                NftScopeRecord
+                    .getOrInsert(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressScope().toString())
+                    .let { Triple(MdParent.SCOPE, it.id.value, it.uuid) }
+            MdParent.SCOPE_SPEC ->
+                NftScopeSpecRecord
+                    .getOrInsert(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressScopeSpec().toString())
+                    .let { Triple(MdParent.SCOPE_SPEC, it.id.value, it.uuid) }
+            MdParent.CONTRACT_SPEC ->
+                NftContractSpecRecord
+                    .getOrInsert(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressContractSpec().toString())
+                    .let { Triple(MdParent.CONTRACT_SPEC, it.id.value, it.uuid) }
             else -> null.also { logger().debug("This prefix doesnt have a parent type: ${md.getPrefix()}") }
         }
     }
 
     fun markDeleted(md: MetadataAddress) = transaction {
-        when(md.getParentForType()) {
-            MdParent.SCOPE -> NftScopeRecord
-                .markDeleted(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressScope().toString())
-            MdParent.SCOPE_SPEC -> NftScopeSpecRecord
-                .markDeleted(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressScopeSpec().toString())
-            MdParent.CONTRACT_SPEC -> NftContractSpecRecord
-                .markDeleted(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressContractSpec().toString())
+        when (md.getParentForType()) {
+            MdParent.SCOPE ->
+                NftScopeRecord
+                    .markDeleted(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressScope().toString())
+            MdParent.SCOPE_SPEC ->
+                NftScopeSpecRecord
+                    .markDeleted(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressScopeSpec().toString())
+            MdParent.CONTRACT_SPEC ->
+                NftContractSpecRecord
+                    .markDeleted(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressContractSpec().toString())
             else -> null.also { logger().debug("This prefix doesnt have a parent type: ${md.getPrefix()}") }
         }
     }
 
     fun getNftDbId(md: MetadataAddress?) = transaction {
-        when(md?.getParentForType()) {
+        when (md?.getParentForType()) {
             MdParent.SCOPE -> NftScopeRecord.findByUuid(md.getPrimaryUuid().toString())!!.id.value
             MdParent.SCOPE_SPEC -> NftScopeSpecRecord.findByUuid(md.getPrimaryUuid().toString())!!.id.value
             MdParent.CONTRACT_SPEC -> NftContractSpecRecord.findByUuid(md.getPrimaryUuid().toString())!!.id.value
             else -> null.also { logger().debug("This prefix doesnt have a parent type: ${md?.getPrefix()}") }
         }
     }
-
-
 }

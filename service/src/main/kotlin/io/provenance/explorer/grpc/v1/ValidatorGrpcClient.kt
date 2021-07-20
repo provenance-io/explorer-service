@@ -53,7 +53,8 @@ class ValidatorGrpcClient(channelUri: URI) {
         val results = tmClient.getLatestValidatorSet(
             Query.GetLatestValidatorSetRequest.newBuilder()
                 .setPagination(getPaginationBuilder(offset, limit))
-                .build())
+                .build()
+        )
         val total = results.pagination?.total ?: results.validatorsCount.toLong()
         val validators = results.validatorsList
 
@@ -62,7 +63,8 @@ class ValidatorGrpcClient(channelUri: URI) {
             tmClient.getLatestValidatorSet(
                 Query.GetLatestValidatorSetRequest.newBuilder()
                     .setPagination(getPaginationBuilder(offset, limit))
-                    .build())
+                    .build()
+            )
                 .let { validators.addAll(it.validatorsList) }
         }
 
@@ -77,7 +79,8 @@ class ValidatorGrpcClient(channelUri: URI) {
             Query.GetValidatorSetByHeightRequest.newBuilder()
                 .setHeight(height.toLong())
                 .setPagination(getPaginationBuilder(offset, limit))
-                .build())
+                .build()
+        )
         val total = results.pagination?.total ?: results.validatorsCount.toLong()
         val validators = results.validatorsList
 
@@ -87,7 +90,8 @@ class ValidatorGrpcClient(channelUri: URI) {
                 Query.GetValidatorSetByHeightRequest.newBuilder()
                     .setHeight(height.toLong())
                     .setPagination(getPaginationBuilder(offset, limit))
-                    .build())
+                    .build()
+            )
                 .let { validators.addAll(it.validatorsList) }
         }
 
@@ -102,18 +106,22 @@ class ValidatorGrpcClient(channelUri: URI) {
         var offset = 0
         val limit = 100
 
-        val results = stakingClient.validators(StakingOuterClass.QueryValidatorsRequest.newBuilder()
-            .setPagination(getPaginationBuilder(offset, limit))
-            .build())
+        val results = stakingClient.validators(
+            StakingOuterClass.QueryValidatorsRequest.newBuilder()
+                .setPagination(getPaginationBuilder(offset, limit))
+                .build()
+        )
 
         val total = results.pagination?.total ?: results.validatorsCount.toLong()
         val validators = results.validatorsList.toMutableList()
 
         while (validators.count() < total) {
             offset += limit
-            stakingClient.validators(StakingOuterClass.QueryValidatorsRequest.newBuilder()
-                .setPagination(getPaginationBuilder(offset, limit))
-                .build())
+            stakingClient.validators(
+                StakingOuterClass.QueryValidatorsRequest.newBuilder()
+                    .setPagination(getPaginationBuilder(offset, limit))
+                    .build()
+            )
                 .let { validators.addAll(it.validatorsList) }
         }
 
@@ -122,41 +130,48 @@ class ValidatorGrpcClient(channelUri: URI) {
 
     fun getStakingValidator(address: String) =
         stakingClient.validator(
-            StakingOuterClass.QueryValidatorRequest.newBuilder().setValidatorAddr(address).build()).validator
+            StakingOuterClass.QueryValidatorRequest.newBuilder().setValidatorAddr(address).build()
+        ).validator
 
     fun getStakingValidatorDelegations(address: String, offset: Int, limit: Int) =
         stakingClient.validatorDelegations(
             StakingOuterClass.QueryValidatorDelegationsRequest.newBuilder()
                 .setValidatorAddr(address)
                 .setPagination(getPaginationBuilder(offset, limit))
-                .build())
+                .build()
+        )
 
     fun getValidatorSelfDelegations(valAddress: String, delAddress: String) =
         stakingClient.delegation(
             StakingOuterClass.QueryDelegationRequest.newBuilder()
                 .setValidatorAddr(valAddress)
                 .setDelegatorAddr(delAddress)
-                .build())
+                .build()
+        )
 
     fun getStakingValidatorUnbondingDels(address: String, offset: Int, limit: Int) =
         stakingClient.validatorUnbondingDelegations(
             StakingOuterClass.QueryValidatorUnbondingDelegationsRequest.newBuilder()
                 .setValidatorAddr(address)
                 .setPagination(getPaginationBuilder(offset, limit))
-                .build())
+                .build()
+        )
 
     fun getValidatorCommission(address: String) =
         distClient.validatorCommission(
-            DistOuterClass.QueryValidatorCommissionRequest.newBuilder().setValidatorAddress(address).build()).commission
+            DistOuterClass.QueryValidatorCommissionRequest.newBuilder().setValidatorAddress(address).build()
+        ).commission
 
     fun getValidatorRewards(address: String) =
         distClient.validatorOutstandingRewards(
-            DistOuterClass.QueryValidatorOutstandingRewardsRequest.newBuilder().setValidatorAddress(address).build())
+            DistOuterClass.QueryValidatorOutstandingRewardsRequest.newBuilder().setValidatorAddress(address).build()
+        )
             .rewards
 
     fun getDelegatorWithdrawalAddress(delegator: String) =
         distClient.delegatorWithdrawAddress(
-            DistOuterClass.QueryDelegatorWithdrawAddressRequest.newBuilder().setDelegatorAddress(delegator).build())
+            DistOuterClass.QueryDelegatorWithdrawAddressRequest.newBuilder().setDelegatorAddress(delegator).build()
+        )
             .withdrawAddress
 
     fun getSigningInfos() =

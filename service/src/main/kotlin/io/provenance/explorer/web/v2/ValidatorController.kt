@@ -78,5 +78,4 @@ class ValidatorController(private val validatorService: ValidatorService) {
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?,
         @RequestParam(required = false, defaultValue = "14") @Min(1) dayCount: Int
     ) = ResponseEntity.ok(validatorService.getGasFeeStatistics(id, fromDate, toDate, dayCount))
-
 }

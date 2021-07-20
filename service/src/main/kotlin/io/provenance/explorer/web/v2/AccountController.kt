@@ -61,5 +61,4 @@ class AccountController(private val accountService: AccountService) {
         @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int
     ) = ResponseEntity.ok(accountService.getNamesOwnedByAccount(address, page, count))
-
 }

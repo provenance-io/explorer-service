@@ -1,6 +1,5 @@
 package io.provenance.explorer.grpc.v1
 
-import com.google.protobuf.ProtocolStringList
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.getPaginationBuilder
@@ -10,14 +9,12 @@ import io.provenance.metadata.v1.RecordSpecificationsForContractSpecificationReq
 import io.provenance.metadata.v1.ScopeRequest
 import io.provenance.metadata.v1.ScopeSpecificationRequest
 import io.provenance.metadata.v1.ScopesAllRequest
-import io.provenance.metadata.v1.ScopesAllResponse
-import io.provenance.metadata.v1.ValueOwnershipRequest
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
 
 @Component
-class MetadataGrpcClient(channelUri : URI) {
+class MetadataGrpcClient(channelUri: URI) {
 
     private val metadataClient: QueryGrpc.QueryBlockingStub
 
@@ -52,7 +49,8 @@ class MetadataGrpcClient(channelUri : URI) {
             OwnershipRequest.newBuilder()
                 .setAddress(address)
                 .setPagination(getPaginationBuilder(offset, limit))
-                .build())
+                .build()
+        )
 
     fun getScopeById(uuid: String, includeSessions: Boolean = false) =
         metadataClient.scope(
@@ -60,18 +58,20 @@ class MetadataGrpcClient(channelUri : URI) {
                 .setScopeId(uuid)
                 .setIncludeRecords(true)
                 .setIncludeSessions(includeSessions)
-                .build())
+                .build()
+        )
 
     fun getScopeSpecById(addr: String) =
         metadataClient.scopeSpecification(
             ScopeSpecificationRequest.newBuilder()
                 .setSpecificationId(addr)
-                .build())
+                .build()
+        )
 
     fun getRecordSpecsForContractSpec(contractSpec: String) =
         metadataClient.recordSpecificationsForContractSpecification(
             RecordSpecificationsForContractSpecificationRequest.newBuilder()
                 .setSpecificationId(contractSpec)
-                .build())
+                .build()
+        )
 }
-

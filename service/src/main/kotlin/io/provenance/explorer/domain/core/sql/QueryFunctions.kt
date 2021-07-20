@@ -33,8 +33,8 @@ fun DateTrunc(granularity: String, column: Expression<*>) =
 
 class ColumnNullsLast(private val col: Expression<*>) : Expression<String>() {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) = queryBuilder {
-            append(col, " IS NOT NULL ")
-        }
+        append(col, " IS NOT NULL ")
+    }
 }
 
 fun Expression<*>.nullsLast() = ColumnNullsLast(this)

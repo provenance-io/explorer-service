@@ -101,7 +101,7 @@ class Bech32 {
             require(bech32.length in MIN_VALID_LENGTH..MAX_VALID_LENGTH) { "invalid bech32 string length" }
             require(bech32.toCharArray().none { c -> c.toInt() < MIN_VALID_CODEPOINT || c.toInt() > MAX_VALID_CODEPOINT }) {
                 "invalid character in bech32: ${bech32.toCharArray().map { c -> c.toInt() }
-                .filter { c -> c < MIN_VALID_CODEPOINT || c > MAX_VALID_CODEPOINT }}"
+                    .filter { c -> c < MIN_VALID_CODEPOINT || c > MAX_VALID_CODEPOINT }}"
             }
 
             require(bech32 == bech32.toLowerCase() || bech32 == bech32.toUpperCase()) {
@@ -133,8 +133,10 @@ class Bech32 {
 
         /** Encodes 5-bit bytes (fiveBitData) with a given human readable portion (hrp) into a bech32 string. */
         private fun encodeFiveBitData(hrp: String, fiveBitData: ByteArray): String {
-            return (fiveBitData.plus(checksum(hrp, fiveBitData.toTypedArray()))
-                .map { b -> charset[b.toInt()] }).joinToString("", hrp + "1")
+            return (
+                fiveBitData.plus(checksum(hrp, fiveBitData.toTypedArray()))
+                    .map { b -> charset[b.toInt()] }
+                ).joinToString("", hrp + "1")
         }
 
         /**

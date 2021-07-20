@@ -49,5 +49,4 @@ class GovController(private val govService: GovService) {
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
         @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
     ) = ResponseEntity.ok(govService.getAddressVotes(address, page, count))
-
 }

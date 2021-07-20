@@ -1,6 +1,5 @@
 package io.provenance.explorer.web.v2
 
-import com.google.protobuf.ByteString
 import io.provenance.explorer.domain.entities.UnknownTxType
 import io.provenance.explorer.service.utility.UtilityService
 import io.swagger.annotations.Api
@@ -51,5 +50,4 @@ class UtilityController(private val us: UtilityService) {
     @ApiOperation("For Testing base64 encoded string")
     @GetMapping("/test/base64")
     fun base64ToStringTest(@RequestParam str: String) = ResponseEntity.ok(us.decodeToString(str))
-
 }

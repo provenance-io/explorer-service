@@ -25,7 +25,6 @@ import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-
 @Service
 class ExplorerService(
     private val props: ExplorerProperties,
@@ -75,14 +74,17 @@ class ExplorerService(
             time = blockResponse.block.header.time.formattedString(),
             proposerAddress = validatorAddresses.operatorAddress,
             moniker = stakingValidator.description.moniker,
-            icon = "", //TODO Add icon
+            icon = "", // TODO Add icon
             votingPower = CountTotal(
                 validatorsResponse.validatorsList.filter { it.address in votingVals }.sumOf { v -> v.votingPower.toBigInteger() },
-                validatorsResponse.validatorsList.sumOf { v -> v.votingPower.toBigInteger() }),
+                validatorsResponse.validatorsList.sumOf { v -> v.votingPower.toBigInteger() }
+            ),
             validatorCount = CountTotal(
                 validatorsResponse.validatorsList.filter { it.address in votingVals }.size.toBigInteger(),
-                validatorsResponse.validatorsCount.toBigInteger()),
-            txNum = blockResponse.block.data.txsCount)
+                validatorsResponse.validatorsCount.toBigInteger()
+            ),
+            txNum = blockResponse.block.data.txsCount
+        )
     }
 
     private fun getAverageBlockCreationTime() = let {

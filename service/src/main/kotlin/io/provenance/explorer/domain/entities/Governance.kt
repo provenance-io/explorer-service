@@ -50,7 +50,8 @@ fun Message.toProposalContent(protoPrinter: JsonFormat.Printer) =
         .let { node ->
             node.remove("title")
             node.remove("description")
-            node }
+            node
+        }
 
 class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<GovProposalRecord>(GovProposalTable) {
@@ -140,7 +141,9 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
                         it.txTimestamp,
                         it.proposalId,
                         "",
-                        "") }
+                        ""
+                    )
+                }
         }
 
         fun getByAddrIdPaginated(addrId: Int, limit: Int, offset: Int) = transaction {
@@ -158,7 +161,9 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
                         it[GovVoteTable.txTimestamp],
                         it[GovVoteTable.proposalId],
                         it[GovProposalTable.title],
-                        it[GovProposalTable.status]) }
+                        it[GovProposalTable.status]
+                    )
+                }
         }
 
         fun getByAddrIdCount(addrId: Int) = transaction {
@@ -176,23 +181,23 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
             vote: Tx.MsgVote,
             addrInfo: GovAddrData
         ) = transaction {
-                findByProposalIdAndAddrId(vote.proposalId, addrInfo.addrId)
-                    ?.apply {
-                        this.vote = vote.option.name
-                        this.blockHeight = blockHeight
-                        this.txHash = txHash
-                        this.txTimestamp = txTimestamp
-                    } ?: GovVoteTable.insertAndGetId {
-                        it[this.proposalId] = vote.proposalId
-                        it[this.addressId] = addrInfo.addrId
-                        it[this.address] = vote.voter
-                        it[this.isValidator] = addrInfo.isValidator
-                        it[this.vote] = vote.option.name
-                        it[this.blockHeight] = txInfo.blockHeight
-                        it[this.txHash] = txInfo.txHash
-                        it[this.txTimestamp] = txInfo.txTimestamp
-                }.let { GovVoteRecord.findById(it)!! }
-            }
+            findByProposalIdAndAddrId(vote.proposalId, addrInfo.addrId)
+                ?.apply {
+                    this.vote = vote.option.name
+                    this.blockHeight = blockHeight
+                    this.txHash = txHash
+                    this.txTimestamp = txTimestamp
+                } ?: GovVoteTable.insertAndGetId {
+                it[this.proposalId] = vote.proposalId
+                it[this.addressId] = addrInfo.addrId
+                it[this.address] = vote.voter
+                it[this.isValidator] = addrInfo.isValidator
+                it[this.vote] = vote.option.name
+                it[this.blockHeight] = txInfo.blockHeight
+                it[this.txHash] = txInfo.txHash
+                it[this.txTimestamp] = txInfo.txTimestamp
+            }.let { GovVoteRecord.findById(it)!! }
+        }
     }
 
     var proposalId by GovVoteTable.proposalId

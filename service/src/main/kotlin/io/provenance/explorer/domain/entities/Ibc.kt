@@ -66,22 +66,22 @@ class IbcChannelRecord(id: EntityID<Int>) : IntEntity(id) {
             client: QueryOuterClass.QueryChannelClientStateResponse,
             escrowAcc: AccountRecord
         ) = transaction {
-                findBySrcPortSrcChannel(portId, channelId)?.apply {
-                    this.status = channel.channel.state.name
-                    this.data = channel
-                } ?: IbcChannelTable.insertAndGetId {
-                    it[this.client] = client.identifiedClientState.clientId
-                    it[this.dstChainName] = client.identifiedClientState.clientState.getChainName()
-                    it[this.srcPort] = portId
-                    it[this.srcChannel] = channelId
-                    it[this.dstPort] = channel.channel.counterparty.portId
-                    it[this.dstChannel] = channel.channel.counterparty.channelId
-                    it[this.status] = channel.channel.state.name
-                    it[this.escrowAddrId] = escrowAcc.id.value
-                    it[this.escrowAddr] = escrowAcc.accountAddress
-                    it[this.data] = channel
-                }.let { IbcChannelRecord.findById(it)!! }
-            }
+            findBySrcPortSrcChannel(portId, channelId)?.apply {
+                this.status = channel.channel.state.name
+                this.data = channel
+            } ?: IbcChannelTable.insertAndGetId {
+                it[this.client] = client.identifiedClientState.clientId
+                it[this.dstChainName] = client.identifiedClientState.clientState.getChainName()
+                it[this.srcPort] = portId
+                it[this.srcChannel] = channelId
+                it[this.dstPort] = channel.channel.counterparty.portId
+                it[this.dstChannel] = channel.channel.counterparty.channelId
+                it[this.status] = channel.channel.state.name
+                it[this.escrowAddrId] = escrowAcc.id.value
+                it[this.escrowAddr] = escrowAcc.accountAddress
+                it[this.data] = channel
+            }.let { IbcChannelRecord.findById(it)!! }
+        }
 
         fun getAll() = transaction { IbcChannelRecord.all().toMutableList() }
 
@@ -185,16 +185,21 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun getByChannel() = transaction {
             IbcLedgerTable.innerJoin(IbcChannelTable, { IbcLedgerTable.channelId }, { IbcChannelTable.id })
-                .slice(IbcLedgerTable.dstChainName, IbcChannelTable.srcPort, IbcChannelTable.srcChannel,
+                .slice(
+                    IbcLedgerTable.dstChainName, IbcChannelTable.srcPort, IbcChannelTable.srcChannel,
                     IbcChannelTable.dstPort, IbcChannelTable.dstChannel, IbcLedgerTable.denom, balanceInSum,
-                    balanceOutSum, lastTxTime)
+                    balanceOutSum, lastTxTime
+                )
                 .select { IbcLedgerTable.acknowledged and IbcLedgerTable.ackSuccess }
-                .groupBy(IbcLedgerTable.dstChainName, IbcChannelTable.srcPort, IbcChannelTable.srcChannel,
-                    IbcChannelTable.dstPort, IbcChannelTable.dstChannel, IbcLedgerTable.denom)
+                .groupBy(
+                    IbcLedgerTable.dstChainName, IbcChannelTable.srcPort, IbcChannelTable.srcChannel,
+                    IbcChannelTable.dstPort, IbcChannelTable.dstChannel, IbcLedgerTable.denom
+                )
                 .orderBy(
                     Pair(IbcLedgerTable.dstChainName, SortOrder.ASC),
                     Pair(IbcChannelTable.srcChannel, SortOrder.ASC),
-                    Pair(IbcLedgerTable.denom, SortOrder.ASC))
+                    Pair(IbcLedgerTable.denom, SortOrder.ASC)
+                )
                 .map {
                     LedgerBySliceRes(
                         it[IbcLedgerTable.dstChainName],
@@ -206,7 +211,8 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
                         it[balanceInSum],
                         it[balanceOutSum],
                         it[lastTxTime]!!
-                    ) }
+                    )
+                }
         }
 
         fun getByChain() = transaction {
@@ -216,7 +222,8 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
                 .groupBy(IbcLedgerTable.dstChainName, IbcLedgerTable.denom)
                 .orderBy(
                     Pair(IbcLedgerTable.dstChainName, SortOrder.ASC),
-                    Pair(IbcLedgerTable.denom, SortOrder.ASC))
+                    Pair(IbcLedgerTable.denom, SortOrder.ASC)
+                )
                 .map {
                     LedgerBySliceRes(
                         it[IbcLedgerTable.dstChainName],
@@ -228,13 +235,14 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
                         it[balanceInSum],
                         it[balanceOutSum],
                         it[lastTxTime]!!
-                    ) }
+                    )
+                }
         }
 
         fun getByDenom() = transaction {
             IbcLedgerTable
                 .slice(IbcLedgerTable.denom, balanceInSum, balanceOutSum, lastTxTime)
-                .select { IbcLedgerTable.acknowledged and  IbcLedgerTable.ackSuccess }
+                .select { IbcLedgerTable.acknowledged and IbcLedgerTable.ackSuccess }
                 .groupBy(IbcLedgerTable.denom)
                 .orderBy(Pair(IbcLedgerTable.denom, SortOrder.ASC))
                 .map {
@@ -248,7 +256,8 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
                         it[balanceInSum],
                         it[balanceOutSum],
                         it[lastTxTime]!!
-                    ) }
+                    )
+                }
         }
     }
 

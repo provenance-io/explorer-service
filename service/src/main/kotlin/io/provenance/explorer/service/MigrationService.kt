@@ -52,7 +52,7 @@ class MigrationService(
 
     fun updateValidatorsCache() = validatorService.updateValidatorsAtHeight().let { true }
 
-    fun updateAccounts(list : List<String>) = transaction {
+    fun updateAccounts(list: List<String>) = transaction {
         AccountRecord.findListByAddress(list).forEach { it.update(it.data!!) }
     }
 
@@ -62,7 +62,7 @@ class MigrationService(
         while (start <= endHeight) {
             transaction {
                 logger.info("Fetching $start to ${start + inc - 1}")
-                BlockCacheRecord.find { BlockCacheTable.id.between(start, start + inc -1) }
+                BlockCacheRecord.find { BlockCacheTable.id.between(start, start + inc - 1) }
                     .orderBy(Pair(BlockCacheTable.id, SortOrder.ASC)).forEach {
                         validatorService.saveMissedBlocks(it.block)
                     }
