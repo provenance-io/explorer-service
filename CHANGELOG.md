@@ -48,6 +48,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Bug Fixes
 * Tx Msgs MetadataAddress types displayed as Base64 strings in UI #145
 * Processing new protos from v1.5.0 #175
+* Don't try to save missed blocks when current block height is 0 #167
 
 ### Data
 * Added migration 20 for indices on `block_cache` #117
