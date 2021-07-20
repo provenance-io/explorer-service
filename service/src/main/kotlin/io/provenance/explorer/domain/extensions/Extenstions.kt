@@ -179,7 +179,7 @@ val protoTypesToCheck = arrayOf(
     "/provenance.metadata.v1.MsgWriteRecordRequest",
     "/provenance.metadata.v1.MsgDeleteRecordRequest",
     "/provenance.metadata.v1.MsgAddContractSpecToScopeSpecRequest",
-    "/provenance.metadata.v1.MsgDeleteContractSpecFromScopeSpecRequest",
+    "/provenance.metadata.v1.MsgDeleteContractSpecFromScopeSpecRequest"
 )
 
 val protoTypesFieldsToCheck = arrayOf(
@@ -188,7 +188,7 @@ val protoTypesFieldsToCheck = arrayOf(
     "recordId",
     "sessionId",
     "contractSpecificationId",
-    "scopeSpecificationId",
+    "scopeSpecificationId"
 )
 
 fun Message.toObjectNode(protoPrinter: JsonFormat.Printer) =
