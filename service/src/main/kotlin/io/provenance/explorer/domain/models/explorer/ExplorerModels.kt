@@ -1,20 +1,7 @@
 package io.provenance.explorer.domain.models.explorer
 
-import com.google.protobuf.Descriptors
-import com.google.protobuf.Duration
-import cosmos.bank.v1beta1.QueryOuterClass as BankOuterClass
-import cosmos.auth.v1beta1.QueryOuterClass as AuthOuterClass
-import cosmos.distribution.v1beta1.QueryOuterClass as DistOuterClass
-import cosmos.staking.v1beta1.QueryOuterClass as StakingOuterClass
-import ibc.applications.transfer.v1.QueryOuterClass as TransferOuterClass
-import ibc.core.client.v1.QueryOuterClass as ClientOuterClass
-import io.provenance.attribute.v1.QueryParamsResponse as AttrResponse
-import io.provenance.name.v1.QueryParamsResponse as NameResponse
-import io.provenance.metadata.v1.QueryParamsResponse as MetadataResponse
-import io.provenance.marker.v1.QueryParamsResponse as MarkerResponse
-import cosmos.slashing.v1beta1.QueryOuterClass as SlashingOuterClass
-import cosmos.gov.v1beta1.QueryOuterClass as GovClass
-import cosmos.mint.v1beta1.QueryOuterClass as MintOuterClass
+
+import com.google.protobuf.ProtocolStringList
 import java.math.BigDecimal
 import java.math.BigInteger
 
@@ -51,44 +38,118 @@ data class Params(
 
 data class CosmosParams(
     val authParams: AuthParams,
-    val bankParams: String, //BankOuterClass.QueryParamsResponse,
-    val distParams: String, //DistOuterClass.QueryParamsResponse,
+    val bankParams: BankParams,
+    val distParams: DistParams,
     val govParams: GovParams,
-    val mint: String, //MintOuterClass.QueryParamsResponse,
-    val slashingParams: String, //SlashingOuterClass.QueryParamsResponse,
-    val stakingParams: String, //StakingOuterClass.QueryParamsResponse,
+    val mint: MintParams,
+    val slashingParams: SlashingParams,
+    val stakingParams: StakingParams,
     val ibc: IBCParams,
 )
 
 data class AuthParams(
     val max_memo_characters: Long,
-    val tx_sig_limit: Long,
-    val tx_size_cost_per_byte: Long,
-    val sig_verify_cost_ed25519: Long,
-    val sig_verify_cost_secp256k1: Long,
+    val txSigLimit: Long,
+    val txSizeCostPerByte: Long,
+    val sigVerifyCostEd25519: Long,
+    val sigVerifyCostSecp256k1: Long,
 )
 
-data class DepositParams(
-    val isInitialized: Boolean,
-    val maxDepositPeriod: com.google.protobuf.Duration,
-    val minDepositCount: Int,
-    val minDepositList: List<cosmos.base.v1beta1.CoinOuterClass.Coin>,
+data class BankParams(
+    val defaultSendEnabled: Boolean,
+)
+
+data class DistParams(
+    val communityTax: String,
+    val baseProposerReward: String,
+    val bonusProposerReward: String,
+    val withdrawAddrEnabled: Boolean,
 )
 
 data class GovParams(
-    val voting: String, //GovClass.QueryParamsResponse,
-    val tallying: String, //GovClass.QueryParamsResponse,
-    val deposit: String, //GovClass.QueryParamsResponse,
+    val voting: VotingParams,
+    val tallying: TallyingParams,
+    val deposit: DepositParams,
+)
+
+data class VotingParams(
+    val votingPeriod: Long,
+)
+
+data class TallyingParams(
+    val quorum: String,
+    val threshold: String,
+    val vetoThreshold: String
+)
+
+data class DepositParams(
+    val minDeposit: MinDeposit,
+    val maxDepositPeriod: Long,
+)
+
+data class MinDeposit(
+    val denom: String,
+    val amount: String,
+)
+
+data class MintParams(
+    val mintDenom: String,
+    val inflationRateChange: String,
+    val inflationMax: String,
+    val inflationMin: String,
+    val goalBonded: String,
+    val blocksPerYear: Long,
+)
+
+data class SlashingParams(
+    val signedBlocksWindow: Long,
+    val minSignedPerWindow: String,
+    val downtimeJailDuration: Long,
+    val slashFractionDoubleSign: String,
+    val slashFractionDowntime: String,
+)
+
+data class StakingParams(
+    val unbondingTime: Long,
+    val maxValidators: Int,
+    val maxEntries: Int,
+    val bondDenom: String,
 )
 
 data class IBCParams(
-    val transferParams: String, //TransferOuterClass.QueryParamsResponse,
-    val clientParams: String, //ClientOuterClass.QueryClientParamsResponse,
+    val transferParams: TransferParams,
+    val clientParams: ClientParams,
+)
+
+data class TransferParams(
+    val sendEnabled: Boolean,
+    val receiveEnabled: Boolean,
+)
+
+data class ClientParams(
+    val allowedClientsList: ProtocolStringList,
 )
 
 data class ProvParams(
-    val attribute: String, //AttrResponse,
-    val marker: String, //MarkerResponse,
-    val metadata: String, //MetadataResponse,
-    val name: String, //NameResponse,
+    val attribute: AttributeParams,
+    val marker: MarkerParams,
+    val metadata: String,
+    val name: NameParams,
+)
+
+data class AttributeParams(
+    val maxValueLength: Int,
+)
+
+data class MarkerParams(
+    val maxTotalSupply: Long,
+    val enableGovernance: Boolean,
+    val unrestrictedDenomRegex: String,
+)
+
+data class NameParams(
+    val maxSegmentLength: Int,
+    val minSegmentLength: Int,
+    val maxNameLevels: Int,
+    val allowUnrestrictedNames: Boolean,
 )

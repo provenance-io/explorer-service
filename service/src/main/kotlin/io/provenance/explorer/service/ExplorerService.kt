@@ -1,6 +1,5 @@
 package io.provenance.explorer.service
 
-import com.google.protobuf.Descriptors
 import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
@@ -10,6 +9,7 @@ import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.height
+import io.provenance.explorer.domain.extensions.toDecCoin
 import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.translateByteArray
 import io.provenance.explorer.domain.models.explorer.*
@@ -146,26 +146,79 @@ class ExplorerService(
                     authParams.sigVerifyCostEd25519,
                     authParams.sigVerifyCostSecp256K1,
                 ),
-                bankParams.toString(),
-                distParams.toString(),
-                GovParams(
-                    votingParams.toString(),
-                    tallyParams.toString(),
-                    depositParams.toString()
+                BankParams(
+                    bankParams.defaultSendEnabled,
                 ),
-                mintParams.toString(),
-                slashingParams.toString(),
-                stakingParams.toString(),
+                DistParams(
+                    distParams.communityTax.toDecCoin(),
+                    distParams.baseProposerReward.toDecCoin(),
+                    distParams.bonusProposerReward.toDecCoin(),
+                    distParams.withdrawAddrEnabled,
+                ),
+                GovParams(
+                    VotingParams(
+                        votingParams.votingPeriod.seconds,
+                    ),
+                    TallyingParams(
+                        tallyParams.quorum.toString(Charsets.UTF_8).toDecCoin(),
+                        tallyParams.threshold.toString(Charsets.UTF_8).toDecCoin(),
+                        tallyParams.vetoThreshold.toString(Charsets.UTF_8).toDecCoin(),
+                    ),
+                    DepositParams(
+                        MinDeposit(
+                            depositParams.getMinDeposit(0).denom,
+                            depositParams.getMinDeposit(0).amount,
+                        ),
+                        depositParams.maxDepositPeriod.seconds,
+                    ),
+                ),
+                MintParams(
+                    mintParams.mintDenom,
+                    mintParams.inflationRateChange.toDecCoin(),
+                    mintParams.inflationMax,
+                    mintParams.inflationMin,
+                    mintParams.goalBonded.toDecCoin(),
+                    mintParams.blocksPerYear,
+                ),
+                SlashingParams(
+                    slashingParams.signedBlocksWindow,
+                    slashingParams.minSignedPerWindow.toString(Charsets.UTF_8).toDecCoin(),
+                    slashingParams.downtimeJailDuration.seconds,
+                    slashingParams.slashFractionDoubleSign.toString(Charsets.UTF_8).toDecCoin(),
+                    slashingParams.slashFractionDowntime.toString(Charsets.UTF_8).toDecCoin(),
+                ),
+                StakingParams(
+                    stakingParams.unbondingTime.seconds,
+                    stakingParams.maxValidators,
+                    stakingParams.maxEntries,
+                    stakingParams.bondDenom,
+                ),
                 IBCParams(
-                    transferParams.toString(),
-                    clientParams.toString(),
+                    TransferParams(
+                        transferParams.sendEnabled,
+                        transferParams.receiveEnabled,
+                    ),
+                    ClientParams(
+                        clientParams.allowedClientsList,
+                    ),
                 ),
             ),
             ProvParams(
-                attrParams.toString(),
-                markerParams.toString(),
+                AttributeParams(
+                    attrParams.maxValueLength,
+                ),
+                MarkerParams(
+                    markerParams.maxTotalSupply,
+                    markerParams.enableGovernance,
+                    markerParams.unrestrictedDenomRegex,
+                ),
                 metadataParams.toString(),
-                nameParams.toString(),
+                NameParams(
+                    nameParams.maxSegmentLength,
+                    nameParams.minSegmentLength,
+                    nameParams.maxNameLevels,
+                    nameParams.allowUnrestrictedNames,
+                ),
             ),
         )
     }
