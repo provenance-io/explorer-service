@@ -156,12 +156,10 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<BlockProposerRecord>(BlockProposerTable) {
 
         fun save(height: Int, minGasFee: Double?, timestamp: DateTime?, proposer: String?) = transaction {
-            (
-                BlockProposerRecord.findById(height) ?: new(height) {
-                    this.proposerOperatorAddress = proposer!!
-                    this.blockTimestamp = timestamp!!
-                }
-                ).apply {
+            BlockProposerRecord.findById(height) ?: new(height) {
+                this.proposerOperatorAddress = proposer!!
+                this.blockTimestamp = timestamp!!
+            }.apply {
                 this.minGasFee = minGasFee
             }
         }
