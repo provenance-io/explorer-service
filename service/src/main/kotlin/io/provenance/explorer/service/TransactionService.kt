@@ -37,7 +37,6 @@ import io.provenance.explorer.grpc.extensions.getModuleAccName
 import io.provenance.explorer.service.async.AsyncCaching
 import io.provenance.explorer.service.async.getAddressType
 import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
@@ -167,7 +166,7 @@ class TransactionService(
     }
 
     fun getTxHistoryByQuery(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
-        BlockCacheRecord.getTxCountsForParams(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
+        BlockCacheRecord.getTxCountsForParamsOld(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
 
     private fun getMonikers(txId: EntityID<Int>): Map<String, String> {
         val monikers =
