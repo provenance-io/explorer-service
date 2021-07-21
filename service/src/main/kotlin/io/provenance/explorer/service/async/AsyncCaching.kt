@@ -25,6 +25,7 @@ import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.TxNftJoinRecord
 import io.provenance.explorer.domain.entities.UNKNOWN
 import io.provenance.explorer.domain.entities.updateHitCount
+import io.provenance.explorer.domain.extensions.fromBase64
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toObjectNode
@@ -97,8 +98,8 @@ class AsyncCaching(
     fun saveBlockEtc(blockRes: Query.GetBlockByHeightResponse): Query.GetBlockByHeightResponse {
         logger.info("saving block ${blockRes.block.height()}")
         blockService.addBlockToCache(
-            blockRes.block.height(), blockRes.block.data.txsCount, blockRes.block.header.time.toDateTime(), blockRes
-        )
+            blockRes.block.height(), blockRes.block.data.txsCount, blockRes.block.header.time.toDateTime(), blockRes)
+        BlockCacheRecord.refreshTxHistoryMatViews()
         validatorService.saveProposerRecord(blockRes, blockRes.block.header.time.toDateTime(), blockRes.block.height())
         validatorService.saveValidatorsAtHeight(blockRes.block.height())
         validatorService.saveMissedBlocks(blockRes)
@@ -205,13 +206,11 @@ class AsyncCaching(
     }
 
     private fun getMsgType(tx: ServiceOuterClass.GetTxResponse, idx: Int) =
-        (
-            try {
-                tx.txResponse.logsList[idx].eventsList.first { event -> event.type == "message" }
-            } catch (ex: Exception) {
-                tx.txResponse.logsList.first().eventsList.filter { event -> event.type == "message" }[idx]
-            }
-            ).let { event ->
+        (try {
+            tx.txResponse.logsList[idx].eventsList.first { event -> event.type == "message" }
+        } catch (ex: Exception) {
+            tx.txResponse.logsList.first().eventsList.filter { event -> event.type == "message" }[idx]
+        }).let { event ->
             val type = event.attributesList.first { att -> att.key == "action" }.value
             val module = event.attributesList.firstOrNull { att -> att.key == "module" }?.value ?: UNKNOWN
             Pair(type, module)
@@ -220,14 +219,14 @@ class AsyncCaching(
     private fun saveAddresses(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
         val msgAddrs = tx.tx.body.messagesList.flatMap { it.getAssociatedAddresses() }
         val eventAddrs = tx.tx.body.messagesList.flatMapIndexed { idx, msg ->
-            val events = msg.getIbcDenomEvents().filter { it.eventType == IbcEventType.ADDRESS }
-                .associate { it.event to it.idField }
-            if (tx.txResponse.logsCount > 0)
-                tx.txResponse.logsList[idx].eventsList
-                    .filter { it.type in events.map { e -> e.key } }
-                    .flatMap { e -> e.attributesList.filter { a -> a.key == events[e.type] }.map { it.value } }
-            else listOf()
-        }
+                val events = msg.getIbcDenomEvents().filter { it.eventType == IbcEventType.ADDRESS }
+                    .associate { it.event to it.idField }
+                if (tx.txResponse.logsCount > 0)
+                    tx.txResponse.logsList[idx].eventsList
+                        .filter { it.type in events.map { e -> e.key } }
+                        .flatMap { e -> e.attributesList.filter { a -> a.key == events[e.type] }.map { it.value } }
+                else listOf()
+            }
         (msgAddrs + eventAddrs).toSet()
             .filter { !it.isNullOrEmpty() }
             .map { saveAddr(it, txId, tx) }
@@ -253,13 +252,13 @@ class AsyncCaching(
         val msgDenoms = tx.tx.body.messagesList.map { it.getAssociatedDenoms() to it.isIbcTransferMsg() }
         val denoms = msgDenoms.flatMap { it.first }
         val eventDenoms = tx.tx.body.messagesList.flatMapIndexed { idx, msg ->
-            val events = msg.getIbcDenomEvents().filter { it.eventType == IbcEventType.DENOM }.associate { it.event to it.idField }
-            if (tx.txResponse.logsCount > 0)
-                tx.txResponse.logsList[idx].eventsList
-                    .filter { it.type in events.map { e -> e.key } }
-                    .flatMap { e -> e.attributesList.filter { a -> a.key == events[e.type] }.map { it.value } }
-            else listOf()
-        }
+                val events = msg.getIbcDenomEvents().filter { it.eventType == IbcEventType.DENOM }.associate { it.event to it.idField }
+                if (tx.txResponse.logsCount > 0)
+                    tx.txResponse.logsList[idx].eventsList
+                        .filter { it.type in events.map { e -> e.key } }
+                        .flatMap { e -> e.attributesList.filter { a -> a.key == events[e.type] }.map { it.value } }
+                else listOf()
+            }
         (denoms + eventDenoms).toSet().mapNotNull { de ->
             val denom = msgDenoms.firstOrNull { it.first.contains(de) }
             if (denom != null && denom.second)
@@ -289,8 +288,7 @@ class AsyncCaching(
             .flatMap { e ->
                 e.attributesList
                     .filter { a -> a.key in me.map { m -> m.idField } }
-                    .map { jacksonObjectMapper().readValue(it.value, String::class.java) }
-            }
+                    .map { jacksonObjectMapper().readValue(it.value, String::class.java) } }
             .map { addr -> addr.toMAddress() }
 
         // Save the nft addresses
@@ -299,8 +297,7 @@ class AsyncCaching(
                 // mark deleted if necessary
                 .also {
                     if (tx.txResponse.code == 0 && (msgAddrPairs.firstOrNull { it.first == listOf(md) }?.second == true))
-                        nftService.markDeleted(md)
-                }
+                        nftService.markDeleted(md) }
         }
         // Save the nft joins
         nfts.forEach { nft -> TxNftJoinRecord.insert(tx.txResponse.txhash, txId, tx.txResponse.height.toInt(), nft) }
@@ -319,12 +316,10 @@ class AsyncCaching(
                                 .eventsList.first { it.type == "submit_proposal" }
                                 .attributesList.first { it.key == "proposal_id" }
                                 .value.toLong()
-                                .let { id ->
-                                    pair.second.toMsgSubmitProposal().let {
+                                .let { id -> pair.second.toMsgSubmitProposal().let {
                                         govService.saveProposal(id, txInfo, it.proposer)
                                         govService.saveDeposit(id, txInfo, null, it)
-                                    }
-                                }
+                                    } }
                         GovMsgType.DEPOSIT ->
                             pair.second.toMsgDeposit().let {
                                 govService.saveProposal(it.proposalId, txInfo, it.depositor)
@@ -341,29 +336,28 @@ class AsyncCaching(
 
     private fun saveIbcChannelData(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse, blockTime: DateTime) =
         transaction {
-            if (tx.txResponse.code == 0) {
-                tx.tx.body.messagesList.filter { it.isIbcTimeoutOnClose() }
-                    .forEach { msg -> msg.toMsgTimeoutOnClose().packet.let { ibcService.saveIbcChannel(it.sourcePort, it.sourceChannel) } }
-                tx.tx.body.messagesList.map { it.getIbcChannelEvents() }
-                    .forEachIndexed fe@{ idx, pair ->
-                        if (pair == null) return@fe
-                        val portAttr = pair.second.first
-                        val channelAttr = pair.second.second
-                        val (port, channel) = tx.txResponse.logsList[idx]
-                            .eventsList.first { it.type == pair.first }
-                            .attributesList.let { list ->
-                                list.first { it.key == portAttr }.value to list.first { it.key == channelAttr }.value
-                            }
-                        ibcService.saveIbcChannel(port, channel)
-                    }
+        if (tx.txResponse.code == 0) {
+            tx.tx.body.messagesList.filter { it.isIbcTimeoutOnClose() }
+                .forEach { msg -> msg.toMsgTimeoutOnClose().packet.let { ibcService.saveIbcChannel(it.sourcePort, it.sourceChannel) } }
+            tx.tx.body.messagesList.map { it.getIbcChannelEvents() }
+                .forEachIndexed fe@{ idx, pair ->
+                    if (pair == null) return@fe
+                    val portAttr = pair.second.first
+                    val channelAttr = pair.second.second
+                    val (port, channel) = tx.txResponse.logsList[idx]
+                        .eventsList.first { it.type == pair.first }
+                        .attributesList.let { list ->
+                            list.first { it.key == portAttr }.value to list.first { it.key == channelAttr }.value }
+                    ibcService.saveIbcChannel(port, channel)
+                }
 
-                val txInfo = TxData(tx.txResponse.height.toInt(), txId.value, tx.txResponse.txhash, blockTime)
-                tx.tx.body.messagesList
-                    .map { msg -> msg.getIbcLedgerMsgs() }
-                    .forEachIndexed fe@{ idx, any ->
-                        if (any == null) return@fe
-                        val ledger = when {
-                            any.typeUrl.endsWith("MsgTransfer") -> {
+            val txInfo = TxData(tx.txResponse.height.toInt(), txId.value, tx.txResponse.txhash, blockTime)
+            tx.tx.body.messagesList
+                .map { msg -> msg.getIbcLedgerMsgs() }
+                .forEachIndexed fe@{ idx, any ->
+                    if (any == null) return@fe
+                    val ledger = when {
+                        any.typeUrl.endsWith("MsgTransfer") -> {
                                 val msg = any.toMsgTransfer()
                                 val channel = IbcChannelRecord.findBySrcPortSrcChannel(msg.sourcePort, msg.sourceChannel)
                                 ibcService.parseTransfer(
@@ -371,11 +365,9 @@ class AsyncCaching(
                                         channel = channel!!,
                                         denom = msg.token.denom,
                                         logs = tx.txResponse.logsList[idx],
-                                        balanceOut = msg.token.amount
-                                    )
-                                )
+                                        balanceOut = msg.token.amount))
                             }
-                            any.typeUrl.endsWith("MsgRecvPacket") -> {
+                        any.typeUrl.endsWith("MsgRecvPacket") -> {
                                 val msg = any.toMsgRecvPacket()
                                 val channel = IbcChannelRecord.findBySrcPortSrcChannel(
                                     msg.packet.destinationPort,
@@ -384,11 +376,9 @@ class AsyncCaching(
                                 ibcService.parseRecv(
                                     LedgerInfo(
                                         channel = channel!!,
-                                        logs = tx.txResponse.logsList[idx]
-                                    )
-                                )
+                                        logs = tx.txResponse.logsList[idx]))
                             }
-                            any.typeUrl.endsWith("MsgAcknowledgement") -> {
+                        any.typeUrl.endsWith("MsgAcknowledgement") -> {
                                 val msg = any.toMsgAcknowledgement()
                                 val channel = IbcChannelRecord.findBySrcPortSrcChannel(
                                     msg.packet.sourcePort,
@@ -398,18 +388,16 @@ class AsyncCaching(
                                 ibcService.parseAcknowledge(
                                     LedgerInfo(
                                         channel = channel!!,
-                                        logs = tx.txResponse.logsList[idx]
-                                    ),
-                                    data
-                                )
+                                        logs = tx.txResponse.logsList[idx]),
+                                    data)
                             }
-                            else -> logger.debug("This typeUrl is not yet supported in as an ibc ledger msg: ${any.typeUrl}")
-                                .let { return@fe }
-                        }
-                        ibcService.saveIbcLedger(ledger, txInfo)
+                        else -> logger.debug("This typeUrl is not yet supported in as an ibc ledger msg: ${any.typeUrl}")
+                            .let { return@fe }
                     }
-            }
+                    ibcService.saveIbcLedger(ledger, txInfo)
+                }
         }
+    }
 
     private fun saveSignaturesTx(tx: ServiceOuterClass.GetTxResponse) = transaction {
         tx.tx.authInfo.signerInfosList.forEach { sig ->
@@ -420,6 +408,7 @@ class AsyncCaching(
             )
         }
     }
+
 }
 
 fun String.getAddressType(props: ExplorerProperties) = when {
@@ -429,3 +418,4 @@ fun String.getAddressType(props: ExplorerProperties) = when {
         Pair(TxAddressJoinType.ACCOUNT.name, AccountRecord.findByAddress(this)?.id?.value)
     else -> logger().debug("Address type is not supported: Addr $this").let { null }
 }
+
