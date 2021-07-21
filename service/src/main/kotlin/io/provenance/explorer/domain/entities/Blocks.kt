@@ -63,17 +63,16 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
             }
 
         fun getTxCountsForParams(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
-            val dateTrunc = DateTrunc(granularity, BlockCacheTable.blockTimestamp)
             val tblSuffix = granularity.toLowerCase()
             val query = """
                 |SELECT
                 |   block_cache_tx_history_${tblSuffix}.block_timestamp,
                 |   block_cache_tx_history_${tblSuffix}.tx_count
                 |FROM block_cache_tx_history_${tblSuffix}
-                |WHERE block_cache_tx_history_${tblSuffix}.block_timestamp
-                |   BETWEEN ?
-                |   AND ?
-                |ORDER BY block_cache_tx_history_${tblSuffix}.block_timestamp DESC""".trimMargin()
+                |WHERE block_cache_tx_history_${tblSuffix}.block_timestamp >= ? 
+                |  AND block_cache_tx_history_${tblSuffix}.block_timestamp < ?
+                |ORDER BY block_cache_tx_history_${tblSuffix}.block_timestamp DESC
+                |""".trimMargin()
 
             val dateTimeType = DateColumnType(true)
             val arguments = listOf<Pair<DateColumnType, DateTime>>(
