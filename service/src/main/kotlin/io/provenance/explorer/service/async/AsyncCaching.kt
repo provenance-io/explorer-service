@@ -173,34 +173,44 @@ class AsyncCaching(
         saveGovData(txPair.second, blockTime)
         saveIbcChannelData(txPair.first, txPair.second, blockTime)
         saveSignaturesTx(txPair.second)
+        // is this where I save events?
+        saveEvents(txPair.first, txPair.second)
         return TxUpdatedItems(addrs, markers)
     }
 
-    private fun saveMessages(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
-        tx.tx.body.messagesList.forEachIndexed { idx, msg ->
-            if (tx.txResponse.logsCount > 0) {
-                val type: String
-                val module: String
-                when (val msgType = TxMessageTypeRecord.findByProtoType(msg.typeUrl)) {
-                    null -> {
-                        val typePair = getMsgType(tx, idx)
-                        type = typePair.first
-                        module = typePair.second
-                    }
-                    else -> {
-                        if (msgType.module == UNKNOWN) {
+    private fun saveEvents(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
+        // how do I get event data so I can store it in the database?
+        TxEventRecord.insert(...) // event data goes in here
+
+    }
+
+        private fun saveMessages(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
+            tx.tx.body.messagesList.forEachIndexed { idx, msg ->
+                if (tx.txResponse.logsCount > 0) {
+//                    msg.getAssociatedMetadataEvents() // maybe this could be valuable?
+                    val type: String
+                    val module: String
+                    when (val msgType = TxMessageTypeRecord.findByProtoType(msg.typeUrl)) {
+                        null -> {
                             val typePair = getMsgType(tx, idx)
                             type = typePair.first
                             module = typePair.second
-                        } else {
-                            type = msgType.type
-                            module = msgType.module
+                        }
+                        else -> {
+                            if (msgType.module == UNKNOWN) {
+                                val typePair = getMsgType(tx, idx)
+                                type = typePair.first
+                                module = typePair.second
+                            } else {
+                                type = msgType.type
+                                module = msgType.module
+                            }
                         }
                     }
-                }
-                TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module)
-            } else
-                TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, UNKNOWN, UNKNOWN)
+                    TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module)
+                } else
+                    TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, UNKNOWN, UNKNOWN)
+            }
         }
     }
 

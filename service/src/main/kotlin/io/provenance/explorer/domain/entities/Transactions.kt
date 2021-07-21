@@ -52,6 +52,8 @@ object TxCacheTable : IntIdTable(name = "tx_cache") {
     val txV2 = jsonb<TxCacheTable, ServiceOuterClass.GetTxResponse>("tx_v2", OBJECT_MAPPER)
 }
 
+// Would I make a table for TxEvents in here?
+
 class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxCacheRecord>(TxCacheTable) {
         fun insertIgnore(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime) =
@@ -191,6 +193,13 @@ object TxMessageTypeTable : IntIdTable(name = "tx_message_type") {
     val category = varchar("category", 128).nullable()
 }
 
+object TxEventTypeTable : IntIdTable(name = "tx_event_type") {
+    val type = varchar("type", 128)
+    val module = varchar("module", 128)
+    val protoType = varchar("proto_type", 256)
+    val category = varchar("category", 128).nullable()
+}
+
 const val UNKNOWN = "unknown"
 class TxMessageTypeRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxMessageTypeRecord>(TxMessageTypeTable) {
@@ -226,6 +235,33 @@ class TxMessageTypeRecord(id: EntityID<Int>) : IntEntity(id) {
     var module by TxMessageTypeTable.module
     var protoType by TxMessageTypeTable.protoType
     var category by TxMessageTypeTable.category
+}
+
+object TxEventsTable : IntIdTable(name = "tx_events") {
+    val blockHeight = integer("block_height")
+    val txHash = varchar("tx_hash", 64)
+    val txHashId = reference("tx_hash_id", TxCacheTable)
+    val txMessageId = integer("tx_message_id")
+    val txMessageType = reference("tx_message_type_id", TxEventTypeTable)
+    val eventAttributeList = jsonb<TxEventsTable, Any>("event_attribute_list", OBJECT_MAPPER) // Not sure what goes in the <>
+}
+
+class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxEventRecord>(TxEventsTable) {
+        fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, message: Any, type: String, module: String) =
+            transaction {
+                TxEventTypeRecord.insert(type, module, message.typeUrl).let { typeId ->
+                    TxMessageRecord.findByTxHashAndMessageHash(txId.value, message.value.toDbHash()) ?: TxMessageTable.insert {
+                        it[this.blockHeight] = blockHeight
+                        it[this.txHash] = txHash
+                        it[this.txHashId] = txId
+                        it[this.txMessageType] = typeId
+                        it[this.eventType] =  // eventType
+                        it[this.eventAttrList] = message.value.toDbHash()
+                    }
+                }
+            }
+    }
 }
 
 object TxMessageTable : IntIdTable(name = "tx_message") {
