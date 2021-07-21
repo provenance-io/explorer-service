@@ -166,7 +166,7 @@ class TransactionService(
     }
 
     fun getTxHistoryByQuery(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
-        BlockCacheRecord.getTxCountsForParamsOld(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
+        BlockCacheRecord.getTxCountsForParams(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
 
     private fun getMonikers(txId: EntityID<Int>): Map<String, String> {
         val monikers =
