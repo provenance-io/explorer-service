@@ -8,10 +8,10 @@ import java.net.URI
 import java.util.concurrent.TimeUnit
 import ibc.applications.transfer.v1.QueryGrpc as TransferQueryGrpc
 import ibc.applications.transfer.v1.QueryOuterClass as TransferOuterClass
-import ibc.core.client.v1.QueryOuterClass as ClientOuterClass
 import ibc.core.channel.v1.QueryGrpc as ChannelQueryGrpc
 import ibc.core.channel.v1.QueryOuterClass as ChannelOuterClass
 import ibc.core.client.v1.QueryGrpc as ClientQueryGrpc
+import ibc.core.client.v1.QueryOuterClass as ClientOuterClass
 import ibc.core.connection.v1.QueryGrpc as ConnectionQueryGrpc
 
 @Component
@@ -55,14 +55,16 @@ class IbcGrpcClient(channelUri: URI) {
             ChannelOuterClass.QueryChannelRequest.newBuilder()
                 .setPortId(port)
                 .setChannelId(channel)
-                .build())
+                .build()
+        )
 
     fun getClientForChannel(port: String, channel: String) =
         channelClient.channelClientState(
             ChannelOuterClass.QueryChannelClientStateRequest.newBuilder()
                 .setPortId(port)
                 .setChannelId(channel)
-                .build())
+                .build()
+        )
 
     fun getTransferParams() = transferClient.params(TransferOuterClass.QueryParamsRequest.newBuilder().build())
 

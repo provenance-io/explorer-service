@@ -1,8 +1,8 @@
 package io.provenance.explorer.web.v2
 
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
-import io.provenance.explorer.domain.models.explorer.Spotlight
 import io.provenance.explorer.domain.models.explorer.Params
+import io.provenance.explorer.domain.models.explorer.Spotlight
 import io.provenance.explorer.service.ExplorerService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -26,7 +26,6 @@ class GeneralController(private val explorerService: ExplorerService) {
     @ApiOperation("Returns parameters for all the modules")
     @GetMapping("/params")
     fun param(): ResponseEntity<Params> = ResponseEntity.ok(explorerService.getParams())
-
 
     @ApiOperation("Returns spotlight statistics")
     @GetMapping("/spotlight")

@@ -108,5 +108,4 @@ class AsyncService(
     fun updateProposalStatus() = transaction {
         GovProposalRecord.getNonFinalProposals().forEach { govService.updateProposal(it) }
     }
-
 }

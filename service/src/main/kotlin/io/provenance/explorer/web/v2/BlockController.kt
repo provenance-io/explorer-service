@@ -29,7 +29,8 @@ class BlockController(private val explorerService: ExplorerService) {
 
     @ApiOperation("Returns most recent blocks")
     @GetMapping("/recent")
-    fun recentBlocks(@RequestParam(required = true, defaultValue = "10") @Min(1) count: Int,
-                     @RequestParam(required = true, defaultValue = "1") @Min(1) page: Int
+    fun recentBlocks(
+        @RequestParam(required = true, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = true, defaultValue = "1") @Min(1) page: Int
     ) = ResponseEntity.ok(explorerService.getRecentBlocks(count, page - 1))
 }

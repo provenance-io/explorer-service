@@ -25,19 +25,18 @@ class ExplorerProperties {
 
     fun spotlightTtlMs() = spotlightTtlMs.toLong()
 
-    //tp or pb
+    // tp or pb
     fun provAccPrefix() =
         if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_ACCOUNT_PREFIX
         else Bech32.PROVENANCE_TESTNET_ACCOUNT_PREFIX
 
-    //valoper
+    // valoper
     fun provValOperPrefix() =
         if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_VALIDATOR_ACCOUNT_PREFIX
         else Bech32.PROVENANCE_TESTNET_VALIDATOR_ACCOUNT_PREFIX
 
-    //valcons
+    // valcons
     fun provValConsPrefix() =
         if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_CONSENSUS_ACCOUNT_PREFIX
         else Bech32.PROVENANCE_TESTNET_CONSENSUS_ACCOUNT_PREFIX
-
 }

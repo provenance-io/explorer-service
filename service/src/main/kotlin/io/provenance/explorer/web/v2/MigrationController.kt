@@ -28,7 +28,7 @@ class MigrationController(private val migrationService: MigrationService) {
 
     @ApiOperation("Updates existing blocks with txs")
     @PutMapping("/update/blocks")
-    fun updateBlocks(@RequestBody blocks: List<Int>)= ResponseEntity.ok(migrationService.updateBlocks(blocks))
+    fun updateBlocks(@RequestBody blocks: List<Int>) = ResponseEntity.ok(migrationService.updateBlocks(blocks))
 
     @ApiOperation("Updates validator cache for missing records")
     @GetMapping("/update/validatorCache")
@@ -47,5 +47,4 @@ class MigrationController(private val migrationService: MigrationService) {
     @GetMapping("/update/blocks/missed")
     fun updateMissedBlocks(@RequestParam start: Int, @RequestParam end: Int, @RequestParam inc: Int) =
         ResponseEntity.ok(migrationService.updateMissedBlocks(start, end, inc))
-
 }

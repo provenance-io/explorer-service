@@ -31,7 +31,6 @@ import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import java.math.BigDecimal
 
-
 object BlockCacheTable : CacheIdTable<Int>(name = "block_cache") {
     val height = integer("height")
     override val id = height.entityId()
@@ -64,14 +63,18 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
             val dateTrunc = DateTrunc(granularity, BlockCacheTable.blockTimestamp)
             val txSum = BlockCacheTable.txCount.sum()
             BlockCacheTable.slice(dateTrunc, txSum)
-                .select { BlockCacheTable.blockTimestamp
-                    .between(fromDate.startOfDay(), toDate.startOfDay().plusDays(1)) }
+                .select {
+                    BlockCacheTable.blockTimestamp
+                        .between(fromDate.startOfDay(), toDate.startOfDay().plusDays(1))
+                }
                 .groupBy(dateTrunc)
                 .orderBy(dateTrunc, SortOrder.DESC)
                 .map {
                     TxHistory(
                         it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
-                        it[txSum]!!) }
+                        it[txSum]!!
+                    )
+                }
         }
 
         fun getDaysBetweenHeights(minHeight: Int, maxHeight: Int) = transaction {
@@ -153,10 +156,10 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<BlockProposerRecord>(BlockProposerTable) {
 
         fun save(height: Int, minGasFee: Double?, timestamp: DateTime?, proposer: String?) = transaction {
-            (BlockProposerRecord.findById(height) ?: new(height) {
+            BlockProposerRecord.findById(height) ?: new(height) {
                 this.proposerOperatorAddress = proposer!!
                 this.blockTimestamp = timestamp!!
-            }).apply {
+            }.apply {
                 this.minGasFee = minGasFee
             }
         }
@@ -171,8 +174,10 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findCurrentFeeForAddress(address: String) = transaction {
             BlockProposerRecord
-                .find { (BlockProposerTable.proposerOperatorAddress eq address) and
-                    (BlockProposerTable.minGasFee.isNotNull()) }
+                .find {
+                    (BlockProposerTable.proposerOperatorAddress eq address) and
+                        (BlockProposerTable.minGasFee.isNotNull())
+                }
                 .orderBy(Pair(BlockProposerTable.blockHeight, SortOrder.DESC))
                 .limit(1)
                 .firstOrNull()
@@ -181,7 +186,7 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findForDates(fromDate: DateTime, toDate: DateTime, address: String?) = transaction {
             val query = BlockProposerTable
                 .select { BlockProposerTable.blockTimestamp.between(fromDate, toDate.plusDays(1)) }
-            if ( address != null)
+            if (address != null)
                 query.andWhere { BlockProposerTable.proposerOperatorAddress eq address }
             BlockProposerRecord.wrapRows(query)
         }
@@ -224,7 +229,7 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
                     rec.blockHeight > height ->
                         // If current height is under the found height, find the last one directly under current
                         // height, and see if it follows the sequence
-                        when( val last = findForValFirstUnderHeight(valconsAddr, height - 1)) {
+                        when (val last = findForValFirstUnderHeight(valconsAddr, height - 1)) {
                             null -> listOf(0, 0, height)
                             else -> listOf(
                                 if (last.blockHeight == height - 1) last.runningCount else 0,
@@ -270,8 +275,6 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
                 execute(TransactionManager.current())
             }
         }
-
-
     }
 
     var blockHeight by MissedBlocksTable.blockHeight

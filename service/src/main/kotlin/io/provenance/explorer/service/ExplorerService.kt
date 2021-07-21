@@ -12,8 +12,40 @@ import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDecCoin
 import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.translateByteArray
-import io.provenance.explorer.domain.models.explorer.*
-import io.provenance.explorer.grpc.v1.*
+import io.provenance.explorer.domain.models.explorer.AttributeParams
+import io.provenance.explorer.domain.models.explorer.AuthParams
+import io.provenance.explorer.domain.models.explorer.BankParams
+import io.provenance.explorer.domain.models.explorer.BlockSummary
+import io.provenance.explorer.domain.models.explorer.ClientParams
+import io.provenance.explorer.domain.models.explorer.CosmosParams
+import io.provenance.explorer.domain.models.explorer.CountStrTotal
+import io.provenance.explorer.domain.models.explorer.CountTotal
+import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
+import io.provenance.explorer.domain.models.explorer.DepositParams
+import io.provenance.explorer.domain.models.explorer.DistParams
+import io.provenance.explorer.domain.models.explorer.GovParamType
+import io.provenance.explorer.domain.models.explorer.GovParams
+import io.provenance.explorer.domain.models.explorer.IBCParams
+import io.provenance.explorer.domain.models.explorer.MarkerParams
+import io.provenance.explorer.domain.models.explorer.MinDeposit
+import io.provenance.explorer.domain.models.explorer.MintParams
+import io.provenance.explorer.domain.models.explorer.NameParams
+import io.provenance.explorer.domain.models.explorer.PagedResults
+import io.provenance.explorer.domain.models.explorer.Params
+import io.provenance.explorer.domain.models.explorer.ProvParams
+import io.provenance.explorer.domain.models.explorer.SlashingParams
+import io.provenance.explorer.domain.models.explorer.Spotlight
+import io.provenance.explorer.domain.models.explorer.StakingParams
+import io.provenance.explorer.domain.models.explorer.TallyingParams
+import io.provenance.explorer.domain.models.explorer.TransferParams
+import io.provenance.explorer.domain.models.explorer.VotingParams
+import io.provenance.explorer.grpc.v1.AccountGrpcClient
+import io.provenance.explorer.grpc.v1.AttributeGrpcClient
+import io.provenance.explorer.grpc.v1.GovGrpcClient
+import io.provenance.explorer.grpc.v1.IbcGrpcClient
+import io.provenance.explorer.grpc.v1.MarkerGrpcClient
+import io.provenance.explorer.grpc.v1.MetadataGrpcClient
+import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import io.provenance.explorer.service.async.AsyncCaching
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -78,14 +110,17 @@ class ExplorerService(
             time = blockResponse.block.header.time.formattedString(),
             proposerAddress = validatorAddresses.operatorAddress,
             moniker = stakingValidator.description.moniker,
-            icon = "", //TODO Add icon
+            icon = "", // TODO Add icon
             votingPower = CountTotal(
                 validatorsResponse.validatorsList.filter { it.address in votingVals }.sumOf { v -> v.votingPower.toBigInteger() },
-                validatorsResponse.validatorsList.sumOf { v -> v.votingPower.toBigInteger() }),
+                validatorsResponse.validatorsList.sumOf { v -> v.votingPower.toBigInteger() }
+            ),
             validatorCount = CountTotal(
                 validatorsResponse.validatorsList.filter { it.address in votingVals }.size.toBigInteger(),
-                validatorsResponse.validatorsCount.toBigInteger()),
-            txNum = blockResponse.block.data.txsCount)
+                validatorsResponse.validatorsCount.toBigInteger()
+            ),
+            txNum = blockResponse.block.data.txsCount
+        )
     }
 
     private fun getAverageBlockCreationTime() = let {
@@ -120,7 +155,7 @@ class ExplorerService(
 
     fun getChainId() = asyncCaching.getChainIdString()
 
-    fun getParams() : Params {
+    fun getParams(): Params {
         val authParams = accountClient.getAuthParams().params
         val bankParams = accountClient.getBankParams().params
         val distParams = validatorClient.getDistParams().params

@@ -78,7 +78,9 @@ class ValidatorService(
                     it.operatorAddress.translateAddress(props).accountAddr,
                     it.consensusPubkey.toSingleSigKeyValue()!!,
                     it.consensusPubkey.toAddress(props.provValConsPrefix())!!,
-                    it) }
+                    it
+                )
+            }
     }
 
     fun getMissedBlocks(valConsAddr: String) = MissedBlocksRecord.findLatestForVal(valConsAddr)
@@ -94,7 +96,7 @@ class ValidatorService(
             val stakingValidator = validateStatus(addr.stakingValidator, latestValidator, addr.id.value)
             ValidatorDetails(
                 if (latestValidator != null) CountTotal(latestValidator.votingPower.toBigInteger(), votingPowerTotal)
-                    else null,
+                else null,
                 stakingValidator.description.moniker,
                 addr.operatorAddress,
                 addr.accountAddress,
@@ -102,10 +104,11 @@ class ValidatorService(
                 stakingValidator.consensusPubkey.toAddress(props.provValConsPrefix()) ?: "",
                 CountTotal(
                     (getMissedBlocks(addr.consensusAddress)?.totalCount ?: 0).toBigInteger(),
-                    currentHeight - signingInfo!!.startHeight.toBigInteger()),
+                    currentHeight - signingInfo!!.startHeight.toBigInteger()
+                ),
                 signingInfo.startHeight,
                 addr.consensusAddress.validatorUptime(signingInfo.startHeight.toBigInteger(), currentHeight),
-                null,  // TODO: Update when we can get images going
+                null, // TODO: Update when we can get images going
                 stakingValidator.description.details,
                 stakingValidator.description.website,
                 stakingValidator.description.identity,
@@ -138,15 +141,15 @@ class ValidatorService(
 
     fun findAddressByAccount(address: String) =
         StakingValidatorCacheRecord.findByAccount(address)
-        ?: discoverAddresses().let { StakingValidatorCacheRecord.findByAccount(address) }
+            ?: discoverAddresses().let { StakingValidatorCacheRecord.findByAccount(address) }
 
     fun findAddressByConsensus(address: String) =
         StakingValidatorCacheRecord.findByConsensusAddress(address)
-        ?: discoverAddresses().let { StakingValidatorCacheRecord.findByConsensusAddress(address) }
+            ?: discoverAddresses().let { StakingValidatorCacheRecord.findByConsensusAddress(address) }
 
     fun findAddressByOperator(address: String) =
         StakingValidatorCacheRecord.findByOperator(address)
-        ?: discoverAddresses().let { StakingValidatorCacheRecord.findByOperator(address) }
+            ?: discoverAddresses().let { StakingValidatorCacheRecord.findByOperator(address) }
 
     private fun discoverAddresses() = let {
         val stakingVals = transaction { StakingValidatorCacheRecord.all().map { it.operatorAddress } }
@@ -158,7 +161,8 @@ class ValidatorService(
                         validator.operatorAddress.translateAddress(props).accountAddr,
                         validator.consensusPubkey.toSingleSigKeyValue()!!,
                         validator.consensusPubkey.toAddress(props.provValConsPrefix())!!,
-                        validator)
+                        validator
+                    )
             }
     }
 
@@ -200,7 +204,8 @@ class ValidatorService(
                     validateStatus(
                         v.stakingValidator,
                         validatorSet.firstOrNull { it.address == v.consensusAddress },
-                        v.id.value)
+                        v.id.value
+                    )
                 }
             val stakingValidators = getStakingValidators(status)
             hydrateValidators(validatorSet, stakingValidators, isAtHeight)
@@ -217,7 +222,7 @@ class ValidatorService(
         val height = blockService.getLatestBlockHeight()
         val totalVotingPower = validators.sumOf { it.votingPower.toBigInteger() }
         stakingVals
-            .filter { if (isAtHeight) validators.map { v -> v.address }.contains(it.consensusAddress)  else true }
+            .filter { if (isAtHeight) validators.map { v -> v.address }.contains(it.consensusAddress) else true }
             .map { stakingVal ->
                 val validatorObj = stakingVal
                 val validator = validators.firstOrNull { it.address == stakingVal.consensusAddress }
@@ -280,7 +285,8 @@ class ValidatorService(
                     null,
                     it.delegation.shares.toDecCoin(),
                     null,
-                    null)
+                    null
+                )
             }
             PagedResults(res.pagination.total.pageCountOfResults(limit), list, res.pagination.total)
         }
@@ -333,7 +339,8 @@ class ValidatorService(
             CommissionRate(
                 validator.commission.commissionRates.rate.toDecCoin(),
                 validator.commission.commissionRates.maxRate.toDecCoin(),
-                validator.commission.commissionRates.maxChangeRate.toDecCoin())
+                validator.commission.commissionRates.maxChangeRate.toDecCoin()
+            )
         )
     }
 

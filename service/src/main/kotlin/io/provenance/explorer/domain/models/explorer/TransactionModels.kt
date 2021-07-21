@@ -71,16 +71,20 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
             "fund_community_pool",
             "set_withdraw_address",
             "withdraw_delegator_reward"
-        )),
+        )
+    ),
     VALIDATION(
         "staking",
-        listOf("create_validator", "edit_validator", "unjail", "withdraw_validator_commission")),
+        listOf("create_validator", "edit_validator", "unjail", "withdraw_validator_commission")
+    ),
     GOVERNANCE(
         "governance",
-        listOf("submit_proposal", "deposit", "vote")),
+        listOf("submit_proposal", "deposit", "vote")
+    ),
     TRANSFER(
         "transfer",
-        listOf("send", "multisend", "transfer", "ibc_transfer")),
+        listOf("send", "multisend", "transfer", "ibc_transfer")
+    ),
     ASSET(
         "asset",
         listOf(
@@ -97,7 +101,8 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
             "setmetadata",
             "add_attribute",
             "delete_attribute"
-        )),
+        )
+    ),
     NFT(
         "nft",
         listOf(
@@ -121,7 +126,8 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
             "write_os_locator_request",
             "delete_os_locator_request",
             "modify_os_locator_request"
-        )),
+        )
+    ),
     IBC(
         "ibc",
         listOf(
@@ -142,7 +148,8 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
             "acknowledge_packet",
             "recv_packet",
             "ibc_transfer"
-        ))
+        )
+    )
 }
 
 fun String.getCategoryForType() = MsgTypeSet.values().firstOrNull { it.types.contains(this) }
@@ -155,7 +162,7 @@ data class TxSummary(
     val time: String,
     val fee: CoinStr,
     val signers: Signatures,
-    val status: String,
+    val status: String
 )
 
 data class MsgInfo(

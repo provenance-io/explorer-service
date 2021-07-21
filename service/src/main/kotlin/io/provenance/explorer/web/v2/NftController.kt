@@ -38,7 +38,4 @@ class NftController(private val nftService: NftService) {
     @ApiOperation("Returns records for the NFT")
     @GetMapping("/scope/{addr}/records")
     fun getNftRecords(@PathVariable addr: String) = ResponseEntity.ok(nftService.getRecordsForScope(addr))
-
-
-
 }

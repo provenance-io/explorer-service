@@ -63,11 +63,10 @@ object Versions {
     const val SpringMockk = "3.0.1"
     const val Kotest = "4.4.3"
 
-    //external protos
+    // external protos
     const val Provenance = "v1.5.0"
     const val Cosmos = "v0.42.6"
     const val Wasmd = "v0.17.0"
-
 }
 
 object Libraries {

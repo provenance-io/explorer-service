@@ -9,10 +9,10 @@ import io.provenance.marker.v1.QueryGrpc
 import io.provenance.marker.v1.QueryHoldingRequest
 import io.provenance.marker.v1.QueryHoldingResponse
 import io.provenance.marker.v1.QueryMarkerRequest
-import io.provenance.marker.v1.QueryParamsRequest as MarkerRequest
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
+import io.provenance.marker.v1.QueryParamsRequest as MarkerRequest
 
 @Component
 class MarkerGrpcClient(channelUri: URI) {

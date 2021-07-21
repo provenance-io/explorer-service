@@ -45,6 +45,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Updated `/api/v2/nft/scope/owner/{address}` to return a listview rather than list of `Scope.uuid` #140
 * Updated `NFTs.md` design doc to match newer design doc layouts
 * Updated MissedBlocks insert to accommodate for out-of-sequence blocks (eg service playing catchup) #143
+* Added Kotlin lint check to github actions and fixed incorrectly formatted kotlin code #61
 
 ### Bug Fixes
 * Tx Msgs MetadataAddress types displayed as Base64 strings in UI #145

@@ -1,6 +1,5 @@
 package io.provenance.explorer.grpc.v1
 
-import cosmos.gov.v1beta1.QueryOuterClass
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.getPaginationBuilder
@@ -13,13 +12,13 @@ import cosmos.bank.v1beta1.QueryGrpc as BankQueryGrpc
 import cosmos.bank.v1beta1.QueryOuterClass as BankOuterClass
 import cosmos.distribution.v1beta1.QueryGrpc as DistGrpc
 import cosmos.distribution.v1beta1.QueryOuterClass as DistOuterClass
-import cosmos.staking.v1beta1.QueryGrpc as StakingGrpc
-import cosmos.staking.v1beta1.QueryOuterClass as StakingOuterClass
 import cosmos.mint.v1beta1.QueryGrpc as MintGrpc
 import cosmos.mint.v1beta1.QueryOuterClass as MintOuterClass
+import cosmos.staking.v1beta1.QueryGrpc as StakingGrpc
+import cosmos.staking.v1beta1.QueryOuterClass as StakingOuterClass
 
 @Component
-class AccountGrpcClient(channelUri : URI) {
+class AccountGrpcClient(channelUri: URI) {
 
     private val authClient: AuthQueryGrpc.QueryBlockingStub
     private val bankClient: BankQueryGrpc.QueryBlockingStub
@@ -62,7 +61,8 @@ class AccountGrpcClient(channelUri : URI) {
             BankOuterClass.QueryAllBalancesRequest.newBuilder()
                 .setAddress(address)
                 .setPagination(getPaginationBuilder(offset, limit))
-                .build())
+                .build()
+        )
 
     fun getCurrentSupply(denom: String) =
         bankClient.supplyOf(BankOuterClass.QuerySupplyOfRequest.newBuilder().setDenom(denom).build()).amount
@@ -78,7 +78,8 @@ class AccountGrpcClient(channelUri : URI) {
         bankClient.denomsMetadata(
             BankOuterClass.QueryDenomsMetadataRequest.newBuilder()
                 .setPagination(getPaginationBuilder(0, 100))
-                .build())
+                .build()
+        )
 
     fun getDelegations(address: String, offset: Int, limit: Int) =
         try {
@@ -97,20 +98,23 @@ class AccountGrpcClient(channelUri : URI) {
             StakingOuterClass.QueryDelegatorUnbondingDelegationsRequest.newBuilder()
                 .setDelegatorAddr(address)
                 .setPagination(getPaginationBuilder(offset, limit))
-                .build())
+                .build()
+        )
 
     fun getRedelegations(address: String, offset: Int, limit: Int) =
         stakingClient.redelegations(
             StakingOuterClass.QueryRedelegationsRequest.newBuilder()
                 .setDelegatorAddr(address)
                 .setPagination(getPaginationBuilder(offset, limit))
-                .build())
+                .build()
+        )
 
     fun getRewards(delAddr: String) =
         distClient.delegationTotalRewards(
             DistOuterClass.QueryDelegationTotalRewardsRequest.newBuilder()
                 .setDelegatorAddress(delAddr)
-                .build())
+                .build()
+        )
 
     fun getBankParams() = bankClient.params(BankOuterClass.QueryParamsRequest.newBuilder().build())
 

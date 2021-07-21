@@ -17,8 +17,8 @@ import com.hubspot.jackson.datatype.protobuf.ProtobufModule
 import cosmos.base.abci.v1beta1.Abci
 import cosmos.staking.v1beta1.Staking
 import cosmos.tx.v1beta1.TxOuterClass
-import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.JSON_NODE_FACTORY
+import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.Bech32
 import io.provenance.explorer.domain.core.Hash
@@ -40,7 +40,7 @@ import java.math.BigInteger
 import java.math.RoundingMode
 import java.time.Instant
 import java.time.format.DateTimeFormatter
-import java.util.*
+import java.util.Base64
 import kotlin.math.ceil
 
 fun ByteArray.toByteString() = ByteString.copyFrom(this)
@@ -51,7 +51,7 @@ fun String.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
 fun ByteString.toDbHash() = Hashing.sha512().hashBytes(this.toByteArray()).asBytes().toString()
 fun ByteString.toHash() = this.toByteArray().toBech32Data().hexData
 
-//PubKeySecp256k1
+// PubKeySecp256k1
 fun ByteString.secpPubKeyToBech32(hrpPrefix: String) = let {
     val base64 = this.toByteArray()
     require(base64.size == 33) { "Invalid Base 64 pub key byte length must be 33 not ${base64.size}" }
@@ -62,7 +62,7 @@ fun ByteString.secpPubKeyToBech32(hrpPrefix: String) = let {
     Bech32.encode(hrpPrefix, ripemd)
 }
 
-//PubKeyEd25519
+// PubKeyEd25519
 // Used by validators to create keys
 fun ByteString.edPubKeyToBech32(hrpPrefix: String) = let {
     val base64 = this.toByteArray()
@@ -78,7 +78,6 @@ fun ByteArray.toRIPEMD160() = RIPEMD160Digest().let {
     it.doFinal(buffer, 0)
     buffer
 }
-
 
 fun Abci.TxResponse.type() = this.logsList?.flatMap { it.eventsList }
     ?.firstOrNull { it.type == "message" }
@@ -119,7 +118,6 @@ fun BigInteger.pageCountOfResults(count: Int): Int =
     if (this < count.toBigInteger()) 1
     else ceil(this.toDouble() / count).toInt()
 
-
 fun String.isAddressAsType(type: String) = this.toBech32Data().hrp == type
 
 fun String.translateAddress(props: ExplorerProperties) = this.toBech32Data().let {
@@ -127,7 +125,7 @@ fun String.translateAddress(props: ExplorerProperties) = this.toBech32Data().let
         it.hexData,
         Bech32.encode(props.provAccPrefix(), it.data),
         Bech32.encode(props.provValOperPrefix(), it.data),
-        Bech32.encode(props.provValConsPrefix(), it.data),
+        Bech32.encode(props.provValConsPrefix(), it.data)
     )
 }
 
@@ -136,7 +134,7 @@ fun ByteString.translateByteArray(props: ExplorerProperties) = this.toByteArray(
         it.hexData,
         Bech32.encode(props.provAccPrefix(), it.data),
         Bech32.encode(props.provValOperPrefix(), it.data),
-        Bech32.encode(props.provValConsPrefix(), it.data),
+        Bech32.encode(props.provValConsPrefix(), it.data)
     )
 }
 
@@ -149,8 +147,8 @@ fun Staking.Validator.getStatusString() =
 
 fun Staking.Validator.isActive() = this.status == Staking.BondStatus.BOND_STATUS_BONDED && !this.jailed
 
-fun Timestamp.toDateTime() = DateTime(Instant.ofEpochSecond( this.seconds, this.nanos.toLong()).toEpochMilli())
-fun Timestamp.formattedString() = DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond( this.seconds, this.nanos.toLong()))
+fun Timestamp.toDateTime() = DateTime(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()).toEpochMilli())
+fun Timestamp.formattedString() = DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()))
 fun DateTime.startOfDay() = this.withZone(DateTimeZone.UTC).withTimeAtStartOfDay()
 fun String.toDateTime() = DateTime.parse(this)
 
@@ -181,7 +179,7 @@ val protoTypesToCheck = arrayOf(
     "/provenance.metadata.v1.MsgWriteRecordRequest",
     "/provenance.metadata.v1.MsgDeleteRecordRequest",
     "/provenance.metadata.v1.MsgAddContractSpecToScopeSpecRequest",
-    "/provenance.metadata.v1.MsgDeleteContractSpecFromScopeSpecRequest",
+    "/provenance.metadata.v1.MsgDeleteContractSpecFromScopeSpecRequest"
 )
 
 val protoTypesFieldsToCheck = arrayOf(
@@ -190,7 +188,7 @@ val protoTypesFieldsToCheck = arrayOf(
     "recordId",
     "sessionId",
     "contractSpecificationId",
-    "scopeSpecificationId",
+    "scopeSpecificationId"
 )
 
 fun Message.toObjectNode(protoPrinter: JsonFormat.Printer) =

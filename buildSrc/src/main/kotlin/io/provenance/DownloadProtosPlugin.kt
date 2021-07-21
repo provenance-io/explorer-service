@@ -8,7 +8,7 @@ import org.gradle.kotlin.dsl.register
  * Custom gradle plugin to download Provenance, Cosmos, and CosmWasm/wasmd protobuf files.
  *
  */
-class DownloadProtosPlugin: Plugin<Project> {
+class DownloadProtosPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         project.tasks.register(
             "downloadProtos",

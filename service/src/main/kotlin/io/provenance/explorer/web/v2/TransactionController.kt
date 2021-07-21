@@ -42,7 +42,9 @@ class TransactionController(private val transactionService: TransactionService) 
         ResponseEntity.ok(
             transactionService.getTxsByQuery(
                 null, null, null, msgType, null, txStatus, count, page, fromDate,
-                toDate, null))
+                toDate, null
+            )
+        )
 
     @ApiOperation("Return transaction by hash value")
     @GetMapping("/{hash}")
@@ -54,7 +56,7 @@ class TransactionController(private val transactionService: TransactionService) 
         @PathVariable hash: String,
         @RequestParam(required = false) msgType: String?,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
     ) = ResponseEntity.ok(transactionService.getTxMsgsPaginated(hash, msgType, page, count))
 
     @ApiOperation("Returns transaction json by hash value")
@@ -69,7 +71,9 @@ class TransactionController(private val transactionService: TransactionService) 
         @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
     ) = ResponseEntity.ok(
         transactionService.getTxsByQuery(
-            null, null, null, null, height, null, count, page, null, null, null))
+            null, null, null, null, height, null, count, page, null, null, null
+        )
+    )
 
     @ApiOperation("Get X-Day Transaction History")
     @GetMapping("/history")
@@ -109,7 +113,9 @@ class TransactionController(private val transactionService: TransactionService) 
     ) =
         ResponseEntity.ok(
             transactionService.getTxsByQuery(
-                address, denom, module, msgType, null, txStatus, count, page, fromDate, toDate, nftAddr))
+                address, denom, module, msgType, null, txStatus, count, page, fromDate, toDate, nftAddr
+            )
+        )
 
     @ApiOperation("Returns transactions by query params for a specific address")
     @GetMapping("/address/{address}")
@@ -124,7 +130,9 @@ class TransactionController(private val transactionService: TransactionService) 
     ) =
         ResponseEntity.ok(
             transactionService.getTxsByQuery(
-                address, null, null, msgType, null, txStatus, count, page, fromDate, toDate, null))
+                address, null, null, msgType, null, txStatus, count, page, fromDate, toDate, null
+            )
+        )
 
     @ApiOperation("Returns transactions by query params for a specific nft address")
     @GetMapping("/nft/{nftAddr}")
@@ -139,7 +147,7 @@ class TransactionController(private val transactionService: TransactionService) 
     ) =
         ResponseEntity.ok(
             transactionService.getTxsByQuery(
-                null, null, null, msgType, null, txStatus, count, page, fromDate, toDate, nftAddr))
-
-
+                null, null, null, msgType, null, txStatus, count, page, fromDate, toDate, nftAddr
+            )
+        )
 }

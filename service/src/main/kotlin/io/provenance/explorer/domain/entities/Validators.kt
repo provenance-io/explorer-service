@@ -18,7 +18,6 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 
-
 object ValidatorsCacheTable : CacheIdTable<Int>(name = "validators_cache") {
     val height = integer("height")
     override val id = height.entityId()
@@ -51,7 +50,6 @@ class ValidatorsCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
     override var lastHit by ValidatorsCacheTable.lastHit
     override var hitCount by ValidatorsCacheTable.hitCount
 }
-
 
 object StakingValidatorCacheTable : IntIdTable(name = "staking_validator_cache") {
     val operatorAddress = varchar("operator_address", 96)
@@ -104,13 +102,15 @@ class StakingValidatorCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findByStatus(status: String) = transaction {
             when (status) {
                 "active" -> StakingValidatorCacheRecord.find {
-                    StakingValidatorCacheTable.status eq Staking.BondStatus.BOND_STATUS_BONDED.name }
+                    StakingValidatorCacheTable.status eq Staking.BondStatus.BOND_STATUS_BONDED.name
+                }
                     .orderBy(Pair(StakingValidatorCacheTable.tokenCount, SortOrder.DESC))
                 "jailed" -> StakingValidatorCacheRecord.find { StakingValidatorCacheTable.jailed eq true }
                     .orderBy(Pair(StakingValidatorCacheTable.tokenCount, SortOrder.DESC))
                 "candidate" -> StakingValidatorCacheRecord.find {
                     (StakingValidatorCacheTable.status neq Staking.BondStatus.BOND_STATUS_BONDED.name) and
-                        (StakingValidatorCacheTable.jailed eq false) }
+                        (StakingValidatorCacheTable.jailed eq false)
+                }
                     .orderBy(Pair(StakingValidatorCacheTable.tokenCount, SortOrder.DESC))
                 "all" -> StakingValidatorCacheRecord.all()
                     .orderBy(Pair(StakingValidatorCacheTable.tokenCount, SortOrder.DESC))
@@ -135,4 +135,3 @@ class StakingValidatorCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var accountAddress by StakingValidatorCacheTable.accountAddress
     var consensusAddress by StakingValidatorCacheTable.consensusAddress
 }
-

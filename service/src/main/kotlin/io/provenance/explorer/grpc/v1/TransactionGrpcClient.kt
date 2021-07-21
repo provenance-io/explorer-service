@@ -47,13 +47,16 @@ class TransactionGrpcClient(channelUri: URI) {
             ServiceOuterClass.GetTxsEventRequest.newBuilder()
                 .addEvents("tx.height=$height")
                 .setPagination(getPaginationBuilder(offset, limit))
-                .build())
+                .build()
+        )
 
         val txResps = results.txResponsesList.toMutableList()
 
         if (txResps.count() == 0)
-            throw TendermintApiException("Blockchain failed to retrieve txs for height $height. Expected $total, " +
-                "Returned 0. This is not normal.")
+            throw TendermintApiException(
+                "Blockchain failed to retrieve txs for height $height. Expected $total, " +
+                    "Returned 0. This is not normal."
+            )
 
         while (txResps.count() < total) {
             offset += limit
@@ -61,11 +64,11 @@ class TransactionGrpcClient(channelUri: URI) {
                 ServiceOuterClass.GetTxsEventRequest.newBuilder()
                     .addEvents("tx.height=$height")
                     .setPagination(getPaginationBuilder(offset, limit))
-                    .build())
+                    .build()
+            )
                 .let { txResps.addAll(it.txResponsesList) }
         }
 
         return txResps
     }
-
 }

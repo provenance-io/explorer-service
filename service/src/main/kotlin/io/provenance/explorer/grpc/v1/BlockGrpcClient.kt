@@ -9,7 +9,7 @@ import java.net.URI
 import java.util.concurrent.TimeUnit
 
 @Component
-class BlockGrpcClient(channelUri : URI) {
+class BlockGrpcClient(channelUri: URI) {
 
     private val tmClient: ServiceGrpc.ServiceBlockingStub
 
@@ -36,7 +36,4 @@ class BlockGrpcClient(channelUri : URI) {
         tmClient.getBlockByHeight(Query.GetBlockByHeightRequest.newBuilder().setHeight(maxHeight.toLong()).build())
 
     fun getLatestBlock() = tmClient.getLatestBlock(Query.GetLatestBlockRequest.getDefaultInstance())
-
-
-
 }

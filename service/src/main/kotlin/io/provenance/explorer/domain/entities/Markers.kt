@@ -21,13 +21,12 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import java.math.BigDecimal
 
-
 object MarkerCacheTable : IntIdTable(name = "marker_cache") {
     val markerAddress = varchar("marker_address", 128).nullable()
     val markerType = varchar("marker_type", 128)
     val denom = varchar("denom", 256)
     val status = varchar("status", 128)
-    val supply = decimal("supply", 100,10)
+    val supply = decimal("supply", 100, 10)
     val lastTx = datetime("last_tx_timestamp").nullable()
     val data = jsonb<MarkerCacheTable, MarkerAccount>("data", OBJECT_MAPPER).nullable()
 }

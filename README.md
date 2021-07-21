@@ -93,3 +93,15 @@ Useful to hit the respective APIs directly
 
 Swagger for Explorer : http://localhost:8612/swagger-ui/index.html <br/>
 Swagger for Testnet: http://localhost:1317/swagger/
+
+### Linting
+To install the Kotlin linter run:
+
+```
+brew install ktlint
+```
+
+In order to automatically lint/check for things that can't be autocorrected run:
+```
+ktlint -F "**/*.kt"
+```

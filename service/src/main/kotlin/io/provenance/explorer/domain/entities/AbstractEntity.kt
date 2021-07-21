@@ -25,4 +25,3 @@ fun <T : Comparable<T>> CacheEntityClass<T, CacheEntity<T>>.updateHitCount(id: T
         this.hitCount++
         this.lastHit = DateTime.now()
     }
-

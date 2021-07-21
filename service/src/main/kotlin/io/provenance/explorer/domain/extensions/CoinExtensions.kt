@@ -4,7 +4,6 @@ import cosmos.base.v1beta1.CoinOuterClass
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import java.math.BigDecimal
 
-
 const val NHASH = "nhash"
 
 fun BigDecimal.stringfy() = this.stripTrailingZeros().toPlainString()

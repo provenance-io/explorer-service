@@ -1,0 +1,17 @@
+name: ktlint
+
+on:
+  pull_request:
+    paths:
+      - "**/*.kt"
+
+jobs:
+  ktlint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "checkout"
+        uses: actions/checkout@v2
+
+      - name: "ktlint"
+        uses: "fkneeland-figure/gha-kotlin-linter@v3"

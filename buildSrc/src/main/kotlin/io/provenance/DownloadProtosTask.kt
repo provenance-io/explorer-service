@@ -1,5 +1,12 @@
 package io.provenance
 
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.io.FileUtils
+import org.apache.commons.io.IOUtils
+import org.apache.http.client.methods.HttpGet
+import org.apache.http.impl.client.HttpClients
+import org.apache.http.impl.client.LaxRedirectStrategy
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
@@ -12,14 +19,6 @@ import java.io.InputStream
 import java.util.zip.GZIPInputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
-import org.apache.commons.io.FileUtils
-import org.apache.commons.io.IOUtils
-import org.apache.http.client.methods.HttpGet
-import org.apache.http.impl.client.HttpClients
-import org.apache.http.impl.client.LaxRedirectStrategy
-
 
 /**
  * Custom gradle task to download Provenance and Cosmos protobuf files.
@@ -47,7 +46,6 @@ open class DownloadProtosTask : DefaultTask() {
     )
     @Input
     var wasmdVersion: String? = null
-
 
     /**
      * Connects directly to provenance-io GitHub release directory
@@ -201,15 +199,16 @@ open class DownloadProtosTask : DefaultTask() {
     ) {
         val tempDir = File.createTempFile(tempPrefix, "dir").parentFile
 
-        //Keep the first (top) occurrence of a directory in the tar so
-        //copying entire directories is simpler
+        // Keep the first (top) occurrence of a directory in the tar so
+        // copying entire directories is simpler
         var topTarDirectory: File? = null
 
         TarArchiveInputStream(FileInputStream(file)).use { tarArchiveInputStream ->
             var tarEntry: TarArchiveEntry?
             while (tarArchiveInputStream.nextTarEntry.also {
-                    tarEntry = it
-                } != null) {
+                tarEntry = it
+            } != null
+            ) {
                 if (topTarDirectory == null) {
                     topTarDirectory = File(tempDir.absolutePath + File.separator + tarEntry?.name)
                 }
@@ -217,7 +216,7 @@ open class DownloadProtosTask : DefaultTask() {
                 if (tarEntry?.name?.matches(includePattern) == true &&
                     tarEntry?.name?.matches(excludePattern) == false
                 ) {
-                    //write to temp file first so we can pick the dirs we want
+                    // write to temp file first so we can pick the dirs we want
                     val outputFile = File(tempDir.absolutePath + File.separator + tarEntry?.name)
                     if (tarEntry?.isDirectory == true) {
                         if (!outputFile.exists()) {
@@ -235,15 +234,15 @@ open class DownloadProtosTask : DefaultTask() {
                 }
             }
         }
-        //Copy from proto root dir to the local project third_party dir
+        // Copy from proto root dir to the local project third_party dir
         topTarDirectory?.let { topTar ->
             mutableListOf<File>().let { matchedDirs ->
-                findDirectory(topTar, protoRootDir,matchedDirs)
+                findDirectory(topTar, protoRootDir, matchedDirs)
                 matchedDirs.forEach {
                     FileUtils.copyDirectory(it, File("$destinationDir${File.separator}proto"))
                 }
             }
-        }?: throw IOException("tar file ${file.absolutePath} is not a well formed tar file - missing top level directory")
+        } ?: throw IOException("tar file ${file.absolutePath} is not a well formed tar file - missing top level directory")
     }
 
     /**
@@ -272,7 +271,6 @@ open class DownloadProtosTask : DefaultTask() {
             }
         }
     }
-
 
     /**
      * ungzip a given gZippedFile tar file

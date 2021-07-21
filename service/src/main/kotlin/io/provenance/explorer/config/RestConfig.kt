@@ -17,8 +17,8 @@ import io.provenance.attribute.v1.EventAttributeAdd
 import io.provenance.attribute.v1.EventAttributeDelete
 import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest
-import io.provenance.attribute.v1.MsgUpdateAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteDistinctAttributeRequest
+import io.provenance.attribute.v1.MsgUpdateAttributeRequest
 import io.provenance.marker.v1.AddMarkerProposal
 import io.provenance.marker.v1.ChangeStatusProposal
 import io.provenance.marker.v1.EventDenomUnit
@@ -76,27 +76,27 @@ import io.provenance.metadata.v1.EventSessionDeleted
 import io.provenance.metadata.v1.EventSessionUpdated
 import io.provenance.metadata.v1.EventTxCompleted
 import io.provenance.metadata.v1.MsgAddContractSpecToScopeSpecRequest
-import io.provenance.metadata.v1.MsgDeleteContractSpecFromScopeSpecRequest
 import io.provenance.metadata.v1.MsgAddScopeDataAccessRequest
 import io.provenance.metadata.v1.MsgAddScopeOwnerRequest
 import io.provenance.metadata.v1.MsgBindOSLocatorRequest
-import io.provenance.metadata.v1.MsgWriteScopeRequest
-import io.provenance.metadata.v1.MsgDeleteScopeRequest
-import io.provenance.metadata.v1.MsgWriteSessionRequest
-import io.provenance.metadata.v1.MsgWriteRecordRequest
-import io.provenance.metadata.v1.MsgWriteScopeSpecificationRequest
+import io.provenance.metadata.v1.MsgDeleteContractSpecFromScopeSpecRequest
 import io.provenance.metadata.v1.MsgDeleteContractSpecificationRequest
 import io.provenance.metadata.v1.MsgDeleteOSLocatorRequest
 import io.provenance.metadata.v1.MsgDeleteRecordRequest
 import io.provenance.metadata.v1.MsgDeleteRecordSpecificationRequest
 import io.provenance.metadata.v1.MsgDeleteScopeDataAccessRequest
 import io.provenance.metadata.v1.MsgDeleteScopeOwnerRequest
+import io.provenance.metadata.v1.MsgDeleteScopeRequest
 import io.provenance.metadata.v1.MsgDeleteScopeSpecificationRequest
 import io.provenance.metadata.v1.MsgModifyOSLocatorRequest
 import io.provenance.metadata.v1.MsgP8eMemorializeContractRequest
 import io.provenance.metadata.v1.MsgWriteContractSpecificationRequest
 import io.provenance.metadata.v1.MsgWriteP8eContractSpecRequest
+import io.provenance.metadata.v1.MsgWriteRecordRequest
 import io.provenance.metadata.v1.MsgWriteRecordSpecificationRequest
+import io.provenance.metadata.v1.MsgWriteScopeRequest
+import io.provenance.metadata.v1.MsgWriteScopeSpecificationRequest
+import io.provenance.metadata.v1.MsgWriteSessionRequest
 import io.provenance.name.v1.CreateRootNameProposal
 import io.provenance.name.v1.EventNameBound
 import io.provenance.name.v1.EventNameUnbound
@@ -269,7 +269,7 @@ fun msgDescriptors() =
         MsgUpdateAttributeRequest.getDescriptor(),
         MsgDeleteDistinctAttributeRequest.getDescriptor(),
         MsgAddContractSpecToScopeSpecRequest.getDescriptor(),
-        MsgDeleteContractSpecFromScopeSpecRequest.getDescriptor(),
+        MsgDeleteContractSpecFromScopeSpecRequest.getDescriptor()
     )
 
 fun contentDescriptors() =

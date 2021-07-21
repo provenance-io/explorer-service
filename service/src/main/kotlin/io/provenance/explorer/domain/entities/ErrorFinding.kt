@@ -16,7 +16,7 @@ data class TxError(
 data class UnknownTxType(
     val type: String,
     val module: String,
-    val protoType: String,
+    val protoType: String
 )
 
 class ErrorFinding {
@@ -29,14 +29,16 @@ class ErrorFinding {
                 .leftJoin(TxCacheTable, { BlockCacheTable.height }, { TxCacheTable.height })
                 .slice(BlockCacheTable.height, BlockCacheTable.txCount, count)
                 .select { BlockCacheTable.txCount greater 0 }
-                .andWhere { TxCacheTable.hash.isNull()  }
+                .andWhere { TxCacheTable.hash.isNull() }
                 .groupBy(BlockCacheTable.height, BlockCacheTable.txCount)
                 .having { BlockCacheTable.txCount neq count }
-                .map { TxError(
-                    it[BlockCacheTable.height],
-                    it[BlockCacheTable.txCount],
-                    it[count].toInt()
-                ) }
+                .map {
+                    TxError(
+                        it[BlockCacheTable.height],
+                        it[BlockCacheTable.txCount],
+                        it[count].toInt()
+                    )
+                }
         }
 
         fun getUnknownTxTypes() = transaction {

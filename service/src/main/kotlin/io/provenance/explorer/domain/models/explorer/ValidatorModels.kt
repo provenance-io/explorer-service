@@ -3,7 +3,7 @@ package io.provenance.explorer.domain.models.explorer
 import org.joda.time.DateTime
 import java.math.BigDecimal
 
-data class ValidatorSummary (
+data class ValidatorSummary(
     val moniker: String,
     val addressId: String,
     val consensusAddress: String,
@@ -20,7 +20,7 @@ data class ValidatorSummary (
     val unbondingHeight: Long?
 )
 
-data class ValidatorDetails (
+data class ValidatorDetails(
     val votingPower: CountTotal?,
     val moniker: String,
     val operatorAddress: String,
@@ -40,7 +40,7 @@ data class ValidatorDetails (
     val jailedUntil: DateTime?
 )
 
-data class Delegation (
+data class Delegation(
     val delegatorAddr: String,
     val validatorSrcAddr: String,
     val validatorDstAddr: String?,
@@ -51,17 +51,17 @@ data class Delegation (
     val endTime: DateTime?
 )
 
-data class ValidatorCommission (
+data class ValidatorCommission(
     val bondedTokens: CountStrTotal,
     val selfBonded: CountStrTotal,
     val delegatorBonded: CountStrTotal,
     val delegatorCount: Long,
     val totalShares: String,
     val commissionRewards: CoinStr,
-    val commissionRate:	CommissionRate
+    val commissionRate: CommissionRate
 )
 
-data class CommissionRate (
+data class CommissionRate(
     val rate: String,
     val maxRate: String,
     val maxChangeRate: String

@@ -20,7 +20,6 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Avg
 import org.jetbrains.exposed.sql.ColumnSet
-import org.jetbrains.exposed.sql.EntityIDColumnType
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.Max
@@ -57,16 +56,18 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxCacheRecord>(TxCacheTable) {
         fun insertIgnore(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime) =
             transaction {
-                (findByHash(tx.txResponse.txhash)?.id ?: TxCacheTable.insertIgnoreAndGetId {
-                    it[hash] = tx.txResponse.txhash
-                    it[height] = tx.txResponse.height.toInt()
-                    if (tx.txResponse.code > 0) it[errorCode] = tx.txResponse.code
-                    if (tx.txResponse.codespace.isNotBlank()) it[codespace] = tx.txResponse.codespace
-                    it[gasUsed] = tx.txResponse.gasUsed.toInt()
-                    it[gasWanted] = tx.txResponse.gasWanted.toInt()
-                    it[txTimestamp] = txTime
-                    it[txV2] = tx
-                })!!
+                (
+                    findByHash(tx.txResponse.txhash)?.id ?: TxCacheTable.insertIgnoreAndGetId {
+                        it[hash] = tx.txResponse.txhash
+                        it[height] = tx.txResponse.height.toInt()
+                        if (tx.txResponse.code > 0) it[errorCode] = tx.txResponse.code
+                        if (tx.txResponse.codespace.isNotBlank()) it[codespace] = tx.txResponse.codespace
+                        it[gasUsed] = tx.txResponse.gasUsed.toInt()
+                        it[gasWanted] = tx.txResponse.gasWanted.toInt()
+                        it[txTimestamp] = txTime
+                        it[txV2] = tx
+                    }
+                    )!!
             }
 
         fun findByEntityId(id: EntityID<Int>) = transaction { TxCacheRecord.findById(id) }
@@ -92,21 +93,27 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 .select { TxCacheTable.txTimestamp.between(startDate.startOfDay(), endDate.startOfDay().plusDays(1)) }
                 .groupBy(dateTrunc)
                 .orderBy(dateTrunc, SortOrder.DESC)
-                .map { GasStatistics(
-                    it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
-                    it[minGas]!!,
-                    it[maxGas]!!,
-                    it[avgGas]!!
-                ) }
+                .map {
+                    GasStatistics(
+                        it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
+                        it[minGas]!!,
+                        it[maxGas]!!,
+                        it[avgGas]!!
+                    )
+                }
         }
 
         fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
             val columns: MutableList<Expression<*>> = mutableListOf()
             if (!txQueryParams.onlyTxQuery())
                 columns.add(Distinct(TxCacheTable.id, IntegerColumnType()).alias("dist"))
-            columns.addAll(mutableListOf(TxCacheTable.id, TxCacheTable.hash,
-                TxCacheTable.height, TxCacheTable.gasWanted, TxCacheTable.gasUsed, TxCacheTable.txTimestamp,
-                TxCacheTable.errorCode, TxCacheTable.codespace, TxCacheTable.txV2))
+            columns.addAll(
+                mutableListOf(
+                    TxCacheTable.id, TxCacheTable.hash,
+                    TxCacheTable.height, TxCacheTable.gasWanted, TxCacheTable.gasUsed, TxCacheTable.txTimestamp,
+                    TxCacheTable.errorCode, TxCacheTable.codespace, TxCacheTable.txV2
+                )
+            )
             val query =
                 findByQueryParams(txQueryParams, columns)
                     .orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
@@ -133,7 +140,7 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             if (tqp.markerId != null || tqp.denom != null)
                 join = join.innerJoin(TxMarkerJoinTable, { TxCacheTable.id }, { TxMarkerJoinTable.txHashId })
             if (tqp.nftId != null)
-                join = join.innerJoin(TxNftJoinTable, {TxCacheTable.id}, {TxNftJoinTable.txHashId})
+                join = join.innerJoin(TxNftJoinTable, { TxCacheTable.id }, { TxNftJoinTable.txHashId })
 
             val query = if (distinctQuery != null) join.slice(distinctQuery).selectAll() else join.selectAll()
 
@@ -143,7 +150,8 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 query.andWhere { TxCacheTable.height eq tqp.txHeight }
             if (tqp.txStatus != null)
                 query.andWhere {
-                    if (tqp.txStatus == TxStatus.FAILURE) TxCacheTable.errorCode neq 0 else TxCacheTable.errorCode.isNull() }
+                    if (tqp.txStatus == TxStatus.FAILURE) TxCacheTable.errorCode neq 0 else TxCacheTable.errorCode.isNull()
+                }
             if (tqp.addressId != null && tqp.addressType != null)
                 query.andWhere { (TxAddressJoinTable.addressId eq tqp.addressId) and (TxAddressJoinTable.addressType eq tqp.addressType) }
             else if (tqp.address != null)
@@ -161,7 +169,7 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             if (tqp.toDate != null)
                 query.andWhere { TxCacheTable.txTimestamp lessEq tqp.toDate.startOfDay().plusDays(1) }
 
-             query
+            query
         }
     }
 
@@ -237,14 +245,18 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun getCountByHashId(hashId: Int, msgTypes: List<Int>) = transaction {
-            TxMessageRecord.find { (TxMessageTable.txHashId eq hashId) and
-                (if (msgTypes.isNotEmpty()) (TxMessageTable.txMessageType inList msgTypes) else ( Op.TRUE )) }
+            TxMessageRecord.find {
+                (TxMessageTable.txHashId eq hashId) and
+                    (if (msgTypes.isNotEmpty()) (TxMessageTable.txMessageType inList msgTypes) else (Op.TRUE))
+            }
                 .count()
         }
 
         fun findByHashIdPaginated(hashId: Int, msgTypes: List<Int>, limit: Int, offset: Int) = transaction {
-            TxMessageRecord.find { (TxMessageTable.txHashId eq hashId) and
-                (if (msgTypes.isNotEmpty()) (TxMessageTable.txMessageType inList msgTypes) else ( Op.TRUE )) }
+            TxMessageRecord.find {
+                (TxMessageTable.txHashId eq hashId) and
+                    (if (msgTypes.isNotEmpty()) (TxMessageTable.txMessageType inList msgTypes) else (Op.TRUE))
+            }
                 .orderBy(Pair(TxMessageTable.id, SortOrder.ASC))
                 .limit(limit, offset.toLong())
                 .toMutableList()
@@ -301,10 +313,14 @@ class TxAddressJoinRecord(id: EntityID<Int>) : IntEntity(id) {
         private fun findByHashAndAddress(txHashId: EntityID<Int>, addrPair: Pair<String, Int?>, addr: String) =
             transaction {
                 TxAddressJoinRecord
-                    .find { (TxAddressJoinTable.txHashId eq txHashId) and
-                        (if (addrPair.second != null)
-                            (TxAddressJoinTable.addressType eq addrPair.first) and (TxAddressJoinTable.addressId eq addrPair.second!!)
-                        else (TxAddressJoinTable.address eq addr)) }
+                    .find {
+                        (TxAddressJoinTable.txHashId eq txHashId) and
+                            (
+                                if (addrPair.second != null)
+                                    (TxAddressJoinTable.addressType eq addrPair.first) and (TxAddressJoinTable.addressId eq addrPair.second!!)
+                                else (TxAddressJoinTable.address eq addr)
+                                )
+                    }
                     .firstOrNull()
             }
 
@@ -312,8 +328,10 @@ class TxAddressJoinRecord(id: EntityID<Int>) : IntEntity(id) {
             StakingValidatorCacheRecord.wrapRows(
                 TxAddressJoinTable
                     .innerJoin(StakingValidatorCacheTable, { TxAddressJoinTable.addressId }, { StakingValidatorCacheTable.id })
-                    .select { (TxAddressJoinTable.txHashId eq txHashId) and
-                        (TxAddressJoinTable.addressType eq TxAddressJoinType.OPERATOR.name)}
+                    .select {
+                        (TxAddressJoinTable.txHashId eq txHashId) and
+                            (TxAddressJoinTable.addressType eq TxAddressJoinType.OPERATOR.name)
+                    }
             ).toList()
         }
 
@@ -321,22 +339,24 @@ class TxAddressJoinRecord(id: EntityID<Int>) : IntEntity(id) {
             AccountRecord.wrapRows(
                 TxAddressJoinTable
                     .innerJoin(AccountTable, { TxAddressJoinTable.addressId }, { AccountTable.id })
-                    .select { (TxAddressJoinTable.txHashId eq txHashId) and
-                        (TxAddressJoinTable.addressType eq TxAddressJoinType.ACCOUNT.name) }
+                    .select {
+                        (TxAddressJoinTable.txHashId eq txHashId) and
+                            (TxAddressJoinTable.addressType eq TxAddressJoinType.ACCOUNT.name)
+                    }
             ).toList()
         }
 
         fun insert(txHash: String, txId: EntityID<Int>, blockHeight: Int, addrPair: Pair<String, Int?>, address: String) =
             transaction {
-                    findByHashAndAddress(txId, addrPair, address) ?: TxAddressJoinTable.insert {
-                        it[this.blockHeight] = blockHeight
-                        it[this.txHashId] = txId
-                        it[this.txHash] = txHash
-                        it[this.addressId] = addrPair.second!!
-                        it[this.addressType] = addrPair.first
-                        it[this.address] = address
-                    }
-        }
+                findByHashAndAddress(txId, addrPair, address) ?: TxAddressJoinTable.insert {
+                    it[this.blockHeight] = blockHeight
+                    it[this.txHashId] = txId
+                    it[this.txHash] = txHash
+                    it[this.addressId] = addrPair.second!!
+                    it[this.addressType] = addrPair.first
+                    it[this.address] = address
+                }
+            }
     }
 
     var blockHeight by TxAddressJoinTable.blockHeight
@@ -360,7 +380,7 @@ class TxMarkerJoinRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findLatestTxByDenom(denom: String) = transaction {
             TxCacheTable
-                .innerJoin(TxMarkerJoinTable, {TxCacheTable.id}, {TxMarkerJoinTable.txHashId})
+                .innerJoin(TxMarkerJoinTable, { TxCacheTable.id }, { TxMarkerJoinTable.txHashId })
                 .slice(TxCacheTable.txTimestamp)
                 .select { TxMarkerJoinTable.denom eq denom }
                 .orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
@@ -380,13 +400,13 @@ class TxMarkerJoinRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun insert(txHash: String, txId: EntityID<Int>, blockHeight: Int, markerId: Int, denom: String) = transaction {
-                findByHashAndDenom(txId, markerId) ?: TxMarkerJoinTable.insert {
-                    it[this.blockHeight] = blockHeight
-                    it[this.txHash] = txHash
-                    it[this.txHashId] = txId
-                    it[this.denom] = denom
-                    it[this.markerId] = markerId
-                }
+            findByHashAndDenom(txId, markerId) ?: TxMarkerJoinTable.insert {
+                it[this.blockHeight] = blockHeight
+                it[this.txHash] = txHash
+                it[this.txHashId] = txId
+                it[this.denom] = denom
+                it[this.markerId] = markerId
+            }
         }
     }
 
@@ -412,9 +432,11 @@ class TxNftJoinRecord(id: EntityID<Int>) : IntEntity(id) {
         private fun findByHashIdAndUuid(txHashId: EntityID<Int>, mdTriple: Triple<MdParent, Int, String>) =
             transaction {
                 TxNftJoinRecord
-                    .find { (TxNftJoinTable.txHashId eq txHashId) and
+                    .find {
+                        (TxNftJoinTable.txHashId eq txHashId) and
                             (TxNftJoinTable.metadataType eq mdTriple.first.name) and
-                            (TxNftJoinTable.metadataId eq mdTriple.second) }
+                            (TxNftJoinTable.metadataId eq mdTriple.second)
+                    }
                     .firstOrNull()
             }
 
@@ -431,18 +453,18 @@ class TxNftJoinRecord(id: EntityID<Int>) : IntEntity(id) {
             }
 
         fun findTxByUuid(uuid: String, offset: Int, limit: Int) = transaction {
-            val query = TxNftJoinTable.innerJoin(TxCacheTable, {TxNftJoinTable.txHashId}, {TxCacheTable.id})
-                .slice(TxCacheTable.id, TxCacheTable.hash,
+            val query = TxNftJoinTable.innerJoin(TxCacheTable, { TxNftJoinTable.txHashId }, { TxCacheTable.id })
+                .slice(
+                    TxCacheTable.id, TxCacheTable.hash,
                     TxCacheTable.height, TxCacheTable.gasWanted, TxCacheTable.gasUsed, TxCacheTable.txTimestamp,
-                    TxCacheTable.errorCode, TxCacheTable.codespace)
+                    TxCacheTable.errorCode, TxCacheTable.codespace
+                )
                 .select { TxNftJoinTable.metadataUuid eq uuid }
                 .andWhere { TxNftJoinTable.metadataType eq MdParent.SCOPE.name }
                 .orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
                 .limit(limit, offset.toLong())
             TxCacheRecord.wrapRows(query).toSet()
         }
-
-
     }
 
     var blockHeight by TxNftJoinTable.blockHeight

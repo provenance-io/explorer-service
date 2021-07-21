@@ -56,9 +56,3 @@ data class RecordSpecDetail(
     val recordSpecAddr: String,
     val responsibleParties: List<String>
 )
-
-
-
-
-
-

@@ -3,7 +3,6 @@ package io.provenance.explorer.domain.models.explorer
 import com.fasterxml.jackson.databind.node.ObjectNode
 import java.math.BigInteger
 
-
 data class AssetListed(
     val marker: String,
     val holdingAccount: String?,
