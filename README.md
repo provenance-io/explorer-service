@@ -103,5 +103,5 @@ brew install ktlint
 
 In order to automatically lint/check for things that can't be autocorrected run:
 ```
-ktlint -F "service/src/**/*.kt"
+ktlint -F "**/*.kt"
 ```

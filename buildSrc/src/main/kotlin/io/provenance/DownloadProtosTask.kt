@@ -1,5 +1,12 @@
 package io.provenance
 
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.io.FileUtils
+import org.apache.commons.io.IOUtils
+import org.apache.http.client.methods.HttpGet
+import org.apache.http.impl.client.HttpClients
+import org.apache.http.impl.client.LaxRedirectStrategy
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
@@ -12,13 +19,6 @@ import java.io.InputStream
 import java.util.zip.GZIPInputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
-import org.apache.commons.io.FileUtils
-import org.apache.commons.io.IOUtils
-import org.apache.http.client.methods.HttpGet
-import org.apache.http.impl.client.HttpClients
-import org.apache.http.impl.client.LaxRedirectStrategy
 
 /**
  * Custom gradle task to download Provenance and Cosmos protobuf files.
@@ -206,8 +206,9 @@ open class DownloadProtosTask : DefaultTask() {
         TarArchiveInputStream(FileInputStream(file)).use { tarArchiveInputStream ->
             var tarEntry: TarArchiveEntry?
             while (tarArchiveInputStream.nextTarEntry.also {
-                    tarEntry = it
-                } != null) {
+                tarEntry = it
+            } != null
+            ) {
                 if (topTarDirectory == null) {
                     topTarDirectory = File(tempDir.absolutePath + File.separator + tarEntry?.name)
                 }
