@@ -12,6 +12,7 @@ import io.provenance.metadata.v1.ScopesAllRequest
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
+import io.provenance.metadata.v1.QueryParamsRequest as MetadataRequest
 
 @Component
 class MetadataGrpcClient(channelUri: URI) {
@@ -74,4 +75,6 @@ class MetadataGrpcClient(channelUri: URI) {
                 .setSpecificationId(contractSpec)
                 .build()
         )
+
+    fun getMetadataParams() = metadataClient.params(MetadataRequest.newBuilder().build())
 }

@@ -11,6 +11,7 @@ import ibc.applications.transfer.v1.QueryOuterClass as TransferOuterClass
 import ibc.core.channel.v1.QueryGrpc as ChannelQueryGrpc
 import ibc.core.channel.v1.QueryOuterClass as ChannelOuterClass
 import ibc.core.client.v1.QueryGrpc as ClientQueryGrpc
+import ibc.core.client.v1.QueryOuterClass as ClientOuterClass
 import ibc.core.connection.v1.QueryGrpc as ConnectionQueryGrpc
 
 @Component
@@ -64,4 +65,8 @@ class IbcGrpcClient(channelUri: URI) {
                 .setChannelId(channel)
                 .build()
         )
+
+    fun getTransferParams() = transferClient.params(TransferOuterClass.QueryParamsRequest.newBuilder().build())
+
+    fun getClientParams() = clientClient.clientParams(ClientOuterClass.QueryClientParamsRequest.newBuilder().build())
 }

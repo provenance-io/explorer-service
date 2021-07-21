@@ -176,4 +176,10 @@ class ValidatorGrpcClient(channelUri: URI) {
 
     fun getSigningInfos() =
         slashingClient.signingInfos(SlashingOuterClass.QuerySigningInfosRequest.getDefaultInstance()).infoList
+
+    fun getSlashingParams() = slashingClient.params(SlashingOuterClass.QueryParamsRequest.newBuilder().build())
+
+    fun getDistParams() = distClient.params(DistOuterClass.QueryParamsRequest.newBuilder().build())
+
+    fun getStakingParams() = stakingClient.params(StakingOuterClass.QueryParamsRequest.newBuilder().build())
 }

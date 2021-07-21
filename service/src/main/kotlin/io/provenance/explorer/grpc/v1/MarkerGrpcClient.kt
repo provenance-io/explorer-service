@@ -12,6 +12,7 @@ import io.provenance.marker.v1.QueryMarkerRequest
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
+import io.provenance.marker.v1.QueryParamsRequest as MarkerRequest
 
 @Component
 class MarkerGrpcClient(channelUri: URI) {
@@ -55,4 +56,6 @@ class MarkerGrpcClient(channelUri: URI) {
         } catch (e: Exception) {
             QueryHoldingResponse.getDefaultInstance()
         }
+
+    fun getMarkerParams() = markerClient.params(MarkerRequest.newBuilder().build())
 }

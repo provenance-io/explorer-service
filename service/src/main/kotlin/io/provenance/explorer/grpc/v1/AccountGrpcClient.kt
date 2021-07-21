@@ -12,6 +12,8 @@ import cosmos.bank.v1beta1.QueryGrpc as BankQueryGrpc
 import cosmos.bank.v1beta1.QueryOuterClass as BankOuterClass
 import cosmos.distribution.v1beta1.QueryGrpc as DistGrpc
 import cosmos.distribution.v1beta1.QueryOuterClass as DistOuterClass
+import cosmos.mint.v1beta1.QueryGrpc as MintGrpc
+import cosmos.mint.v1beta1.QueryOuterClass as MintOuterClass
 import cosmos.staking.v1beta1.QueryGrpc as StakingGrpc
 import cosmos.staking.v1beta1.QueryOuterClass as StakingOuterClass
 
@@ -22,6 +24,7 @@ class AccountGrpcClient(channelUri: URI) {
     private val bankClient: BankQueryGrpc.QueryBlockingStub
     private val stakingClient: StakingGrpc.QueryBlockingStub
     private val distClient: DistGrpc.QueryBlockingStub
+    private val mintClient: MintGrpc.QueryBlockingStub
 
     init {
         val channel =
@@ -43,6 +46,7 @@ class AccountGrpcClient(channelUri: URI) {
         bankClient = BankQueryGrpc.newBlockingStub(channel)
         stakingClient = StakingGrpc.newBlockingStub(channel)
         distClient = DistGrpc.newBlockingStub(channel)
+        mintClient = MintGrpc.newBlockingStub(channel)
     }
 
     fun getAccountInfo(address: String) =
@@ -111,4 +115,10 @@ class AccountGrpcClient(channelUri: URI) {
                 .setDelegatorAddress(delAddr)
                 .build()
         )
+
+    fun getBankParams() = bankClient.params(BankOuterClass.QueryParamsRequest.newBuilder().build())
+
+    fun getAuthParams() = authClient.params(AuthOuterClass.QueryParamsRequest.newBuilder().build())
+
+    fun getMintParams() = mintClient.params(MintOuterClass.QueryParamsRequest.newBuilder().build())
 }
