@@ -66,12 +66,12 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
             val tblSuffix = granularity.toLowerCase()
             val query = """
                 |SELECT
-                |   block_cache_tx_history_${tblSuffix}.block_timestamp,
-                |   block_cache_tx_history_${tblSuffix}.tx_count
-                |FROM block_cache_tx_history_${tblSuffix}
-                |WHERE block_cache_tx_history_${tblSuffix}.block_timestamp >= ? 
-                |  AND block_cache_tx_history_${tblSuffix}.block_timestamp < ?
-                |ORDER BY block_cache_tx_history_${tblSuffix}.block_timestamp DESC
+                |   block_cache_tx_history_$tblSuffix.block_timestamp,
+                |   block_cache_tx_history_$tblSuffix.tx_count
+                |FROM block_cache_tx_history_$tblSuffix
+                |WHERE block_cache_tx_history_$tblSuffix.block_timestamp >= ? 
+                |  AND block_cache_tx_history_$tblSuffix.block_timestamp < ?
+                |ORDER BY block_cache_tx_history_$tblSuffix.block_timestamp DESC
                 |""".trimMargin()
 
             val dateTimeType = DateColumnType(true)
@@ -87,7 +87,8 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
                 .map {
                     TxHistory(
                         it.getTimestamp("block_timestamp").toDateTime(tz, pattern),
-                        it.getInt("tx_count"))
+                        it.getInt("tx_count")
+                    )
                 }
         }
 
@@ -184,7 +185,7 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
                     this.proposerOperatorAddress = proposer!!
                     this.blockTimestamp = timestamp!!
                 }
-            ).apply {
+                ).apply {
                 this.minGasFee = minGasFee
             }
         }

@@ -1,6 +1,5 @@
 package io.provenance.explorer.domain.extensions
 
-import com.google.api.CustomHttpPattern
 import org.jetbrains.exposed.sql.IColumnType
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.joda.time.DateTime
