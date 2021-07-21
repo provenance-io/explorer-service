@@ -38,6 +38,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added `/api/v2/txs/types/tx/{hash}` to fetch msg types applicable to a single tx #146
 * Updated `/api/v2/accounts/{address}` to return `TokenCount` object #140
   * Shows count of fungible and non-fungible tokens
+* Added `/api/v2/params` to return parameters from the Grpc clients #153
 
 ### Improvements
 * Added `PagedResults.total` to return total record count #146
