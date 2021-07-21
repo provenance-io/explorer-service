@@ -104,10 +104,13 @@ class ValidatorService(
                 stakingValidator.consensusPubkey.toAddress(props.provValConsPrefix()) ?: "",
                 CountTotal(
                     (getMissedBlocks(addr.consensusAddress)?.totalCount ?: 0).toBigInteger(),
-                    currentHeight - signingInfo!!.startHeight.toBigInteger()
+                    currentHeight - (signingInfo?.startHeight?.toBigInteger() ?: BigInteger.ZERO)
                 ),
-                signingInfo.startHeight,
-                addr.consensusAddress.validatorUptime(signingInfo.startHeight.toBigInteger(), currentHeight),
+                signingInfo?.startHeight ?: currentHeight.toLong(),
+                addr.consensusAddress.validatorUptime(
+                    (signingInfo?.startHeight?.toBigInteger() ?: currentHeight.minus(BigInteger.ONE)),
+                    currentHeight
+                ),
                 null, // TODO: Update when we can get images going
                 stakingValidator.description.details,
                 stakingValidator.description.website,
@@ -115,7 +118,7 @@ class ValidatorService(
                 BlockProposerRecord.findCurrentFeeForAddress(address)?.minGasFee,
                 stakingValidator.getStatusString(),
                 if (!stakingValidator.isActive()) stakingValidator.unbondingHeight else null,
-                if (stakingValidator.jailed) signingInfo.jailedUntil.toDateTime() else null
+                if (stakingValidator.jailed) signingInfo?.jailedUntil?.toDateTime() else null
             )
         } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
@@ -239,21 +242,7 @@ class ValidatorService(
         height: BigInteger,
         totalVotingPower: BigInteger
     ) = let {
-        var amount = "0"
-        var denom = ""
-
-        try {
-            val selfBondedAmount = grpcClient.getValidatorSelfDelegations(
-                stakingVal.stakingValidator.operatorAddress,
-                stakingVal.stakingValidator.operatorAddress.translateAddress(props).accountAddr
-            ).delegationResponse.balance
-
-            amount = selfBondedAmount.amount
-            denom = selfBondedAmount.denom
-        } catch (e: Exception) {
-            // allow the default values for amount and demon to be used
-        }
-
+        val selfBonded = getValSelfBonded(stakingVal.stakingValidator)
         val delegatorCount =
             grpcClient.getStakingValidatorDelegations(stakingVal.operatorAddress, 0, 10).pagination.total
         ValidatorSummary(
@@ -265,13 +254,24 @@ class ValidatorService(
             uptime = if (stakingVal.stakingValidator.isActive()) signingInfo.address.validatorUptime(signingInfo.startHeight.toBigInteger(), height) else null,
             commission = stakingVal.stakingValidator.commission.commissionRates.rate.toDecCoin(),
             bondedTokens = CountStrTotal(stakingVal.stakingValidator.tokens, null, NHASH),
-            selfBonded = CountStrTotal(amount, null, denom),
+            selfBonded = CountStrTotal(selfBonded.first, null, selfBonded.second),
             delegators = delegatorCount,
             bondHeight = if (stakingVal.stakingValidator.isActive()) signingInfo.startHeight else null,
             status = stakingVal.stakingValidator.getStatusString(),
             currentGasFee = BlockProposerRecord.findCurrentFeeForAddress(stakingVal.operatorAddress)?.minGasFee,
             unbondingHeight = if (!stakingVal.stakingValidator.isActive()) stakingVal.stakingValidator.unbondingHeight else null
         )
+    }
+
+    private fun getValSelfBonded(stakingVal: Staking.Validator) = transaction {
+        try {
+            grpcClient.getValidatorSelfDelegations(
+                stakingVal.operatorAddress,
+                stakingVal.operatorAddress.translateAddress(props).accountAddr
+            ).delegationResponse.balance.let { it.amount to it.denom }
+        } catch (e: Exception) {
+            "0" to ""
+        }
     }
 
     fun getBondedDelegations(address: String, page: Int, limit: Int) =
@@ -312,27 +312,15 @@ class ValidatorService(
     fun getCommissionInfo(address: String): ValidatorCommission {
         val validator = StakingValidatorCacheRecord.findByOperator(address)?.stakingValidator
             ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
-        var amount = "0"
-        var denom = ""
-        try {
-            val selfBondedAmount = grpcClient.getValidatorSelfDelegations(
-                validator.operatorAddress,
-                validator.operatorAddress.translateAddress(props).accountAddr
-            ).delegationResponse.balance
 
-            amount = selfBondedAmount.amount
-            denom = selfBondedAmount.denom
-        } catch (e: Exception) {
-            // Just use the default values if we are unable to find the validator
-        }
-
+        val selfBonded = getValSelfBonded(validator)
         val delegatorCount =
             grpcClient.getStakingValidatorDelegations(validator.operatorAddress, 0, 10).pagination.total
         val rewards = grpcClient.getValidatorCommission(address).commissionList.firstOrNull()
         return ValidatorCommission(
             CountStrTotal(validator.tokens, null, NHASH),
-            CountStrTotal(amount, null, denom),
-            CountStrTotal(validator.tokens.toBigInteger().minus(amount.toBigInteger()).toString(), null, NHASH),
+            CountStrTotal(selfBonded.first, null, selfBonded.second),
+            CountStrTotal(validator.tokens.toBigInteger().minus(selfBonded.first.toBigInteger()).toString(), null, NHASH),
             delegatorCount,
             validator.delegatorShares.toDecCoin(),
             rewards?.amount?.toDecCoin()?.let { CoinStr(it, rewards.denom) } ?: CoinStr("0", NHASH),

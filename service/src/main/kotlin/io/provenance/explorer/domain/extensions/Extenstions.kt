@@ -194,13 +194,11 @@ val protoTypesFieldsToCheck = arrayOf(
 fun Message.toObjectNode(protoPrinter: JsonFormat.Printer) =
     OBJECT_MAPPER.readValue(protoPrinter.print(this), ObjectNode::class.java)
         .let { node ->
-            val protoType = node.get("@type").asText()
-
-            // Bug: Tx Msgs being printed treat ByteString as Base64 encoded #145
-            if (protoTypesToCheck.contains(protoType)) {
-                protoTypesFieldsToCheck.forEach { fromBase64ToMAddress(node, it) }
+            node.get("@type")?.asText()?.let { proto ->
+                if (protoTypesToCheck.contains(proto)) {
+                    protoTypesFieldsToCheck.forEach { fromBase64ToMAddress(node, it) }
+                }
             }
-
             node.remove("@type")
             node
         }

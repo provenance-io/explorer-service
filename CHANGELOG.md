@@ -52,6 +52,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Processing new protos from v1.5.0 #175
 * Don't try to save missed blocks when current block height is 0 #167
 * Now updating proposal status every day at 12 AM UTC #168
+* Fixed NPE on .toObjectNode() for metadata call #180
+* Fixed bug where a validator does not have any signing info (which is used to populate some fields) #178
+  * Affected the Validator listview, filtered on 'Candidate'
+  * Affected the Validator detail for the specific validator
 
 ### Data
 * Added migration 20 for indices on `block_cache` #117
