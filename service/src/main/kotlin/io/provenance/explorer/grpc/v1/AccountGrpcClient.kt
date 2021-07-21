@@ -116,9 +116,5 @@ class AccountGrpcClient(channelUri : URI) {
 
     fun getAuthParams() = authClient.params(AuthOuterClass.QueryParamsRequest.newBuilder().build())
 
-    fun getDistParams() = distClient.params(DistOuterClass.QueryParamsRequest.newBuilder().build())
-
-    fun getStakingParams() = stakingClient.params(StakingOuterClass.QueryParamsRequest.newBuilder().build())
-
     fun getMintParams() = mintClient.params(MintOuterClass.QueryParamsRequest.newBuilder().build())
 }

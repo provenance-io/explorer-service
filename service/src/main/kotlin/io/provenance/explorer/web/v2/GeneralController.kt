@@ -24,7 +24,7 @@ import javax.validation.constraints.Min
 class GeneralController(private val explorerService: ExplorerService) {
 
     @ApiOperation("Returns parameters for all the modules")
-    @GetMapping("/param")
+    @GetMapping("/params")
     fun param(): ResponseEntity<Params> = ResponseEntity.ok(explorerService.getParams())
 
 

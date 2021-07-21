@@ -123,13 +123,13 @@ class ExplorerService(
     fun getParams() : Params {
         val authParams = accountClient.getAuthParams().params
         val bankParams = accountClient.getBankParams().params
-        val distParams = accountClient.getDistParams().params
+        val distParams = validatorClient.getDistParams().params
         val votingParams = govClient.getParams(GovParamType.voting).votingParams
         val tallyParams = govClient.getParams(GovParamType.tallying).tallyParams
         val depositParams = govClient.getParams(GovParamType.deposit).depositParams
         val mintParams = accountClient.getMintParams().params
         val slashingParams = validatorClient.getSlashingParams().params
-        val stakingParams = accountClient.getStakingParams().params
+        val stakingParams = validatorClient.getStakingParams().params
         val transferParams = ibcClient.getTransferParams().params
         val clientParams = ibcClient.getClientParams().params
         val attrParams = attrClient.getAttrParams().params
