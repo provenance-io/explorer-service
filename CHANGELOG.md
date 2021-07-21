@@ -39,6 +39,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Updated `/api/v2/accounts/{address}` to return `TokenCount` object #140
   * Shows count of fungible and non-fungible tokens
 * Added `/api/v2/params` to return parameters from the Grpc clients #153
+* Added Move tx history count to db table #117
 
 ### Improvements
 * Added `PagedResults.total` to return total record count #146
