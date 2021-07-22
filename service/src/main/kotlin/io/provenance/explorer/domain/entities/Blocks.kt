@@ -6,7 +6,10 @@ import io.provenance.explorer.domain.core.sql.DateTrunc
 import io.provenance.explorer.domain.core.sql.ExtractEpoch
 import io.provenance.explorer.domain.core.sql.Lag
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.extensions.exec
+import io.provenance.explorer.domain.extensions.map
 import io.provenance.explorer.domain.extensions.startOfDay
+import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.TxHistory
 import org.jetbrains.exposed.dao.IntEntity
@@ -19,12 +22,12 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insertIgnore
+import org.jetbrains.exposed.sql.jodatime.DateColumnType
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
-import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -60,21 +63,42 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
             }
 
         fun getTxCountsForParams(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
-            val dateTrunc = DateTrunc(granularity, BlockCacheTable.blockTimestamp)
-            val txSum = BlockCacheTable.txCount.sum()
-            BlockCacheTable.slice(dateTrunc, txSum)
-                .select {
-                    BlockCacheTable.blockTimestamp
-                        .between(fromDate.startOfDay(), toDate.startOfDay().plusDays(1))
-                }
-                .groupBy(dateTrunc)
-                .orderBy(dateTrunc, SortOrder.DESC)
+            val tblSuffix = granularity.toLowerCase()
+            val query = """
+                |SELECT
+                |   block_cache_tx_history_$tblSuffix.block_timestamp,
+                |   block_cache_tx_history_$tblSuffix.tx_count
+                |FROM block_cache_tx_history_$tblSuffix
+                |WHERE block_cache_tx_history_$tblSuffix.block_timestamp >= ? 
+                |  AND block_cache_tx_history_$tblSuffix.block_timestamp < ?
+                |ORDER BY block_cache_tx_history_$tblSuffix.block_timestamp DESC
+                |""".trimMargin()
+
+            val dateTimeType = DateColumnType(true)
+            val arguments = listOf<Pair<DateColumnType, DateTime>>(
+                Pair(dateTimeType, fromDate.startOfDay()),
+                Pair(dateTimeType, toDate.startOfDay().plusDays(1))
+            )
+
+            val tz = DateTimeZone.UTC
+            val pattern = "yyyy-MM-dd HH:mm:ss"
+
+            query.exec(arguments)
                 .map {
                     TxHistory(
-                        it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
-                        it[txSum]!!
+                        it.getTimestamp("block_timestamp").toDateTime(tz, pattern),
+                        it.getInt("tx_count")
                     )
                 }
+        }
+
+        fun refreshTxHistoryMatViews(): Unit = transaction {
+            val conn = TransactionManager.current().connection
+            val queries = listOf(
+                "REFRESH MATERIALIZED VIEW CONCURRENTLY block_cache_tx_history_day",
+                "REFRESH MATERIALIZED VIEW CONCURRENTLY block_cache_tx_history_hour"
+            )
+            conn.executeInBatch(queries)
         }
 
         fun getDaysBetweenHeights(minHeight: Int, maxHeight: Int) = transaction {
@@ -156,10 +180,12 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<BlockProposerRecord>(BlockProposerTable) {
 
         fun save(height: Int, minGasFee: Double?, timestamp: DateTime?, proposer: String?) = transaction {
-            BlockProposerRecord.findById(height) ?: new(height) {
-                this.proposerOperatorAddress = proposer!!
-                this.blockTimestamp = timestamp!!
-            }.apply {
+            (
+                BlockProposerRecord.findById(height) ?: new(height) {
+                    this.proposerOperatorAddress = proposer!!
+                    this.blockTimestamp = timestamp!!
+                }
+                ).apply {
                 this.minGasFee = minGasFee
             }
         }
