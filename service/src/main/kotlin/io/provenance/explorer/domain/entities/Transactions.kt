@@ -251,7 +251,7 @@ class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
         fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, message: Any, type: String, module: String) =
             transaction {
                 TxEventTypeRecord.insert(type, module, message.typeUrl).let { typeId ->
-                    TxMessageRecord.findByTxHashAndMessageHash(txId.value, message.value.toDbHash()) ?: TxMessageTable.insert {
+                    TxEventRecord.findByTxHashAndMessageHash(txId.value, message.value.toDbHash()) ?: TxMessageTable.insert {
                         it[this.blockHeight] = blockHeight
                         it[this.txHash] = txHash
                         it[this.txHashId] = txId

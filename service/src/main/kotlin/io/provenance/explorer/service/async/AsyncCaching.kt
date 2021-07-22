@@ -208,8 +208,21 @@ class AsyncCaching(
                         }
                     }
                     TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module)
+
+                    // Could we pass in message_id and other info directly from here?
+                    saveMsgEvent(tx)
                 } else
                     TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, UNKNOWN, UNKNOWN)
+            }
+        }
+    }
+
+    fun saveMsgEvent(tx: ServiceOuterClass.GetTxResponse) = transaction {
+        tx.txResponse.logsList.forEach { log ->
+
+            log.eventsList.forEach { event ->
+                val eventType = event.type
+                val attributeMap = event.attributesList.associate { it.key to it.value }
             }
         }
     }
