@@ -52,8 +52,6 @@ object TxCacheTable : IntIdTable(name = "tx_cache") {
     val txV2 = jsonb<TxCacheTable, ServiceOuterClass.GetTxResponse>("tx_v2", OBJECT_MAPPER)
 }
 
-// Would I make a table for TxEvents in here?
-
 class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxCacheRecord>(TxCacheTable) {
         fun insertIgnore(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime) =
