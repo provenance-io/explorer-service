@@ -518,8 +518,8 @@ class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
     }
 }
 
-object TxEventsAttrTable : IntIdTable(name = "tx_message_event_attr") {
-    val txMsgEventId = text("tx_message_event_id")
+object TxEventsAttrTable : IntIdTable(name = "tx_msg_event_attr") {
+    val txMsgEventId = text("tx_msg_event_id")
     val attrKey = varchar("attr_key", 256)
     val attrValue = text("attr_value")
 }

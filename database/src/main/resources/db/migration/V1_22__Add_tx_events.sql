@@ -10,13 +10,16 @@ CREATE TABLE IF NOT EXISTS tx_events
     tx_message_hash      TEXT NULL
 );
 
-CREATE TABLE IF NOT EXISTS tx_message_event_attr(
+CREATE TABLE IF NOT EXISTS tx_msg_event_attr(
     id              SERIAL PRIMARY KEY,
     tx_msg_event_id INT NOT NULL,
     attr_key        VARCHAR(256) NOT NULL,
     attr_value TEXT NOT NULL
-)
+);
 
-CREATE INDEX IF NOT EXISTS tx_events_message_id_idx        ON tx_events (tx_message_id);
-CREATE INDEX IF NOT EXISTS tx_message_attributes_event_idx ON tx_message_event_attributes (tx_message_event_id);
+CREATE INDEX IF NOT EXISTS tx_events_msg_id_idx  ON tx_events (tx_message_id);
+CREATE INDEX IF NOT EXISTS tx_events_hash_idx    ON tx_events (tx_hash);
+CREATE INDEX IF NOT EXISTS tx_events_hash_id_idx ON tx_events (tx_hash_id);
+CREATE INDEX IF NOT EXISTS tx_msg_attr_event_idx ON tx_msg_event_attr (tx_msg_event_id);
+CREATE INDEX IF NOT EXISTS tx_msg_attr_key       ON tx_msg_event_attr (attr_key);
 --Do we need to add any other indexes?
