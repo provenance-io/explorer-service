@@ -193,13 +193,6 @@ object TxMessageTypeTable : IntIdTable(name = "tx_message_type") {
     val category = varchar("category", 128).nullable()
 }
 
-object TxEventTypeTable : IntIdTable(name = "tx_event_type") {
-    val type = varchar("type", 128)
-    val module = varchar("module", 128)
-    val protoType = varchar("proto_type", 256)
-    val category = varchar("category", 128).nullable()
-}
-
 const val UNKNOWN = "unknown"
 class TxMessageTypeRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxMessageTypeRecord>(TxMessageTypeTable) {
@@ -241,26 +234,35 @@ object TxEventsTable : IntIdTable(name = "tx_events") {
     val blockHeight = integer("block_height")
     val txHash = varchar("tx_hash", 64)
     val txHashId = reference("tx_hash_id", TxCacheTable)
-    val txMessageId = integer("tx_message_id")
-    val txMessageType = reference("tx_message_type_id", TxEventTypeTable)
-    val eventAttributeList = jsonb<TxEventsTable, Any>("event_attribute_list", OBJECT_MAPPER) // Not sure what goes in the <>
+    val txMessageId = text("tx_message_id")
+    val eventType = varchar("event_type", 256)
+    val txMessageHash = text("tx_message_hash")
 }
 
 class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxEventRecord>(TxEventsTable) {
-        fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, message: Any, type: String, module: String) =
+
+        private fun findByTxHashAndMessageHash(txHashId: Int, messageHash: String) = transaction {
+            TxMessageRecord.find { (TxEventsTable.txHashId eq txHashId) and (TxEventsTable.txMessageHash eq messageHash) }
+                .firstOrNull()
+        }
+
+        fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, msg: Any, type: String, msgId: String): String {
+            var eventId = ""
             transaction {
-                TxEventTypeRecord.insert(type, module, message.typeUrl).let { typeId ->
-                    TxEventRecord.findByTxHashAndMessageHash(txId.value, message.value.toDbHash()) ?: TxMessageTable.insert {
-                        it[this.blockHeight] = blockHeight
-                        it[this.txHash] = txHash
-                        it[this.txHashId] = txId
-                        it[this.txMessageType] = typeId
-                        it[this.eventType] = // eventType
-                            it[this.eventAttrList] = message.value.toDbHash()
-                    }
+                findByTxHashAndMessageHash(txId.value, msg.value.toDbHash()) ?: TxEventsTable.insert {
+                    it[this.blockHeight] = blockHeight
+                    it[this.txHash] = txHash
+                    it[this.txHashId] = txId
+                    it[this.txMessageId] = msgId
+                    it[this.eventType] = type
+                    it[this.txMessageHash] = msg.value.toDbHash()
                 }
+                eventId = this.id
             }
+            return eventId // this is for the txEventAttr to be able to link to this id
+        }
+
     }
 }
 
@@ -309,19 +311,23 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
                 .firstOrNull()
         }
 
-        fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, message: Any, type: String, module: String) =
+        fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, message: Any, type: String, module: String): String {
+            var msgId = ""
             transaction {
                 TxMessageTypeRecord.insert(type, module, message.typeUrl).let { typeId ->
                     findByTxHashAndMessageHash(txId.value, message.value.toDbHash()) ?: TxMessageTable.insert {
-                        it[this.blockHeight] = blockHeight
-                        it[this.txHash] = txHash
+                        it[this.blockHeight] = TxMessageTable.blockHeight // why don't we use the blockHeight passed in?
+                        it[this.txHash] = TxMessageTable.txHash
                         it[this.txHashId] = txId
                         it[this.txMessageType] = typeId
                         it[this.txMessage] = message
                         it[this.txMessageHash] = message.value.toDbHash()
                     }
+                    msgId = this.id
                 }
             }
+            return msgId
+        }
     }
 
     var blockHeight by TxMessageTable.blockHeight
