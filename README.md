@@ -1,7 +1,30 @@
+
+<div align="center">
+<img src="./docs/logo.svg" alt="Provenance Explorer Service"/>
+</div>
+<br/><br/>
+
 # Provenance Explorer
-The purpose of this api backend is to provide a single API for the Provenance Blockchain Explorer frontend, 
+The purpose of this api backend is to provide a single API for the [Provenance Blockchain][Provenance] Explorer frontend, 
 aggregate and cache information needed by the front end (e.g. simplify multiple block/transaction calls into a 
 single call), and provide Provenance Blockchain specific endpoints.
+
+## Status
+
+[![Latest Release][release-badge]][release-latest]
+[![Apache 2.0 License][license-badge]][license-url]
+[![LOC][loc-badge]][loc-report]
+[![Lint Status][lint-badge]][lint-report]
+
+[license-badge]: https://img.shields.io/github/license/provenance-io/explorer-service.svg
+[license-url]: https://github.com/provenance-io/explorer-service/blob/main/LICENSE
+[release-badge]: https://img.shields.io/github/tag/provenance-io/explorer-service.svg
+[release-latest]: https://github.com/provenance-io/explorer-service/releases/latest
+[loc-badge]: https://tokei.rs/b1/github/provenance-io/explorer-service
+[loc-report]: https://github.com/provenance-io/explorer-service
+[lint-badge]: https://github.com/provenance-io/explorer-service/workflows/ktlint/badge.svg
+[lint-report]: https://github.com/provenance-io/explorer-service/actions/workflows/ktlint.yml
+[provenance]: https://provenance.io/#overview
 
 ### Table of Contents
 - [Provenance Explorer](#provenance-explorer)
@@ -16,6 +39,7 @@ single call), and provide Provenance Blockchain specific endpoints.
                 + [To get the explorer UI up THIRD](#to-get-the-explorer-ui-up-third)
             - [Via Docker and Docker-compose](#via-docker-and-docker-compose)
         + [Swagger URLs](#swagger-urls)
+        + [Linting](#linting)
 
 ## How to run testnet and explorer locally
 
@@ -96,7 +120,6 @@ Swagger for Testnet: http://localhost:1317/swagger/
 
 ### Linting
 To install the Kotlin linter run:
-
 ```
 brew install ktlint
 ```
