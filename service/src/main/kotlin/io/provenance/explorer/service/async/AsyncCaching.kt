@@ -180,7 +180,7 @@ class AsyncCaching(
 
     private fun saveEvents(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
         // how do I get event data so I can store it in the database?
-        TxEventRecord.insert(...) // event data goes in here
+//        TxEventRecord.insert(...) // event data goes in here
 
     }
 

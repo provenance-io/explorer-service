@@ -256,8 +256,8 @@ class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
                         it[this.txHash] = txHash
                         it[this.txHashId] = txId
                         it[this.txMessageType] = typeId
-                        it[this.eventType] =  // eventType
-                        it[this.eventAttrList] = message.value.toDbHash()
+                        it[this.eventType] = // eventType
+                            it[this.eventAttrList] = message.value.toDbHash()
                     }
                 }
             }
