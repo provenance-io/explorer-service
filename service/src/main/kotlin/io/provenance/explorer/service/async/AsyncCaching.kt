@@ -9,7 +9,22 @@ import cosmos.tx.v1beta1.TxOuterClass
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toMAddress
-import io.provenance.explorer.domain.entities.*
+import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.BlockCacheRecord
+import io.provenance.explorer.domain.entities.BlockProposerRecord
+import io.provenance.explorer.domain.entities.IbcChannelRecord
+import io.provenance.explorer.domain.entities.SigJoinType
+import io.provenance.explorer.domain.entities.SignatureJoinRecord
+import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
+import io.provenance.explorer.domain.entities.TxAddressJoinRecord
+import io.provenance.explorer.domain.entities.TxAddressJoinType
+import io.provenance.explorer.domain.entities.TxCacheRecord
+import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
+import io.provenance.explorer.domain.entities.TxMessageRecord
+import io.provenance.explorer.domain.entities.TxMessageTypeRecord
+import io.provenance.explorer.domain.entities.TxNftJoinRecord
+import io.provenance.explorer.domain.entities.UNKNOWN
+import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toObjectNode
@@ -161,7 +176,7 @@ class AsyncCaching(
         return TxUpdatedItems(addrs, markers)
     }
 
-    private fun saveEvents(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse, msg: Any, msgId: String) = transaction {
+    private fun saveEvents(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse, msg: com.google.protobuf.Any, msgId: String) = transaction {
         tx.txResponse.logsList.forEach { log ->
             log.eventsList.forEach { event ->
                 val eventId = TxEventRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, event.type, msgId)
@@ -173,34 +188,33 @@ class AsyncCaching(
         }
     }
 
-        private fun saveMessages(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
-            tx.tx.body.messagesList.forEachIndexed { idx, msg ->
-                if (tx.txResponse.logsCount > 0) {
-                    val type: String
-                    val module: String
-                    when (val msgType = TxMessageTypeRecord.findByProtoType(msg.typeUrl)) {
-                        null -> {
+    private fun saveMessages(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
+        tx.tx.body.messagesList.forEachIndexed { idx, msg ->
+            if (tx.txResponse.logsCount > 0) {
+                val type: String
+                val module: String
+                when (val msgType = TxMessageTypeRecord.findByProtoType(msg.typeUrl)) {
+                    null -> {
+                        val typePair = getMsgType(tx, idx)
+                        type = typePair.first
+                        module = typePair.second
+                    }
+                    else -> {
+                        if (msgType.module == UNKNOWN) {
                             val typePair = getMsgType(tx, idx)
                             type = typePair.first
                             module = typePair.second
-                        }
-                        else -> {
-                            if (msgType.module == UNKNOWN) {
-                                val typePair = getMsgType(tx, idx)
-                                type = typePair.first
-                                module = typePair.second
-                            } else {
-                                type = msgType.type
-                                module = msgType.module
-                            }
+                        } else {
+                            type = msgType.type
+                            module = msgType.module
                         }
                     }
-                    val msgId = TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module)
-                    // Could we pass in message_id and other info directly from here?
-                    saveEvents(txId, tx, msg, msgId)
-                } else
-                    TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, UNKNOWN, UNKNOWN)
-            }
+                }
+                val msgId = TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module)
+                // Could we pass in message_id and other info directly from here?
+                saveEvents(txId, tx, msg, msgId)
+            } else
+                TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, UNKNOWN, UNKNOWN)
         }
     }
 
