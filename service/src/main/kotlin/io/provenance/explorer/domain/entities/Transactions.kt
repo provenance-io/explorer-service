@@ -230,41 +230,6 @@ class TxMessageTypeRecord(id: EntityID<Int>) : IntEntity(id) {
     var category by TxMessageTypeTable.category
 }
 
-object TxEventsTable : IntIdTable(name = "tx_events") {
-    val blockHeight = integer("block_height")
-    val txHash = varchar("tx_hash", 64)
-    val txHashId = reference("tx_hash_id", TxCacheTable)
-    val txMessageId = text("tx_message_id")
-    val eventType = varchar("event_type", 256)
-    val txMessageHash = text("tx_message_hash")
-}
-
-class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<TxEventRecord>(TxEventsTable) {
-
-        private fun findByTxHashAndMessageHash(txHashId: Int, messageHash: String) = transaction {
-            TxMessageRecord.find { (TxEventsTable.txHashId eq txHashId) and (TxEventsTable.txMessageHash eq messageHash) }
-                .firstOrNull()
-        }
-
-        fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, msg: Any, type: String, msgId: String): String {
-            var eventId = ""
-            transaction {
-                findByTxHashAndMessageHash(txId.value, msg.value.toDbHash()) ?: TxEventsTable.insert {
-                    it[this.blockHeight] = blockHeight
-                    it[this.txHash] = txHash
-                    it[this.txHashId] = txId
-                    it[this.txMessageId] = msgId
-                    it[this.eventType] = type
-                    it[this.txMessageHash] = msg.value.toDbHash()
-                }
-                eventId = this.id
-            }
-            return eventId // this is for the txEventAttr to be able to link to this id
-        }
-    }
-}
-
 object TxMessageTable : IntIdTable(name = "tx_message") {
     val blockHeight = integer("block_height")
     val txHash = varchar("tx_hash", 64)
@@ -315,8 +280,8 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
             transaction {
                 TxMessageTypeRecord.insert(type, module, message.typeUrl).let { typeId ->
                     findByTxHashAndMessageHash(txId.value, message.value.toDbHash()) ?: TxMessageTable.insert {
-                        it[this.blockHeight] = TxMessageTable.blockHeight // why don't we use the blockHeight passed in?
-                        it[this.txHash] = TxMessageTable.txHash
+                        it[this.blockHeight] = blockHeight
+                        it[this.txHash] = txHash
                         it[this.txHashId] = txId
                         it[this.txMessageType] = typeId
                         it[this.txMessage] = message
@@ -514,4 +479,67 @@ class TxNftJoinRecord(id: EntityID<Int>) : IntEntity(id) {
     var metadataType by TxNftJoinTable.metadataType
     var metadataId by TxNftJoinTable.metadataId
     var metadataUuid by TxNftJoinTable.metadataUuid
+}
+
+object TxEventsTable : IntIdTable(name = "tx_events") {
+    val blockHeight = integer("block_height")
+    val txHash = varchar("tx_hash", 64)
+    val txHashId = reference("tx_hash_id", TxCacheTable)
+    val txMessageId = text("tx_message_id")
+    val txMsgTypeId = varchar("tx_message_type_id", 128)
+    val eventType = varchar("event_type", 256)
+    val txMessageHash = text("tx_message_hash")
+}
+
+class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxEventRecord>(TxEventsTable) {
+
+        private fun findByTxHashAndMessageHash(txHashId: Int, messageHash: String) = transaction {
+            TxEventRecord.find { (TxEventsTable.txHashId eq txHashId) and (TxEventsTable.txMessageHash eq messageHash) }
+                .firstOrNull()
+        }
+
+        fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, msg: Any, type: String, msgId: String, msgTypeId: String): String {
+            var eventId = ""
+            transaction {
+                findByTxHashAndMessageHash(txId.value, msg.value.toDbHash()) ?: TxEventsTable.insert {
+                    it[this.blockHeight] = blockHeight
+                    it[this.txHash] = txHash
+                    it[this.txHashId] = txId
+                    it[this.txMessageId] = msgId
+                    it[this.txMsgTypeId] = msgTypeId
+                    it[this.eventType] = type
+                    it[this.txMessageHash] = msg.value.toDbHash()
+                }
+                eventId = this.id
+            }
+            return eventId // this is for the txEventAttr to be able to link to this id
+        }
+    }
+}
+
+object TxEventsAttrTable : IntIdTable(name = "tx_message_event_attr") {
+    val txMsgEventId = text("tx_message_event_id")
+    val attrKey = varchar("attr_key", 256)
+    val attrValue = text("attr_value")
+}
+
+class TxEventAttrRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxEventAttrRecord>(TxEventsAttrTable) {
+
+        private fun findByKey(attrKey: String) = transaction {
+            TxMessageRecord.find { (TxEventsAttrTable.attrKey eq attrKey) }
+                .firstOrNull()
+        }
+
+        fun insert(key: String, value: String, eventId: String) {
+            transaction {
+                findByKey(key) ?: TxEventsAttrTable.insert {
+                    it[this.txMsgEventId] = eventId
+                    it[this.attrKey] = key
+                    it[this.attrValue] = value
+                }
+            }
+        }
+    }
 }

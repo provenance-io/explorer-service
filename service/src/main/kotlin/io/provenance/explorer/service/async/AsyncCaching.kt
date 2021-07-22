@@ -25,6 +25,8 @@ import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.TxNftJoinRecord
 import io.provenance.explorer.domain.entities.UNKNOWN
 import io.provenance.explorer.domain.entities.updateHitCount
+import io.provenance.explorer.domain.entities.TxEventRecord
+import io.provenance.explorer.domain.entities.TxEventAttrRecord
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toObjectNode
@@ -176,13 +178,12 @@ class AsyncCaching(
         return TxUpdatedItems(addrs, markers)
     }
 
-    private fun saveEvents(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse, msg: com.google.protobuf.Any, msgId: String) = transaction {
+    private fun saveEvents(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse, msg: com.google.protobuf.Any, msgId: String, msgType: String) = transaction {
         tx.txResponse.logsList.forEach { log ->
             log.eventsList.forEach { event ->
-                val eventId = TxEventRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, event.type, msgId)
+                val eventId = TxEventRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, event.type, msgId, msgType)
                 event.attributesList.forEach { attr ->
-                    attr.key
-                    attr.value
+                    TxEventAttrRecord.insert(attr.key, attr.value, eventId)
                 }
             }
         }
@@ -211,8 +212,7 @@ class AsyncCaching(
                     }
                 }
                 val msgId = TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module)
-                // Could we pass in message_id and other info directly from here?
-                saveEvents(txId, tx, msg, msgId)
+                saveEvents(txId, tx, msg, msgId, type)
             } else
                 TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, UNKNOWN, UNKNOWN)
         }
