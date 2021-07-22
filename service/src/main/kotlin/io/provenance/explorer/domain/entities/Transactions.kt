@@ -513,7 +513,7 @@ class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
                 }
                 eventId = this.id
             }
-            return eventId // this is for the txEventAttr to be able to link to this id
+            return eventId
         }
     }
 }
