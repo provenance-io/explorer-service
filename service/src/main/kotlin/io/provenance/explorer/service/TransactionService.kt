@@ -7,9 +7,12 @@ import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.getParentForType
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toMAddress
+import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
+import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
+import io.provenance.explorer.domain.entities.TxAddressJoinType
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheTable
 import io.provenance.explorer.domain.entities.TxMessageRecord
@@ -17,17 +20,17 @@ import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.getMinGasFee
 import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
-import io.provenance.explorer.domain.extensions.toProtoCoin
 import io.provenance.explorer.domain.extensions.toSigObj
-import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.Gas
 import io.provenance.explorer.domain.models.explorer.MsgInfo
 import io.provenance.explorer.domain.models.explorer.MsgTypeSet
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.TxDetails
+import io.provenance.explorer.domain.models.explorer.TxGov
 import io.provenance.explorer.domain.models.explorer.TxMessage
 import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.domain.models.explorer.TxStatus
@@ -46,7 +49,8 @@ class TransactionService(
     private val protoPrinter: JsonFormat.Printer,
     private val props: ExplorerProperties,
     private val asyncCache: AsyncCaching,
-    private val nftService: NftService
+    private val nftService: NftService,
+    private val govService: GovService
 ) {
 
     protected val logger = logger(TransactionService::class)
@@ -101,15 +105,18 @@ class TransactionService(
         val total = TxCacheRecord.findByQueryParamsForCount(params)
         TxCacheRecord.findByQueryForResults(params).map {
             val rec = checkMsgCount(it)
-            val displayMsgType = if (msgTypes.isNotEmpty()) msgTypes.first()
-            else transaction { rec.txMessages.first().txMessageType.type }
+            val displayMsgType = transaction {
+                if (msgTypes.isNotEmpty())
+                    rec.txMessages.map { msg -> msg.txMessageType.type }.first { type -> msgTypes.contains(type) }
+                else rec.txMessages.first().txMessageType.type
+            }
             TxSummary(
                 rec.hash,
                 rec.height,
                 MsgInfo(transaction { rec.txMessages.count() }, displayMsgType),
                 getMonikers(rec.id),
                 rec.txTimestamp.toString(),
-                rec.txV2.tx.authInfo.fee.amountList.toProtoCoin().let { coin -> CoinStr(coin.amount, coin.denom) },
+                rec.txV2.toCoinStr(),
                 TxCacheRecord.findSigsByHash(rec.hash).toSigObj(props.provAccPrefix()),
                 if (rec.errorCode == null) "success" else "failed"
             )
@@ -149,7 +156,7 @@ class TransactionService(
             errorCode = tx.txResponse.code,
             codespace = tx.txResponse.codespace,
             errorLog = if (tx.txResponse.code > 0) tx.txResponse.rawLog else null,
-            fee = tx.tx.authInfo.fee.amountList.toProtoCoin().let { coin -> CoinStr(coin.amount, coin.denom) },
+            fee = tx.toCoinStr(),
             signers = TxCacheRecord.findSigsByHash(tx.txResponse.txhash).toSigObj(props.provAccPrefix()),
             memo = tx.tx.body.memo,
             monikers = getMonikers(EntityID(txId, TxCacheTable))
@@ -181,6 +188,53 @@ class TransactionService(
 
         return monikers + moduleNames
     }
+
+    fun getGovernanceTxs(
+        address: String?,
+        msgType: String?,
+        txStatus: TxStatus?,
+        page: Int,
+        count: Int,
+        fromDate: DateTime?,
+        toDate: DateTime?
+    ): PagedResults<TxGov> =
+        transaction {
+            val msgTypes = if (msgType != null) listOf(msgType) else MsgTypeSet.GOVERNANCE.types
+            val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
+            val addr = transaction {
+                var pair = address?.getAddressType(props)
+                if (pair?.first == TxAddressJoinType.OPERATOR.name) {
+                    val accAddr = StakingValidatorCacheRecord.findByOperator(address!!)?.accountAddress
+                    val accId = AccountRecord.findByAddress(accAddr!!)?.id?.value
+                    pair = Pair(TxAddressJoinType.ACCOUNT.name, accId)
+                }
+                pair
+            }
+
+            val params =
+                TxQueryParams(
+                    addr?.second, addr?.first, address, null, null, msgTypeIds, null, txStatus,
+                    count, page.toOffset(count), fromDate, toDate, null, null, null
+                )
+
+            val total = TxMessageRecord.findByQueryParamsForCount(params)
+            TxMessageRecord.findByQueryForResults(params).map { msg ->
+                val govDetail = msg.txMessage.getGovMsgDetail(msg.txHash)!!
+                TxGov(
+                    msg.txHash,
+                    msg.txMessageType.type,
+                    govDetail.depositAmount,
+                    govDetail.proposalType,
+                    govDetail.proposalId,
+                    govDetail.proposalTitle,
+                    msg.blockHeight,
+                    msg.txHashId.txTimestamp.toString(),
+                    msg.txHashId.txV2.toCoinStr(),
+                    TxCacheRecord.findSigsByHash(msg.txHash).toSigObj(props.provAccPrefix()),
+                    if (msg.txHashId.errorCode == null) "success" else "failed"
+                )
+            }.let { PagedResults(total.pageCountOfResults(count), it, total.toLong()) }
+        }
 }
 
 fun List<TxMessageTypeRecord>.mapToRes() =
