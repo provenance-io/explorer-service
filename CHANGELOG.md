@@ -36,6 +36,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Features
 * Added tables for tx events and event attributes that are populated when tx messages are saved #115
 
+### Improvements
+* Updated front-facing docs
+
 ## [v2.1.0](https://github.com/provenance-io/explorer-service/releases/tag/v2.1.0) - 2021-07-22
 ### Release Name: Xu Fu
 
