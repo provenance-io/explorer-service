@@ -526,7 +526,7 @@ class TxEventAttrRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxEventAttrRecord>(TxEventsAttrTable) {
 
         private fun findByKey(attrKey: String) = transaction {
-            TxMessageRecord.find { (TxEventsAttrTable.attrKey eq attrKey) }
+            TxEventAttrRecord.find { (TxEventsAttrTable.attrKey eq attrKey) }
                 .firstOrNull()
         }
 

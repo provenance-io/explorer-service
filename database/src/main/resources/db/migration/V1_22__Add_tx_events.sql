@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS tx_msg_event_attr (
     id              SERIAL PRIMARY KEY,
     tx_msg_event_id INT NOT NULL,
     attr_key        VARCHAR(256) NOT NULL,
-    attr_value TEXT NOT NULL
+    attr_value      TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS tx_events_msg_id_idx  ON tx_events (tx_message_id);
