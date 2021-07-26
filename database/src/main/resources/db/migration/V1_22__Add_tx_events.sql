@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS tx_events (
 
 CREATE TABLE IF NOT EXISTS tx_msg_event_attr (
     id              SERIAL PRIMARY KEY,
-    tx_msg_event_id INT NOT NULL,
+    tx_msg_event_id TEXT NOT NULL,
     attr_key        VARCHAR(256) NOT NULL,
     attr_value      TEXT NOT NULL
 );
