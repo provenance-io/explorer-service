@@ -483,7 +483,6 @@ object TxEventsTable : IntIdTable(name = "tx_msg_event") {
     val txMessageId = integer("tx_message_id")
     val txMsgTypeId = varchar("tx_message_type_id", 128)
     val eventType = varchar("event_type", 256)
-    val txMsgHash = text("tx_message_hash")
 }
 
 class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -494,7 +493,7 @@ class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
                 .firstOrNull()
         }
 
-        fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, msgHash: String, type: String, msgId: Int, msgTypeId: String) =
+        fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, type: String, msgId: Int, msgTypeId: String) =
             transaction {
                 findByTxHashIdMessageIdAndEventType(txId.value, msgId, type)?.id ?: TxEventsTable.insertAndGetId {
                     it[this.blockHeight] = blockHeight
@@ -503,7 +502,6 @@ class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.txMessageId] = msgId
                     it[this.txMsgTypeId] = msgTypeId
                     it[this.eventType] = type
-                    it[this.txMsgHash] = msgHash
                 }
             }
     }
@@ -514,7 +512,6 @@ class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
     var txMessageId by TxEventsTable.txMessageId
     var txMsgTypeId by TxEventsTable.txMsgTypeId
     var eventType by TxEventsTable.eventType
-    var txMsgHash by TxEventsTable.txMsgHash
 }
 
 object TxEventAttrTable : IntIdTable(name = "tx_msg_event_attr") {

@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS tx_msg_event (
     tx_message_id        INT NOT NULL,
     tx_message_type_id   VARCHAR(128) NOT NULL,
     event_type           VARCHAR(256) NOT NULL,
-    tx_message_hash      TEXT NULL
 );
 
 CREATE TABLE IF NOT EXISTS tx_msg_event_attr (
