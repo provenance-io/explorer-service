@@ -102,7 +102,7 @@ class AsyncCaching(
         blockService.addBlockToCache(
             blockRes.block.height(), blockRes.block.data.txsCount, blockRes.block.header.time.toDateTime(), blockRes
         )
-        BlockCacheRecord.refreshTxHistoryMatViews()
+        TxSingleMessageCacheRecord.updateGasStats()
         validatorService.saveProposerRecord(blockRes, blockRes.block.header.time.toDateTime(), blockRes.block.height())
         validatorService.saveValidatorsAtHeight(blockRes.block.height())
         validatorService.saveMissedBlocks(blockRes)
@@ -203,6 +203,14 @@ class AsyncCaching(
                     }
                 }
                 TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module)
+                if (tx.tx.body.messagesCount == 1) {
+                    TxSingleMessageCacheRecord.insert(
+                        tx.txResponse.timestamp.toDateTime(),
+                        tx.txResponse.txhash,
+                        tx.txResponse.gasUsed.toInt(),
+                        type
+                    )
+                }
             } else
                 TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, UNKNOWN, UNKNOWN)
         }
