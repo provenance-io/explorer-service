@@ -40,6 +40,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Improvements
 * Updated front-facing docs
 
+### Bug Fixes
+* Ensure governance proposal votes take precedence by block height
+
 ## [v2.1.0](https://github.com/provenance-io/explorer-service/releases/tag/v2.1.0) - 2021-07-22
 ### Release Name: Xu Fu
 

@@ -41,7 +41,7 @@ object GovProposalTable : IntIdTable(name = "gov_proposal") {
 
 fun String.getProposalType() = this.split(".").last().replace("Proposal", "")
 
-fun Message.toObjectNode(protoPrinter: JsonFormat.Printer) =
+fun Message.toProposalTitleAndDescription(protoPrinter: JsonFormat.Printer) =
     OBJECT_MAPPER.readValue(protoPrinter.print(this), ObjectNode::class.java)
         .let { it.get("title").asText() to it.get("description").asText() }
 
@@ -105,7 +105,7 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.address] = addrInfo.addr
                     it[this.addressId] = addrInfo.addrId
                     it[this.isValidator] = addrInfo.isValidator
-                    proposal.content.toObjectNode(protoPrinter).let { pair ->
+                    proposal.content.toProposalTitleAndDescription(protoPrinter).let { pair ->
                         it[this.title] = pair.first
                         it[this.description] = pair.second
                     }
@@ -203,10 +203,12 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
         ) = transaction {
             findByProposalIdAndAddrId(vote.proposalId, addrInfo.addrId)
                 ?.apply {
-                    this.vote = vote.option.name
-                    this.blockHeight = blockHeight
-                    this.txHash = txHash
-                    this.txTimestamp = txTimestamp
+                    if (txInfo.blockHeight > this.blockHeight) {
+                        this.vote = vote.option.name
+                        this.blockHeight = blockHeight
+                        this.txHash = txHash
+                        this.txTimestamp = txTimestamp
+                    }
                 } ?: GovVoteTable.insertAndGetId {
                 it[this.proposalId] = vote.proposalId
                 it[this.addressId] = addrInfo.addrId
