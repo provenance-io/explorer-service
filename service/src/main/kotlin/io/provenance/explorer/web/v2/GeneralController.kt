@@ -31,6 +31,7 @@ class GeneralController(private val explorerService: ExplorerService) {
     @GetMapping("/spotlight")
     fun spotlight(): ResponseEntity<Spotlight> = ResponseEntity.ok(explorerService.getSpotlightStatistics())
 
+    @Deprecated("This endpoint is not being utilized. Instead, use '/gas/stats'")
     @ApiOperation("Returns gas statistics")
     @GetMapping("/gas/statistics")
     fun gasStatistics(
@@ -38,6 +39,14 @@ class GeneralController(private val explorerService: ExplorerService) {
         @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime,
         @RequestParam(required = false) granularity: DateTruncGranularity?
     ) = ResponseEntity.ok(explorerService.getGasStatistics(fromDate, toDate, granularity))
+
+    @ApiOperation("Returns gas statistics")
+    @GetMapping("/gas/stats")
+    fun gasStats(
+        @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime,
+        @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime,
+        @RequestParam(required = false) granularity: DateTruncGranularity?
+    ) = ResponseEntity.ok(explorerService.getGasStats(fromDate, toDate, granularity))
 
     @ApiOperation("Returns the ID of the chain associated with the explorer instance")
     @GetMapping("/chain/id")
