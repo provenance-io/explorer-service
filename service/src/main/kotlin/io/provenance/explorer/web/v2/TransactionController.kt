@@ -150,4 +150,17 @@ class TransactionController(private val transactionService: TransactionService) 
                 null, null, null, msgType, null, txStatus, count, page, fromDate, toDate, nftAddr
             )
         )
+
+    @ApiOperation("Returns transactions for governance module with unique response type")
+    @GetMapping("/module/gov")
+    fun txsForGovernance(
+        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = false) address: String?,
+        @RequestParam(required = false) msgType: String?,
+        @RequestParam(required = false) txStatus: TxStatus?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
+    ) =
+        ResponseEntity.ok(transactionService.getGovernanceTxs(address, msgType, txStatus, page, count, fromDate, toDate))
 }

@@ -101,7 +101,6 @@ class AsyncCaching(
         blockService.addBlockToCache(
             blockRes.block.height(), blockRes.block.data.txsCount, blockRes.block.header.time.toDateTime(), blockRes
         )
-        BlockCacheRecord.refreshTxHistoryMatViews()
         validatorService.saveProposerRecord(blockRes, blockRes.block.header.time.toDateTime(), blockRes.block.height())
         validatorService.saveValidatorsAtHeight(blockRes.block.height())
         validatorService.saveMissedBlocks(blockRes)
@@ -334,17 +333,17 @@ class AsyncCaching(
                                 .value.toLong()
                                 .let { id ->
                                     pair.second.toMsgSubmitProposal().let {
-                                        govService.saveProposal(id, txInfo, it.proposer)
+                                        govService.saveProposal(id, txInfo, it.proposer, isSubmit = true)
                                         govService.saveDeposit(id, txInfo, null, it)
                                     }
                                 }
                         GovMsgType.DEPOSIT ->
                             pair.second.toMsgDeposit().let {
-                                govService.saveProposal(it.proposalId, txInfo, it.depositor)
+                                govService.saveProposal(it.proposalId, txInfo, it.depositor, isSubmit = false)
                                 govService.saveDeposit(it.proposalId, txInfo, it, null)
                             }
                         GovMsgType.VOTE -> pair.second.toMsgVote().let {
-                            govService.saveProposal(it.proposalId, txInfo, it.voter)
+                            govService.saveProposal(it.proposalId, txInfo, it.voter, isSubmit = false)
                             govService.saveVote(txInfo, it)
                         }
                     }

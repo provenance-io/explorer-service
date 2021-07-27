@@ -65,6 +65,10 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
                 .toList()
         }
 
+        fun findByTxHash(txHash: String) = transaction {
+            GovProposalRecord.find { GovProposalTable.txHash eq txHash }.firstOrNull()
+        }
+
         fun findByProposalId(proposalId: Long) = transaction {
             GovProposalRecord.find { GovProposalTable.proposalId eq proposalId }.firstOrNull()
         }
@@ -83,12 +87,18 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
             proposal: Gov.Proposal,
             protoPrinter: JsonFormat.Printer,
             txInfo: TxData,
-            addrInfo: GovAddrData
+            addrInfo: GovAddrData,
+            isSubmit: Boolean
         ) =
             transaction {
                 findByProposalId(proposal.proposalId)?.apply {
                     this.status = proposal.status.name
                     this.data = proposal
+                    if (isSubmit) {
+                        this.txHash = txInfo.txHash
+                        this.txTimestamp = txInfo.txTimestamp
+                        this.blockHeight = txInfo.blockHeight
+                    }
                 } ?: GovProposalTable.insertAndGetId {
                     it[this.proposalId] = proposal.proposalId
                     it[this.proposalType] = proposal.content.typeUrl.getProposalType()
@@ -240,6 +250,10 @@ class GovDepositRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findByProposalId(proposalId: Long) = transaction {
             GovDepositRecord.find { GovDepositTable.proposalId eq proposalId }.toMutableList()
+        }
+
+        fun findByTxHash(txHash: String) = transaction {
+            GovDepositRecord.find { GovDepositTable.txHash eq txHash }.firstOrNull()
         }
 
         fun getByProposalIdPaginated(proposalId: Long, limit: Int, offset: Int) = transaction {

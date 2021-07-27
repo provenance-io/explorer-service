@@ -273,6 +273,53 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
                 .firstOrNull()
         }
 
+        fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
+            val columns = mutableListOf(
+                TxMessageTable.id, TxMessageTable.blockHeight, TxMessageTable.txHash,
+                TxMessageTable.txHashId, TxMessageTable.txMessageType, TxMessageTable.txMessage
+            )
+            val query =
+                findByQueryParams(txQueryParams, columns)
+                    .orderBy(Pair(TxMessageTable.blockHeight, SortOrder.DESC))
+                    .limit(txQueryParams.count, txQueryParams.offset.toLong())
+            TxMessageRecord.wrapRows(query).toSet()
+        }
+
+        fun findByQueryParamsForCount(txQueryParams: TxQueryParams) = transaction {
+            val distinctCount = TxMessageTable.id.countDistinct()
+            findByQueryParams(txQueryParams, listOf(distinctCount)).first()[distinctCount].toBigInteger()
+        }
+
+        private fun findByQueryParams(tqp: TxQueryParams, distinctQuery: List<Expression<*>>?) = transaction {
+            var join: ColumnSet = TxCacheTable
+
+            if (tqp.msgTypes.isNotEmpty())
+                join = join.innerJoin(TxMessageTable, { TxCacheTable.id }, { TxMessageTable.txHashId })
+            if ((tqp.addressId != null && tqp.addressType != null) || tqp.address != null)
+                join = join.innerJoin(TxAddressJoinTable, { TxCacheTable.id }, { TxAddressJoinTable.txHashId })
+
+            val query = if (distinctQuery != null) join.slice(distinctQuery).selectAll() else join.selectAll()
+
+            if (tqp.msgTypes.isNotEmpty())
+                query.andWhere { TxMessageTable.txMessageType inList tqp.msgTypes }
+            if (tqp.txHeight != null)
+                query.andWhere { TxCacheTable.height eq tqp.txHeight }
+            if (tqp.txStatus != null)
+                query.andWhere {
+                    if (tqp.txStatus == TxStatus.FAILURE) TxCacheTable.errorCode neq 0 else TxCacheTable.errorCode.isNull()
+                }
+            if (tqp.addressId != null && tqp.addressType != null)
+                query.andWhere { (TxAddressJoinTable.addressId eq tqp.addressId) and (TxAddressJoinTable.addressType eq tqp.addressType) }
+            else if (tqp.address != null)
+                query.andWhere { (TxAddressJoinTable.address eq tqp.address) }
+            if (tqp.fromDate != null)
+                query.andWhere { TxCacheTable.txTimestamp greaterEq tqp.fromDate.startOfDay() }
+            if (tqp.toDate != null)
+                query.andWhere { TxCacheTable.txTimestamp lessEq tqp.toDate.startOfDay().plusDays(1) }
+
+            query
+        }
+
         fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, message: Any, type: String, module: String) =
             transaction {
                 TxMessageTypeRecord.insert(type, module, message.typeUrl).let { typeId ->
