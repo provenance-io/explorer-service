@@ -108,3 +108,10 @@ data class DepositRecord(
     val txHash: String,
     val txTimestamp: String
 )
+
+data class GovMsgDetail(
+    val depositAmount: CoinStr?,
+    var proposalType: String,
+    val proposalId: Long,
+    var proposalTitle: String
+)

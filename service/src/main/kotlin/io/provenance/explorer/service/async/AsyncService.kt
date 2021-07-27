@@ -60,6 +60,7 @@ class AsyncService(
             }
             blockService.updateBlockMaxHeightIndex(startHeight)
         }
+        BlockCacheRecord.refreshTxHistoryMatViews()
     }
 
     fun getBlockIndex() = blockService.getBlockIndexFromCache()?.let {

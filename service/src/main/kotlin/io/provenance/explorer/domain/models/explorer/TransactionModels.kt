@@ -178,3 +178,17 @@ data class TxMessage(
 enum class DateTruncGranularity { DAY, HOUR }
 
 enum class TxStatus { SUCCESS, FAILURE }
+
+data class TxGov(
+    val txHash: String,
+    val txMsgType: String,
+    val depositAmount: CoinStr?,
+    val proposalType: String,
+    val proposalId: Long,
+    val proposalTitle: String,
+    val block: Int,
+    val txTime: String,
+    val txFee: CoinStr,
+    val signers: Signatures,
+    val txStatus: String
+)

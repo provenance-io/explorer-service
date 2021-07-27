@@ -1,5 +1,6 @@
 package io.provenance.explorer.service
 
+import com.google.protobuf.Any
 import com.google.protobuf.util.JsonFormat
 import cosmos.gov.v1beta1.Gov
 import cosmos.gov.v1beta1.Tx
@@ -15,6 +16,7 @@ import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.stringfy
+import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDecCoin
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.CoinStr
@@ -22,6 +24,7 @@ import io.provenance.explorer.domain.models.explorer.DepositPercentage
 import io.provenance.explorer.domain.models.explorer.DepositRecord
 import io.provenance.explorer.domain.models.explorer.GovAddrData
 import io.provenance.explorer.domain.models.explorer.GovAddress
+import io.provenance.explorer.domain.models.explorer.GovMsgDetail
 import io.provenance.explorer.domain.models.explorer.GovParamType
 import io.provenance.explorer.domain.models.explorer.GovProposalDetail
 import io.provenance.explorer.domain.models.explorer.GovTimeFrame
@@ -35,6 +38,9 @@ import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.VoteDbRecord
 import io.provenance.explorer.domain.models.explorer.VoteRecord
 import io.provenance.explorer.domain.models.explorer.VotesTally
+import io.provenance.explorer.domain.models.explorer.toData
+import io.provenance.explorer.grpc.extensions.toMsgDeposit
+import io.provenance.explorer.grpc.extensions.toMsgVote
 import io.provenance.explorer.grpc.v1.GovGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
@@ -47,9 +53,9 @@ class GovService(
 ) {
     protected val logger = logger(GovService::class)
 
-    fun saveProposal(proposalId: Long, txInfo: TxData, addr: String) = transaction {
+    fun saveProposal(proposalId: Long, txInfo: TxData, addr: String, isSubmit: Boolean) = transaction {
         govClient.getProposal(proposalId).let {
-            GovProposalRecord.getOrInsert(it.proposal, protoPrinter, txInfo, getAddressDetails(addr))
+            GovProposalRecord.getOrInsert(it.proposal, protoPrinter, txInfo, getAddressDetails(addr), isSubmit)
         }
     }
 
@@ -194,3 +200,27 @@ class GovService(
         }
     }
 }
+
+fun Any.getGovMsgDetail(txHash: String) =
+    when {
+        typeUrl.endsWith("MsgSubmitProposal") ->
+            transaction {
+                val proposalId = GovProposalRecord.findByTxHash(txHash)!!.proposalId
+                val deposit = GovDepositRecord.findByTxHash(txHash)!!
+                GovMsgDetail(deposit.amount.toCoinStr(deposit.denom), "", proposalId, "")
+            }
+        typeUrl.endsWith("MsgVote") ->
+            this.toMsgVote().let { GovMsgDetail(null, "", it.proposalId, "") }
+        typeUrl.endsWith("MsgDeposit") ->
+            this.toMsgDeposit().let { GovMsgDetail(it.amountList.first().toData(), "", it.proposalId, "") }
+        else -> null.also { logger().debug("This typeUrl is not a governance-based msg: $typeUrl") }
+    }?.let { detail ->
+        transaction {
+            GovProposalRecord.findByProposalId(detail.proposalId)!!.let {
+                detail.apply {
+                    this.proposalType = it.proposalType
+                    this.proposalTitle = it.title
+                }
+            }
+        }
+    }
