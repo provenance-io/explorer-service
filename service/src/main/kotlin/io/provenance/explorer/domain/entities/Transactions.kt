@@ -606,7 +606,7 @@ object TxSingleMessageCacheTable : IntIdTable(name = "tx_single_message_cache") 
 class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxSingleMessageCacheRecord>(TxSingleMessageCacheTable) {
 
-        fun insert(txTime: DateTime,txHash: String, gasUsed: Int, type: String) = transaction {
+        fun insert(txTime: DateTime, txHash: String, gasUsed: Int, type: String) = transaction {
             TxSingleMessageCacheTable.insert {
                 it[this.txTimestamp] = txTime
                 it[this.txHash] = txHash
