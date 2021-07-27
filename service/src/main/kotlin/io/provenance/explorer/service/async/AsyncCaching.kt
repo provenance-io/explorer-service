@@ -25,6 +25,7 @@ import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.TxNftJoinRecord
+import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.entities.UNKNOWN
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.height
@@ -101,6 +102,7 @@ class AsyncCaching(
         blockService.addBlockToCache(
             blockRes.block.height(), blockRes.block.data.txsCount, blockRes.block.header.time.toDateTime(), blockRes
         )
+        BlockCacheRecord.refreshTxHistoryMatViews()
         validatorService.saveProposerRecord(blockRes, blockRes.block.header.time.toDateTime(), blockRes.block.height())
         validatorService.saveValidatorsAtHeight(blockRes.block.height())
         validatorService.saveMissedBlocks(blockRes)
@@ -178,15 +180,6 @@ class AsyncCaching(
         return TxUpdatedItems(addrs, markers)
     }
 
-    private fun saveEvents(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse, msgId: Int, msgType: String, idx: Int) = transaction {
-        tx.txResponse.logsList[idx].eventsList.forEach { event ->
-            val eventId = TxEventRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, event.type, msgId, msgType).value
-            event.attributesList.forEach { attr ->
-                TxEventAttrRecord.insert(attr.key, attr.value, eventId)
-            }
-        }
-    }
-
     private fun saveMessages(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
         tx.tx.body.messagesList.forEachIndexed { idx, msg ->
             if (tx.txResponse.logsCount > 0) {
@@ -209,8 +202,7 @@ class AsyncCaching(
                         }
                     }
                 }
-                val msgId = TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module).value
-                saveEvents(txId, tx, msgId, type, idx)
+                TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module)
             } else
                 TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, UNKNOWN, UNKNOWN)
         }
