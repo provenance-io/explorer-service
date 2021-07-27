@@ -29,6 +29,7 @@ import io.provenance.explorer.domain.entities.UNKNOWN
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
+import io.provenance.explorer.domain.extensions.toDbHash
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.models.explorer.LedgerInfo
 import io.provenance.explorer.domain.models.explorer.TxData
@@ -179,12 +180,14 @@ class AsyncCaching(
         return TxUpdatedItems(addrs, markers)
     }
 
-    private fun saveEvents(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse, msg: com.google.protobuf.Any, msgId: String, msgType: String) = transaction {
+    private fun saveEvents(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse, msg: com.google.protobuf.Any, msgId: Int, msgType: String, idx: Int) = transaction {
         tx.txResponse.logsList.forEach { log ->
-            log.eventsList.forEach { event ->
-                val eventId = TxEventRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, event.type, msgId, msgType)
-                event.attributesList.forEach { attr ->
-                    TxEventAttrRecord.insert(attr.key, attr.value, eventId)
+            if (log.msgIndex == idx) {
+                log.eventsList.forEach { event ->
+                    val eventId = TxEventRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg.value.toDbHash(), event.type, msgId, msgType).value
+                    event.attributesList.forEach { attr ->
+                        TxEventAttrRecord.insert(attr.key, attr.value, eventId)
+                    }
                 }
             }
         }
@@ -212,8 +215,8 @@ class AsyncCaching(
                         }
                     }
                 }
-                val msgId = TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module)
-                saveEvents(txId, tx, msg, msgId, type)
+                val msgId = TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module).value
+                saveEvents(txId, tx, msg, msgId, type, idx)
             } else
                 TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, UNKNOWN, UNKNOWN)
         }
