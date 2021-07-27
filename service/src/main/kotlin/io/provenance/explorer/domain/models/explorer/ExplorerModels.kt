@@ -28,3 +28,12 @@ data class GasStatistics(
     val maxGasPrice: Int,
     val averageGasPrice: BigDecimal
 )
+
+data class GasStats(
+    val date: String,
+    val minGasPrice: Int,
+    val maxGasPrice: Int,
+    val avgGasPrice: Int,
+    val stdDevGasPrice: Int,
+    val messageType: String
+)
