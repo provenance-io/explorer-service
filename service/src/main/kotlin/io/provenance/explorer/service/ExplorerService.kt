@@ -6,6 +6,7 @@ import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
+import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.height
@@ -147,8 +148,19 @@ class ExplorerService(
         Pair<BigDecimal, String>(totalBondedTokens, totalBlockChainTokens)
     }
 
+    @Deprecated(
+        "Use getGasStats()",
+        ReplaceWith(
+            "TxCacheRecord.getGasStats(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)",
+            "io.provenance.explorer.domain.entities.TxCacheRecord",
+            "io.provenance.explorer.domain.models.explorer.DateTruncGranularity"
+        )
+    )
     fun getGasStatistics(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
         TxCacheRecord.getGasStats(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
+
+    fun getGasStats(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
+        TxSingleMessageCacheRecord.getGasStats(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
 
     fun getGasFeeStatistics(fromDate: DateTime?, toDate: DateTime?, count: Int) =
         ChainGasFeeCacheRecord.findForDates(fromDate, toDate, count).reversed()
