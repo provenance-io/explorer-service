@@ -35,6 +35,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Features
 * Added dedicated Gov Tx API at `/api/v2/txs/module/gov?address={address}&etc...` to fetch txs with specific data #193
+* Added tables for tx events and event attributes that are populated when tx messages are saved #115
 
 ### Improvements
 * Updated front-facing docs

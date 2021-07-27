@@ -323,14 +323,15 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
         fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, message: Any, type: String, module: String) =
             transaction {
                 TxMessageTypeRecord.insert(type, module, message.typeUrl).let { typeId ->
-                    findByTxHashAndMessageHash(txId.value, message.value.toDbHash()) ?: TxMessageTable.insert {
-                        it[this.blockHeight] = blockHeight
-                        it[this.txHash] = txHash
-                        it[this.txHashId] = txId
-                        it[this.txMessageType] = typeId
-                        it[this.txMessage] = message
-                        it[this.txMessageHash] = message.value.toDbHash()
-                    }
+                    findByTxHashAndMessageHash(txId.value, message.value.toDbHash())?.id
+                        ?: TxMessageTable.insertAndGetId {
+                            it[this.blockHeight] = blockHeight
+                            it[this.txHash] = txHash
+                            it[this.txHashId] = txId
+                            it[this.txMessageType] = typeId
+                            it[this.txMessage] = message
+                            it[this.txMessageHash] = message.value.toDbHash()
+                        }
                 }
             }
     }
@@ -520,4 +521,71 @@ class TxNftJoinRecord(id: EntityID<Int>) : IntEntity(id) {
     var metadataType by TxNftJoinTable.metadataType
     var metadataId by TxNftJoinTable.metadataId
     var metadataUuid by TxNftJoinTable.metadataUuid
+}
+
+object TxEventsTable : IntIdTable(name = "tx_msg_event") {
+    val blockHeight = integer("block_height")
+    val txHash = varchar("tx_hash", 64)
+    val txHashId = reference("tx_hash_id", TxCacheTable)
+    val txMessageId = integer("tx_message_id")
+    val txMsgTypeId = varchar("tx_message_type_id", 128)
+    val eventType = varchar("event_type", 256)
+}
+
+class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxEventRecord>(TxEventsTable) {
+
+        private fun findByTxHashIdMessageIdAndEventType(txHashId: Int, messageId: Int, eventType: String) = transaction {
+            TxEventRecord.find { (TxEventsTable.txHashId eq txHashId) and (TxEventsTable.txMessageId eq messageId) and (TxEventsTable.eventType eq eventType) }
+                .firstOrNull()
+        }
+
+        fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, type: String, msgId: Int, msgTypeId: String) =
+            transaction {
+                findByTxHashIdMessageIdAndEventType(txId.value, msgId, type)?.id ?: TxEventsTable.insertAndGetId {
+                    it[this.blockHeight] = blockHeight
+                    it[this.txHash] = txHash
+                    it[this.txHashId] = txId
+                    it[this.txMessageId] = msgId
+                    it[this.txMsgTypeId] = msgTypeId
+                    it[this.eventType] = type
+                }
+            }
+    }
+
+    var blockHeight by TxEventsTable.blockHeight
+    var txHash by TxEventsTable.txHash
+    var txHashId by TxEventsTable.txHashId
+    var txMessageId by TxEventsTable.txMessageId
+    var txMsgTypeId by TxEventsTable.txMsgTypeId
+    var eventType by TxEventsTable.eventType
+}
+
+object TxEventAttrTable : IntIdTable(name = "tx_msg_event_attr") {
+    val txMsgEventId = integer("tx_msg_event_id")
+    val attrKey = varchar("attr_key", 256)
+    val attrValue = text("attr_value")
+}
+
+class TxEventAttrRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxEventAttrRecord>(TxEventAttrTable) {
+
+        private fun findByTxMsgEventIdAndKey(eventId: Int, attrKey: String) = transaction {
+            TxEventAttrRecord.find { (TxEventAttrTable.txMsgEventId eq eventId) and (TxEventAttrTable.attrKey eq attrKey) }
+                .firstOrNull()
+        }
+
+        fun insert(key: String, value: String, eventId: Int) =
+            transaction {
+                findByTxMsgEventIdAndKey(eventId, key) ?: TxEventAttrTable.insert {
+                    it[this.txMsgEventId] = eventId
+                    it[this.attrKey] = key
+                    it[this.attrValue] = value
+                }
+            }
+    }
+
+    var txMsgEventId by TxEventAttrTable.txMsgEventId
+    var attrKey by TxEventAttrTable.attrKey
+    var attrValue by TxEventAttrTable.attrValue
 }
