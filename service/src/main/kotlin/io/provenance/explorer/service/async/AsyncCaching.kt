@@ -20,6 +20,8 @@ import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinType
 import io.provenance.explorer.domain.entities.TxCacheRecord
+import io.provenance.explorer.domain.entities.TxEventAttrRecord
+import io.provenance.explorer.domain.entities.TxEventRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
@@ -255,16 +257,16 @@ class AsyncCaching(
 
     private fun getMsgType(tx: ServiceOuterClass.GetTxResponse, idx: Int) =
         (
-                try {
-                    tx.txResponse.logsList[idx].eventsList.first { event -> event.type == "message" }
-                } catch (ex: Exception) {
-                    tx.txResponse.logsList.first().eventsList.filter { event -> event.type == "message" }[idx]
-                }
-                ).let { event ->
-                val type = event.attributesList.first { att -> att.key == "action" }.value
-                val module = event.attributesList.firstOrNull { att -> att.key == "module" }?.value ?: UNKNOWN
-                Pair(type, module)
+            try {
+                tx.txResponse.logsList[idx].eventsList.first { event -> event.type == "message" }
+            } catch (ex: Exception) {
+                tx.txResponse.logsList.first().eventsList.filter { event -> event.type == "message" }[idx]
             }
+            ).let { event ->
+            val type = event.attributesList.first { att -> att.key == "action" }.value
+            val module = event.attributesList.firstOrNull { att -> att.key == "module" }?.value ?: UNKNOWN
+            Pair(type, module)
+        }
 
     private fun saveAddresses(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
         val msgAddrs = tx.tx.body.messagesList.flatMap { it.getAssociatedAddresses() }
