@@ -6,10 +6,7 @@ import io.provenance.explorer.domain.core.sql.DateTrunc
 import io.provenance.explorer.domain.core.sql.ExtractEpoch
 import io.provenance.explorer.domain.core.sql.Lag
 import io.provenance.explorer.domain.core.sql.jsonb
-import io.provenance.explorer.domain.extensions.exec
-import io.provenance.explorer.domain.extensions.map
 import io.provenance.explorer.domain.extensions.startOfDay
-import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.TxHistory
 import org.jetbrains.exposed.dao.IntEntity
@@ -22,7 +19,6 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insertIgnore
-import org.jetbrains.exposed.sql.jodatime.DateColumnType
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
@@ -31,8 +27,9 @@ import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
 import java.math.BigDecimal
+import org.jetbrains.exposed.sql.sum
+import org.joda.time.DateTimeZone
 
 object BlockCacheTable : CacheIdTable<Int>(name = "block_cache") {
     val height = integer("height")
@@ -61,45 +58,6 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
                     it[this.lastHit] = DateTime.now()
                 }.let { blockMeta }
             }
-
-        fun getTxCountsForParams(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
-            val tblSuffix = granularity.toLowerCase()
-            val query = """
-                |SELECT
-                |   block_cache_tx_history_$tblSuffix.block_timestamp,
-                |   block_cache_tx_history_$tblSuffix.tx_count
-                |FROM block_cache_tx_history_$tblSuffix
-                |WHERE block_cache_tx_history_$tblSuffix.block_timestamp >= ? 
-                |  AND block_cache_tx_history_$tblSuffix.block_timestamp < ?
-                |ORDER BY block_cache_tx_history_$tblSuffix.block_timestamp DESC
-                |""".trimMargin()
-
-            val dateTimeType = DateColumnType(true)
-            val arguments = listOf<Pair<DateColumnType, DateTime>>(
-                Pair(dateTimeType, fromDate.startOfDay()),
-                Pair(dateTimeType, toDate.startOfDay().plusDays(1))
-            )
-
-            val tz = DateTimeZone.UTC
-            val pattern = "yyyy-MM-dd HH:mm:ss"
-
-            query.exec(arguments)
-                .map {
-                    TxHistory(
-                        it.getTimestamp("block_timestamp").toDateTime(tz, pattern),
-                        it.getInt("tx_count")
-                    )
-                }
-        }
-
-        fun refreshTxHistoryMatViews(): Unit = transaction {
-            val conn = TransactionManager.current().connection
-            val queries = listOf(
-                "REFRESH MATERIALIZED VIEW CONCURRENTLY block_cache_tx_history_day",
-                "REFRESH MATERIALIZED VIEW CONCURRENTLY block_cache_tx_history_hour"
-            )
-            conn.executeInBatch(queries)
-        }
 
         fun getDaysBetweenHeights(minHeight: Int, maxHeight: Int) = transaction {
             val dateTrunc = DateTrunc(DateTruncGranularity.DAY.name, BlockCacheTable.blockTimestamp)
@@ -181,13 +139,13 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun save(height: Int, minGasFee: Double?, timestamp: DateTime?, proposer: String?) = transaction {
             (
-                BlockProposerRecord.findById(height) ?: new(height) {
-                    this.proposerOperatorAddress = proposer!!
-                    this.blockTimestamp = timestamp!!
+                    BlockProposerRecord.findById(height) ?: new(height) {
+                        this.proposerOperatorAddress = proposer!!
+                        this.blockTimestamp = timestamp!!
+                    }
+                    ).apply {
+                    this.minGasFee = minGasFee
                 }
-                ).apply {
-                this.minGasFee = minGasFee
-            }
         }
 
         fun findMissingRecords() = transaction {
@@ -202,7 +160,7 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
             BlockProposerRecord
                 .find {
                     (BlockProposerTable.proposerOperatorAddress eq address) and
-                        (BlockProposerTable.minGasFee.isNotNull())
+                            (BlockProposerTable.minGasFee.isNotNull())
                 }
                 .orderBy(Pair(BlockProposerTable.blockHeight, SortOrder.DESC))
                 .limit(1)
@@ -307,4 +265,63 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
     var valConsAddr by MissedBlocksTable.valConsAddr
     var runningCount by MissedBlocksTable.runningCount
     var totalCount by MissedBlocksTable.totalCount
+}
+
+object BlockCacheHourlyTxCountsTable : IntIdTable(name = "block_cache_hourly_tx_counts") {
+    val blockTimestamp = datetime("block_timestamp")
+    val txCount = integer("tx_count")
+}
+
+class BlockCacheHourlyTxCountsRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<BlockCacheHourlyTxCountsRecord>(BlockCacheHourlyTxCountsTable) {
+
+        fun getTxCountsForParams(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
+            if ("HOUR" == granularity) {
+                getHourlyCounts(fromDate, toDate)
+            } else {
+                getDailyCounts(fromDate, toDate)
+            }
+        }
+
+        private fun getDailyCounts(fromDate: DateTime, toDate: DateTime) = transaction {
+            val blockTimestamp = BlockCacheHourlyTxCountsTable.blockTimestamp
+            val dateTrunc = DateTrunc("DAY", blockTimestamp)
+            val txSum = BlockCacheHourlyTxCountsTable.txCount.sum()
+            BlockCacheHourlyTxCountsTable.slice(dateTrunc, txSum)
+                .select {
+                    dateTrunc.between(fromDate.startOfDay(), toDate.startOfDay().plusDays(1))
+                }
+                .groupBy(dateTrunc)
+                .orderBy(dateTrunc, SortOrder.DESC)
+                .map {
+                    TxHistory(
+                        it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
+                        it[txSum]!!
+                    )
+                }
+        }
+
+        private fun getHourlyCounts(fromDate: DateTime, toDate: DateTime) = transaction {
+            val blockTimestamp = BlockCacheHourlyTxCountsTable.blockTimestamp
+            val txCount = BlockCacheHourlyTxCountsTable.txCount
+            BlockCacheHourlyTxCountsTable
+                .select {
+                    blockTimestamp.between(fromDate.startOfDay(), toDate.startOfDay().plusDays(1))
+                }
+                .orderBy(blockTimestamp, SortOrder.DESC)
+                .map {
+                    TxHistory(
+                        it[blockTimestamp].withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
+                        it[txCount]
+                    )
+                }
+        }
+
+        fun updateTxCounts(blockTimestamp: DateTime) = transaction {
+            val blockTimestampUtc = blockTimestamp.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss")
+            val conn = TransactionManager.current().connection
+            val queries = listOf("CALL update_block_cache_hourly_tx_counts('$blockTimestampUtc'::TIMESTAMP)")
+            conn.executeInBatch(queries)
+        }
+    }
 }
