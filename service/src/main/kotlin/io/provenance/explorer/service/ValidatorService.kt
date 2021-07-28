@@ -211,9 +211,9 @@ class ValidatorService(
                     )
                 }
             val stakingValidators = getStakingValidators(status)
-            hydrateValidators(validatorSet, stakingValidators, isAtHeight)
-                .pageOfResults(page, count)
-                .let { PagedResults(it.size.toLong().pageCountOfResults(count), it, it.size.toLong()) }
+            hydrateValidators(validatorSet, stakingValidators, isAtHeight).let {
+                PagedResults(it.size.toLong().pageCountOfResults(count), it.pageOfResults(page, count), it.size.toLong())
+            }
         }
 
     private fun hydrateValidators(

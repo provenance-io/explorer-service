@@ -42,6 +42,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Bug Fixes
 * Ensure governance proposal votes take precedence by block height
+* Use actual count of validator results for listview page count #201
 
 ## [v2.1.0](https://github.com/provenance-io/explorer-service/releases/tag/v2.1.0) - 2021-07-22
 ### Release Name: Xu Fu
