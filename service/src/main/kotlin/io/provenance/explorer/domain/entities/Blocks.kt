@@ -24,12 +24,12 @@ import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
+import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
-import java.math.BigDecimal
-import org.jetbrains.exposed.sql.sum
 import org.joda.time.DateTimeZone
+import java.math.BigDecimal
 
 object BlockCacheTable : CacheIdTable<Int>(name = "block_cache") {
     val height = integer("height")
@@ -139,13 +139,13 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun save(height: Int, minGasFee: Double?, timestamp: DateTime?, proposer: String?) = transaction {
             (
-                    BlockProposerRecord.findById(height) ?: new(height) {
-                        this.proposerOperatorAddress = proposer!!
-                        this.blockTimestamp = timestamp!!
-                    }
-                    ).apply {
-                    this.minGasFee = minGasFee
+                BlockProposerRecord.findById(height) ?: new(height) {
+                    this.proposerOperatorAddress = proposer!!
+                    this.blockTimestamp = timestamp!!
                 }
+                ).apply {
+                this.minGasFee = minGasFee
+            }
         }
 
         fun findMissingRecords() = transaction {
@@ -160,7 +160,7 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
             BlockProposerRecord
                 .find {
                     (BlockProposerTable.proposerOperatorAddress eq address) and
-                            (BlockProposerTable.minGasFee.isNotNull())
+                        (BlockProposerTable.minGasFee.isNotNull())
                 }
                 .orderBy(Pair(BlockProposerTable.blockHeight, SortOrder.DESC))
                 .limit(1)
