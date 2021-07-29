@@ -20,6 +20,8 @@ import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinType
 import io.provenance.explorer.domain.entities.TxCacheRecord
+import io.provenance.explorer.domain.entities.TxEventAttrRecord
+import io.provenance.explorer.domain.entities.TxEventRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
@@ -92,7 +94,7 @@ class AsyncCaching(
         } ?: saveBlockEtc(blockService.getBlockAtHeightFromChain(blockHeight))
     }
 
-    fun getChainIdString() =
+    fun getChainIdString(): String =
         if (chainId.isEmpty()) getBlock(blockService.getLatestBlockHeightIndex()).block.header.chainId.also {
             this.chainId = it
         }
@@ -105,7 +107,7 @@ class AsyncCaching(
             blockRes.block.height(), blockRes.block.data.txsCount, blockTimestamp, blockRes
         )
         BlockCacheHourlyTxCountsRecord.updateTxCounts(blockTimestamp)
-        TxSingleMessageCacheRecord.updateGasStats()
+        TxSingleMessageCacheRecord.updateGasStats(blockTimestamp)
         validatorService.saveProposerRecord(blockRes, blockTimestamp, blockRes.block.height())
         validatorService.saveValidatorsAtHeight(blockRes.block.height())
         validatorService.saveMissedBlocks(blockRes)
