@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS tx_single_message_cache
     tx_message_type VARCHAR(128)       NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS tx_single_message_cache_tx_timestamp_idx
+    ON tx_single_message_cache (tx_timestamp);
+
 CREATE INDEX IF NOT EXISTS tx_single_message_cache_gas_used_idx
     ON tx_single_message_cache (gas_used);
 
