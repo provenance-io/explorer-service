@@ -8,14 +8,11 @@ CREATE TABLE IF NOT EXISTS tx_single_message_cache
     tx_message_type VARCHAR(128)       NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS tx_single_message_cache_tx_timestamp_idx
-    ON tx_single_message_cache (tx_timestamp);
-
 CREATE INDEX IF NOT EXISTS tx_single_message_cache_gas_used_idx
-    ON tx_single_message_cache (tx_timestamp);
+    ON tx_single_message_cache (gas_used);
 
 CREATE INDEX IF NOT EXISTS tx_single_message_cache_tx_message_type_idx
-    ON tx_single_message_cache (tx_timestamp);
+    ON tx_single_message_cache (tx_message_type);
 
 -- Aggregated HOURLY data for GAS statistics.
 CREATE TABLE IF NOT EXISTS tx_single_message_gas_stats_day
@@ -25,11 +22,9 @@ CREATE TABLE IF NOT EXISTS tx_single_message_gas_stats_day
     max_gas_used    INT          NOT NULL,
     avg_gas_used    INT          NOT NULL,
     stddev_gas_used INT          NOT NULL,
-    tx_message_type VARCHAR(128) NOT NULL
+    tx_message_type VARCHAR(128) NOT NULL,
+    PRIMARY KEY (tx_timestamp, tx_message_type)
 );
-
-CREATE INDEX IF NOT EXISTS tx_single_message_gas_stats_day_tx_timestamp_idx
-    ON tx_single_message_gas_stats_day (tx_timestamp);
 
 CREATE TABLE IF NOT EXISTS tx_single_message_gas_stats_hour
 (
@@ -38,11 +33,9 @@ CREATE TABLE IF NOT EXISTS tx_single_message_gas_stats_hour
     max_gas_used    INT          NOT NULL,
     avg_gas_used    INT          NOT NULL,
     stddev_gas_used INT          NOT NULL,
-    tx_message_type VARCHAR(128) NOT NULL
+    tx_message_type VARCHAR(128) NOT NULL,
+    PRIMARY KEY (tx_timestamp, tx_message_type)
 );
-
-CREATE INDEX IF NOT EXISTS tx_single_message_gas_stats_hour_tx_timestamp_idx
-    ON tx_single_message_gas_stats_hour (tx_timestamp);
 
 -- Migrate historical data to tx_single_message_cache
 WITH single_message_txs AS (
@@ -69,7 +62,8 @@ WITH single_message_txs AS (
 INSERT
 INTO tx_single_message_cache (tx_timestamp, tx_hash, gas_used, tx_message_type)
 SELECT *
-FROM STATS;
+FROM STATS
+ON CONFLICT DO NOTHING;
 
 -- Daily aggregate of historical data
 -- DANGER: If you run this more than once it will generate duplicate data
@@ -83,7 +77,8 @@ SELECT date_trunc('DAY', tx_timestamp)           AS tx_timestamp,
        tx_message_type
 FROM tx_single_message_cache
 GROUP BY date_trunc('DAY', tx_timestamp),
-         tx_message_type;
+         tx_message_type
+ON CONFLICT DO NOTHING;
 
 -- Hourly aggregate of historical data
 -- DANGER: If you run this more than once it will generate duplicate data
@@ -97,8 +92,8 @@ SELECT date_trunc('HOUR', tx_timestamp)          AS tx_timestamp,
        tx_message_type
 FROM tx_single_message_cache
 GROUP BY date_trunc('HOUR', tx_timestamp),
-         tx_message_type;
-
+         tx_message_type
+ON CONFLICT DO NOTHING;
 
 -- Update gas stats with latest data
 CREATE OR REPLACE PROCEDURE update_gas_stats(TIMESTAMP, VARCHAR[])
@@ -131,7 +126,6 @@ BEGIN
                         GROUP BY date_trunc(%L, tx_timestamp),
                                  tx_message_type'::TEXT
                     , 'tx_single_message_gas_stats_' || var, var, var, var, $1, var);
-
         END LOOP;
 
     RAISE INFO 'UPDATED gas stats for %', $2;
