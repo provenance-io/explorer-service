@@ -107,7 +107,6 @@ class AsyncCaching(
             blockRes.block.height(), blockRes.block.data.txsCount, blockTimestamp, blockRes
         )
         BlockCacheHourlyTxCountsRecord.updateTxCounts(blockTimestamp)
-        TxSingleMessageCacheRecord.updateGasStats(blockTimestamp)
         validatorService.saveProposerRecord(blockRes, blockTimestamp, blockRes.block.height())
         validatorService.saveValidatorsAtHeight(blockRes.block.height())
         validatorService.saveMissedBlocks(blockRes)
@@ -249,6 +248,7 @@ class AsyncCaching(
                         tx.txResponse.gasUsed.toInt(),
                         type
                     )
+                    TxSingleMessageCacheRecord.updateGasStats(tx.txResponse.timestamp.toDateTime())
                 }
             } else
                 TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, UNKNOWN, UNKNOWN)
