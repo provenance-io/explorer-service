@@ -10,6 +10,7 @@ import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.IbcChannelRecord
@@ -19,6 +20,8 @@ import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinType
 import io.provenance.explorer.domain.entities.TxCacheRecord
+import io.provenance.explorer.domain.entities.TxEventAttrRecord
+import io.provenance.explorer.domain.entities.TxEventRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
@@ -102,6 +105,7 @@ class AsyncCaching(
             blockRes.block.height(), blockRes.block.data.txsCount, blockTimestamp, blockRes
         )
         TxSingleMessageCacheRecord.updateGasStats(blockTimestamp)
+        BlockCacheHourlyTxCountsRecord.updateTxCounts(blockTimestamp)
         validatorService.saveProposerRecord(blockRes, blockTimestamp, blockRes.block.height())
         validatorService.saveValidatorsAtHeight(blockRes.block.height())
         validatorService.saveMissedBlocks(blockRes)
@@ -179,6 +183,15 @@ class AsyncCaching(
         return TxUpdatedItems(addrs, markers)
     }
 
+    private fun saveEvents(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse, msgId: Int, msgType: String, idx: Int) = transaction {
+        tx.txResponse.logsList[idx].eventsList.forEach { event ->
+            val eventId = TxEventRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, event.type, msgId, msgType).value
+            event.attributesList.forEach { attr ->
+                TxEventAttrRecord.insert(attr.key, attr.value, eventId)
+            }
+        }
+    }
+
     private fun saveMessages(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
         tx.tx.body.messagesList.forEachIndexed { idx, msg ->
             if (tx.txResponse.logsCount > 0) {
@@ -201,7 +214,9 @@ class AsyncCaching(
                         }
                     }
                 }
-                TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module)
+                val msgId = TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module).value
+                saveEvents(txId, tx, msgId, type, idx)
+
                 if (tx.tx.body.messagesCount == 1) {
                     TxSingleMessageCacheRecord.insert(
                         tx.txResponse.timestamp.toDateTime(),
