@@ -4,12 +4,9 @@ DROP MATERIALIZED VIEW IF EXISTS block_cache_tx_history_hour;
 -- HOURLY count of Tx history
 CREATE TABLE IF NOT EXISTS block_cache_hourly_tx_counts
 (
-    block_timestamp TIMESTAMP NOT NULL,
+    block_timestamp TIMESTAMP PRIMARY KEY,
     tx_count        INT       NOT NULL
 );
-
-CREATE INDEX IF NOT EXISTS block_cache_hourly_tx_counts_block_timestamp_idx
-    ON block_cache_hourly_tx_counts (block_timestamp);
 
 -- Migrate historical data
 INSERT

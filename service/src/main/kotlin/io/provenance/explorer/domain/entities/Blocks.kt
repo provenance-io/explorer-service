@@ -9,6 +9,8 @@ import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.TxHistory
+import org.jetbrains.exposed.dao.Entity
+import org.jetbrains.exposed.dao.EntityClass
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -267,13 +269,14 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
     var totalCount by MissedBlocksTable.totalCount
 }
 
-object BlockCacheHourlyTxCountsTable : IntIdTable(name = "block_cache_hourly_tx_counts") {
+object BlockCacheHourlyTxCountsTable : IdTable<DateTime>(name = "block_cache_hourly_tx_counts") {
     val blockTimestamp = datetime("block_timestamp")
     val txCount = integer("tx_count")
+    override val id = blockTimestamp.entityId()
 }
 
-class BlockCacheHourlyTxCountsRecord(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<BlockCacheHourlyTxCountsRecord>(BlockCacheHourlyTxCountsTable) {
+class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) {
+    companion object : EntityClass<DateTime, BlockCacheHourlyTxCountsRecord>(BlockCacheHourlyTxCountsTable) {
 
         fun getTxCountsForParams(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
             if ("HOUR" == granularity) {
@@ -304,7 +307,7 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<Int>) : IntEntity(id) {
         private fun getHourlyCounts(fromDate: DateTime, toDate: DateTime) = transaction {
             val blockTimestamp = BlockCacheHourlyTxCountsTable.blockTimestamp
             val txCount = BlockCacheHourlyTxCountsTable.txCount
-            BlockCacheHourlyTxCountsTable
+            BlockCacheHourlyTxCountsTable.slice(blockTimestamp, txCount)
                 .select {
                     blockTimestamp.between(fromDate.startOfDay(), toDate.startOfDay().plusDays(1))
                 }
@@ -324,4 +327,7 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<Int>) : IntEntity(id) {
             conn.executeInBatch(queries)
         }
     }
+
+    var blockTimestamp by BlockCacheHourlyTxCountsTable.blockTimestamp
+    var txCount by BlockCacheHourlyTxCountsTable.txCount
 }
