@@ -10,6 +10,7 @@ import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.IbcChannelRecord
@@ -98,10 +99,12 @@ class AsyncCaching(
 
     fun saveBlockEtc(blockRes: Query.GetBlockByHeightResponse): Query.GetBlockByHeightResponse {
         logger.info("saving block ${blockRes.block.height()}")
+        val blockTimestamp = blockRes.block.header.time.toDateTime()
         blockService.addBlockToCache(
-            blockRes.block.height(), blockRes.block.data.txsCount, blockRes.block.header.time.toDateTime(), blockRes
+            blockRes.block.height(), blockRes.block.data.txsCount, blockTimestamp, blockRes
         )
-        validatorService.saveProposerRecord(blockRes, blockRes.block.header.time.toDateTime(), blockRes.block.height())
+        BlockCacheHourlyTxCountsRecord.updateTxCounts(blockTimestamp)
+        validatorService.saveProposerRecord(blockRes, blockTimestamp, blockRes.block.height())
         validatorService.saveValidatorsAtHeight(blockRes.block.height())
         validatorService.saveMissedBlocks(blockRes)
         if (blockRes.block.data.txsCount > 0)

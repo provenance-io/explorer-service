@@ -8,7 +8,7 @@ import io.provenance.explorer.domain.core.getParentForType
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.entities.AccountRecord
-import io.provenance.explorer.domain.entities.BlockCacheRecord
+import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
@@ -72,7 +72,8 @@ class TransactionService(
 
     fun getTxTypesByTxHash(txHash: String) = transaction {
         getTxByHash(txHash)?.let { tx ->
-            TxMessageRecord.getDistinctTxMsgTypesByTxHash(tx.first).let { TxMessageTypeRecord.findByIdIn(it) }.mapToRes()
+            TxMessageRecord.getDistinctTxMsgTypesByTxHash(tx.first).let { TxMessageTypeRecord.findByIdIn(it) }
+                .mapToRes()
         } ?: throw ResourceNotFoundException("Invalid transaction hash: '$txHash'")
     }
 
@@ -176,7 +177,11 @@ class TransactionService(
     }
 
     fun getTxHistoryByQuery(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
-        BlockCacheRecord.getTxCountsForParams(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
+        BlockCacheHourlyTxCountsRecord.getTxCountsForParams(
+            fromDate,
+            toDate,
+            (granularity ?: DateTruncGranularity.DAY).name
+        )
 
     private fun getMonikers(txId: EntityID<Int>): Map<String, String> {
         val monikers =
