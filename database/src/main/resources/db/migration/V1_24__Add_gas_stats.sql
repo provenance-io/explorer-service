@@ -101,7 +101,7 @@ GROUP BY date_trunc('HOUR', tx_timestamp),
 
 
 -- Update gas stats with latest data
-CREATE OR REPLACE PROCEDURE update_gas_stats(varchar[])
+CREATE OR REPLACE PROCEDURE update_gas_stats(TIMESTAMP, VARCHAR[])
     LANGUAGE plpgsql
 AS
 $$
@@ -109,13 +109,13 @@ DECLARE
     var varchar;
 BEGIN
     -- Delete old records and update with new aggregate counts
-    FOREACH var IN ARRAY $1
+    FOREACH var IN ARRAY $2
         LOOP
             EXECUTE
                 format('DELETE
                         FROM %I
-                        WHERE tx_timestamp = date_trunc(%L, now())'::TEXT
-                    , 'tx_single_message_gas_stats_' || var, var);
+                        WHERE tx_timestamp >= date_trunc(%L, %L::TIMESTAMP)'::TEXT
+                    , 'tx_single_message_gas_stats_' || var, var, $1);
 
             EXECUTE
                 format('INSERT
@@ -127,12 +127,13 @@ BEGIN
                                coalesce(round(stddev_samp(gas_used)), 0) AS stddev_gas_used,
                                tx_message_type
                         FROM tx_single_message_cache
-                        WHERE date_trunc(%L, tx_timestamp) >= date_trunc(%L, now())
+                        WHERE date_trunc(%L, tx_timestamp) >= date_trunc(%L, %L::TIMESTAMP)
                         GROUP BY date_trunc(%L, tx_timestamp),
                                  tx_message_type'::TEXT
-                    , 'tx_single_message_gas_stats_' || var, var, var, var, var);
+                    , 'tx_single_message_gas_stats_' || var, var, var, var, $1, var);
 
-            RAISE info 'UPDATED % gas stats', var;
         END LOOP;
+
+    RAISE INFO 'UPDATED gas stats for %', $2;
 END;
 $$;

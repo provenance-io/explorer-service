@@ -97,11 +97,12 @@ class AsyncCaching(
 
     fun saveBlockEtc(blockRes: Query.GetBlockByHeightResponse): Query.GetBlockByHeightResponse {
         logger.info("saving block ${blockRes.block.height()}")
+        val blockTimestamp = blockRes.block.header.time.toDateTime()
         blockService.addBlockToCache(
-            blockRes.block.height(), blockRes.block.data.txsCount, blockRes.block.header.time.toDateTime(), blockRes
+            blockRes.block.height(), blockRes.block.data.txsCount, blockTimestamp, blockRes
         )
-        TxSingleMessageCacheRecord.updateGasStats()
-        validatorService.saveProposerRecord(blockRes, blockRes.block.header.time.toDateTime(), blockRes.block.height())
+        TxSingleMessageCacheRecord.updateGasStats(blockTimestamp)
+        validatorService.saveProposerRecord(blockRes, blockTimestamp, blockRes.block.height())
         validatorService.saveValidatorsAtHeight(blockRes.block.height())
         validatorService.saveMissedBlocks(blockRes)
         if (blockRes.block.data.txsCount > 0)
