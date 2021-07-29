@@ -89,6 +89,7 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             TxCacheTable.selectAll().count().toBigInteger()
         }
 
+        @Deprecated("Use TxSingleMessageCacheRecord.getGasStats() instead.")
         fun getGasStats(startDate: DateTime, endDate: DateTime, granularity: String) = transaction {
             val dateTrunc = DateTrunc(granularity, TxCacheTable.txTimestamp)
             val minGas = Min(TxCacheTable.gasUsed, IntegerColumnType())
@@ -198,6 +199,7 @@ object TxMessageTypeTable : IntIdTable(name = "tx_message_type") {
 }
 
 const val UNKNOWN = "unknown"
+
 class TxMessageTypeRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxMessageTypeRecord>(TxMessageTypeTable) {
 
@@ -381,7 +383,11 @@ class TxAddressJoinRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findValidatorsByTxHash(txHashId: EntityID<Int>) = transaction {
             StakingValidatorCacheRecord.wrapRows(
                 TxAddressJoinTable
-                    .innerJoin(StakingValidatorCacheTable, { TxAddressJoinTable.addressId }, { StakingValidatorCacheTable.id })
+                    .innerJoin(
+                        StakingValidatorCacheTable,
+                        { TxAddressJoinTable.addressId },
+                        { StakingValidatorCacheTable.id }
+                    )
                     .select {
                         (TxAddressJoinTable.txHashId eq txHashId) and
                             (TxAddressJoinTable.addressType eq TxAddressJoinType.OPERATOR.name)
@@ -400,7 +406,13 @@ class TxAddressJoinRecord(id: EntityID<Int>) : IntEntity(id) {
             ).toList()
         }
 
-        fun insert(txHash: String, txId: EntityID<Int>, blockHeight: Int, addrPair: Pair<String, Int?>, address: String) =
+        fun insert(
+            txHash: String,
+            txId: EntityID<Int>,
+            blockHeight: Int,
+            addrPair: Pair<String, Int?>,
+            address: String
+        ) =
             transaction {
                 findByHashAndAddress(txId, addrPair, address) ?: TxAddressJoinTable.insert {
                     it[this.blockHeight] = blockHeight
@@ -541,10 +553,11 @@ object TxEventsTable : IntIdTable(name = "tx_msg_event") {
 class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxEventRecord>(TxEventsTable) {
 
-        private fun findByTxHashIdMessageIdAndEventType(txHashId: Int, messageId: Int, eventType: String) = transaction {
-            TxEventRecord.find { (TxEventsTable.txHashId eq txHashId) and (TxEventsTable.txMessageId eq messageId) and (TxEventsTable.eventType eq eventType) }
-                .firstOrNull()
-        }
+        private fun findByTxHashIdMessageIdAndEventType(txHashId: Int, messageId: Int, eventType: String) =
+            transaction {
+                TxEventRecord.find { (TxEventsTable.txHashId eq txHashId) and (TxEventsTable.txMessageId eq messageId) and (TxEventsTable.eventType eq eventType) }
+                    .firstOrNull()
+            }
 
         fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, type: String, msgId: Int, msgTypeId: String) =
             transaction {
@@ -660,4 +673,9 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             conn.executeInBatch(queries)
         }
     }
+
+    var txTimestamp by TxSingleMessageCacheTable.txTimestamp
+    var txHash by TxSingleMessageCacheTable.txHash
+    var gasUsed by TxSingleMessageCacheTable.gasUsed
+    var txMessageType by TxSingleMessageCacheTable.txMessageType
 }

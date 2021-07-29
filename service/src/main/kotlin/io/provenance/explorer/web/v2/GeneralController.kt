@@ -32,7 +32,7 @@ class GeneralController(private val explorerService: ExplorerService) {
     fun spotlight(): ResponseEntity<Spotlight> = ResponseEntity.ok(explorerService.getSpotlightStatistics())
 
     @Deprecated("This endpoint is not being utilized. Instead, use '/gas/stats'")
-    @ApiOperation("Returns gas statistics")
+    @ApiOperation("Returns gas statistics", hidden = true)
     @GetMapping("/gas/statistics")
     fun gasStatistics(
         @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime,
