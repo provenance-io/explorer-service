@@ -124,7 +124,8 @@ BEGIN
                         FROM tx_single_message_cache
                         WHERE date_trunc(%L, tx_timestamp) >= date_trunc(%L, %L::TIMESTAMP)
                         GROUP BY date_trunc(%L, tx_timestamp),
-                                 tx_message_type'::TEXT
+                                 tx_message_type
+                        ON CONFLICT DO NOTHING'::TEXT
                     , 'tx_single_message_gas_stats_' || var, var, var, var, $1, var);
         END LOOP;
 

@@ -35,7 +35,8 @@ BEGIN
            SUM(block_cache.tx_count)                       AS tx_count
     FROM block_cache
     WHERE date_trunc('HOUR', block_cache.block_timestamp) >= date_trunc('HOUR', $1)
-    GROUP BY date_trunc('HOUR', block_cache.block_timestamp);
+    GROUP BY date_trunc('HOUR', block_cache.block_timestamp)
+    ON CONFLICT DO NOTHING;
 
     RAISE INFO 'UPDATED Tx history';
 END;
