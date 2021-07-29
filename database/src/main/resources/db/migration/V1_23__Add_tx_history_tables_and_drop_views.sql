@@ -5,7 +5,7 @@ DROP MATERIALIZED VIEW IF EXISTS block_cache_tx_history_hour;
 CREATE TABLE IF NOT EXISTS block_cache_hourly_tx_counts
 (
     block_timestamp TIMESTAMP PRIMARY KEY,
-    tx_count        INT       NOT NULL
+    tx_count        INT NOT NULL
 );
 
 -- Migrate historical data
@@ -14,7 +14,8 @@ INTO block_cache_hourly_tx_counts
 SELECT date_trunc('HOUR', block_cache.block_timestamp) AS block_timestamp,
        SUM(block_cache.tx_count)                       AS tx_count
 FROM block_cache
-GROUP BY date_trunc('HOUR', block_cache.block_timestamp);
+GROUP BY date_trunc('HOUR', block_cache.block_timestamp)
+ON CONFLICT DO NOTHING;
 
 -- Recalculate tx counts for the last hour
 CREATE OR REPLACE PROCEDURE update_block_cache_hourly_tx_counts(TIMESTAMP)
