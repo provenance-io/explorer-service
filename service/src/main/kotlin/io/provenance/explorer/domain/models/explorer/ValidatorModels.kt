@@ -17,7 +17,8 @@ data class ValidatorSummary(
     val bondHeight: Long?,
     val status: String,
     val currentGasFee: Double?,
-    val unbondingHeight: Long?
+    val unbondingHeight: Long?,
+    val imgUrl: String?
 )
 
 data class ValidatorDetails(

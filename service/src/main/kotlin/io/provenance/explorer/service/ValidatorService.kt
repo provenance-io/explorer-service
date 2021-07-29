@@ -111,7 +111,7 @@ class ValidatorService(
                     (signingInfo?.startHeight?.toBigInteger() ?: currentHeight.minus(BigInteger.ONE)),
                     currentHeight
                 ),
-                null, // TODO: Update when we can get images going
+                getImgUrl(stakingValidator.description.identity),
                 stakingValidator.description.details,
                 stakingValidator.description.website,
                 stakingValidator.description.identity,
@@ -259,7 +259,8 @@ class ValidatorService(
             bondHeight = if (stakingVal.stakingValidator.isActive()) signingInfo.startHeight else null,
             status = stakingVal.stakingValidator.getStatusString(),
             currentGasFee = BlockProposerRecord.findCurrentFeeForAddress(stakingVal.operatorAddress)?.minGasFee,
-            unbondingHeight = if (!stakingVal.stakingValidator.isActive()) stakingVal.stakingValidator.unbondingHeight else null
+            unbondingHeight = if (!stakingVal.stakingValidator.isActive()) stakingVal.stakingValidator.unbondingHeight else null,
+            imgUrl = getImgUrl(stakingVal.stakingValidator.description.identity)
         )
     }
 
@@ -358,5 +359,27 @@ class ValidatorService(
                     MissedBlocksRecord.insert(lastBlock.height.toInt(), vali.address)
             }
         }
+    }
+
+    fun getImgUrl(identityStr: String) = transaction {
+        if (identityStr.isNotBlank()) {
+            val res = khttp.get(
+                url = "https://keybase.io/_/api/1.0/user/lookup.json",
+                params = mapOf("key_suffix" to identityStr, "fields" to "pictures")
+            )
+
+            if (res.statusCode == 200) {
+                res.jsonObject.getJSONArray("them").let {
+                    if (it.length() > 0) {
+                        val them = it.getJSONObject(0)
+                        if (them.has("pictures")) {
+                            them.getJSONObject("pictures")
+                                ?.getJSONObject("primary")
+                                ?.getString("url")
+                        } else null
+                    } else null
+                }
+            } else null.also { logger.error("Error reaching Keybase: ${res.jsonObject}") }
+        } else null
     }
 }

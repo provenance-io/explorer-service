@@ -38,6 +38,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added gas fee volume [#186](https://github.com/provenance-io/explorer-service/issues/186)
 * Added heatmap endpoint `/api/v2/txs/heatmap` of when txs are submitted during the day/week [#187](https://github.com/provenance-io/explorer-service/issues/187)
 * Added token statistics for circulation supply, community pool and bonded supply [#188](https://github.com/provenance-io/explorer-service/issues/188)
+* Updated Validators to return an image URL from Keybase for their profile image #200
 
 ### Improvements
 
@@ -56,7 +57,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Added `tx_gas_fee_volume_day` table
   * Added `tx_gas_fee_volume_hour` table
   * Added `update_gas_fee_volume` stored procedure
-  
+
 ## [v2.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v2.2.0) - 2021-07-29
 ### Release Name: Hyecho
 
