@@ -42,6 +42,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added distribution of hash between sets of accounts [#189](https://github.com/provenance-io/explorer-service/issues/189)
 
 ### Improvements
+* Added global boolean to disregard historical data check once its no longer needed
+  * Reduces slowdown between block processing
+* Reworked tx history count calcs to be more efficient #220
 
 ### Bug Fixes
 * Fixed update of the daily gas stats causes hourly data to be missed [#210](https://github.com/provenance-io/explorer-service/issues/210)
@@ -52,13 +55,16 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Added `tx_single_message_cache` table
   * Added `tx_single_message_gas_stats_day` table
   * Added `tx_single_message_gas_stats_hour` table
-  * Added `update_daily_gas_stats` stored procedure
-  * Added `update_hourly_gas_stats` stored procedure
+  * Added `update_gas_fee_stats` stored procedure
 * Added aggregate, cache table(s) and stored procedure for gas fee volume [#186](https://github.com/provenance-io/explorer-service/issues/186)
   * Added `tx_gas_cache` table
   * Added `tx_gas_fee_volume_day` table
   * Added `tx_gas_fee_volume_hour` table
   * Added `update_gas_fee_volume` stored procedure
+* Added cache table, stored procedure for tx history counts #220
+  * Added `block_tx_count_cache` table
+  * Added `update_block_cache_hourly_tx_counts` stored procedure
+* Removed unused indices
 
 ## [v2.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v2.2.0) - 2021-07-29
 ### Release Name: Hyecho

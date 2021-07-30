@@ -10,7 +10,6 @@ import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.entities.AccountRecord
-import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.IbcChannelRecord
@@ -105,7 +104,6 @@ class AsyncCaching(
         blockService.addBlockToCache(
             blockRes.block.height(), blockRes.block.data.txsCount, blockTimestamp, blockRes
         )
-        BlockCacheHourlyTxCountsRecord.updateTxCounts(blockTimestamp)
         validatorService.saveProposerRecord(blockRes, blockTimestamp, blockRes.block.height())
         validatorService.saveValidatorsAtHeight(blockRes.block.height())
         validatorService.saveMissedBlocks(blockRes)
