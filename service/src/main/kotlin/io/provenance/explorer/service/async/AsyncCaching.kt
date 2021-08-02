@@ -223,7 +223,6 @@ class AsyncCaching(
                         tx.txResponse.gasUsed.toInt(),
                         type
                     )
-                    TxSingleMessageCacheRecord.updateGasStats(tx.txResponse.timestamp.toDateTime())
                 }
             } else
                 TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, UNKNOWN, UNKNOWN)

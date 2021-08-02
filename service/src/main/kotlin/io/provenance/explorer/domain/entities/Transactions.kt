@@ -653,10 +653,12 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 }
         }
 
-        fun updateGasStats(txTimestamp: DateTime): Unit = transaction {
-            val txTimestampUtc = txTimestamp.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss")
+        fun updateGasStats(): Unit = transaction {
             val conn = TransactionManager.current().connection
-            val queries = listOf("CALL update_gas_stats('$txTimestampUtc'::TIMESTAMP, '{day,hour}')")
+            val queries = listOf(
+                "CALL update_daily_gas_stats()",
+                "CALL update_hourly_gas_stats()"
+            )
             conn.executeInBatch(queries)
         }
     }
