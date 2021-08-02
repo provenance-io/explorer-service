@@ -7,9 +7,13 @@ import io.provenance.explorer.domain.core.MdParent
 import io.provenance.explorer.domain.core.sql.DateTrunc
 import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.extensions.exec
+import io.provenance.explorer.domain.extensions.map
 import io.provenance.explorer.domain.extensions.startOfDay
+import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDbHash
 import io.provenance.explorer.domain.models.explorer.GasStatistics
+import io.provenance.explorer.domain.models.explorer.GasStats
 import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.domain.models.explorer.getCategoryForType
@@ -34,9 +38,11 @@ import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
+import org.jetbrains.exposed.sql.jodatime.DateColumnType
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
@@ -588,4 +594,75 @@ class TxEventAttrRecord(id: EntityID<Int>) : IntEntity(id) {
     var txMsgEventId by TxEventAttrTable.txMsgEventId
     var attrKey by TxEventAttrTable.attrKey
     var attrValue by TxEventAttrTable.attrValue
+}
+
+object TxSingleMessageCacheTable : IntIdTable(name = "tx_single_message_cache") {
+    val txTimestamp = datetime("tx_timestamp")
+    val txHash = varchar("tx_hash", 64)
+    val gasUsed = integer("gas_used")
+    val txMessageType = varchar("tx_message_type", 128)
+}
+
+class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxSingleMessageCacheRecord>(TxSingleMessageCacheTable) {
+
+        fun insert(txTime: DateTime, txHash: String, gasUsed: Int, type: String) = transaction {
+            TxSingleMessageCacheTable.insert {
+                it[this.txTimestamp] = txTime
+                it[this.txHash] = txHash
+                it[this.gasUsed] = gasUsed
+                it[this.txMessageType] = type
+            }
+        }
+
+        fun getGasStats(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
+            val tblName = "tx_single_message_gas_stats_${granularity.toLowerCase()}"
+            val query = """
+                |SELECT
+                |   $tblName.tx_timestamp,
+                |   $tblName.min_gas_used,
+                |   $tblName.max_gas_used,
+                |   $tblName.avg_gas_used,
+                |   $tblName.stddev_gas_used,
+                |   $tblName.tx_message_type
+                |FROM $tblName
+                |WHERE $tblName.tx_timestamp >= ? 
+                |  AND $tblName.tx_timestamp < ?
+                |ORDER BY $tblName.tx_timestamp DESC
+                |""".trimMargin()
+
+            val dateTimeType = DateColumnType(true)
+            val arguments = listOf<Pair<DateColumnType, DateTime>>(
+                Pair(dateTimeType, fromDate.startOfDay()),
+                Pair(dateTimeType, toDate.startOfDay().plusDays(1))
+            )
+
+            val tz = DateTimeZone.UTC
+            val pattern = "yyyy-MM-dd HH:mm:ss"
+
+            query.exec(arguments)
+                .map {
+                    GasStats(
+                        it.getTimestamp("tx_timestamp").toDateTime(tz, pattern),
+                        it.getInt("min_gas_used"),
+                        it.getInt("max_gas_used"),
+                        it.getInt("avg_gas_used"),
+                        it.getInt("stddev_gas_used"),
+                        it.getString("tx_message_type")
+                    )
+                }
+        }
+
+        fun updateGasStats(txTimestamp: DateTime): Unit = transaction {
+            val txTimestampUtc = txTimestamp.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss")
+            val conn = TransactionManager.current().connection
+            val queries = listOf("CALL update_gas_stats('$txTimestampUtc'::TIMESTAMP, '{day,hour}')")
+            conn.executeInBatch(queries)
+        }
+    }
+
+    var txTimestamp by TxSingleMessageCacheTable.txTimestamp
+    var txHash by TxSingleMessageCacheTable.txHash
+    var gasUsed by TxSingleMessageCacheTable.gasUsed
+    var txMessageType by TxSingleMessageCacheTable.txMessageType
 }

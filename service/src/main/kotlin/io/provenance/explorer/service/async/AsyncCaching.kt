@@ -26,6 +26,7 @@ import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.TxNftJoinRecord
+import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.entities.UNKNOWN
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.height
@@ -214,6 +215,16 @@ class AsyncCaching(
                 }
                 val msgId = TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module).value
                 saveEvents(txId, tx, msgId, type, idx)
+
+                if (tx.tx.body.messagesCount == 1) {
+                    TxSingleMessageCacheRecord.insert(
+                        tx.txResponse.timestamp.toDateTime(),
+                        tx.txResponse.txhash,
+                        tx.txResponse.gasUsed.toInt(),
+                        type
+                    )
+                    TxSingleMessageCacheRecord.updateGasStats(tx.txResponse.timestamp.toDateTime())
+                }
             } else
                 TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, UNKNOWN, UNKNOWN)
         }
