@@ -63,11 +63,12 @@ WITH single_message_txs AS (
          SELECT cast(tx_timestamp AS TIMESTAMP) AS tx_timestamp,
                 tx_hash,
                 cast(gas_used AS INT)           AS gas_used,
-                tx_message_type
+                tx_message_type,
+                true                            AS processed
          FROM single_message_txs
      )
 INSERT
-INTO tx_single_message_cache (tx_timestamp, tx_hash, gas_used, tx_message_type)
+INTO tx_single_message_cache (tx_timestamp, tx_hash, gas_used, tx_message_type, processed)
 SELECT *
 FROM STATS
 ON CONFLICT DO NOTHING;
@@ -106,12 +107,16 @@ CREATE OR REPLACE PROCEDURE update_daily_gas_stats()
 AS
 $$
 DECLARE
-    unprocessed INT[];
+    unprocessed_times TIMESTAMP[];
+    unprocessed_ids   INT[];
 BEGIN
-    -- Collection unprocessed record IDs
-    SELECT array_agg(id) FROM tx_single_message_cache WHERE processed = false INTO unprocessed;
+    -- Collect unprocessed message timestamps (grouped by day)
+    -- Collect IDs of those unprocessed messages
+    SELECT array_agg(date_trunc('DAY', tx_timestamp)) FROM tx_single_message_cache WHERE processed = false INTO unprocessed_times;
+    SELECT array_agg(id) FROM tx_single_message_cache WHERE processed = false INTO unprocessed_ids;
 
-    -- Upsert unprocessed stats.
+    -- Update daily stats for unprocessed messages
+    -- Reprocess daily stats for the day that unprocessed messages fall in
     INSERT
     INTO tx_single_message_gas_stats_day(tx_timestamp,
                                          min_gas_used,
@@ -119,27 +124,26 @@ BEGIN
                                          avg_gas_used,
                                          stddev_gas_used,
                                          tx_message_type)
-    SELECT date_trunc('DAY', tx_timestamp)          AS tx_timestamp,
+    SELECT date_trunc('DAY', tx_timestamp)           AS tx_timestamp,
            min(gas_used)                             AS min_gas_used,
            max(gas_used)                             AS max_gas_used,
            round(avg(gas_used))                      AS avg_gas_used,
            coalesce(round(stddev_samp(gas_used)), 0) AS stddev_gas_used,
            tx_message_type
     FROM tx_single_message_cache
-    WHERE id = ANY (unprocessed)
-    GROUP BY date_trunc('DAY', tx_timestamp),
-             tx_message_type
+    WHERE date_trunc('DAY', tx_timestamp) = ANY (unprocessed_times)
+    GROUP BY date_trunc('DAY', tx_timestamp), tx_message_type
     ON CONFLICT (tx_timestamp, tx_message_type)
         DO UPDATE
-        SET min_gas_used    = tx_single_message_gas_stats_day.min_gas_used + excluded.min_gas_used,
-            max_gas_used    = tx_single_message_gas_stats_day.max_gas_used + excluded.max_gas_used,
-            avg_gas_used    = tx_single_message_gas_stats_day.avg_gas_used + excluded.avg_gas_used,
-            stddev_gas_used = tx_single_message_gas_stats_day.stddev_gas_used + excluded.stddev_gas_used;
+        SET min_gas_used    = excluded.min_gas_used,
+            max_gas_used    = excluded.max_gas_used,
+            avg_gas_used    = excluded.avg_gas_used,
+            stddev_gas_used = excluded.stddev_gas_used;
 
     -- Update complete, now mark records as 'processed'.
     UPDATE tx_single_message_cache
     SET processed = true
-    WHERE id = ANY (unprocessed);
+    WHERE id = ANY (unprocessed_ids);
 
     RAISE INFO 'UPDATED daily gas stats';
 END;
@@ -151,12 +155,16 @@ CREATE OR REPLACE PROCEDURE update_hourly_gas_stats()
 AS
 $$
 DECLARE
-    unprocessed INT[];
+    unprocessed_times TIMESTAMP[];
+    unprocessed_ids   INT[];
 BEGIN
-    -- Collection unprocessed record IDs
-    SELECT array_agg(id) FROM tx_single_message_cache WHERE processed = false INTO unprocessed;
+    -- Collect unprocessed message timestamps (grouped by day)
+    -- Collect IDs of those unprocessed messages
+    SELECT array_agg(date_trunc('HOUR', tx_timestamp)) FROM tx_single_message_cache WHERE processed = false INTO unprocessed_times;
+    SELECT array_agg(id) FROM tx_single_message_cache WHERE processed = false INTO unprocessed_ids;
 
-    -- Upsert unprocessed stats.
+    -- Update hourly stats for unprocessed messages
+    -- Reprocess hourly stats for the day that unprocessed messages fall in
     INSERT
     INTO tx_single_message_gas_stats_hour(tx_timestamp,
                                           min_gas_used,
@@ -171,20 +179,19 @@ BEGIN
            coalesce(round(stddev_samp(gas_used)), 0) AS stddev_gas_used,
            tx_message_type
     FROM tx_single_message_cache
-    WHERE id = ANY (unprocessed)
-    GROUP BY date_trunc('HOUR', tx_timestamp),
-             tx_message_type
+    WHERE date_trunc('HOUR', tx_timestamp) = ANY (unprocessed_times)
+    GROUP BY date_trunc('HOUR', tx_timestamp), tx_message_type
     ON CONFLICT (tx_timestamp, tx_message_type)
         DO UPDATE
-        SET min_gas_used    = tx_single_message_gas_stats_hour.min_gas_used + excluded.min_gas_used,
-            max_gas_used    = tx_single_message_gas_stats_hour.max_gas_used + excluded.max_gas_used,
-            avg_gas_used    = tx_single_message_gas_stats_hour.avg_gas_used + excluded.avg_gas_used,
-            stddev_gas_used = tx_single_message_gas_stats_hour.stddev_gas_used + excluded.stddev_gas_used;
+        SET min_gas_used    = excluded.min_gas_used,
+            max_gas_used    = excluded.max_gas_used,
+            avg_gas_used    = excluded.avg_gas_used,
+            stddev_gas_used = excluded.stddev_gas_used;
 
     -- Update complete, now mark records as 'processed'.
     UPDATE tx_single_message_cache
     SET processed = true
-    WHERE id = ANY (unprocessed);
+    WHERE id = ANY (unprocessed_ids);
 
     RAISE INFO 'UPDATED hourly gas stats';
 END;

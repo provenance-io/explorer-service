@@ -601,6 +601,7 @@ object TxSingleMessageCacheTable : IntIdTable(name = "tx_single_message_cache") 
     val txHash = varchar("tx_hash", 64)
     val gasUsed = integer("gas_used")
     val txMessageType = varchar("tx_message_type", 128)
+    val processed = bool("processed")
 }
 
 class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -612,6 +613,7 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.txHash] = txHash
                 it[this.gasUsed] = gasUsed
                 it[this.txMessageType] = type
+                it[this.processed] = false
             }
         }
 
@@ -667,4 +669,5 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var txHash by TxSingleMessageCacheTable.txHash
     var gasUsed by TxSingleMessageCacheTable.gasUsed
     var txMessageType by TxSingleMessageCacheTable.txMessageType
+    var processed by TxSingleMessageCacheTable.processed
 }

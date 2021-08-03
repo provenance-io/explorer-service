@@ -110,7 +110,7 @@ class AsyncService(
         GovProposalRecord.getNonFinalProposals().forEach { govService.updateProposal(it) }
     }
 
-    @Scheduled(cron = "0/15 * * * * ?") // Every 15 minutes
+    @Scheduled(cron = "0 0 0/1 * * ?") // At the start of every hour
     fun updateGasStats() = transaction {
         logger.info("Updating Gas stats")
         TxSingleMessageCacheRecord.updateGasStats()
