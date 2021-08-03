@@ -33,6 +33,21 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Added gas fee statistics (min, max, avg, std) per message type on single message transactions [#185](https://github.com/provenance-io/explorer-service/issues/185)
+
+### Improvements
+
+### Bug Fixes
+
+### Data
+* Added caching and aggregate tables for txs with single massages only [#185](https://github.com/provenance-io/explorer-service/issues/185)
+  * Added `tx_single_message_cache` table
+  * Added `tx_single_message_gas_stats_day` table
+  * Added `tx_single_message_gas_stats_hour` table
+  * Added `update_daily_gas_stats` stored procedure
+  * Added `update_hourly_gas_stats` stored procedure
+  
 ## [v2.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v2.2.0) - 2021-07-29
 ### Release Name: Hyecho
 

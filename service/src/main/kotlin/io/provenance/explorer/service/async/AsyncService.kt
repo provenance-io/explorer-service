@@ -6,6 +6,7 @@ import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
+import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorGasFeeCacheRecord
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.startOfDay
@@ -107,5 +108,11 @@ class AsyncService(
     @Scheduled(cron = "0 0 0 * * ?") // Everyday at 12 am
     fun updateProposalStatus() = transaction {
         GovProposalRecord.getNonFinalProposals().forEach { govService.updateProposal(it) }
+    }
+
+    @Scheduled(cron = "0 0 0/1 * * ?") // At the start of every hour
+    fun updateGasStats() = transaction {
+        logger.info("Updating Gas stats")
+        TxSingleMessageCacheRecord.updateGasStats()
     }
 }
