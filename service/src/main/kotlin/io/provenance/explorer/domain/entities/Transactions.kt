@@ -657,10 +657,7 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun updateGasStats(): Unit = transaction {
             val conn = TransactionManager.current().connection
-            val queries = listOf(
-                "CALL update_daily_gas_stats()",
-                "CALL update_hourly_gas_stats()"
-            )
+            val queries = listOf("CALL update_gas_fee_stats()")
             conn.executeInBatch(queries)
         }
     }
