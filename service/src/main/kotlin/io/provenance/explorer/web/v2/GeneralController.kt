@@ -47,6 +47,14 @@ class GeneralController(private val explorerService: ExplorerService) {
         @RequestParam(required = false) granularity: DateTruncGranularity?
     ) = ResponseEntity.ok(explorerService.getGasStats(fromDate, toDate, granularity))
 
+    @ApiOperation("Returns gas volume")
+    @GetMapping("/gas/volume")
+    fun gasVolume(
+        @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime,
+        @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime,
+        @RequestParam(required = false) granularity: DateTruncGranularity?
+    ) = ResponseEntity.ok(explorerService.getGasVolume(fromDate, toDate, granularity))
+
     @ApiOperation("Returns the ID of the chain associated with the explorer instance")
     @GetMapping("/chain/id")
     fun getChainId(): ResponseEntity<String> = ResponseEntity.ok(explorerService.getChainId())

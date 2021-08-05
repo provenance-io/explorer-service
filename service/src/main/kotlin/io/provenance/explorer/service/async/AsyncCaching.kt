@@ -22,6 +22,7 @@ import io.provenance.explorer.domain.entities.TxAddressJoinType
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxEventAttrRecord
 import io.provenance.explorer.domain.entities.TxEventRecord
+import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
@@ -172,6 +173,7 @@ class AsyncCaching(
         blockTime: DateTime
     ): TxUpdatedItems {
         val txPair = TxCacheRecord.insertIgnore(res, blockTime).let { Pair(it, res) }
+        saveTxGasFees(res, blockTime)
         saveMessages(txPair.first, txPair.second)
         val addrs = saveAddresses(txPair.first, txPair.second)
         val markers = saveMarkers(txPair.first, txPair.second)
@@ -189,6 +191,10 @@ class AsyncCaching(
                 TxEventAttrRecord.insert(attr.key, attr.value, eventId)
             }
         }
+    }
+
+    private fun saveTxGasFees(tx: ServiceOuterClass.GetTxResponse, blockTime: DateTime) = transaction {
+        TxGasCacheRecord.insertIgnore(tx, blockTime)
     }
 
     private fun saveMessages(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {

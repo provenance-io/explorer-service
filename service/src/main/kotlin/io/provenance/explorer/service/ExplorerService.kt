@@ -6,6 +6,7 @@ import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
+import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.formattedString
@@ -161,6 +162,9 @@ class ExplorerService(
 
     fun getGasStats(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
         TxSingleMessageCacheRecord.getGasStats(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
+
+    fun getGasVolume(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
+        TxGasCacheRecord.getGasVolume(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
 
     fun getGasFeeStatistics(fromDate: DateTime?, toDate: DateTime?, count: Int) =
         ChainGasFeeCacheRecord.findForDates(fromDate, toDate, count).reversed()

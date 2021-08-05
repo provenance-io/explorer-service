@@ -192,3 +192,8 @@ data class TxGov(
     val signers: Signatures,
     val txStatus: String
 )
+
+data class TxGasVolume(
+    val date: String,
+    val gasUsed: BigInteger
+)

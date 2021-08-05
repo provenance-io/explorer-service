@@ -6,6 +6,7 @@ import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
+import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorGasFeeCacheRecord
 import io.provenance.explorer.domain.extensions.height
@@ -114,5 +115,11 @@ class AsyncService(
     fun updateGasStats() = transaction {
         logger.info("Updating Gas stats")
         TxSingleMessageCacheRecord.updateGasStats()
+    }
+
+    @Scheduled(cron = "0 0 0/1 * * ?") // At the start of every hour
+    fun updateGasVolume() = transaction {
+        logger.info("Updating Gas volume")
+        TxGasCacheRecord.updateGasFeeVolume()
     }
 }

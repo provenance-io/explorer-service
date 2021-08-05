@@ -2,6 +2,7 @@ package io.provenance.explorer.domain.entities
 
 import com.google.protobuf.Any
 import cosmos.tx.v1beta1.ServiceOuterClass
+import cosmos.tx.v1beta1.TxOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.MdParent
 import io.provenance.explorer.domain.core.sql.DateTrunc
@@ -14,6 +15,7 @@ import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDbHash
 import io.provenance.explorer.domain.models.explorer.GasStatistics
 import io.provenance.explorer.domain.models.explorer.GasStats
+import io.provenance.explorer.domain.models.explorer.TxGasVolume
 import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.domain.models.explorer.getCategoryForType
@@ -37,6 +39,7 @@ import org.jetbrains.exposed.sql.countDistinct
 import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
+import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
 import org.jetbrains.exposed.sql.jodatime.DateColumnType
 import org.jetbrains.exposed.sql.jodatime.datetime
@@ -46,6 +49,7 @@ import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
+import java.math.BigInteger
 
 object TxCacheTable : IntIdTable(name = "tx_cache") {
     val hash = varchar("hash", 64)
@@ -670,4 +674,85 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var gasUsed by TxSingleMessageCacheTable.gasUsed
     var txMessageType by TxSingleMessageCacheTable.txMessageType
     var processed by TxSingleMessageCacheTable.processed
+}
+
+object TxGasCacheTable : IntIdTable(name = "tx_gas_cache") {
+    val hash = varchar("hash", 64)
+    val txTimestamp = datetime("tx_timestamp")
+    val gasWanted = integer("gas_wanted")
+    val gasUsed = integer("gas_used")
+    val feeAmount = double("fee_amount")
+    val processed = bool("processed")
+}
+
+class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxGasCacheRecord>(TxGasCacheTable) {
+
+        fun insertIgnore(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime) =
+            transaction {
+                if (findByHash(tx.txResponse.txhash) == null) {
+                    // calculate fee amount
+                    val authInfo = tx.txResponse.tx.unpack(TxOuterClass.Tx::class.java).authInfo
+                    val numerator = authInfo.fee.amountList.firstOrNull()?.amount?.toBigInteger() ?: BigInteger.ZERO
+                    val denominator = authInfo.fee.gasLimit.toBigInteger()
+                    val fee = numerator.toDouble().div(denominator.toDouble())
+
+                    TxGasCacheTable.insertIgnore {
+                        it[hash] = tx.txResponse.txhash
+                        it[txTimestamp] = txTime
+                        it[gasUsed] = tx.txResponse.gasUsed.toInt()
+                        it[gasWanted] = tx.txResponse.gasWanted.toInt()
+                        it[feeAmount] = fee
+                        it[processed] = false // default
+                    }
+                }
+            }
+
+        private fun findByHash(hash: String) = transaction {
+            TxGasCacheRecord.find { TxGasCacheTable.hash eq hash }
+        }.firstOrNull()
+
+        fun getGasVolume(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
+            val tblName = "tx_gas_fee_volume_${granularity.toLowerCase()}"
+            val query = """
+                |SELECT
+                |   $tblName.tx_timestamp,
+                |   $tblName.gas_used
+                |FROM $tblName
+                |WHERE $tblName.tx_timestamp >= ? 
+                |  AND $tblName.tx_timestamp < ?
+                |ORDER BY $tblName.tx_timestamp DESC
+                |""".trimMargin()
+
+            val dateTimeType = DateColumnType(true)
+            val arguments = listOf<Pair<DateColumnType, DateTime>>(
+                Pair(dateTimeType, fromDate.startOfDay()),
+                Pair(dateTimeType, toDate.startOfDay().plusDays(1))
+            )
+
+            val tz = DateTimeZone.UTC
+            val pattern = "yyyy-MM-dd HH:mm:ss"
+
+            query.exec(arguments)
+                .map {
+                    TxGasVolume(
+                        it.getTimestamp("tx_timestamp").toDateTime(tz, pattern),
+                        it.getBigDecimal("gas_used").toBigInteger(),
+                    )
+                }
+        }
+
+        fun updateGasFeeVolume(): Unit = transaction {
+            val conn = TransactionManager.current().connection
+            val queries = listOf("CALL update_gas_fee_volume()")
+            conn.executeInBatch(queries)
+        }
+    }
+
+    var hash by TxGasCacheTable.hash
+    var txTimestamp by TxGasCacheTable.txTimestamp
+    var gasWanted by TxGasCacheTable.gasWanted
+    var gasUsed by TxGasCacheTable.gasUsed
+    var feeAmount by TxGasCacheTable.feeAmount
+    var processed by TxGasCacheTable.processed
 }
