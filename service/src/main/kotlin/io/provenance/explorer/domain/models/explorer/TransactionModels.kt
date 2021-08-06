@@ -1,8 +1,8 @@
 package io.provenance.explorer.domain.models.explorer
 
 import com.fasterxml.jackson.databind.node.ObjectNode
-import java.math.BigDecimal
 import org.joda.time.DateTime
+import java.math.BigDecimal
 import java.math.BigInteger
 
 data class TxData(
