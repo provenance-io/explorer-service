@@ -36,6 +36,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Features
 * Added gas fee statistics (min, max, avg, std) per message type on single message transactions [#185](https://github.com/provenance-io/explorer-service/issues/185)
 * Added gas fee volume [#186](https://github.com/provenance-io/explorer-service/issues/186)
+* Added heatmap endpoint `/api/v2/txs/heatmap` of when txs are submitted during the day/week [#187](https://github.com/provenance-io/explorer-service/issues/187)
 
 ### Improvements
 
