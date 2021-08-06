@@ -49,7 +49,6 @@ import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
-import java.math.BigInteger
 
 object TxCacheTable : IntIdTable(name = "tx_cache") {
     val hash = varchar("hash", 64)
@@ -690,9 +689,7 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 if (findByHash(tx.txResponse.txhash) == null) {
                     // calculate fee amount
                     val authInfo = tx.txResponse.tx.unpack(TxOuterClass.Tx::class.java).authInfo
-                    val numerator = authInfo.fee.amountList.firstOrNull()?.amount?.toBigInteger() ?: BigInteger.ZERO
-                    val denominator = authInfo.fee.gasLimit.toBigInteger()
-                    val fee = numerator.toDouble().div(denominator.toDouble())
+                    val fee = authInfo.fee.amountList.firstOrNull()?.amount?.toDouble() ?: 0.0
 
                     TxGasCacheTable.insertIgnore {
                         it[hash] = tx.txResponse.txhash
@@ -714,7 +711,9 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             val query = """
                 |SELECT
                 |   $tblName.tx_timestamp,
-                |   $tblName.gas_used
+                |   $tblName.gas_wanted,
+                |   $tblName.gas_used,
+                |   $tblName.fee_amount
                 |FROM $tblName
                 |WHERE $tblName.tx_timestamp >= ? 
                 |  AND $tblName.tx_timestamp < ?
@@ -732,10 +731,13 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
 
             query.exec(arguments)
                 .map {
-                    TxGasVolume(
+                    val v = TxGasVolume(
                         it.getTimestamp("tx_timestamp").toDateTime(tz, pattern),
+                        it.getBigDecimal("gas_wanted").toBigInteger(),
                         it.getBigDecimal("gas_used").toBigInteger(),
+                        it.getBigDecimal("fee_amount")
                     )
+                    v
                 }
         }
 

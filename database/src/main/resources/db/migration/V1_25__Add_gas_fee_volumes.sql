@@ -18,19 +18,27 @@ CREATE INDEX IF NOT EXISTS tx_gas_cache_tx_processed_idx ON tx_gas_cache (proces
 CREATE TABLE IF NOT EXISTS tx_gas_fee_volume_day
 (
     tx_timestamp TIMESTAMP PRIMARY KEY,
-    gas_used     BIGINT NOT NULL
+    gas_wanted   BIGINT           NOT NULL,
+    gas_used     BIGINT           NOT NULL,
+    fee_amount   DOUBLE PRECISION NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS tx_gas_fee_volume_day_gas_used ON tx_gas_fee_volume_day (gas_used);
+CREATE INDEX IF NOT EXISTS tx_gas_fee_volume_day_gas_wanted_idx ON tx_gas_fee_volume_day (gas_wanted);
+CREATE INDEX IF NOT EXISTS tx_gas_fee_volume_day_gas_used_idx ON tx_gas_fee_volume_day (gas_used);
+CREATE INDEX IF NOT EXISTS tx_gas_fee_volume_day_fee_amount_idx ON tx_gas_fee_volume_day (fee_amount);
 
 -- Aggregate hourly gas volume
 CREATE TABLE IF NOT EXISTS tx_gas_fee_volume_hour
 (
     tx_timestamp TIMESTAMP PRIMARY KEY,
-    gas_used     BIGINT NOT NULL
+    gas_wanted   BIGINT           NOT NULL,
+    gas_used     BIGINT           NOT NULL,
+    fee_amount   DOUBLE PRECISION NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS tx_gas_fee_volume_hour_gas_used ON tx_gas_fee_volume_hour (gas_used);
+CREATE INDEX IF NOT EXISTS tx_gas_fee_volume_hour_gas_wanted_idx ON tx_gas_fee_volume_hour (gas_wanted);
+CREATE INDEX IF NOT EXISTS tx_gas_fee_volume_hour_gas_used_idx ON tx_gas_fee_volume_hour (gas_used);
+CREATE INDEX IF NOT EXISTS tx_gas_fee_volume_hour_fee_amount_idx ON tx_gas_fee_volume_hour (fee_amount);
 
 -- Host future and previous migrated data
 INSERT
@@ -39,11 +47,7 @@ SELECT DISTINCT hash,
                 tx_timestamp,
                 gas_wanted,
                 gas_used,
-                (
-                    SELECT min_gas_fee
-                    FROM block_proposer
-                    WHERE block_height = tx_cache.height
-                ) AS fee_amount
+                (tx_v2 -> 'tx' -> 'auth_info' -> 'fee' -> 'amount' -> 0 ->> 'amount')::DOUBLE PRECISION AS fee_amount
 FROM tx_cache
 ON CONFLICT DO NOTHING;
 
@@ -66,27 +70,35 @@ BEGIN
     -- Reprocess daily stats for the day that unprocessed messages fall in
     INSERT
     INTO tx_gas_fee_volume_day
-    SELECT date_trunc('DAY', tx_timestamp) AS tx_timestamp,
-           sum(gas_used)                   AS gas_used
+    SELECT date_trunc('DAY', tx_timestamp)                                                              AS tx_timestamp,
+           sum(gas_wanted)                                                                              AS gas_wanted,
+           sum(gas_used)                                                                                AS gas_used,
+           sum((tx_v2 -> 'tx' -> 'auth_info' -> 'fee' -> 'amount' -> 0 ->> 'amount')::DOUBLE PRECISION) AS fee_amount
     FROM tx_cache
     WHERE date_trunc('DAY', tx_timestamp) = ANY (unprocessed_daily_times)
     GROUP BY date_trunc('DAY', tx_timestamp)
     ON CONFLICT (tx_timestamp)
         DO UPDATE
-        SET gas_used = tx_gas_fee_volume_day.gas_used + excluded.gas_used;
+        SET gas_wanted = tx_gas_fee_volume_day.gas_wanted + excluded.gas_wanted,
+            gas_used = tx_gas_fee_volume_day.gas_used + excluded.gas_used,
+            fee_amount = tx_gas_fee_volume_day.fee_amount + excluded.fee_amount;
 
     -- Update hourly stats for unprocessed messages
     -- Reprocess hourly stats for the day that unprocessed messages fall in
     INSERT
     INTO tx_gas_fee_volume_hour
-    SELECT date_trunc('HOUR', tx_timestamp) AS tx_timestamp,
-           sum(gas_used)                    AS gas_used
+    SELECT date_trunc('HOUR', tx_timestamp)                                                             AS tx_timestamp,
+           sum(gas_wanted)                                                                              AS gas_wanted,
+           sum(gas_used)                                                                                AS gas_used,
+           sum((tx_v2 -> 'tx' -> 'auth_info' -> 'fee' -> 'amount' -> 0 ->> 'amount')::DOUBLE PRECISION) AS fee_amount
     FROM tx_cache
     WHERE date_trunc('HOUR', tx_timestamp) = ANY (unprocessed_hourly_times)
     GROUP BY date_trunc('HOUR', tx_timestamp)
     ON CONFLICT (tx_timestamp)
         DO UPDATE
-        SET gas_used = tx_gas_fee_volume_hour.gas_used + excluded.gas_used;
+        SET gas_wanted = tx_gas_fee_volume_hour.gas_wanted + excluded.gas_wanted,
+            gas_used = tx_gas_fee_volume_hour.gas_used + excluded.gas_used,
+            fee_amount = tx_gas_fee_volume_hour.fee_amount + excluded.fee_amount;
 
     -- Update complete. Now mark records as 'processed'.
     UPDATE tx_gas_cache
