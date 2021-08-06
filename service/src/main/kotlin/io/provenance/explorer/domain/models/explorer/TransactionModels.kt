@@ -2,6 +2,7 @@ package io.provenance.explorer.domain.models.explorer
 
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.joda.time.DateTime
+import java.math.BigDecimal
 import java.math.BigInteger
 
 data class TxData(
@@ -195,5 +196,7 @@ data class TxGov(
 
 data class TxGasVolume(
     val date: String,
-    val gasUsed: BigInteger
+    val gasWanted: BigInteger,
+    val gasUsed: BigInteger,
+    val feeAmount: BigDecimal
 )
