@@ -4,6 +4,7 @@ import cosmos.staking.v1beta1.Staking
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.extensions.toDecCoin
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -44,25 +45,18 @@ class BankGrpcClient(channelUri: URI) {
         stakingClient = StakingQueryGrpc.newBlockingStub(channel)
     }
 
-    fun getCurrentSupply(denom: String) =
+    fun getCurrentSupply(denom: String): String =
         bankClient.supplyOf(BankOuterClass.QuerySupplyOfRequest.newBuilder().setDenom(denom).build()).amount.amount
 
-    fun getCommunityPoolAmount(denom: String) =
+    fun getCommunityPoolAmount(denom: String): String =
         distClient.communityPool(DistOuterClass.QueryCommunityPoolRequest.newBuilder().build()).poolList
-            .also { logger.info("community pool: {}", it.toString()) }
-            .filter { it.denom == denom }[0]
+            .filter { it.denom == denom }[0]?.amount!!.toDecCoin()
 
-    fun getBondedAmount() =
+    fun getBondedAmount(): String =
         stakingClient.validators(
             StakingOuterClass.QueryValidatorsRequest.newBuilder()
                 .setStatus(Staking.BondStatus.BOND_STATUS_BONDED.toString())
                 .build()
-        ).validatorsList
-            .also {
-                it.forEachIndexed { i, validator ->
-                    logger.info("bonded tokens: {}) {} => {}", i+1, validator.description.moniker, validator.tokens)
-                }
-            }
-            .sumOf { it.tokens.toBigDecimal() }.toString()
+        ).validatorsList.sumOf { it.tokens.toBigDecimal() }.toString()
 
 }
