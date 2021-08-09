@@ -286,7 +286,31 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
             }
         }
 
-        fun getTxHeatmap() = transaction {
+        fun getTxHeatmap(granularity: String) = transaction {
+            if ("HOUR" == granularity) {
+                getHourlyHeatmap()
+            } else {
+                getDailyHeatmap()
+            }
+        }
+
+        private fun getDailyHeatmap() = transaction {
+            val blockTimestamp = BlockCacheHourlyTxCountsTable.blockTimestamp
+            val dateTrunc = DateTrunc("DAY", blockTimestamp)
+            val txSum = BlockCacheHourlyTxCountsTable.txCount.sum()
+            BlockCacheHourlyTxCountsTable.slice(dateTrunc, txSum)
+                .selectAll()
+                .groupBy(dateTrunc)
+                .orderBy(dateTrunc, SortOrder.DESC)
+                .map {
+                    TxHistory(
+                        it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
+                        it[txSum]!!
+                    )
+                }
+        }
+
+        private fun getHourlyHeatmap() = transaction {
             val blockTimestamp = BlockCacheHourlyTxCountsTable.blockTimestamp
             val txCount = BlockCacheHourlyTxCountsTable.txCount
             BlockCacheHourlyTxCountsTable

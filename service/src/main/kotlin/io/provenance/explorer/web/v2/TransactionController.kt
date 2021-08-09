@@ -77,7 +77,9 @@ class TransactionController(private val transactionService: TransactionService) 
 
     @ApiOperation("Get Transactions Heatmap")
     @GetMapping("/heatmap")
-    fun txHeatmap() = ResponseEntity.ok(transactionService.getTxHeatmap())
+    fun txHeatmap(
+        @RequestParam(required = false) granularity: DateTruncGranularity?
+    ) = ResponseEntity.ok(transactionService.getTxHeatmap(granularity))
 
     @ApiOperation("Get X-Day Transaction History")
     @GetMapping("/history")
