@@ -22,8 +22,10 @@ import javax.validation.constraints.Min
 @RestController
 @RequestMapping(path = ["/api/v2"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Api(value = "General controller", produces = "application/json", consumes = "application/json", tags = ["General"])
-class GeneralController(private val explorerService: ExplorerService,
-                        private val tokenSupplyService: TokenSupplyService) {
+class GeneralController(
+    private val explorerService: ExplorerService,
+    private val tokenSupplyService: TokenSupplyService
+) {
 
     @ApiOperation("Returns parameters for all the modules")
     @GetMapping("/params")

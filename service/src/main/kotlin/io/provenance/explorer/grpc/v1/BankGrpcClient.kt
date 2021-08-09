@@ -59,4 +59,8 @@ class BankGrpcClient(channelUri: URI) {
                 .build()
         ).validatorsList.sumOf { it.tokens.toBigDecimal() }.toString()
 
+    fun getMarkerBalance(address: String, denom: String): String =
+        bankClient.balance(
+            BankOuterClass.QueryBalanceRequest.newBuilder().setAddress(address).setDenom(denom).build()
+        ).balance.amount
 }
