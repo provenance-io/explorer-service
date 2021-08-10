@@ -55,7 +55,15 @@ data class Gas(
     val gasPrice: Double
 )
 
-data class TxHistory(val date: String, var numberTxs: Int)
+data class TxHistory(val date: String, val numberTxs: Int)
+
+data class TxHeatmap(
+    val date: String,
+    val dow: Int,
+    val day: String,
+    val hour: Int,
+    val numberTxs: Int
+)
 
 data class TxType(
     val module: String,

@@ -176,8 +176,7 @@ class TransactionService(
         } ?: throw ResourceNotFoundException("Invalid transaction hash: '$hash'")
     }
 
-    fun getTxHeatmap(granularity: DateTruncGranularity?) =
-        BlockCacheHourlyTxCountsRecord.getTxHeatmap((granularity ?: DateTruncGranularity.DAY).name)
+    fun getTxHeatmap() = BlockCacheHourlyTxCountsRecord.getTxHeatmap()
 
     fun getTxHistoryByQuery(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
         BlockCacheHourlyTxCountsRecord.getTxCountsForParams(

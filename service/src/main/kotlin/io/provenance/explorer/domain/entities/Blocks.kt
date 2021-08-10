@@ -3,11 +3,15 @@ package io.provenance.explorer.domain.entities
 import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.DateTrunc
+import io.provenance.explorer.domain.core.sql.ExtractDOW
+import io.provenance.explorer.domain.core.sql.ExtractDay
 import io.provenance.explorer.domain.core.sql.ExtractEpoch
+import io.provenance.explorer.domain.core.sql.ExtractHour
 import io.provenance.explorer.domain.core.sql.Lag
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
+import io.provenance.explorer.domain.models.explorer.TxHeatmap
 import io.provenance.explorer.domain.models.explorer.TxHistory
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.EntityClass
@@ -29,6 +33,7 @@ import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.trim
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import java.math.BigDecimal
@@ -286,43 +291,29 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
             }
         }
 
-        fun getTxHeatmap(granularity: String) = transaction {
-            if ("HOUR" == granularity) {
-                getHourlyHeatmap()
-            } else {
-                getDailyHeatmap()
-            }
-        }
-
-        private fun getDailyHeatmap() = transaction {
+        fun getTxHeatmap() = transaction {
             val blockTimestamp = BlockCacheHourlyTxCountsTable.blockTimestamp
             val dateTrunc = DateTrunc("DAY", blockTimestamp)
+            val dow = ExtractDOW(blockTimestamp)
+            val day = ExtractDay(blockTimestamp)
+            val hour = ExtractHour(blockTimestamp)
             val txSum = BlockCacheHourlyTxCountsTable.txCount.sum()
-            BlockCacheHourlyTxCountsTable.slice(dateTrunc, txSum)
+            BlockCacheHourlyTxCountsTable
+                .slice(dateTrunc, dow, day, hour, txSum)
                 .selectAll()
-                .groupBy(dateTrunc)
-                .orderBy(dateTrunc, SortOrder.DESC)
+                .groupBy(dateTrunc, dow, day, hour)
+                .orderBy(dow, SortOrder.ASC)
+                .orderBy(hour, SortOrder.ASC)
                 .map {
-                    TxHistory(
-                        it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
+                    TxHeatmap(
+                        it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd"),
+                        it[dow],
+                        it[day].trim(),
+                        it[hour],
                         it[txSum]!!
                     )
                 }
-        }
-
-        private fun getHourlyHeatmap() = transaction {
-            val blockTimestamp = BlockCacheHourlyTxCountsTable.blockTimestamp
-            val txCount = BlockCacheHourlyTxCountsTable.txCount
-            BlockCacheHourlyTxCountsTable
-                .slice(blockTimestamp, txCount)
-                .selectAll()
-                .orderBy(blockTimestamp, SortOrder.DESC)
-                .map {
-                    TxHistory(
-                        it[blockTimestamp].withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
-                        it[txCount]
-                    )
-                }
+                .groupBy { it.date }
         }
 
         private fun getDailyCounts(fromDate: DateTime, toDate: DateTime) = transaction {
