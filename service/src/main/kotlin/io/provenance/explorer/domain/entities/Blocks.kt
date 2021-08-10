@@ -12,6 +12,8 @@ import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.TxHeatmap
+import io.provenance.explorer.domain.models.explorer.TxHeatmapDate
+import io.provenance.explorer.domain.models.explorer.TxHeatmapHour
 import io.provenance.explorer.domain.models.explorer.TxHistory
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.EntityClass
@@ -305,7 +307,7 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
                 .orderBy(dow, SortOrder.ASC)
                 .orderBy(hour, SortOrder.ASC)
                 .map {
-                    TxHeatmap(
+                    TxHeatmapDate(
                         it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd"),
                         it[dow],
                         it[day].trim(),
@@ -314,6 +316,19 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
                     )
                 }
                 .groupBy { it.date }
+                .map {
+                    TxHeatmap(
+                        date = it.key,
+                        dow = it.value[0].dow,
+                        day = it.value[0].day,
+                        data = it.value.map {
+                            TxHeatmapHour(
+                                it.hour,
+                                it.numberTxs
+                            )
+                        }
+                    )
+                }
         }
 
         private fun getDailyCounts(fromDate: DateTime, toDate: DateTime) = transaction {
