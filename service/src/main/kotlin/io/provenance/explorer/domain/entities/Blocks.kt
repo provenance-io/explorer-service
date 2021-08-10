@@ -304,8 +304,7 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
                 .slice(dateTrunc, dow, day, hour, txSum)
                 .selectAll()
                 .groupBy(dateTrunc, dow, day, hour)
-                .orderBy(dow, SortOrder.ASC)
-                .orderBy(hour, SortOrder.ASC)
+                .orderBy(dateTrunc, SortOrder.ASC)
                 .map {
                     TxHeatmapDate(
                         it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd"),
