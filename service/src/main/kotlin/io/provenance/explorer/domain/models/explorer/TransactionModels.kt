@@ -57,29 +57,22 @@ data class Gas(
 
 data class TxHistory(val date: String, val numberTxs: Int)
 
-data class TxHeatmapDate(
-    val date: String,
+data class TxHeatmapRaw(
     val dow: Int,
     val day: String,
     val hour: Int,
     val numberTxs: Int
 )
 
-data class TxHeatmapDay(
-    val dow: Int,
-    val data: List<TxHeatmapHour>
-)
-
-data class TxHeatmapHour(
+data class TxHeatmapData(
     val hour: Int,
     val numberTxs: Int
 )
 
 data class TxHeatmap(
-    val date: String,
     val dow: Int,
     val day: String,
-    val data: List<TxHeatmapHour>
+    val data: List<TxHeatmapData>
 )
 
 data class TxType(

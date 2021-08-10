@@ -12,8 +12,8 @@ import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.TxHeatmap
-import io.provenance.explorer.domain.models.explorer.TxHeatmapDate
-import io.provenance.explorer.domain.models.explorer.TxHeatmapHour
+import io.provenance.explorer.domain.models.explorer.TxHeatmapData
+import io.provenance.explorer.domain.models.explorer.TxHeatmapRaw
 import io.provenance.explorer.domain.models.explorer.TxHistory
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.EntityClass
@@ -295,33 +295,33 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
 
         fun getTxHeatmap() = transaction {
             val blockTimestamp = BlockCacheHourlyTxCountsTable.blockTimestamp
-            val dateTrunc = DateTrunc("DAY", blockTimestamp)
             val dow = ExtractDOW(blockTimestamp)
             val day = ExtractDay(blockTimestamp)
             val hour = ExtractHour(blockTimestamp)
             val txSum = BlockCacheHourlyTxCountsTable.txCount.sum()
             BlockCacheHourlyTxCountsTable
-                .slice(dateTrunc, dow, day, hour, txSum)
+                .slice(dow, day, hour, txSum)
                 .selectAll()
-                .groupBy(dateTrunc, dow, day, hour)
-                .orderBy(dateTrunc, SortOrder.ASC)
+                .groupBy(dow)
+                .groupBy(day)
+                .groupBy(hour)
+                .orderBy(dow, SortOrder.ASC)
+                .orderBy(hour, SortOrder.ASC)
                 .map {
-                    TxHeatmapDate(
-                        it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd"),
+                    TxHeatmapRaw(
                         it[dow],
                         it[day].trim(),
                         it[hour],
                         it[txSum]!!
                     )
                 }
-                .groupBy { it.date }
+                .groupBy { it.dow }
                 .map {
                     TxHeatmap(
-                        date = it.key,
-                        dow = it.value[0].dow,
+                        dow = it.key,
                         day = it.value[0].day,
                         data = it.value.map {
-                            TxHeatmapHour(
+                            TxHeatmapData(
                                 it.hour,
                                 it.numberTxs
                             )
