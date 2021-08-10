@@ -4,7 +4,9 @@ import org.jetbrains.exposed.sql.DecimalColumnType
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.Function
 import org.jetbrains.exposed.sql.IColumnType
+import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.QueryBuilder
+import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.append
 import org.jetbrains.exposed.sql.jodatime.CustomDateTimeFunction
 import org.jetbrains.exposed.sql.jodatime.DateColumnType
@@ -23,9 +25,24 @@ class Lag(val lag: Expression<DateTime>, val orderBy: Expression<Int>) : Functio
         queryBuilder { append("LAG(", lag, ") OVER (order by ", orderBy, " desc)") }
 }
 
+class ExtractDay(val expr: Expression<DateTime>) : Function<String>(VarCharColumnType(9)) {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) =
+        queryBuilder { append("to_char(", expr, ", 'DAY')") }
+}
+
+class ExtractDOW(val expr: Expression<DateTime>) : Function<Int>(IntegerColumnType()) {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) =
+        queryBuilder { append("extract(dow from ", expr, " )") }
+}
+
 class ExtractEpoch(val expr: Expression<DateTime>) : Function<BigDecimal>(DecimalColumnType(10, 10)) {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) =
         queryBuilder { append("extract(epoch from ", expr, " )") }
+}
+
+class ExtractHour(val expr: Expression<DateTime>) : Function<Int>(IntegerColumnType()) {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) =
+        queryBuilder { append("extract(hour from ", expr, " )") }
 }
 
 fun DateTrunc(granularity: String, column: Expression<*>) =

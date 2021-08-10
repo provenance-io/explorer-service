@@ -75,6 +75,10 @@ class TransactionController(private val transactionService: TransactionService) 
         )
     )
 
+    @ApiOperation("Get Transactions Heatmap")
+    @GetMapping("/heatmap")
+    fun txHeatmap() = ResponseEntity.ok(transactionService.getTxHeatmap())
+
     @ApiOperation("Get X-Day Transaction History")
     @GetMapping("/history")
     fun txHistory(

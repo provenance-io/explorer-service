@@ -3,11 +3,19 @@ package io.provenance.explorer.domain.entities
 import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.DateTrunc
+import io.provenance.explorer.domain.core.sql.ExtractDOW
+import io.provenance.explorer.domain.core.sql.ExtractDay
 import io.provenance.explorer.domain.core.sql.ExtractEpoch
+import io.provenance.explorer.domain.core.sql.ExtractHour
 import io.provenance.explorer.domain.core.sql.Lag
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
+import io.provenance.explorer.domain.models.explorer.TxHeatmap
+import io.provenance.explorer.domain.models.explorer.TxHeatmapDay
+import io.provenance.explorer.domain.models.explorer.TxHeatmapHour
+import io.provenance.explorer.domain.models.explorer.TxHeatmapRaw
+import io.provenance.explorer.domain.models.explorer.TxHeatmapRes
 import io.provenance.explorer.domain.models.explorer.TxHistory
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.EntityClass
@@ -284,6 +292,51 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
             } else {
                 getDailyCounts(fromDate, toDate)
             }
+        }
+
+        fun getTxHeatmap() = transaction {
+            val blockTimestamp = BlockCacheHourlyTxCountsTable.blockTimestamp
+            val dow = ExtractDOW(blockTimestamp)
+            val day = ExtractDay(blockTimestamp)
+            val hour = ExtractHour(blockTimestamp)
+            val txSum = BlockCacheHourlyTxCountsTable.txCount.sum()
+            val result = BlockCacheHourlyTxCountsTable
+                .slice(dow, day, hour, txSum)
+                .selectAll()
+                .groupBy(dow)
+                .groupBy(day)
+                .groupBy(hour)
+                .orderBy(dow, SortOrder.ASC)
+                .orderBy(hour, SortOrder.ASC)
+                .map {
+                    TxHeatmapRaw(
+                        it[dow],
+                        it[day].trim(),
+                        it[hour],
+                        it[txSum]!!
+                    )
+                }
+                .groupBy { it.dow }
+                .map {
+                    TxHeatmap(
+                        dow = it.key,
+                        day = it.value[0].day,
+                        data = it.value.map {
+                            TxHeatmapHour(
+                                it.hour,
+                                it.numberTxs
+                            )
+                        }
+                    )
+                }
+
+            val dayTotals = result.map { TxHeatmapDay(it.day, it.data.sumOf { it.numberTxs }) }
+            val hourTotals = result
+                .flatMap { it.data }
+                .groupBy { it.hour }
+                .map { TxHeatmapHour(it.key, it.value.sumOf { it.numberTxs }) }
+
+            TxHeatmapRes(result, dayTotals, hourTotals)
         }
 
         private fun getDailyCounts(fromDate: DateTime, toDate: DateTime) = transaction {
