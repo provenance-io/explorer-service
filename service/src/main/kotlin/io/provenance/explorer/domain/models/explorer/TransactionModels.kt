@@ -64,7 +64,12 @@ data class TxHeatmapRaw(
     val numberTxs: Int
 )
 
-data class TxHeatmapData(
+data class TxHeatmapDay(
+    val day: String,
+    val numberTxs: Int
+)
+
+data class TxHeatmapHour(
     val hour: Int,
     val numberTxs: Int
 )
@@ -72,7 +77,13 @@ data class TxHeatmapData(
 data class TxHeatmap(
     val dow: Int,
     val day: String,
-    val data: List<TxHeatmapData>
+    val data: List<TxHeatmapHour>
+)
+
+data class TxHeatmapRes(
+    val heatmap: List<TxHeatmap>,
+    val dailyTotal: List<TxHeatmapDay>,
+    val hourlyTotal: List<TxHeatmapHour>
 )
 
 data class TxType(
