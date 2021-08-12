@@ -4,6 +4,7 @@ import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.Params
 import io.provenance.explorer.domain.models.explorer.Spotlight
 import io.provenance.explorer.service.ExplorerService
+import io.provenance.explorer.service.TokenSupplyService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import org.joda.time.DateTime
@@ -21,7 +22,10 @@ import javax.validation.constraints.Min
 @RestController
 @RequestMapping(path = ["/api/v2"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Api(value = "General controller", produces = "application/json", consumes = "application/json", tags = ["General"])
-class GeneralController(private val explorerService: ExplorerService) {
+class GeneralController(
+    private val explorerService: ExplorerService,
+    private val tokenSupplyService: TokenSupplyService
+) {
 
     @ApiOperation("Returns parameters for all the modules")
     @GetMapping("/params")
@@ -66,4 +70,8 @@ class GeneralController(private val explorerService: ExplorerService) {
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?,
         @RequestParam(required = false, defaultValue = "14") @Min(1) dayCount: Int
     ) = ResponseEntity.ok(explorerService.getGasFeeStatistics(fromDate, toDate, dayCount))
+
+    @ApiOperation("Returns statistics on min gas fees for the chain")
+    @GetMapping("/token/stats")
+    fun getTokenStats() = ResponseEntity.ok(tokenSupplyService.getTokenStats())
 }

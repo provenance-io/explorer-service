@@ -31,3 +31,10 @@ data class CountStrTotal(
     val total: String?,
     val denom: String
 )
+
+data class TokenSupply(
+    val currentSupply: CoinStr,
+    val circulation: CoinStr,
+    val communityPool: CoinStr,
+    val bonded: CoinStr
+)
