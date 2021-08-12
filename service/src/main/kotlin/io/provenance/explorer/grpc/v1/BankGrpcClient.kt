@@ -59,6 +59,13 @@ class BankGrpcClient(channelUri: URI) {
                 .build()
         ).validatorsList.sumOf { it.tokens.toBigDecimal() }.toString()
 
+    fun getUnBondedAmount(): String =
+        stakingClient.validators(
+            StakingOuterClass.QueryValidatorsRequest.newBuilder()
+                .setStatus(Staking.BondStatus.BOND_STATUS_UNBONDED.toString())
+                .build()
+        ).validatorsList.sumOf { it.tokens.toBigDecimal() }.toString()
+
     fun getMarkerBalance(address: String, denom: String): String =
         bankClient.balance(
             BankOuterClass.QueryBalanceRequest.newBuilder().setAddress(address).setDenom(denom).build()

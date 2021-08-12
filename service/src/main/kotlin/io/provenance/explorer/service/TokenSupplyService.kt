@@ -22,11 +22,20 @@ class TokenSupplyService(private val bankClient: BankGrpcClient) {
         val currentSupply = bankClient.getCurrentSupply(NHASH).toBigDecimal()
         val communityPoolSupply = bankClient.getCommunityPoolAmount(NHASH).toBigDecimal()
         val bondedSupply = bankClient.getBondedAmount().toBigDecimal()
+        val unBondedSupply = bankClient.getUnBondedAmount().toBigDecimal()
 
-        val circulation = (currentSupply - communityPoolSupply - bondedSupply - markerAmount).toCoinStr(NHASH)
+        val circulation =
+            (currentSupply - communityPoolSupply - bondedSupply - unBondedSupply - markerAmount).toCoinStr(NHASH)
         val communityPool = communityPoolSupply.toCoinStr(NHASH)
         val bonded = bondedSupply.toCoinStr(NHASH)
+        val unBonded = unBondedSupply.toCoinStr(NHASH)
 
-        TokenSupply(circulation, communityPool, bonded)
+        TokenSupply(
+            currentSupply.toCoinStr(NHASH),
+            circulation,
+            communityPool,
+            bonded,
+            unBonded
+        )
     }
 }
