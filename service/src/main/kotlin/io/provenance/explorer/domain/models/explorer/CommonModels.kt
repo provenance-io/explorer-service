@@ -36,6 +36,5 @@ data class TokenSupply(
     val currentSupply: CoinStr,
     val circulation: CoinStr,
     val communityPool: CoinStr,
-    val bonded: CoinStr,
-    val unBonded: CoinStr,
+    val bonded: CoinStr
 )

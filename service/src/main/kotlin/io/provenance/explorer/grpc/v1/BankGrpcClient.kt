@@ -1,6 +1,5 @@
 package io.provenance.explorer.grpc.v1
 
-import cosmos.staking.v1beta1.Staking
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.core.logger
@@ -55,14 +54,6 @@ class BankGrpcClient(channelUri: URI) {
     fun getBondedAmount(): String =
         stakingClient.validators(
             StakingOuterClass.QueryValidatorsRequest.newBuilder()
-                .setStatus(Staking.BondStatus.BOND_STATUS_BONDED.toString())
-                .build()
-        ).validatorsList.sumOf { it.tokens.toBigDecimal() }.toString()
-
-    fun getUnBondedAmount(): String =
-        stakingClient.validators(
-            StakingOuterClass.QueryValidatorsRequest.newBuilder()
-                .setStatus(Staking.BondStatus.BOND_STATUS_UNBONDED.toString())
                 .build()
         ).validatorsList.sumOf { it.tokens.toBigDecimal() }.toString()
 
