@@ -38,3 +38,14 @@ data class TokenSupply(
     val communityPool: CoinStr,
     val bonded: CoinStr
 )
+
+data class TokenDistributionAmount(
+    val denom: String,
+    val amount: String
+)
+
+data class TokenDistribution(
+    val holder: String,
+    val amount: TokenDistributionAmount,
+    val percent: String
+)

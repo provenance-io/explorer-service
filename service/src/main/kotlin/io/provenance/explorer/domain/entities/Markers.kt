@@ -3,6 +3,7 @@ package io.provenance.explorer.domain.entities
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.nullsLast
+import io.provenance.explorer.domain.models.explorer.TokenDistribution
 import io.provenance.marker.v1.MarkerAccount
 import io.provenance.marker.v1.MarkerStatus
 import org.jetbrains.exposed.dao.IntEntity
@@ -17,6 +18,7 @@ import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import java.math.BigDecimal
@@ -104,4 +106,35 @@ class MarkerCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var supply by MarkerCacheTable.supply
     var lastTx by MarkerCacheTable.lastTx
     var data by MarkerCacheTable.data
+}
+
+object TokenDistributionAmountsTable : IntIdTable(name = "token_distribution_amounts") {
+    val holder = varchar("holder", 8)
+    val data = jsonb<TokenDistributionAmountsTable, Any>("data", OBJECT_MAPPER).nullable()
+}
+
+class TokenDistributionAmountsRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TokenDistributionAmountsRecord>(TokenDistributionAmountsTable) {
+
+        fun getStats() = transaction {
+            val data = TokenDistributionAmountsTable.data
+            TokenDistributionAmountsTable
+                .slice(data)
+                .select { data.isNotNull() }
+                .map {
+                    it[data]
+                }
+        }
+
+        fun updateStats(tokenDistribution: List<TokenDistribution>) = transaction {
+            val conn = TransactionManager.current().connection
+            val queries = tokenDistribution.map {
+                "CALL update_token_distribution_amounts('${it.holder}', '${OBJECT_MAPPER.writeValueAsString(it)}')"
+            }
+            conn.executeInBatch(queries)
+        }
+    }
+
+    var holder by TokenDistributionAmountsTable.holder
+    var data by TokenDistributionAmountsTable.data
 }

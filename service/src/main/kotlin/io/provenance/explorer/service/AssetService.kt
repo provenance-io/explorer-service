@@ -6,6 +6,7 @@ import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BaseDenomType
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
+import io.provenance.explorer.domain.entities.TokenDistributionAmountsRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toDateTime
@@ -19,6 +20,8 @@ import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.TokenCounts
+import io.provenance.explorer.domain.models.explorer.TokenDistribution
+import io.provenance.explorer.domain.models.explorer.TokenDistributionAmount
 import io.provenance.explorer.grpc.extensions.getManagingAccounts
 import io.provenance.explorer.grpc.extensions.isMintable
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
@@ -27,6 +30,8 @@ import io.provenance.explorer.grpc.v1.MetadataGrpcClient
 import io.provenance.marker.v1.MarkerStatus
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
+import java.math.BigDecimal
+import java.math.RoundingMode
 
 @Service
 class AssetService(
@@ -124,6 +129,48 @@ class AssetService(
         PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
     }
 
+    fun getTokenDistributionStats() = transaction { TokenDistributionAmountsRecord.getStats() }
+
+    fun updateTokenDistributionStats(denom: String) = accountService.getCurrentSupply(denom).let { supply ->
+        val res = markerClient.getAllMarkerHolders(denom)
+        // TODO: Need to increase the request timeout to prevent a
+        //       DEADLINE_EXCEEDED: deadline exceeded after 9.999915266s. [remote_addr=localhost/127.0.0.1:9090]
+
+        val assetHolders = res.balancesList.map { bal ->
+            val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount
+            AssetHolder(bal.address, CountStrTotal(balance, supply, denom))
+        }.sortedByDescending { it.balance.count.toBigInteger() }
+
+        val size = assetHolders.size
+        val totalSupply = assetHolders[0].balance.total?.toBigDecimal()!!
+        val ranges = listOf(
+            IntRange(0, 4),
+            IntRange(5, 9),
+            IntRange(10, 49),
+            IntRange(50, 99),
+            IntRange(100, 499),
+            IntRange(500, 999),
+            IntRange(1000, size - 1),
+        )
+
+        val tokenDistribution = ranges
+            .filter { it.first < size }
+            .map {
+                val range = if (size > it.first && size > it.last) it else IntRange(it.first, size - 1)
+                val rangeBalance = assetHolders.getBalanceForRange(range)
+                val percentOfTotal = rangeBalance.asPercentOf(totalSupply).toPlainString()
+                TokenDistribution(
+                    if (range.first == 1000) "1000-" else range.spread(),
+                    TokenDistributionAmount(denom, rangeBalance.toString()),
+                    percentOfTotal
+                )
+            }
+
+        if (tokenDistribution.isNotEmpty()) {
+            TokenDistributionAmountsRecord.updateStats(tokenDistribution)
+        }
+    }
+
     fun getMetadata(denom: String?) = accountService.getDenomMetadata(denom).map { it.toObjectNode(protoPrinter) }
 
     // Updates the Marker cache
@@ -140,6 +187,11 @@ class AssetService(
         }
     }
 }
+
+fun List<AssetHolder>.getBalanceForRange(range: IntRange) = this.slice(range).sumOf { it.balance.count.toBigDecimal() }
+fun IntRange.spread() = "${this.first + 1}-${this.last + 1}"
+
+fun BigDecimal.asPercentOf(divisor: BigDecimal) = this.divide(divisor, 20, RoundingMode.CEILING)
 
 fun String.getDenomByAddress() = MarkerCacheRecord.findByAddress(this)?.denom
 
