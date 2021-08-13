@@ -3,7 +3,9 @@ package io.provenance.explorer.domain.entities
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.nullsLast
-import io.provenance.explorer.domain.models.explorer.TokenDistribution
+import io.provenance.explorer.domain.models.explorer.AssetHolder
+import io.provenance.explorer.domain.models.explorer.CountStrTotal
+import io.provenance.explorer.domain.models.explorer.TokenDistributionPaginatedResults
 import io.provenance.marker.v1.MarkerAccount
 import io.provenance.marker.v1.MarkerStatus
 import org.jetbrains.exposed.dao.IntEntity
@@ -22,6 +24,11 @@ import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import java.math.BigDecimal
+import org.jetbrains.exposed.sql.Column
+import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.Transaction
+import org.jetbrains.exposed.sql.statements.BatchInsertStatement
+import org.joda.time.DateTimeZone
 
 object MarkerCacheTable : IntIdTable(name = "marker_cache") {
     val markerAddress = varchar("marker_address", 128).nullable()
@@ -109,7 +116,7 @@ class MarkerCacheRecord(id: EntityID<Int>) : IntEntity(id) {
 }
 
 object TokenDistributionAmountsTable : IntIdTable(name = "token_distribution_amounts") {
-    val holder = varchar("holder", 8)
+    val range = varchar("holder", 8)
     val data = jsonb<TokenDistributionAmountsTable, Any>("data", OBJECT_MAPPER).nullable()
 }
 
@@ -126,15 +133,83 @@ class TokenDistributionAmountsRecord(id: EntityID<Int>) : IntEntity(id) {
                 }
         }
 
-        fun updateStats(tokenDistribution: List<TokenDistribution>) = transaction {
-            val conn = TransactionManager.current().connection
-            val queries = tokenDistribution.map {
-                "CALL update_token_distribution_amounts('${it.holder}', '${OBJECT_MAPPER.writeValueAsString(it)}')"
-            }
-            conn.executeInBatch(queries)
-        }
     }
 
-    var holder by TokenDistributionAmountsTable.holder
+    var range by TokenDistributionAmountsTable.range
     var data by TokenDistributionAmountsTable.data
+}
+
+object TokenDistributionPaginatedResultsTable : IntIdTable(name = "token_distribution_paginated_results") {
+    val ownerAddress = varchar("owner_address", 128)
+    val data = jsonb<TokenDistributionPaginatedResultsTable, CountStrTotal>("data", OBJECT_MAPPER)
+}
+
+class TokenDistributionPaginatedResultsRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TokenDistributionPaginatedResultsRecord>(TokenDistributionPaginatedResultsTable) {
+
+        fun calculateRanks() = transaction {
+            val conn = TransactionManager.current().connection
+            val queries = listOf("CALL calculate_token_distribution_ranks()")
+            conn.executeInBatch(queries)
+        }
+
+        fun savePaginatedResults(assetHolders: List<AssetHolder>) = transaction {
+            val paginatedResults = assetHolders.map {
+                TokenDistributionPaginatedResults(
+                    ownerAddress = it.ownerAddress,
+                    data = it.balance
+                )
+            }
+            batchUpsert(paginatedResults)
+        }
+
+        private fun batchUpsert(paginatedResults: List<TokenDistributionPaginatedResults>) = transaction {
+            val ownerAddress = TokenDistributionPaginatedResultsTable.ownerAddress
+            val data = TokenDistributionPaginatedResultsTable.data
+            TokenDistributionPaginatedResultsTable
+                .batchUpsert(paginatedResults, listOf(ownerAddress, data)) { batch, paginatedResult ->
+                    batch[ownerAddress] = paginatedResult.ownerAddress
+                    // Setting the type to CountStrTotal in ln:143
+                    // with `batch[data] = paginatedResult.data` does not write to DB. Why?
+//                    batch[data] = "'${OBJECT_MAPPER.writeValueAsString(paginatedResult.data)}'"
+                    batch[data] = paginatedResult.data
+                }
+        }
+
+        // With some tinkering from https://github.com/JetBrains/Exposed/issues/167
+        // and, https://ohadshai.medium.com/first-steps-with-kotlin-exposed-cb361a9bf5ac
+        private class BatchUpsert(
+            table: Table,
+            private val onUpdate: List<Column<*>>
+        ) : BatchInsertStatement(table, false) {
+
+            override fun prepareSQL(transaction: Transaction): String {
+                val onUpdateSQL = if (onUpdate.isNotEmpty()) {
+                    " ON CONFLICT (owner_address) " +
+                            "DO UPDATE " +
+                            "SET data = excluded.data"
+                } else ""
+                return super.prepareSQL(transaction) + onUpdateSQL
+            }
+        }
+
+        private fun <T : Table, E> T.batchUpsert(
+            data: List<E>,
+            onUpdateColumns: List<Column<*>>,
+            body: T.(BatchUpsert, E) -> Unit
+        ) {
+            data.takeIf { it.isNotEmpty() }?.let {
+                val insert = BatchUpsert(this, onUpdateColumns)
+                data.forEach {
+                    insert.addBatch()
+                    body(insert, it)
+                }
+                TransactionManager.current().exec(insert)
+            }
+        }
+
+    }
+
+    var ownerAddress by TokenDistributionPaginatedResultsTable.ownerAddress
+    var data by TokenDistributionPaginatedResultsTable.data
 }

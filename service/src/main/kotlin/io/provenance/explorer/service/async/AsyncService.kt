@@ -35,7 +35,7 @@ class AsyncService(
 
     protected val logger = logger(AsyncService::class)
 
-    @Scheduled(initialDelay = 0L, fixedDelay = 1000L)
+//    @Scheduled(initialDelay = 0L, fixedDelay = 1000L)
     fun updateLatestBlockHeightJob() {
         val index = getBlockIndex()
         val startHeight = blockService.getLatestBlockHeight()
@@ -126,7 +126,8 @@ class AsyncService(
         TxGasCacheRecord.updateGasFeeVolume()
     }
 
-    @Scheduled(cron = "0 0 0/1 * * ?") // At the start of every hour
+//    @Scheduled(cron = "0 0 1 * * ?") // Everyday at 1 am
+    @Scheduled(cron = "0 0/1 * * * ?") // Every 1 minute
     fun updateTokenDistributionAmounts() = transaction {
         logger.info("Updating token distribution amounts")
         assetService.updateTokenDistributionStats(NHASH)

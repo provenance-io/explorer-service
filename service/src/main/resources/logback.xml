@@ -4,7 +4,8 @@
             <pattern>%d{YYYY-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | %gray(%-40logger{20}) | %-20thread{20} | MDC:[%mdc] | - %msg%n%xEx</pattern>
         </encoder>
     </appender>
-    <root level="info">
+    <logger name="Exposed" level="debug"/>
+    <root level="debug">
         <appender-ref ref="${logging.appender:-stdout}"/>
     </root>
 </configuration>
