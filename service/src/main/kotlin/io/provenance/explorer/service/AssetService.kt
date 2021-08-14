@@ -21,6 +21,8 @@ import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.TokenCounts
+import io.provenance.explorer.domain.models.explorer.TokenDistribution
+import io.provenance.explorer.domain.models.explorer.TokenDistributionAmount
 import io.provenance.explorer.grpc.extensions.getManagingAccounts
 import io.provenance.explorer.grpc.extensions.isMintable
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
@@ -103,15 +105,26 @@ class AssetService(
                 AssetDetail(
                     record.denom,
                     record.markerAddress,
-                    if (record.data != null) AssetManagement(record.data!!.getManagingAccounts(), record.data!!.allowGovernanceControl) else null,
+                    if (record.data != null) AssetManagement(
+                        record.data!!.getManagingAccounts(),
+                        record.data!!.allowGovernanceControl
+                    ) else null,
                     CoinStr(record.supply.toBigInteger().toString(), record.denom),
                     record.data?.isMintable() ?: false,
-                    if (record.markerAddress != null) markerClient.getMarkerHolders(denom, 0, 10).pagination.total.toInt() else 0,
+                    if (record.markerAddress != null) markerClient.getMarkerHolders(
+                        denom,
+                        0,
+                        10
+                    ).pagination.total.toInt() else 0,
                     txCount,
                     attrClient.getAllAttributesForAddress(record.markerAddress).map { attr -> attr.toResponse() },
                     accountService.getDenomMetadataSingle(denom).toObjectNode(protoPrinter),
                     TokenCounts(
-                        if (record.markerAddress != null) accountService.getBalances(record.markerAddress!!, 0, 1).pagination.total else 0,
+                        if (record.markerAddress != null) accountService.getBalances(
+                            record.markerAddress!!,
+                            0,
+                            1
+                        ).pagination.total else 0,
                         if (record.markerAddress != null) metadataClient.getScopesByOwner(record.markerAddress!!).pagination.total.toInt() else 0
                     ),
                     record.status.prettyStatus(),
@@ -140,48 +153,44 @@ class AssetService(
             }
         }
         // calculate ranks
-        TokenDistributionPaginatedResultsRecord.calculateRanks()
+        calculateTokenDistributionStats()
     }
 
-//    fun updateTokenDistributionStats(denom: String) = accountService.getCurrentSupply(denom).let { supply ->
-//        val res = markerClient.getAllMarkerHolders(denom)
-//        // TODO: Need to increase the request timeout to prevent a
-//        //       DEADLINE_EXCEEDED: deadline exceeded after 9.999915266s. [remote_addr=localhost/127.0.0.1:9090]
-//
-//        val assetHolders = res.balancesList.map { bal ->
-//            val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount
-//            AssetHolder(bal.address, CountStrTotal(balance, supply, denom))
-//        }.sortedByDescending { it.balance.count.toBigInteger() }
-//
-//        val size = assetHolders.size
-//        val totalSupply = assetHolders[0].balance.total?.toBigDecimal()!!
-//        val ranges = listOf(
-//            IntRange(0, 4),
-//            IntRange(5, 9),
-//            IntRange(10, 49),
-//            IntRange(50, 99),
-//            IntRange(100, 499),
-//            IntRange(500, 999),
-//            IntRange(1000, size - 1),
-//        )
-//
-//        val tokenDistribution = ranges
-//            .filter { it.first < size }
-//            .map {
-//                val range = if (size > it.first && size > it.last) it else IntRange(it.first, size - 1)
-//                val rangeBalance = assetHolders.getBalanceForRange(range)
-//                val percentOfTotal = rangeBalance.asPercentOf(totalSupply).toPlainString()
-//                TokenDistribution(
-//                    if (range.first == 1000) "1000-" else range.spread(),
-//                    TokenDistributionAmount(denom, rangeBalance.toString()),
-//                    percentOfTotal
-//                )
-//            }
-//
-//        if (tokenDistribution.isNotEmpty()) {
-//            TokenDistributionAmountsRecord.updateStats(tokenDistribution)
-//        }
-//    }
+    private fun calculateTokenDistributionStats() {
+        val ranges = listOf(
+            Pair(0, "1-5"),
+            Pair(5, "6-10"),
+            Pair(10, "11-50"),
+            Pair(50, "51-100"),
+            Pair(100, "101-500"),
+            Pair(500, "501-1000"),
+            Pair(1000, "1001-"),
+        )
+        val tokenDistributions = listOf(
+            Pair(5, 0),
+            Pair(5, 5),
+            Pair(50, 10),
+            Pair(50, 50),
+            Pair(500, 100),
+            Pair(500, 500),
+            Pair("ALL", 1000)
+        ).map { limitOffset ->
+            val results =
+                TokenDistributionPaginatedResultsRecord.findByLimitOffset(limitOffset.first, limitOffset.second)
+            val denom = results?.get(0)?.denom!!
+            val totalSupply = results[0].total?.toBigDecimal()!!
+            val rangeBalance = results.sumOf { it.count.toBigDecimal() }
+            val percentOfTotal = rangeBalance.asPercentOf(totalSupply).toPlainString()
+
+            TokenDistribution(
+                ranges.find { it.first == limitOffset.second }!!.second,
+                TokenDistributionAmount(denom, rangeBalance.toString()),
+                percentOfTotal
+            )
+        }
+
+        TokenDistributionAmountsRecord.batchUpsert(tokenDistributions)
+    }
 
     fun getMetadata(denom: String?) = accountService.getDenomMetadata(denom).map { it.toObjectNode(protoPrinter) }
 
@@ -200,10 +209,7 @@ class AssetService(
     }
 }
 
-fun List<AssetHolder>.getBalanceForRange(range: IntRange) = this.slice(range).sumOf { it.balance.count.toBigDecimal() }
-fun IntRange.spread() = "${this.first + 1}-${this.last + 1}"
-
-fun BigDecimal.asPercentOf(divisor: BigDecimal) = this.divide(divisor, 20, RoundingMode.CEILING)
+fun BigDecimal.asPercentOf(divisor: BigDecimal): BigDecimal = this.divide(divisor, 20, RoundingMode.CEILING)
 
 fun String.getDenomByAddress() = MarkerCacheRecord.findByAddress(this)?.denom
 
