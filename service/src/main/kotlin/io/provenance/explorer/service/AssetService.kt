@@ -144,16 +144,37 @@ class AssetService(
     fun getTokenDistributionStats() = transaction { TokenDistributionAmountsRecord.getStats() }
 
     fun updateTokenDistributionStats(denom: String) {
-        val pageResults = getAssetHolders(denom, 1, 10)
+        val pageResults = getAssetHoldersWithRetry(denom, 1, 10)
         TokenDistributionPaginatedResultsRecord.savePaginatedResults(pageResults.results)
         if (pageResults.pages > 1) {
             for (i in 2..pageResults.pages) {
-                val results = getAssetHolders(denom, i, 10)
+                val results = getAssetHoldersWithRetry(denom, i, 10)
                 TokenDistributionPaginatedResultsRecord.savePaginatedResults(results.results)
             }
         }
         // calculate ranks
         calculateTokenDistributionStats()
+    }
+
+    // 1st requests that take longer than expected result in a
+    // DEADLINE_EXCEEDED error. Add retry functionality to give
+    // a chance to succeeed.
+    private fun getAssetHoldersWithRetry(
+        denom: String,
+        page: Int,
+        count: Int,
+        retryCount: Int = 3
+    ): PagedResults<AssetHolder> {
+        var hasSucceeded = false
+        var numberOfTriesRemaining = retryCount
+        var assetHolders: PagedResults<AssetHolder>? = null
+        while (!hasSucceeded && numberOfTriesRemaining > 0) {
+            numberOfTriesRemaining--
+            assetHolders = getAssetHolders(denom, page, count)
+            hasSucceeded = assetHolders.results.isNotEmpty()
+        }
+
+        return assetHolders!!
     }
 
     private fun calculateTokenDistributionStats() {
