@@ -4,9 +4,9 @@ CREATE TABLE IF NOT EXISTS tx_gas_cache
     id           BIGSERIAL PRIMARY KEY,
     hash         VARCHAR(64) UNIQUE    NOT NULL,
     tx_timestamp TIMESTAMP             NOT NULL,
-    gas_wanted   INT                   NOT NULL,
+    gas_wanted   INT                   NULL,
     gas_used     INT                   NOT NULL,
-    fee_amount   DOUBLE PRECISION      NOT NULL,
+    fee_amount   DOUBLE PRECISION      NULL,
     processed    BOOLEAN DEFAULT false NOT NULL
 );
 
@@ -18,9 +18,9 @@ CREATE INDEX IF NOT EXISTS tx_gas_cache_tx_processed_idx ON tx_gas_cache (proces
 CREATE TABLE IF NOT EXISTS tx_gas_fee_volume_day
 (
     tx_timestamp TIMESTAMP PRIMARY KEY,
-    gas_wanted   BIGINT           NOT NULL,
+    gas_wanted   BIGINT           NULL,
     gas_used     BIGINT           NOT NULL,
-    fee_amount   DOUBLE PRECISION NOT NULL
+    fee_amount   DOUBLE PRECISION NULL
 );
 
 CREATE INDEX IF NOT EXISTS tx_gas_fee_volume_day_gas_wanted_idx ON tx_gas_fee_volume_day (gas_wanted);
@@ -31,9 +31,9 @@ CREATE INDEX IF NOT EXISTS tx_gas_fee_volume_day_fee_amount_idx ON tx_gas_fee_vo
 CREATE TABLE IF NOT EXISTS tx_gas_fee_volume_hour
 (
     tx_timestamp TIMESTAMP PRIMARY KEY,
-    gas_wanted   BIGINT           NOT NULL,
+    gas_wanted   BIGINT           NULL,
     gas_used     BIGINT           NOT NULL,
-    fee_amount   DOUBLE PRECISION NOT NULL
+    fee_amount   DOUBLE PRECISION NULL
 );
 
 CREATE INDEX IF NOT EXISTS tx_gas_fee_volume_hour_gas_wanted_idx ON tx_gas_fee_volume_hour (gas_wanted);
