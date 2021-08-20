@@ -675,9 +675,9 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
 object TxGasCacheTable : IntIdTable(name = "tx_gas_cache") {
     val hash = varchar("hash", 64)
     val txTimestamp = datetime("tx_timestamp")
-    val gasWanted = integer("gas_wanted")
+    val gasWanted = integer("gas_wanted").nullable()
     val gasUsed = integer("gas_used")
-    val feeAmount = double("fee_amount")
+    val feeAmount = double("fee_amount").nullable()
     val processed = bool("processed")
 }
 
