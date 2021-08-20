@@ -57,5 +57,16 @@ class MarkerGrpcClient(channelUri: URI) {
             QueryHoldingResponse.getDefaultInstance()
         }
 
+    fun getAllMarkerHolders(denom: String): QueryHoldingResponse =
+        try {
+            markerClient.holding(
+                QueryHoldingRequest.newBuilder()
+                    .setId(denom)
+                    .build()
+            )
+        } catch (e: Exception) {
+            QueryHoldingResponse.getDefaultInstance()
+        }
+
     fun getMarkerParams() = markerClient.params(MarkerRequest.newBuilder().build())
 }

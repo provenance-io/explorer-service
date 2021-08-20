@@ -46,6 +46,10 @@ class AssetController(private val assetService: AssetService, private val ibcSer
     ) =
         ResponseEntity.ok(assetService.getAssetHolders(id, page, count))
 
+    @ApiOperation("Returns distribution of hash between sets of accounts")
+    @GetMapping("/distribution")
+    fun getTokenDistributionStats() = ResponseEntity.ok(assetService.getTokenDistributionStats())
+
     @ApiOperation("Returns metadata for all or specified asset")
     @GetMapping("/metadata")
     fun getMarkerMetadata(@RequestParam(required = false) id: String?) = ResponseEntity.ok(assetService.getMetadata(id))

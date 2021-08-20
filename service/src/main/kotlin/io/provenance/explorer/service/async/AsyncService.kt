@@ -9,9 +9,11 @@ import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorGasFeeCacheRecord
+import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
+import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.GovService
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -26,8 +28,9 @@ import java.math.BigDecimal
 class AsyncService(
     private val explorerProperties: ExplorerProperties,
     private val blockService: BlockService,
+    private val assetService: AssetService,
     private val govService: GovService,
-    private val asyncCache: AsyncCaching
+    private val asyncCache: AsyncCaching,
 ) {
 
     protected val logger = logger(AsyncService::class)
@@ -121,5 +124,11 @@ class AsyncService(
     fun updateGasVolume() = transaction {
         logger.info("Updating Gas volume")
         TxGasCacheRecord.updateGasFeeVolume()
+    }
+
+    @Scheduled(cron = "0 0 1 * * ?") // Everyday at 1 am
+    fun updateTokenDistributionAmounts() = transaction {
+        logger.info("Updating token distribution amounts")
+        assetService.updateTokenDistributionStats(NHASH)
     }
 }

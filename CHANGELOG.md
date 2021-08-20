@@ -39,6 +39,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added heatmap endpoint `/api/v2/txs/heatmap` of when txs are submitted during the day/week [#187](https://github.com/provenance-io/explorer-service/issues/187)
 * Added token statistics for circulation supply, community pool and bonded supply [#188](https://github.com/provenance-io/explorer-service/issues/188)
 * Updated Validators to return an image URL from Keybase for their profile image #200
+* Added distribution of hash between sets of accounts [#189](https://github.com/provenance-io/explorer-service/issues/189)
 
 ### Improvements
 

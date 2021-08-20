@@ -38,3 +38,19 @@ data class TokenSupply(
     val communityPool: CoinStr,
     val bonded: CoinStr
 )
+
+data class TokenDistributionPaginatedResults(
+    val ownerAddress: String,
+    val data: CountStrTotal
+)
+
+data class TokenDistributionAmount(
+    val denom: String,
+    val amount: String
+)
+
+data class TokenDistribution(
+    val range: String,
+    val amount: TokenDistributionAmount,
+    val percent: String
+)
