@@ -3,6 +3,7 @@ package io.provenance.explorer.domain.entities
 import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.DateTrunc
+import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.ExtractDOW
 import io.provenance.explorer.domain.core.sql.ExtractDay
 import io.provenance.explorer.domain.core.sql.ExtractEpoch
@@ -28,7 +29,9 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.insertIgnore
+import org.jetbrains.exposed.sql.jodatime.DateColumnType
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
@@ -66,17 +69,19 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
                     it[this.blockTimestamp] = timestamp
                     it[this.hitCount] = 0
                     it[this.lastHit] = DateTime.now()
-                }.let { blockMeta }
+                }.also { BlockTxCountsCacheRecord.insert(blockHeight, timestamp, transactionCount) }
+                    .let { blockMeta }
             }
 
         fun getDaysBetweenHeights(minHeight: Int, maxHeight: Int) = transaction {
-            val dateTrunc = DateTrunc(DateTruncGranularity.DAY.name, BlockCacheTable.blockTimestamp)
+            val dateTrunc =
+                Distinct(
+                    DateTrunc(DateTruncGranularity.DAY.name, BlockCacheTable.blockTimestamp),
+                    DateColumnType(true)
+                ).count()
             BlockCacheTable.slice(dateTrunc)
                 .select { BlockCacheTable.height.between(minHeight, maxHeight) }
-                .groupBy(dateTrunc)
-                .orderBy(dateTrunc, SortOrder.DESC)
-                .toList()
-                .size
+                .first()[dateTrunc].toInt()
         }
 
         fun getBlockCreationInterval(limit: Int): List<Pair<Int, BigDecimal?>> = transaction {
@@ -340,8 +345,7 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
         }
 
         private fun getDailyCounts(fromDate: DateTime, toDate: DateTime) = transaction {
-            val blockTimestamp = BlockCacheHourlyTxCountsTable.blockTimestamp
-            val dateTrunc = DateTrunc("DAY", blockTimestamp)
+            val dateTrunc = DateTrunc("DAY", BlockCacheHourlyTxCountsTable.blockTimestamp)
             val txSum = BlockCacheHourlyTxCountsTable.txCount.sum()
             BlockCacheHourlyTxCountsTable.slice(dateTrunc, txSum)
                 .select {
@@ -358,29 +362,52 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
         }
 
         private fun getHourlyCounts(fromDate: DateTime, toDate: DateTime) = transaction {
-            val blockTimestamp = BlockCacheHourlyTxCountsTable.blockTimestamp
-            val txCount = BlockCacheHourlyTxCountsTable.txCount
-            BlockCacheHourlyTxCountsTable.slice(blockTimestamp, txCount)
-                .select {
-                    blockTimestamp.between(fromDate.startOfDay(), toDate.startOfDay().plusDays(1))
-                }
-                .orderBy(blockTimestamp, SortOrder.DESC)
+            BlockCacheHourlyTxCountsRecord.find {
+                BlockCacheHourlyTxCountsTable.blockTimestamp.between(
+                    fromDate.startOfDay(),
+                    toDate.startOfDay().plusDays(1)
+                )
+            }.orderBy(Pair(BlockCacheHourlyTxCountsTable.blockTimestamp, SortOrder.DESC))
                 .map {
                     TxHistory(
-                        it[blockTimestamp].withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
-                        it[txCount]
+                        it.blockTimestamp.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
+                        it.txCount
                     )
                 }
-        }
-
-        fun updateTxCounts(blockTimestamp: DateTime) = transaction {
-            val blockTimestampUtc = blockTimestamp.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss")
-            val conn = TransactionManager.current().connection
-            val queries = listOf("CALL update_block_cache_hourly_tx_counts('$blockTimestampUtc'::TIMESTAMP)")
-            conn.executeInBatch(queries)
         }
     }
 
     var blockTimestamp by BlockCacheHourlyTxCountsTable.blockTimestamp
     var txCount by BlockCacheHourlyTxCountsTable.txCount
+}
+
+object BlockTxCountsCacheTable : IntIdTable(name = "block_tx_count_cache") {
+    val blockHeight = integer("block_height")
+    val blockTimestamp = datetime("block_timestamp")
+    val txCount = integer("tx_count").default(0)
+    val processed = bool("processed").default(false)
+    override val id = blockHeight.entityId()
+}
+
+class BlockTxCountsCacheRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<BlockTxCountsCacheRecord>(BlockTxCountsCacheTable) {
+
+        fun insert(height: Int, timestamp: DateTime, txCount: Int) = transaction {
+            BlockTxCountsCacheTable.insertIgnore {
+                it[this.blockHeight] = height
+                it[this.txCount] = txCount
+                it[this.blockTimestamp] = timestamp
+            }
+        }
+
+        fun updateTxCounts() = transaction {
+            val query = "CALL update_block_cache_hourly_tx_counts()"
+            this.exec(query)
+        }
+    }
+
+    val blockHeight by BlockTxCountsCacheTable.blockHeight
+    var blockTimestamp by BlockTxCountsCacheTable.blockTimestamp
+    var txCount by BlockTxCountsCacheTable.txCount
+    val processed by BlockTxCountsCacheTable.processed
 }

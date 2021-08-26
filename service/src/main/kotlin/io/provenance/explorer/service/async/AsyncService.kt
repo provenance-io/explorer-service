@@ -4,6 +4,7 @@ import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
+import io.provenance.explorer.domain.entities.BlockTxCountsCacheRecord
 import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
@@ -34,8 +35,9 @@ class AsyncService(
 ) {
 
     protected val logger = logger(AsyncService::class)
+    protected var collectHistorical = true
 
-    @Scheduled(initialDelay = 0L, fixedDelay = 1000L)
+    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateLatestBlockHeightJob() {
         val index = getBlockIndex()
         val startHeight = blockService.getLatestBlockHeight()
@@ -65,6 +67,8 @@ class AsyncService(
             }
             blockService.updateBlockMaxHeightIndex(startHeight)
         }
+
+        BlockTxCountsCacheRecord.updateTxCounts()
     }
 
     fun getBlockIndex() = blockService.getBlockIndexFromCache()?.let {
@@ -75,8 +79,11 @@ class AsyncService(
         blockIndex?.second == null || blockIndex.first == null
 
     fun continueCollectingHistoricalBlocks(maxRead: Int, minRead: Int): Boolean {
-        val historicalDays = BlockCacheRecord.getDaysBetweenHeights(minRead, maxRead)
-        return historicalDays < explorerProperties.initialHistoricalDays() && minRead > 1
+        if (collectHistorical) {
+            val historicalDays = BlockCacheRecord.getDaysBetweenHeights(minRead, maxRead)
+            collectHistorical = historicalDays < explorerProperties.initialHistoricalDays() && minRead > 1
+        }
+        return collectHistorical
     }
 
     fun getEndDate() = LocalDate().toDateTimeAtStartOfDay().minusDays(explorerProperties.initialHistoricalDays() + 1)
