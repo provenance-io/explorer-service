@@ -49,6 +49,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Bug Fixes
 * Fixed update of the daily gas stats causes hourly data to be missed [#210](https://github.com/provenance-io/explorer-service/issues/210)
 * Fixed nullable fields in Migration 26
+* Fixed null pointer for bad Keybase identity #224
+* Added image url to BlockSummery object #224
 
 ### Data
 * Added caching and aggregate tables for txs with single massages only [#185](https://github.com/provenance-io/explorer-service/issues/185)

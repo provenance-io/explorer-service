@@ -9,7 +9,7 @@ data class BlockSummary(
     val time: String,
     val proposerAddress: String,
     val moniker: String,
-    val icon: String,
+    val icon: String?,
     val votingPower: CountTotal,
     val validatorCount: CountTotal,
     val txNum: Int
