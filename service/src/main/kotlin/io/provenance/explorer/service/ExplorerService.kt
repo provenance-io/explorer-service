@@ -112,7 +112,7 @@ class ExplorerService(
             time = blockResponse.block.header.time.formattedString(),
             proposerAddress = validatorAddresses.operatorAddress,
             moniker = stakingValidator.description.moniker,
-            icon = "", // TODO Add icon
+            icon = validatorService.getImgUrl(stakingValidator.description.identity),
             votingPower = CountTotal(
                 validatorsResponse.validatorsList.filter { it.address in votingVals }.sumOf { v -> v.votingPower.toBigInteger() },
                 validatorsResponse.validatorsList.sumOf { v -> v.votingPower.toBigInteger() }

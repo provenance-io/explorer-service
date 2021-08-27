@@ -369,15 +369,19 @@ class ValidatorService(
             )
 
             if (res.statusCode == 200) {
-                res.jsonObject.getJSONArray("them").let {
-                    if (it.length() > 0) {
-                        val them = it.getJSONObject(0)
-                        if (them.has("pictures")) {
-                            them.getJSONObject("pictures")
-                                ?.getJSONObject("primary")
-                                ?.getString("url")
+                try {
+                    res.jsonObject.getJSONArray("them").let {
+                        if (it.length() > 0) {
+                            val them = it.getJSONObject(0)
+                            if (them.has("pictures")) {
+                                them.getJSONObject("pictures")
+                                    ?.getJSONObject("primary")
+                                    ?.getString("url")
+                            } else null
                         } else null
-                    } else null
+                    }
+                } catch (e: Exception) {
+                    null
                 }
             } else null.also { logger.error("Error reaching Keybase: ${res.jsonObject}") }
         } else null
