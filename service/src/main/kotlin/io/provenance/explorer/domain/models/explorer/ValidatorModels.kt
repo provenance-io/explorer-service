@@ -1,5 +1,6 @@
 package io.provenance.explorer.domain.models.explorer
 
+import cosmos.staking.v1beta1.Staking
 import org.joda.time.DateTime
 import java.math.BigDecimal
 
@@ -66,4 +67,18 @@ data class CommissionRate(
     val rate: String,
     val maxRate: String,
     val maxChangeRate: String
+)
+
+data class CurrentValidatorState(
+    val operatorAddrId: Int,
+    val operatorAddress: String,
+    val blockHeight: Int,
+    val moniker: String,
+    val status: String,
+    val jailed: Boolean,
+    val tokenCount: BigDecimal,
+    val json: Staking.Validator,
+    val accountAddr: String,
+    val consensusAddr: String,
+    val consensusPubKey: String
 )

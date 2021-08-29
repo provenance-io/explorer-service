@@ -10,13 +10,13 @@ import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
-import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinType
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheTable
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
+import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.getMinGasFee
 import io.provenance.explorer.domain.extensions.pageCountOfResults
@@ -211,7 +211,7 @@ class TransactionService(
             val addr = transaction {
                 var pair = address?.getAddressType(props)
                 if (pair?.first == TxAddressJoinType.OPERATOR.name) {
-                    val accAddr = StakingValidatorCacheRecord.findByOperator(address!!)?.accountAddress
+                    val accAddr = ValidatorStateRecord.findByOperator(address!!)?.accountAddr
                     val accId = AccountRecord.findByAddress(accAddr!!)?.id?.value
                     pair = Pair(TxAddressJoinType.ACCOUNT.name, accId)
                 }

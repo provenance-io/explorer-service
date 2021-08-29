@@ -11,13 +11,15 @@ import io.provenance.explorer.domain.entities.UnknownTxType
 import io.provenance.explorer.domain.extensions.fromBase64
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
+import io.provenance.explorer.service.AssetService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 
 @Service
 class UtilityService(
     private val protoPrinter: JsonFormat.Printer,
-    private val markerClient: MarkerGrpcClient
+    private val markerClient: MarkerGrpcClient,
+    private val assetService: AssetService
 ) {
 
     protected val logger = logger(UtilityService::class)
@@ -75,6 +77,8 @@ class UtilityService(
     fun stringToJson(str: String) = str.toObjectNode()
 
     fun decodeToString(str: String) = str.fromBase64()
+
+    fun addMarker(denom: String) = assetService.getAssetRaw(denom)
 }
 
 data class MsgObj(
