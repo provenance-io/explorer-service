@@ -11,7 +11,7 @@ import io.provenance.explorer.domain.entities.DepositType
 import io.provenance.explorer.domain.entities.GovDepositRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.GovVoteRecord
-import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
+import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
@@ -68,7 +68,7 @@ class GovService(
 
     private fun getAddressDetails(addr: String) = transaction {
         val addrId = AccountRecord.findByAddress(addr)!!.id.value
-        val isValidator = StakingValidatorCacheRecord.findByAccount(addr) != null
+        val isValidator = ValidatorStateRecord.findByAccount(addr) != null
         GovAddrData(addr, addrId, isValidator)
     }
 
@@ -99,7 +99,7 @@ class GovService(
 
     private fun getAddressObj(addr: String, isValidator: Boolean) = transaction {
         val (operatorAddress, moniker) =
-            if (isValidator) StakingValidatorCacheRecord.findByAccount(addr)!!.let { it.operatorAddress to it.moniker }
+            if (isValidator) ValidatorStateRecord.findByAccount(addr)!!.let { it.operatorAddress to it.moniker }
             else null to null
         GovAddress(addr, operatorAddress, moniker)
     }

@@ -15,7 +15,6 @@ import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.IbcChannelRecord
 import io.provenance.explorer.domain.entities.SigJoinType
 import io.provenance.explorer.domain.entities.SignatureJoinRecord
-import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinType
 import io.provenance.explorer.domain.entities.TxCacheRecord
@@ -28,6 +27,7 @@ import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.TxNftJoinRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.entities.UNKNOWN
+import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
@@ -127,7 +127,10 @@ class AsyncCaching(
             .let {
                 it.entries.forEach { ent ->
                     when (ent.key) {
-                        TxAddressJoinType.OPERATOR.name -> validatorService.updateStakingValidators(ent.value)
+                        TxAddressJoinType.OPERATOR.name -> validatorService.updateStakingValidators(
+                            ent.value,
+                            blockRes.block.height()
+                        ).also { ValidatorStateRecord.refreshCurrentStateView() }
                         TxAddressJoinType.ACCOUNT.name -> accountService.updateAccounts(ent.value)
                     }
                 }
@@ -453,7 +456,7 @@ class AsyncCaching(
 
 fun String.getAddressType(props: ExplorerProperties) = when {
     this.startsWith(props.provValOperPrefix()) ->
-        Pair(TxAddressJoinType.OPERATOR.name, StakingValidatorCacheRecord.findByOperator(this)?.id?.value)
+        Pair(TxAddressJoinType.OPERATOR.name, ValidatorStateRecord.findByOperator(this)?.operatorAddrId)
     this.startsWith(props.provAccPrefix()) ->
         Pair(TxAddressJoinType.ACCOUNT.name, AccountRecord.findByAddress(this)?.id?.value)
     else -> logger().debug("Address type is not supported: Addr $this").let { null }

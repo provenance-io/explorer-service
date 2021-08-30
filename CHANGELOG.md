@@ -45,6 +45,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added global boolean to disregard historical data check once its no longer needed
   * Reduces slowdown between block processing
 * Reworked tx history count calcs to be more efficient #220
+* Reworked how validator state was being stored #222
+  * No longer updates, instead append-only to reduce processing time
+* Reworked `/api/v2/validators/recent` & `/api/v2/validators/height/{blockHeight}` to be more efficient with data #222
 
 ### Bug Fixes
 * Fixed update of the daily gas stats causes hourly data to be missed [#210](https://github.com/provenance-io/explorer-service/issues/210)
@@ -53,7 +56,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added image url to BlockSummery object #224
 
 ### Data
-* Added caching and aggregate tables for txs with single massages only [#185](https://github.com/provenance-io/explorer-service/issues/185)
+* Added caching and aggregate tables for txs with single messages only [#185](https://github.com/provenance-io/explorer-service/issues/185)
   * Added `tx_single_message_cache` table
   * Added `tx_single_message_gas_stats_day` table
   * Added `tx_single_message_gas_stats_hour` table
@@ -67,6 +70,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Added `block_tx_count_cache` table
   * Added `update_block_cache_hourly_tx_counts` stored procedure
 * Removed unused indices
+* Added append-only cache table, materialized view for validator state #222
+  * Added `validator_state` table
+  * Added `current_validator_state` materialized view
+  * Dropped unused columns from `staking_validator_cache` table
 
 ## [v2.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v2.2.0) - 2021-07-29
 ### Release Name: Hyecho

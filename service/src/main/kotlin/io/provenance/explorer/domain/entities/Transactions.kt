@@ -382,14 +382,16 @@ class TxAddressJoinRecord(id: EntityID<Int>) : IntEntity(id) {
             }
 
         fun findValidatorsByTxHash(txHashId: EntityID<Int>) = transaction {
-            StakingValidatorCacheRecord.wrapRows(
+            val records = StakingValidatorCacheRecord.wrapRows(
                 TxAddressJoinTable
                     .innerJoin(StakingValidatorCacheTable, { TxAddressJoinTable.addressId }, { StakingValidatorCacheTable.id })
                     .select {
                         (TxAddressJoinTable.txHashId eq txHashId) and
                             (TxAddressJoinTable.addressType eq TxAddressJoinType.OPERATOR.name)
                     }
-            ).toList()
+            ).toList().map { it.id.value }
+
+            ValidatorStateRecord.findByListValId(records)
         }
 
         fun findAccountsByTxHash(txHashId: EntityID<Int>) = transaction {

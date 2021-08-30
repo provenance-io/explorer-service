@@ -23,6 +23,10 @@ import org.springframework.web.bind.annotation.RestController
 )
 class UtilityController(private val us: UtilityService) {
 
+    @ApiOperation("Adds a new marker record for the given denom. SHOULD ONLY BE USED IN EXTREME CASES")
+    @PostMapping("/add/marker")
+    fun addValidAsset(@RequestParam denom: String) = ResponseEntity.ok(us.addMarker(denom))
+
     @ApiOperation("Updates existing transaction msg types with the given info")
     @PostMapping("/update/txMsgType")
     fun updateTxMessageType(@RequestBody txMsgType: List<UnknownTxType>) =
