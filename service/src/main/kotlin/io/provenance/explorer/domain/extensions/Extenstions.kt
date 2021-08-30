@@ -223,6 +223,9 @@ fun String.toObjectNode() = OBJECT_MAPPER.readValue(StringEscapeUtils.unescapeJs
 fun TxOuterClass.Fee.getMinGasFee() =
     (this.amountList.firstOrNull()?.amount?.toBigInteger() ?: 0).toDouble().div(this.gasLimit.toDouble())
 
+fun List<BigDecimal>.average() = this.fold(BigDecimal.ZERO, BigDecimal::add)
+    .divide(this.size.toBigDecimal(), 3, RoundingMode.CEILING)
+
 /**
  * ObjectMapper extension for getting the ObjectMapper configured
  * Attach to

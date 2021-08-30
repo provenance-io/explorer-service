@@ -8,8 +8,9 @@ import io.provenance.explorer.domain.core.sql.ExtractDOW
 import io.provenance.explorer.domain.core.sql.ExtractDay
 import io.provenance.explorer.domain.core.sql.ExtractEpoch
 import io.provenance.explorer.domain.core.sql.ExtractHour
-import io.provenance.explorer.domain.core.sql.Lag
+import io.provenance.explorer.domain.core.sql.LagDesc
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.TxHeatmap
@@ -25,8 +26,10 @@ import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
+import org.jetbrains.exposed.sql.Sum
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.count
@@ -85,7 +88,7 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
         }
 
         fun getBlockCreationInterval(limit: Int): List<Pair<Int, BigDecimal?>> = transaction {
-            val lag = Lag(BlockCacheTable.blockTimestamp, BlockCacheTable.height)
+            val lag = LagDesc(BlockCacheTable.blockTimestamp, BlockCacheTable.height)
             val lagExtract = ExtractEpoch(lag)
             val baseExtract = ExtractEpoch(BlockCacheTable.blockTimestamp)
             val creationTime = lagExtract.minus(baseExtract)
@@ -147,6 +150,7 @@ object BlockProposerTable : IdTable<Int>(name = "block_proposer") {
     val proposerOperatorAddress = varchar("proposer_operator_address", 96)
     val minGasFee = double("min_gas_fee").nullable()
     val blockTimestamp = datetime("block_timestamp")
+    val blockLatency = decimal("block_latency", 50, 25).nullable()
 }
 
 class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -161,6 +165,20 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
                 ).apply {
                 this.minGasFee = minGasFee
             }
+        }
+
+        fun calcLatency() = transaction {
+            val query = "CALL update_block_latency();"
+            this.exec(query)
+        }
+
+        fun findAvgBlockCreation(limit: Int) = transaction {
+            BlockProposerTable.slice(BlockProposerTable.blockLatency)
+                .select { BlockProposerTable.blockLatency.isNotNull() }
+                .orderBy(BlockProposerTable.blockHeight, SortOrder.DESC)
+                .limit(limit)
+                .mapNotNull { it[BlockProposerTable.blockLatency] }
+                .average()
         }
 
         fun findMissingRecords() = transaction {
@@ -195,6 +213,7 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
     var proposerOperatorAddress by BlockProposerTable.proposerOperatorAddress
     var minGasFee by BlockProposerTable.minGasFee
     var blockTimestamp by BlockProposerTable.blockTimestamp
+    var blockLatency by BlockProposerTable.blockLatency
 }
 
 object MissedBlocksTable : IntIdTable(name = "missed_blocks") {
@@ -290,6 +309,11 @@ object BlockCacheHourlyTxCountsTable : IdTable<DateTime>(name = "block_cache_hou
 
 class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) {
     companion object : EntityClass<DateTime, BlockCacheHourlyTxCountsRecord>(BlockCacheHourlyTxCountsTable) {
+
+        fun getTotalTxCount() = transaction {
+            val txSum = Sum(BlockCacheHourlyTxCountsTable.txCount, IntegerColumnType())
+            BlockCacheHourlyTxCountsTable.slice(txSum).selectAll().map { it[txSum] }.first()!!
+        }
 
         fun getTxCountsForParams(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
             if ("HOUR" == granularity) {

@@ -21,22 +21,25 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import java.math.BigDecimal
 
-object SpotlightCacheTable : IdTable<Int>(name = "spotlight_cache") {
-    override val id = integer("id").entityId()
+object SpotlightCacheTable : IntIdTable(name = "spotlight_cache") {
     val spotlight = jsonb<SpotlightCacheTable, Spotlight>("spotlight", OBJECT_MAPPER)
     val lastHit = datetime("last_hit")
 }
 
 class SpotlightCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<SpotlightCacheRecord>(SpotlightCacheTable) {
-        fun getIndex() = transaction {
-            SpotlightCacheRecord.findById(1)
+        fun getSpotlight() = transaction {
+            SpotlightCacheRecord.all()
+                .orderBy(Pair(SpotlightCacheTable.id, SortOrder.DESC))
+                .limit(1)
+                .first()
+                .spotlight
         }
 
         fun insertIgnore(json: Spotlight) = transaction {
-            (getIndex() ?: new(1) {}).apply {
-                this.spotlight = json
-                this.lastHit = DateTime.now()
+            SpotlightCacheTable.insertIgnore {
+                it[this.spotlight] = json
+                it[this.lastHit] = DateTime.now()
             }
         }
     }
