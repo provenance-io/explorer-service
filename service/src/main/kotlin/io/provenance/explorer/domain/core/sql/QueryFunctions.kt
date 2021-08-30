@@ -20,9 +20,14 @@ class Distinct<T>(val expr: Expression<T>, _columnType: IColumnType) : Function<
 }
 
 // Custom expressions for complex query types
-class Lag(val lag: Expression<DateTime>, val orderBy: Expression<Int>) : Function<DateTime>(DateColumnType(true)) {
+class LagDesc(val lag: Expression<DateTime>, val orderBy: Expression<Int>) : Function<DateTime>(DateColumnType(true)) {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) =
         queryBuilder { append("LAG(", lag, ") OVER (order by ", orderBy, " desc)") }
+}
+
+class Lag(val lag: Expression<DateTime>, val orderBy: Expression<Int>) : Function<DateTime>(DateColumnType(true)) {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) =
+        queryBuilder { append("LAG(", lag, ") OVER (order by ", orderBy, ")") }
 }
 
 class ExtractDay(val expr: Expression<DateTime>) : Function<String>(VarCharColumnType(9)) {

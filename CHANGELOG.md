@@ -48,6 +48,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Reworked how validator state was being stored #222
   * No longer updates, instead append-only to reduce processing time
 * Reworked `/api/v2/validators/recent` & `/api/v2/validators/height/{blockHeight}` to be more efficient with data #222
+* Reworked how spotlight data was being stored #221
+  * No longer updates, instead append-only to reduce processing time
+  * New record every 5 seconds -> no TTL for now
 
 ### Bug Fixes
 * Fixed update of the daily gas stats causes hourly data to be missed [#210](https://github.com/provenance-io/explorer-service/issues/210)
@@ -74,6 +77,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Added `validator_state` table
   * Added `current_validator_state` materialized view
   * Dropped unused columns from `staking_validator_cache` table
+* Updated `block_proposer` to include `block_latency` #221
+  * Added `update_block_latency()` stored procedure 
 
 ## [v2.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v2.2.0) - 2021-07-29
 ### Release Name: Hyecho

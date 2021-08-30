@@ -3,7 +3,8 @@ package io.provenance.explorer.service
 import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
-import io.provenance.explorer.domain.entities.BlockCacheRecord
+import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
+import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
@@ -54,7 +55,6 @@ import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
-import java.math.RoundingMode
 
 @Service
 class ExplorerService(
@@ -125,23 +125,16 @@ class ExplorerService(
         )
     }
 
-    private fun getAverageBlockCreationTime() = let {
-        val laggedCreationInter = BlockCacheRecord.getBlockCreationInterval(100)
-            .filter { it.second != null }
-            .map { it.second }
-        laggedCreationInter.fold(BigDecimal.ZERO, BigDecimal::add)
-            .divide(laggedCreationInter.size.toBigDecimal(), 3, RoundingMode.CEILING)
-    }
+    fun getSpotlightStatistics() = cacheService.getSpotlight()
 
-    fun getSpotlightStatistics() =
-        cacheService.getSpotlight() ?: getBondedTokenRatio().let {
-            Spotlight(
-                latestBlock = getBlockAtHeight(null),
-                avgBlockTime = getAverageBlockCreationTime(),
-                bondedTokens = CountStrTotal(it.first.toString(), it.second, NHASH),
-                totalTxCount = TxCacheRecord.getTotalTxCount()
-            )
-        }.let { cacheService.addSpotlightToCache(it) }
+    fun createSpotlight() = getBondedTokenRatio().let {
+        Spotlight(
+            latestBlock = getBlockAtHeight(null),
+            avgBlockTime = BlockProposerRecord.findAvgBlockCreation(100),
+            bondedTokens = CountStrTotal(it.first.toString(), it.second, NHASH),
+            totalTxCount = BlockCacheHourlyTxCountsRecord.getTotalTxCount().toBigInteger()
+        )
+    }.let { cacheService.addSpotlightToCache(it) }
 
     fun getBondedTokenRatio() = let {
         val totalBlockChainTokens = accountService.getCurrentSupply(NHASH)

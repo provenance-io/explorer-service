@@ -16,6 +16,7 @@ import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.BlockService
+import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.service.GovService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -32,6 +33,7 @@ class AsyncService(
     private val assetService: AssetService,
     private val govService: GovService,
     private val asyncCache: AsyncCaching,
+    private val explorerService: ExplorerService
 ) {
 
     protected val logger = logger(AsyncService::class)
@@ -69,6 +71,7 @@ class AsyncService(
         }
 
         BlockTxCountsCacheRecord.updateTxCounts()
+        BlockProposerRecord.calcLatency()
     }
 
     fun getBlockIndex() = blockService.getBlockIndexFromCache()?.let {
@@ -137,5 +140,10 @@ class AsyncService(
     fun updateTokenDistributionAmounts() = transaction {
         logger.info("Updating token distribution amounts")
         assetService.updateTokenDistributionStats(NHASH)
+    }
+
+    @Scheduled(cron = "5 * * * * ?") // Every 5 seconds
+    fun updateSpotlight() = transaction {
+        explorerService.createSpotlight()
     }
 }
