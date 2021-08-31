@@ -12,8 +12,11 @@ import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.height
+import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.pageOfResults
 import io.provenance.explorer.domain.extensions.toDecCoin
 import io.provenance.explorer.domain.extensions.toHash
+import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.translateByteArray
 import io.provenance.explorer.domain.models.explorer.AttributeParams
 import io.provenance.explorer.domain.models.explorer.AuthParams
@@ -41,6 +44,7 @@ import io.provenance.explorer.domain.models.explorer.Spotlight
 import io.provenance.explorer.domain.models.explorer.StakingParams
 import io.provenance.explorer.domain.models.explorer.TallyingParams
 import io.provenance.explorer.domain.models.explorer.TransferParams
+import io.provenance.explorer.domain.models.explorer.ValidatorAtHeight
 import io.provenance.explorer.domain.models.explorer.VotingParams
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
@@ -52,8 +56,10 @@ import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import io.provenance.explorer.service.async.AsyncCaching
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
+import tendermint.types.Types
 import java.math.BigDecimal
 
 @Service
@@ -76,10 +82,11 @@ class ExplorerService(
     protected val logger = logger(ExplorerService::class)
 
     fun getBlockAtHeight(height: Int?, checkTxs: Boolean = false) = runBlocking(Dispatchers.IO) {
-        val queryHeight = height ?: blockService.getLatestBlockHeightIndex()
-        val blockResponse = asyncCaching.getBlock(queryHeight, checkTxs)
+        val queryHeight = height ?: (blockService.getLatestBlockHeightIndex() - 1)
+        val blockResponse = asyncCaching.getBlock(queryHeight, checkTxs)!!
+        val nextBlock = asyncCaching.getBlock(queryHeight + 1, checkTxs)
         val validatorsResponse = validatorService.getValidatorsByHeight(queryHeight)
-        hydrateBlock(blockResponse, validatorsResponse)
+        hydrateBlock(blockResponse, nextBlock, validatorsResponse)
     }
 
     fun getRecentBlocks(count: Int, page: Int) = let {
@@ -87,9 +94,10 @@ class ExplorerService(
         var blockHeight = if (page < 0) currentHeight else currentHeight - (count * page)
         val result = mutableListOf<BlockSummary>()
         while (result.size < count) {
-            val block = asyncCaching.getBlock(blockHeight)
+            val block = asyncCaching.getBlock(blockHeight)!!
+            val nextBlock = asyncCaching.getBlock(blockHeight + 1)
             val validators = validatorService.getValidatorsByHeight(blockHeight)
-            result.add(hydrateBlock(block, validators))
+            result.add(hydrateBlock(block, nextBlock, validators))
             blockHeight = block.block.height()
             blockHeight--
         }
@@ -98,27 +106,29 @@ class ExplorerService(
 
     private fun hydrateBlock(
         blockResponse: Query.GetBlockByHeightResponse,
+        nextBlock: Query.GetBlockByHeightResponse?,
         validatorsResponse: Query.GetValidatorSetByHeightResponse
     ) = let {
-        val proposerConsAddress = validatorService.getProposerConsensusAddr(blockResponse)
-        val validatorAddresses = validatorService.findAddressByConsensus(proposerConsAddress)
-        val stakingValidator = validatorService.getStakingValidator(validatorAddresses!!.operatorAddress)
-        val votingVals = blockResponse.block.lastCommit.signaturesList
-            .filter { it.blockIdFlagValue == 2 }
-            .map { it.validatorAddress.translateByteArray(props).consensusAccountAddr }
+        val proposer = transaction { BlockProposerRecord.findById(blockResponse.block.height())!! }
+        val stakingValidator = validatorService.getStakingValidator(proposer.proposerOperatorAddress)
+        val votingVals = nextBlock?.getVotingSet(props, Types.BlockIDFlag.BLOCK_ID_FLAG_ABSENT_VALUE)?.keys
         BlockSummary(
             height = blockResponse.block.height(),
             hash = blockResponse.blockId.hash.toHash(),
             time = blockResponse.block.header.time.formattedString(),
-            proposerAddress = validatorAddresses.operatorAddress,
+            proposerAddress = proposer.proposerOperatorAddress,
             moniker = stakingValidator.description.moniker,
             icon = validatorService.getImgUrl(stakingValidator.description.identity),
             votingPower = CountTotal(
-                validatorsResponse.validatorsList.filter { it.address in votingVals }.sumOf { v -> v.votingPower.toBigInteger() },
+                if (votingVals != null)
+                    validatorsResponse.validatorsList.filter { it.address in votingVals }.sumOf { v -> v.votingPower.toBigInteger() }
+                else null,
                 validatorsResponse.validatorsList.sumOf { v -> v.votingPower.toBigInteger() }
             ),
             validatorCount = CountTotal(
-                validatorsResponse.validatorsList.filter { it.address in votingVals }.size.toBigInteger(),
+                if (votingVals != null)
+                    validatorsResponse.validatorsList.filter { it.address in votingVals }.size.toBigInteger()
+                else null,
                 validatorsResponse.validatorsCount.toBigInteger()
             ),
             txNum = blockResponse.block.data.txsCount
@@ -266,4 +276,44 @@ class ExplorerService(
             ),
         )
     }
+
+    // In point to get validators at height
+    // Moved here to get block info
+    fun getValidatorsAtHeight(height: Int, count: Int, page: Int) =
+        aggregateValidatorsHeight(validatorService.getValidatorsByHeight(height).validatorsList, count, page, height)
+
+    private fun aggregateValidatorsHeight(
+        validatorSet: List<Query.Validator>,
+        count: Int,
+        page: Int,
+        height: Int
+    ): PagedResults<ValidatorAtHeight> {
+        val status = "all"
+        val valFilter = validatorSet.map { it.address }
+        val stakingValidators = validatorService.getStakingValidators(status, valFilter, page.toOffset(count), count)
+        val votingSet = asyncCaching.getBlock(height + 1)!!.getVotingSet(props)
+        val proposer = transaction { BlockProposerRecord.findById(height)!! }
+        val results = validatorService.hydrateValidators(validatorSet, stakingValidators).map {
+            ValidatorAtHeight(
+                it.moniker,
+                it.addressId,
+                it.consensusAddress,
+                it.proposerPriority,
+                it.votingPower,
+                it.imgUrl,
+                it.addressId == proposer.proposerOperatorAddress,
+                votingSet[it.consensusAddress] != Types.BlockIDFlag.BLOCK_ID_FLAG_ABSENT
+            )
+        }
+        return PagedResults(
+            results.size.toLong().pageCountOfResults(count),
+            results.pageOfResults(page, count),
+            results.size.toLong()
+        )
+    }
 }
+
+fun Query.GetBlockByHeightResponse.getVotingSet(props: ExplorerProperties, filter: Int? = null) =
+    this.block.lastCommit.signaturesList
+        .filter { if (filter != null) it.blockIdFlagValue != filter else true }
+        .associate { it.validatorAddress.translateByteArray(props).consensusAccountAddr to it.blockIdFlag }

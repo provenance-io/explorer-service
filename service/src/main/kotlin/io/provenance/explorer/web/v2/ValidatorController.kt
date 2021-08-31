@@ -1,7 +1,6 @@
 package io.provenance.explorer.web.v2
 
-import io.provenance.explorer.domain.models.explorer.PagedResults
-import io.provenance.explorer.domain.models.explorer.ValidatorSummary
+import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.service.ValidatorService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -26,7 +25,7 @@ import javax.validation.constraints.Min
     consumes = "application/json",
     tags = ["Validators"]
 )
-class ValidatorController(private val validatorService: ValidatorService) {
+class ValidatorController(private val validatorService: ValidatorService, private val explorerService: ExplorerService) {
 
     @ApiOperation("Returns recent validators")
     @GetMapping("/recent")
@@ -34,9 +33,7 @@ class ValidatorController(private val validatorService: ValidatorService) {
         @RequestParam(required = false, defaultValue = "100") @Min(1) count: Int,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
         @RequestParam(required = false, defaultValue = "active") status: String
-    ):
-        ResponseEntity<PagedResults<ValidatorSummary>> =
-        ResponseEntity.ok(validatorService.getRecentValidators(count, page, status))
+    ) = ResponseEntity.ok(validatorService.getRecentValidators(count, page, status))
 
     @ApiOperation("Returns set of validators at block height")
     @GetMapping("/height/{blockHeight}")
@@ -44,9 +41,7 @@ class ValidatorController(private val validatorService: ValidatorService) {
         @PathVariable blockHeight: Int,
         @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int
-    ):
-        ResponseEntity<PagedResults<ValidatorSummary>> =
-        ResponseEntity.ok(validatorService.getValidatorsAtHeight(blockHeight, count, page))
+    ) = ResponseEntity.ok(explorerService.getValidatorsAtHeight(blockHeight, count, page))
 
     @ApiOperation("Returns validator by address id")
     @GetMapping("/{id}")
@@ -78,4 +73,11 @@ class ValidatorController(private val validatorService: ValidatorService) {
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?,
         @RequestParam(required = false, defaultValue = "14") @Min(1) dayCount: Int
     ) = ResponseEntity.ok(validatorService.getGasFeeStatistics(id, fromDate, toDate, dayCount))
+
+    @ApiOperation("Returns block latency data for the validator")
+    @GetMapping("/{id}/latency")
+    fun blockLatency(
+        @PathVariable id: String,
+        @RequestParam(required = false, defaultValue = "100") blockCount: Int
+    ) = ResponseEntity.ok(validatorService.getBlockLatencyData(id, blockCount))
 }

@@ -14,16 +14,17 @@ import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.NHASH
+import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.getStatusString
 import io.provenance.explorer.domain.extensions.isActive
 import io.provenance.explorer.domain.extensions.pageCountOfResults
-import io.provenance.explorer.domain.extensions.pageOfResults
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDecCoin
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.extensions.translateByteArray
 import io.provenance.explorer.domain.extensions.validatorUptime
+import io.provenance.explorer.domain.models.explorer.BlockLatencyData
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.CommissionRate
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
@@ -208,13 +209,9 @@ class ValidatorService(
 
     // In point to get most recent validators
     fun getRecentValidators(count: Int, page: Int, status: String) =
-        logger.info("collecting latest").let { aggregateValidators(grpcClient.getLatestValidators(), count, page, status) }
+        aggregateValidatorsRecent(grpcClient.getLatestValidators(), count, page, status)
 
-    // In point to get validators at height
-    fun getValidatorsAtHeight(height: Int, count: Int, page: Int) =
-        aggregateValidators(getValidatorsByHeight(height).validatorsList, count, page, "all", true)
-
-    private fun aggregateValidators(
+    private fun aggregateValidatorsRecent(
         validatorSet: List<Query.Validator>,
         count: Int,
         page: Int,
@@ -222,8 +219,6 @@ class ValidatorService(
         isAtHeight: Boolean = false
     ) =
         let {
-            if (!isAtHeight)
-                logger.info("validating status")
             getStakingValidators(status).forEach { v ->
                 validateStatus(
                     v.json,
@@ -231,30 +226,22 @@ class ValidatorService(
                     v.operatorAddrId
                 )
             }.also { ValidatorStateRecord.refreshCurrentStateView() }
-            logger.info("getting from cache")
-            val valFilter = if (isAtHeight) validatorSet.map { it.address } else null
-            val stakingValidators = getStakingValidators(status, valFilter, page.toOffset(count), count)
-            logger.info("hydrating")
-            val results = hydrateValidators(validatorSet, stakingValidators, isAtHeight)
-            val totalCount = getStakingValidatorsCount(status, valFilter)
-            val pages = if (isAtHeight) results.size.toLong().pageCountOfResults(count) else totalCount.pageCountOfResults(count)
-            val pageSet = if (isAtHeight) results.pageOfResults(page, count) else results
-            val total = if (isAtHeight) results.size.toLong() else totalCount
-            PagedResults(pages, pageSet, total)
+            val stakingValidators = getStakingValidators(status, null, page.toOffset(count), count)
+            val results = hydrateValidators(validatorSet, stakingValidators)
+            val totalCount = getStakingValidatorsCount(status, null)
+            PagedResults(totalCount.pageCountOfResults(count), results, totalCount)
         }
 
-    private fun hydrateValidators(
-        validators: List<Query.Validator>,
-        stakingVals: List<CurrentValidatorState>,
-        isAtHeight: Boolean = false
+    fun hydrateValidators(
+        validatorSet: List<Query.Validator>,
+        stakingVals: List<CurrentValidatorState>
     ) = let {
         val signingInfos = getSigningInfos()
         val height = blockService.getLatestBlockHeight()
-        val totalVotingPower = validators.sumOf { it.votingPower.toBigInteger() }
+        val totalVotingPower = validatorSet.sumOf { it.votingPower.toBigInteger() }
         stakingVals
-//            .filter { if (isAtHeight) validators.map { v -> v.address }.contains(it.consensusAddr) else true }
             .map { stakingVal ->
-                val validator = validators.firstOrNull { it.address == stakingVal.consensusAddr }
+                val validator = validatorSet.firstOrNull { it.address == stakingVal.consensusAddr }
                 val signingInfo = signingInfos.find { it.address == stakingVal.consensusAddr }
                     ?: Slashing.ValidatorSigningInfo.getDefaultInstance()
                 hydrateValidator(validator, stakingVal, signingInfo, height.toBigInteger(), totalVotingPower)
@@ -268,13 +255,9 @@ class ValidatorService(
         height: BigInteger,
         totalVotingPower: BigInteger
     ) = let {
-        logger.info("hydrate single")
-        logger.info("getting self bonded")
         val selfBonded = getValSelfBonded(stakingVal.json)
-        logger.info("getting delegations")
         val delegatorCount =
             grpcClient.getStakingValidatorDelegations(stakingVal.operatorAddress, 0, 1).pagination.total
-        logger.info("filling in")
         ValidatorSummary(
             moniker = stakingVal.json.description.moniker,
             addressId = stakingVal.operatorAddress,
@@ -417,4 +400,11 @@ class ValidatorService(
             } else null.also { logger.error("Error reaching Keybase: ${res.jsonObject}") }
         } else null
     }
+
+    fun getBlockLatencyData(address: String, blockCount: Int) =
+        BlockProposerRecord.getRecordsForProposer(address, blockCount).let { res ->
+            val average = res.map { it.blockLatency!! }.average()
+            val data = res.associate { it.blockHeight to it.blockLatency!! }
+            BlockLatencyData(address, data, average)
+        }
 }

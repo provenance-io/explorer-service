@@ -22,7 +22,7 @@ data class CoinStr(val amount: String, val denom: String)
 fun CoinOuterClass.Coin.toData() = CoinStr(this.amount, this.denom)
 
 data class CountTotal(
-    val count: BigInteger,
+    val count: BigInteger?,
     val total: BigInteger
 )
 
