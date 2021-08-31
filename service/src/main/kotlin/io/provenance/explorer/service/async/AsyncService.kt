@@ -142,7 +142,7 @@ class AsyncService(
         assetService.updateTokenDistributionStats(NHASH)
     }
 
-    @Scheduled(cron = "5 * * * * ?") // Every 5 seconds
+    @Scheduled(cron = "0/5 * * * * ?") // Every 5 seconds
     fun updateSpotlight() = transaction {
         explorerService.createSpotlight()
     }
