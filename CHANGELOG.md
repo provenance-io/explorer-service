@@ -40,6 +40,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added token statistics for circulation supply, community pool and bonded supply [#188](https://github.com/provenance-io/explorer-service/issues/188)
 * Updated Validators to return an image URL from Keybase for their profile image #200
 * Added distribution of hash between sets of accounts [#189](https://github.com/provenance-io/explorer-service/issues/189)
+* Added validator block latency endpoint `/api/v2/validators/{id}/latency` #199
 
 ### Improvements
 * Added global boolean to disregard historical data check once its no longer needed
@@ -51,12 +52,15 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Reworked how spotlight data was being stored #221
   * No longer updates, instead append-only to reduce processing time
   * New record every 5 seconds -> no TTL for now
+* Added `isProposer` and `didVote` flags to validators at height api #183
+  * Broke out fetching validators are height from recent validators functions to be cleaner
 
 ### Bug Fixes
 * Fixed update of the daily gas stats causes hourly data to be missed [#210](https://github.com/provenance-io/explorer-service/issues/210)
 * Fixed nullable fields in Migration 26
 * Fixed null pointer for bad Keybase identity #224
 * Added image url to BlockSummery object #224
+* Fixed Spotlight data to pull correct block votes vs validator set for block
 
 ### Data
 * Added caching and aggregate tables for txs with single messages only [#185](https://github.com/provenance-io/explorer-service/issues/185)

@@ -33,7 +33,11 @@ class BlockGrpcClient(channelUri: URI) {
     }
 
     fun getBlockAtHeight(maxHeight: Int) =
-        tmClient.getBlockByHeight(Query.GetBlockByHeightRequest.newBuilder().setHeight(maxHeight.toLong()).build())
+        try {
+            tmClient.getBlockByHeight(Query.GetBlockByHeightRequest.newBuilder().setHeight(maxHeight.toLong()).build())
+        } catch (e: Exception) {
+            null
+        }
 
     fun getLatestBlock() = tmClient.getLatestBlock(Query.GetLatestBlockRequest.getDefaultInstance())
 }

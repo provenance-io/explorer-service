@@ -152,7 +152,7 @@ class TransactionService(
                 tx.tx.authInfo.fee.gasLimit.toBigInteger(),
                 tx.tx.authInfo.fee.getMinGasFee()
             ),
-            time = asyncCache.getBlock(tx.txResponse.height.toInt()).block.header.time.formattedString(),
+            time = asyncCache.getBlock(tx.txResponse.height.toInt())!!.block.header.time.formattedString(),
             status = if (tx.txResponse.code > 0) "failed" else "success",
             errorCode = tx.txResponse.code,
             codespace = tx.txResponse.codespace,

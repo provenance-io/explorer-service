@@ -82,3 +82,20 @@ data class CurrentValidatorState(
     val consensusAddr: String,
     val consensusPubKey: String
 )
+
+data class BlockLatencyData(
+    val proposer: String,
+    val data: Map<Int, BigDecimal>,
+    val averageLatency: BigDecimal
+)
+
+data class ValidatorAtHeight(
+    val moniker: String,
+    val addressId: String,
+    val consensusAddress: String,
+    val proposerPriority: Int?,
+    val votingPower: CountTotal?,
+    val imgUrl: String?,
+    val isProposer: Boolean = false,
+    val didVote: Boolean = true
+)

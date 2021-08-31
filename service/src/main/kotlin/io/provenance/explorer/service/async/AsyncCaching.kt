@@ -95,10 +95,11 @@ class AsyncCaching(
     }
 
     fun getChainIdString() =
-        if (chainId.isEmpty()) getBlock(blockService.getLatestBlockHeightIndex()).block.header.chainId.also { this.chainId = it }
+        if (chainId.isEmpty()) getBlock(blockService.getLatestBlockHeightIndex())!!.block.header.chainId.also { this.chainId = it }
         else this.chainId
 
-    fun saveBlockEtc(blockRes: Query.GetBlockByHeightResponse): Query.GetBlockByHeightResponse {
+    fun saveBlockEtc(blockRes: Query.GetBlockByHeightResponse?): Query.GetBlockByHeightResponse? {
+        if (blockRes == null) return null
         logger.info("saving block ${blockRes.block.height()}")
         val blockTimestamp = blockRes.block.header.time.toDateTime()
         blockService.addBlockToCache(

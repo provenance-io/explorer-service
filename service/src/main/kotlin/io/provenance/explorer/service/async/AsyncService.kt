@@ -50,7 +50,7 @@ class AsyncService(
             blockService.updateBlockMaxHeightIndex(startHeight)
             indexHeight = index?.second?.minus(1) ?: indexHeight
             while (shouldContinue && indexHeight > 0) {
-                blockService.getBlockAtHeightFromChain(indexHeight).let {
+                blockService.getBlockAtHeightFromChain(indexHeight)?.let {
                     if (endDate >= it.block.day()) {
                         shouldContinue = false
                         return
@@ -62,7 +62,7 @@ class AsyncService(
             }
         } else {
             while (indexHeight > index.first!!) {
-                blockService.getBlockAtHeightFromChain(indexHeight).let {
+                blockService.getBlockAtHeightFromChain(indexHeight)?.let {
                     asyncCache.saveBlockEtc(it)
                     indexHeight = it.block.height() - 1
                 }

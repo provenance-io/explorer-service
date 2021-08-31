@@ -207,6 +207,15 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
                 query.andWhere { BlockProposerTable.proposerOperatorAddress eq address }
             BlockProposerRecord.wrapRows(query)
         }
+
+        fun getRecordsForProposer(address: String, limit: Int) = transaction {
+            BlockProposerRecord.find {
+                (BlockProposerTable.proposerOperatorAddress eq address) and
+                    (BlockProposerTable.blockLatency.isNotNull())
+            }.orderBy(Pair(BlockProposerTable.blockHeight, SortOrder.DESC))
+                .limit(limit)
+                .toList()
+        }
     }
 
     var blockHeight by BlockProposerTable.blockHeight
