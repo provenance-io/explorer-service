@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service
 class BlockService(private val blockClient: BlockGrpcClient) {
     protected val logger = logger(BlockService::class)
 
+    fun getMaxBlockCacheHeight() = BlockCacheRecord.getMaxBlockHeight()
+
     fun getBlockIndexFromCache() = BlockIndexRecord.getIndex()
 
     fun getLatestBlockHeightIndex(): Int = getBlockIndexFromCache()!!.maxHeightRead!!

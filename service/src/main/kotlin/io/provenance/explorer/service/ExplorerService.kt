@@ -90,7 +90,7 @@ class ExplorerService(
     }
 
     fun getRecentBlocks(count: Int, page: Int) = let {
-        val currentHeight = blockService.getLatestBlockHeightIndex()
+        val currentHeight = blockService.getLatestBlockHeightIndex() - 1
         var blockHeight = if (page < 0) currentHeight else currentHeight - (count * page)
         val result = mutableListOf<BlockSummary>()
         while (result.size < count) {
@@ -139,7 +139,7 @@ class ExplorerService(
 
     fun createSpotlight() = getBondedTokenRatio().let {
         Spotlight(
-            latestBlock = getBlockAtHeight(null),
+            latestBlock = getBlockAtHeight(blockService.getMaxBlockCacheHeight() - 1),
             avgBlockTime = BlockProposerRecord.findAvgBlockCreation(100),
             bondedTokens = CountStrTotal(it.first.toString(), it.second, NHASH),
             totalTxCount = BlockCacheHourlyTxCountsRecord.getTotalTxCount().toBigInteger()

@@ -27,6 +27,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.IntegerColumnType
+import org.jetbrains.exposed.sql.Max
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
 import org.jetbrains.exposed.sql.Sum
@@ -107,6 +108,11 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
         fun getCountWithTxs() = transaction {
             BlockCacheRecord.find { BlockCacheTable.txCount greater 0 }.count()
         }
+
+        fun getMaxBlockHeight() = transaction {
+            val maxHeight = Max(BlockCacheTable.height, IntegerColumnType())
+            BlockCacheTable.slice(maxHeight).selectAll().first().let { it[maxHeight]!! }
+        }
     }
 
     var height by BlockCacheTable.height
@@ -158,13 +164,15 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun save(height: Int, minGasFee: Double?, timestamp: DateTime?, proposer: String?) = transaction {
             (
-                BlockProposerRecord.findById(height) ?: new(height) {
-                    this.proposerOperatorAddress = proposer!!
-                    this.blockTimestamp = timestamp!!
+                BlockProposerRecord.findById(height) ?: try {
+                    new(height) {
+                        this.proposerOperatorAddress = proposer!!
+                        this.blockTimestamp = timestamp!!
+                    }
+                } catch (e: Exception) {
+                    BlockProposerRecord.findById(height)!!
                 }
-                ).apply {
-                this.minGasFee = minGasFee
-            }
+                ).apply { this.minGasFee = minGasFee }
         }
 
         fun calcLatency() = transaction {
