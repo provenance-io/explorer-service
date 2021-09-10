@@ -126,7 +126,7 @@ class TransactionService(
 
     // Triple checks that the tx messages are up to date in the db
     fun checkMsgCount(curr: TxCacheRecord): TxCacheRecord =
-        if (transaction { curr.txMessages.count() != curr.txV2.tx.body.messagesCount.toLong() }) {
+        if (transaction { curr.txMessages.count() < curr.txV2.tx.body.messagesCount.toLong() }) {
             asyncCache.addTxToCache(curr.txV2, curr.txTimestamp)
             TxCacheRecord.findByEntityId(curr.id)!!
         } else curr

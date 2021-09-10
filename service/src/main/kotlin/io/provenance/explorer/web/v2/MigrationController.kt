@@ -47,4 +47,14 @@ class MigrationController(private val migrationService: MigrationService) {
     @GetMapping("/update/blocks/missed")
     fun updateMissedBlocks(@RequestParam start: Int, @RequestParam end: Int, @RequestParam inc: Int) =
         ResponseEntity.ok(migrationService.updateMissedBlocks(start, end, inc))
+
+    @ApiOperation("Updates tx message msg id")
+    @GetMapping("/update/messages/msgid")
+    fun updateTxMessageId(@RequestParam start: Int, @RequestParam end: Int, @RequestParam inc: Int) =
+        ResponseEntity.ok(migrationService.updateTxMessageMsgIdx(start, end, inc))
+
+    @ApiOperation("Updates tx message count per tx")
+    @GetMapping("/update/messages")
+    fun updateTxMessages(@RequestParam limit: Int, @RequestParam min: Int, @RequestParam max: Int) =
+        ResponseEntity.ok(migrationService.updateTxMessageCount(min, max, limit))
 }

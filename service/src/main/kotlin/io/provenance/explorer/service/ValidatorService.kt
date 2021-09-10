@@ -102,7 +102,7 @@ class ValidatorService(
             val validatorSet = grpcClient.getLatestValidators()
             val latestValidator = validatorSet.firstOrNull { it.address == addr.consensusAddr }
             val votingPowerTotal = validatorSet.sumOf { it.votingPower.toBigInteger() }
-            validateStatus(addr.json, latestValidator, addr.operatorAddrId).also { ValidatorStateRecord.refreshCurrentStateView() }
+            validateStatus(addr.json, latestValidator, addr.operatorAddrId).also { if (it) ValidatorStateRecord.refreshCurrentStateView() }
             val stakingValidator = getStakingValidator(addr.operatorAddress)
             ValidatorDetails(
                 if (latestValidator != null) CountTotal(latestValidator.votingPower.toBigInteger(), votingPowerTotal)
@@ -132,11 +132,10 @@ class ValidatorService(
             )
         } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
-    fun validateStatus(v: Staking.Validator, valSet: Query.Validator?, valId: Int) {
+    fun validateStatus(v: Staking.Validator, valSet: Query.Validator?, valId: Int): Boolean =
         if ((valSet != null && !v.isActive()) || (valSet == null && v.isActive())) {
             updateStakingValidators(setOf(valId))
-        }
-    }
+        } else false
 
     // Finds a validator address record from whatever address is passed in
     fun getValidatorOperatorAddress(address: String) = when {
@@ -169,31 +168,33 @@ class ValidatorService(
         ValidatorStateRecord.findByOperator(address)
             ?: discoverAddresses().let { ValidatorStateRecord.findByOperator(address) }
 
-    private fun discoverAddresses() = let {
+    private fun discoverAddresses() {
         val stakingVals = transaction { ValidatorStateRecord.findAll().map { it.operatorAddress } }
         grpcClient.getStakingValidators()
-            .forEach { validator ->
+            .map { validator ->
                 if (!stakingVals.contains(validator.operatorAddress))
                     StakingValidatorCacheRecord.insertIgnore(
                         validator.operatorAddress,
                         validator.operatorAddress.translateAddress(props).accountAddr,
                         validator.consensusPubkey.toSingleSigKeyValue()!!,
                         validator.consensusPubkey.toAddress(props.provValConsPrefix())!!
-                    ).let {
+                    ).also {
                         ValidatorStateRecord.insertIgnore(
                             blockService.getLatestBlockHeightIndex(),
                             it.value,
                             validator.operatorAddress,
                             validator
-                        ).also { ValidatorStateRecord.refreshCurrentStateView() }
-                    }
-            }
+                        )
+                    }.let { true }
+                else false
+            }.also { map -> if (map.contains(true)) ValidatorStateRecord.refreshCurrentStateView() }
     }
 
     // Updates the staking validator cache
-    fun updateStakingValidators(vals: Set<Int>, blockHeight: Int? = null) {
+    fun updateStakingValidators(vals: Set<Int>, blockHeight: Int? = null): Boolean {
         logger.info("Updating validators")
         val height = blockHeight ?: blockService.getLatestBlockHeightIndex()
+        var updated = false
         vals.forEach { v ->
             val record = ValidatorStateRecord.findByValId(v)!!
             val data = grpcClient.getStakingValidator(record.operatorAddress)
@@ -203,8 +204,9 @@ class ValidatorService(
                     v,
                     record.operatorAddress,
                     data
-                )
+                ).also { if (!updated) updated = true }
         }
+        return updated
     }
 
     // In point to get most recent validators
@@ -219,13 +221,13 @@ class ValidatorService(
         isAtHeight: Boolean = false
     ) =
         let {
-            getStakingValidators(status).forEach { v ->
+            getStakingValidators(status).map { v ->
                 validateStatus(
                     v.json,
                     validatorSet.firstOrNull { it.address == v.consensusAddr },
                     v.operatorAddrId
                 )
-            }.also { ValidatorStateRecord.refreshCurrentStateView() }
+            }.also { map -> if (map.contains(true)) ValidatorStateRecord.refreshCurrentStateView() }
             val stakingValidators = getStakingValidators(status, null, page.toOffset(count), count)
             val results = hydrateValidators(validatorSet, stakingValidators)
             val totalCount = getStakingValidatorsCount(status, null)

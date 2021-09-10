@@ -131,7 +131,7 @@ class AsyncCaching(
                         TxAddressJoinType.OPERATOR.name -> validatorService.updateStakingValidators(
                             ent.value,
                             blockRes.block.height()
-                        ).also { ValidatorStateRecord.refreshCurrentStateView() }
+                        ).also { updated -> if (updated) ValidatorStateRecord.refreshCurrentStateView() }
                         TxAddressJoinType.ACCOUNT.name -> accountService.updateAccounts(ent.value)
                     }
                 }
@@ -199,7 +199,7 @@ class AsyncCaching(
         TxGasCacheRecord.insertIgnore(tx, blockTime)
     }
 
-    private fun saveMessages(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
+    fun saveMessages(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
         tx.tx.body.messagesList.forEachIndexed { idx, msg ->
             if (tx.txResponse.logsCount > 0) {
                 val type: String
@@ -221,7 +221,7 @@ class AsyncCaching(
                         }
                     }
                 }
-                val msgId = TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module).value
+                val msgId = TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module, idx).value
                 saveEvents(txId, tx, msgId, type, idx)
 
                 if (tx.tx.body.messagesCount == 1) {
@@ -233,7 +233,7 @@ class AsyncCaching(
                     )
                 }
             } else
-                TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, UNKNOWN, UNKNOWN)
+                TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, UNKNOWN, UNKNOWN, idx)
         }
     }
 

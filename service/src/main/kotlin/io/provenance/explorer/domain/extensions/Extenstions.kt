@@ -48,7 +48,8 @@ fun ByteString.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray(
 fun String.fromBase64() = Base64.getDecoder().decode(this).decodeToString()
 fun String.fromBase64ToMAddress() = Base64.getDecoder().decode(this).toByteString().toMAddress()
 fun String.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
-fun ByteString.toDbHash() = Hashing.sha512().hashBytes(this.toByteArray()).asBytes().toString()
+fun ByteArray.base64EncodeString(): String = String(Base64.getEncoder().encode(this))
+fun ByteString.toDbHash() = Hashing.sha512().hashBytes(this.toByteArray()).asBytes().base64EncodeString()
 fun ByteString.toHash() = this.toByteArray().toBech32Data().hexData
 
 // PubKeySecp256k1

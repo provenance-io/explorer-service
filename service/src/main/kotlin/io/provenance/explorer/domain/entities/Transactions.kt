@@ -244,6 +244,7 @@ object TxMessageTable : IntIdTable(name = "tx_message") {
     val txMessageType = reference("tx_message_type_id", TxMessageTypeTable)
     val txMessage = jsonb<TxMessageTable, Any>("tx_message", OBJECT_MAPPER)
     val txMessageHash = text("tx_message_hash")
+    val msgIdx = integer("msg_idx")
 }
 
 class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -277,8 +278,12 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
                 .map { it[TxMessageTable.txMessageType].value }
         }
 
-        private fun findByTxHashAndMessageHash(txHashId: Int, messageHash: String) = transaction {
-            TxMessageRecord.find { (TxMessageTable.txHashId eq txHashId) and (TxMessageTable.txMessageHash eq messageHash) }
+        private fun findByTxHashAndMessageHash(txHashId: Int, messageHash: String, msgIdx: Int) = transaction {
+            TxMessageRecord.find {
+                (TxMessageTable.txHashId eq txHashId) and
+                    (TxMessageTable.txMessageHash eq messageHash) and
+                    (TxMessageTable.msgIdx eq msgIdx)
+            }
                 .firstOrNull()
         }
 
@@ -329,10 +334,10 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
             query
         }
 
-        fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, message: Any, type: String, module: String) =
+        fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, message: Any, type: String, module: String, msgIdx: Int) =
             transaction {
                 TxMessageTypeRecord.insert(type, module, message.typeUrl).let { typeId ->
-                    findByTxHashAndMessageHash(txId.value, message.value.toDbHash())?.id
+                    findByTxHashAndMessageHash(txId.value, message.value.toDbHash(), msgIdx)?.id
                         ?: TxMessageTable.insertAndGetId {
                             it[this.blockHeight] = blockHeight
                             it[this.txHash] = txHash
@@ -340,6 +345,7 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
                             it[this.txMessageType] = typeId
                             it[this.txMessage] = message
                             it[this.txMessageHash] = message.value.toDbHash()
+                            it[this.msgIdx] = msgIdx
                         }
                 }
             }
@@ -351,6 +357,7 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
     var txMessageType by TxMessageTypeRecord referencedOn TxMessageTable.txMessageType
     var txMessage by TxMessageTable.txMessage
     var txMessageHash by TxMessageTable.txMessageHash
+    var msgIdx by TxMessageTable.msgIdx
 }
 
 enum class TxAddressJoinType { ACCOUNT, OPERATOR }
@@ -613,7 +620,7 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxSingleMessageCacheRecord>(TxSingleMessageCacheTable) {
 
         fun insert(txTime: DateTime, txHash: String, gasUsed: Int, type: String) = transaction {
-            TxSingleMessageCacheTable.insert {
+            TxSingleMessageCacheTable.insertIgnore {
                 it[this.txTimestamp] = txTime
                 it[this.txHash] = txHash
                 it[this.gasUsed] = gasUsed
