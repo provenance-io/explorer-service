@@ -49,8 +49,7 @@ class TransactionService(
     private val protoPrinter: JsonFormat.Printer,
     private val props: ExplorerProperties,
     private val asyncCache: AsyncCaching,
-    private val nftService: NftService,
-    private val govService: GovService
+    private val nftService: NftService
 ) {
 
     protected val logger = logger(TransactionService::class)

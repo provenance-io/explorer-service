@@ -28,14 +28,14 @@ open class DownloadProtosTask : DefaultTask() {
 
     @Option(
         option = "provenance-version",
-        description = "Provenance release version (e.g. v1.5.0)"
+        description = "Provenance release version (e.g. v1.7.0)"
     )
     @Input
     var provenanceVersion: String? = null
 
     @Option(
         option = "cosmos-version",
-        description = "Cosmos release version (e.g. v0.42.6)"
+        description = "Cosmos release version (e.g. v0.44.0)"
     )
     @Input
     var cosmosVersion: String? = null
@@ -46,6 +46,13 @@ open class DownloadProtosTask : DefaultTask() {
     )
     @Input
     var wasmdVersion: String? = null
+
+    @Option(
+        option = "ibc-version",
+        description = "Cosmos IBC release version (e.g. v1.1.0)"
+    )
+    @Input
+    var ibcVersion: String? = null
 
     /**
      * Connects directly to provenance-io GitHub release directory
@@ -73,18 +80,26 @@ open class DownloadProtosTask : DefaultTask() {
         )
 
         untar(
-            file = unGzip(toTempFile("https://github.com/cosmos/cosmos-sdk/tarball/${this.cosmosVersion}")),
-            destinationDir = thirdPartyPath(),
-            includePattern = Regex(".*/proto/.*\\.proto\$"),
-            excludePattern = Regex(".*testutil/.*"),
-            protoRootDir = "proto"
-        )
-
-        untar(
             file = unGzip(toTempFile("https://github.com/CosmWasm/wasmd/tarball/${this.wasmdVersion}")),
             destinationDir = thirdPartyPath(),
             includePattern = Regex(".*/proto/.*\\.proto\$"),
             excludePattern = Regex(".*third_party/.*|.*proto/ibc/.*"),
+            protoRootDir = "proto"
+        )
+
+        untar(
+            file = unGzip(toTempFile("https://github.com/cosmos/ibc-go/tarball/${this.ibcVersion}")),
+            destinationDir = thirdPartyPath(),
+            includePattern = Regex(".*/proto/.*\\.proto\$"),
+            excludePattern = Regex("FAILSAFE_STRING"),
+            protoRootDir = "proto"
+        )
+
+        untar(
+            file = unGzip(toTempFile("https://github.com/cosmos/cosmos-sdk/tarball/${this.cosmosVersion}")),
+            destinationDir = thirdPartyPath(),
+            includePattern = Regex(".*/proto/.*\\.proto\$"),
+            excludePattern = Regex(".*testutil/.*"),
             protoRootDir = "proto"
         )
     }

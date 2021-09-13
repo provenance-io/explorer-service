@@ -367,6 +367,7 @@ class AsyncCaching(
                             govService.saveProposal(it.proposalId, txInfo, it.voter, isSubmit = false)
                             govService.saveVote(txInfo, it)
                         }
+                        // TODO: Handle Weighted votes
                     }
                 }
         }

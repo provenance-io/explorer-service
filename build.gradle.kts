@@ -47,10 +47,16 @@ subprojects {
 
     tasks.withType<Javadoc> { enabled = false }
 
+    tasks.withType<JavaCompile> {
+        sourceCompatibility = JavaVersion.VERSION_11.toString()
+        targetCompatibility = sourceCompatibility
+    }
     tasks.withType<KotlinCompile> {
         kotlinOptions {
-//            freeCompilerArgs = listOf("-Xjsr305=strict", "-Xinline-classes")
+            freeCompilerArgs = listOf("-Xjsr305=strict", "-Xopt-in=kotlin.RequiresOptIn")
             jvmTarget = "11"
+            languageVersion = "1.5"
+            apiVersion = "1.5"
         }
     }
 

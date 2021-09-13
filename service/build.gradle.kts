@@ -17,15 +17,15 @@ sourceSets {
             resources.srcDirs("src/test/resources")
         }
     }
-    create("integrationTest") {
-        withConvention(KotlinSourceSet::class) {
-            kotlin.srcDirs("src/test/kotlin")
-            compileClasspath += sourceSets.main.get().output + sourceSets.test.get().output +
-                configurations.testRuntime + configurations.testCompile
-            runtimeClasspath += output + compileClasspath + test.get().output
-            resources.srcDirs(file("src/test/resources"))
-        }
-    }
+//    create("integrationTest") {
+//        withConvention(KotlinSourceSet::class) {
+//            kotlin.srcDirs("src/test/kotlin")
+//            compileClasspath += sourceSets.main.get().output + sourceSets.test.get().output +
+//                configurations.testRuntimeOnly + configurations.testImplementation
+//            runtimeClasspath += output + compileClasspath + test.get().output
+//            resources.srcDirs(file("src/test/resources"))
+//        }
+//    }
 }
 
 configurations.all {

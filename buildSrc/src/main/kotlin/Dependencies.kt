@@ -23,41 +23,41 @@ object PluginIds { // please keep this sorted in sections
 
 object PluginVersions { // please keep this sorted in sections
     // Kotlin
-    const val Kotlin = "1.4.30"
+    const val Kotlin = "1.5.30"
 
     // 3rd Party
-    const val Flyway = "7.5.3"
+    const val Flyway = "7.15.0"
     const val TaskTree = "1.5"
     const val TestLogger = "2.1.1"
     const val DependencyAnalysis = "0.56.0"
     const val GoryLenkoGitProps = "1.5.2"
 
     const val SpringDependency = "1.0.11.RELEASE"
-    const val SpringBoot = "2.4.3"
-    const val Protobuf = "0.8.11"
+    const val SpringBoot = "2.5.4"
+    const val Protobuf = "0.8.17"
 }
 
 object Versions {
     // kotlin
     const val Kotlin = PluginVersions.Kotlin
-    const val KotlinXCoroutines = "1.4.3"
+    const val KotlinXCoroutines = "1.5.1"
 
     // 3rd Party
     const val ApacheCommonsText = "1.9"
-    const val BouncyCastle = "1.63"
-    const val Exposed = "0.29.1"
+    const val BouncyCastle = "1.69"
+    const val Exposed = "0.34.1"
     const val Flyway = PluginVersions.Flyway
-    const val Jackson = "2.11.2"
+    const val Jackson = "2.12.5"
     const val JacksonProtobuf = "0.9.12"
     const val Khttp = "1.0.0"
     const val Logback = "0.1.5"
     const val SpringBoot = PluginVersions.SpringBoot
     const val Swagger = "3.0.0"
     const val Protobuf = "3.15.0"
-    const val Grpc = "1.35.0"
-    const val GrpcStarter = "3.4.3"
-    const val ProtocArtifact = "3.15.0"
-    const val Postgres = "42.2.19"
+    const val Grpc = "1.40.1"
+    const val GrpcStarter = "4.5.6"
+    const val ProtocArtifact = "3.17.3"
+    const val Postgres = "42.2.23"
 
     // Testing
     const val Jupiter = "5.7.1"
@@ -65,9 +65,10 @@ object Versions {
     const val Kotest = "4.4.3"
 
     // external protos
-    const val Provenance = "v1.5.0"
-    const val Cosmos = "v0.42.6"
+    const val Provenance = "v1.7.0"
+    const val Cosmos = "v0.44.0"
     const val Wasmd = "v0.17.0"
+    const val Ibc = "v1.1.0"
 }
 
 object Libraries {

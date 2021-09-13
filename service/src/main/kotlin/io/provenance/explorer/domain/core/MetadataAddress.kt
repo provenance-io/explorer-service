@@ -137,7 +137,7 @@ data class MetadataAddress internal constructor(val bytes: ByteArray) {
 
         /** Hashes a string and gets the bytes desired for a MetadataAddress. */
         private fun asHashedBytes(str: String) =
-            MessageDigest.getInstance("SHA-256").digest(str.trim().toLowerCase().toByteArray()).copyOfRange(0, 16)
+            MessageDigest.getInstance("SHA-256").digest(str.trim().lowercase().toByteArray()).copyOfRange(0, 16)
     }
 
     /** Gets the key byte for this MetadataAddress. */

@@ -33,6 +33,19 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Upgraded versions #172, #236
+  * Provenance: v1.5.0 -> v1.7.0
+  * Cosmos SDK: v0.42.6 -> v0.44.0
+  * Added IBC Go: ** -> v1.1.0
+  * Kotlin: 1.4.30 -> 1.5.30
+  * Gradle: 6.8.3 -> 7.2.0
+  * SpringBoot: 2.4.3 -> 2.5.4
+* With upgraded versions, added in support for new Msg types and pubkey `secp256r1`
+
+### Improvements
+* Translated Smart Contract msg bytes to human-readable json
+
 ## [v2.3.1](https://github.com/provenance-io/explorer-service/releases/tag/v2.3.1) - 2021-09-10
 ### Release Name: Ahmad ibn Fadlan
 
