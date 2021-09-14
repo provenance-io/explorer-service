@@ -42,7 +42,7 @@ open class DownloadProtosTask : DefaultTask() {
 
     @Option(
         option = "wasmd-version",
-        description = "CosmWasm/wasmd release version (e.g. v0.17.0)"
+        description = "provenance-io/wasmd release version (e.g. v0.19.0)"
     )
     @Input
     var wasmdVersion: String? = null
@@ -61,8 +61,8 @@ open class DownloadProtosTask : DefaultTask() {
      * Connects directly to cosmos-sdk GitHub tarball release directory
      * and downloads the `cosmosVersion` proto gzipped tar file.
      *
-     * Connects directly to CosmWasm/wasmd GitHub tarball release directory
-     * and downloads the `cosmWasmVersion` proto gzipped tar file.
+     * Connects directly to provenance-io/wasmd GitHub tarball release directory
+     * and downloads the `wasmdVersion` proto gzipped tar file.
      *
      * All files are uncompressed into the `third_party/proto` directory
      * of this root gradle project.
@@ -80,7 +80,7 @@ open class DownloadProtosTask : DefaultTask() {
         )
 
         untar(
-            file = unGzip(toTempFile("https://github.com/CosmWasm/wasmd/tarball/${this.wasmdVersion}")),
+            file = unGzip(toTempFile("https://github.com/provenance-io/wasmd/tarball/${this.wasmdVersion}")),
             destinationDir = thirdPartyPath(),
             includePattern = Regex(".*/proto/.*\\.proto\$"),
             excludePattern = Regex(".*third_party/.*|.*proto/ibc/.*"),
