@@ -13,7 +13,8 @@ import cosmos.params.v1beta1.Params
 import cosmos.tx.v1beta1.TxOuterClass
 import cosmos.upgrade.v1beta1.Upgrade
 import cosmos.vesting.v1beta1.Vesting
-import cosmwasm.wasm.v1beta1.Proposal
+import cosmwasm.wasm.v1.Ibc
+import cosmwasm.wasm.v1.Proposal
 import ibc.core.client.v1.Client
 import ibc.lightclients.tendermint.v1.Tendermint
 import io.provenance.attribute.v1.EventAttributeAdd
@@ -244,12 +245,12 @@ fun msgDescriptors() =
         MsgBindOSLocatorRequest.getDescriptor(),
         MsgDeleteOSLocatorRequest.getDescriptor(),
         MsgModifyOSLocatorRequest.getDescriptor(),
-        cosmwasm.wasm.v1beta1.Tx.MsgStoreCode.getDescriptor(),
-        cosmwasm.wasm.v1beta1.Tx.MsgInstantiateContract.getDescriptor(),
-        cosmwasm.wasm.v1beta1.Tx.MsgExecuteContract.getDescriptor(),
-        cosmwasm.wasm.v1beta1.Tx.MsgMigrateContract.getDescriptor(),
-        cosmwasm.wasm.v1beta1.Tx.MsgUpdateAdmin.getDescriptor(),
-        cosmwasm.wasm.v1beta1.Tx.MsgClearAdmin.getDescriptor(),
+        cosmwasm.wasm.v1.Tx.MsgStoreCode.getDescriptor(),
+        cosmwasm.wasm.v1.Tx.MsgInstantiateContract.getDescriptor(),
+        cosmwasm.wasm.v1.Tx.MsgExecuteContract.getDescriptor(),
+        cosmwasm.wasm.v1.Tx.MsgMigrateContract.getDescriptor(),
+        cosmwasm.wasm.v1.Tx.MsgUpdateAdmin.getDescriptor(),
+        cosmwasm.wasm.v1.Tx.MsgClearAdmin.getDescriptor(),
         cosmos.crisis.v1beta1.Tx.MsgVerifyInvariant.getDescriptor(),
         ibc.applications.transfer.v1.Tx.MsgTransfer.getDescriptor(),
         ibc.core.channel.v1.Tx.MsgChannelOpenInit.getDescriptor(),
@@ -282,7 +283,9 @@ fun msgDescriptors() =
         cosmos.authz.v1beta1.Tx.MsgExec.getDescriptor(),
         cosmos.authz.v1beta1.Tx.MsgRevoke.getDescriptor(),
         cosmos.feegrant.v1beta1.Tx.MsgGrantAllowance.getDescriptor(),
-        cosmos.feegrant.v1beta1.Tx.MsgRevokeAllowance.getDescriptor()
+        cosmos.feegrant.v1beta1.Tx.MsgRevokeAllowance.getDescriptor(),
+        Ibc.MsgIBCSend.getDescriptor(),
+        Ibc.MsgIBCCloseChannel.getDescriptor()
     )
 
 fun contentDescriptors() =

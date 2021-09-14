@@ -42,6 +42,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Gradle: 6.8.3 -> 7.2.0
   * SpringBoot: 2.4.3 -> 2.5.4
 * With upgraded versions, added in support for new Msg types and pubkey `secp256r1`
+* Now pulling `wasmd` protos from `provenance-io/wasmd` instead of `CosmWasm/wasmd`
+  * Current version at v0.19.0
 
 ### Improvements
 * Translated Smart Contract msg bytes to human-readable json

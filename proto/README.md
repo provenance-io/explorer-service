@@ -1,7 +1,7 @@
 # Provenance Blockchain Protobuf Install and Build
 
 The Provenance Explorer uses a combination of [Provenance](https://github.com/provenance-io/provenance), 
-[Cosmos](https://github.com/cosmos/cosmos-sdk), [CosmWasm/wasmd](https://github.com/CosmWasm/wasmd) 
+[Cosmos](https://github.com/cosmos/cosmos-sdk), [provenance-io/wasmd](https://github.com/provenance-io/wasmd) 
 and [IBC](https://github.com/cosmos/ibc-go) [protobuf](https://developers.google.com/protocol-buffers) definitions.
 Protocol buffers (protobuf) are Google's language-neutral, platform-neutral, 
 extensible mechanism for serializing structured data.  The Provenance
@@ -25,21 +25,21 @@ directory run this `gradle` task *from the root project directory*:
 > The `downloadProtos` task will clean the `third_party` directory prior to
 > download.  Do not edit the protos in that directory.
 
-This `gradle` task will download the Provenance, Cosmos, and CosmWasm/wasmd proto versions defined
+This `gradle` task will download the Provenance, Cosmos, and provenance-io/wasmd proto versions defined
 in the `./buildSrc/src/main/kotlin/Dependencies.kt` file:
 
 ```kotlin
     //external protos
     const val Provenance = "v1.7.0"
     const val Cosmos = "v0.44.0"
-    const val Wasmd = "v0.17.0"
+    const val Wasmd = "v0.19.0"
     const val Ibc = "v1.1.0"
 ```
 
 To manually specify the versions run this `gradle` task  *from the root project directory*:
 
 ```bash
-./gradlew downloadProtos --provenance-version v1.7.0 --cosmos-version v0.44.0 --wasmd-version v0.17.0 --ibc-version v1.1.0
+./gradlew downloadProtos --provenance-version v1.7.0 --cosmos-version v0.44.0 --wasmd-version v0.19.0 --ibc-version v1.1.0
 ```
 
 > The proto download process does not need to be run very often, 
