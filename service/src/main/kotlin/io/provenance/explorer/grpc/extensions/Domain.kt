@@ -8,7 +8,8 @@ import cosmos.crypto.multisig.Keys
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toBech32Data
 import io.provenance.explorer.domain.extensions.edPubKeyToBech32
-import io.provenance.explorer.domain.extensions.secpPubKeyToBech32
+import io.provenance.explorer.domain.extensions.secp256k1PubKeyToBech32
+import io.provenance.explorer.domain.extensions.secp256r1PubKeyToBech32
 import io.provenance.explorer.domain.extensions.toBase64
 import io.provenance.explorer.domain.extensions.toSha256
 import io.provenance.explorer.service.prettyRole
@@ -62,6 +63,7 @@ fun Any.toSingleSigKeyValue() = this.toSingleSig().let { it?.toBase64() }
 fun Any.toSingleSig(): ByteString? =
     when {
         typeUrl.contains("secp256k1") -> this.unpack(cosmos.crypto.secp256k1.Keys.PubKey::class.java).key
+        typeUrl.contains("secp256r1") -> this.unpack(cosmos.crypto.secp256r1.Keys.PubKey::class.java).key
         typeUrl.contains("ed25519") -> this.unpack(cosmos.crypto.ed25519.Keys.PubKey::class.java).key
         else -> null.also { logger().error("This typeUrl is not supported in single sig: $typeUrl") }
     }
@@ -75,7 +77,12 @@ fun Any.toMultiSig() =
 fun Any.toAddress(hrpPrefix: String) =
     when {
         typeUrl.contains("secp256k1") ->
-            this.unpack(cosmos.crypto.secp256k1.Keys.PubKey::class.java).key.secpPubKeyToBech32(hrpPrefix)
+            this.unpack(cosmos.crypto.secp256k1.Keys.PubKey::class.java).key.secp256k1PubKeyToBech32(hrpPrefix)
+        typeUrl.contains("secp256r1") ->
+            this.unpack(cosmos.crypto.secp256r1.Keys.PubKey::class.java).key.secp256r1PubKeyToBech32(
+                hrpPrefix,
+                typeUrl.split("/")[1]
+            )
         typeUrl.contains("ed25519") ->
             this.unpack(cosmos.crypto.ed25519.Keys.PubKey::class.java).key.edPubKeyToBech32(hrpPrefix)
         else -> null.also { logger().error("This typeUrl is not supported as a consensus address: $typeUrl") }

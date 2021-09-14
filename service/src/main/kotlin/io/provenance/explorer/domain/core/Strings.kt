@@ -14,7 +14,7 @@ object Strings {
         return if (string == null || string.length == 0) {
             string
         } else {
-            string.substring(0, 1).toUpperCase() + string.substring(1)
+            string.substring(0, 1).uppercase() + string.substring(1)
         }
     }
 
@@ -22,7 +22,7 @@ object Strings {
         return if (string == null || string.length == 0) {
             string
         } else {
-            string.substring(0, 1).toLowerCase() + string.substring(1)
+            string.substring(0, 1).lowercase() + string.substring(1)
         }
     }
 

@@ -2,9 +2,12 @@ package io.provenance.explorer.config
 
 import com.google.protobuf.util.JsonFormat
 import cosmos.auth.v1beta1.Auth
+import cosmos.authz.v1beta1.Authz
+import cosmos.authz.v1beta1.Event
 import cosmos.bank.v1beta1.Tx
 import cosmos.crypto.ed25519.Keys
 import cosmos.distribution.v1beta1.Distribution
+import cosmos.feegrant.v1beta1.Feegrant
 import cosmos.gov.v1beta1.Gov
 import cosmos.params.v1beta1.Params
 import cosmos.tx.v1beta1.TxOuterClass
@@ -15,6 +18,7 @@ import ibc.core.client.v1.Client
 import ibc.lightclients.tendermint.v1.Tendermint
 import io.provenance.attribute.v1.EventAttributeAdd
 import io.provenance.attribute.v1.EventAttributeDelete
+import io.provenance.attribute.v1.EventAttributeDistinctDelete
 import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteDistinctAttributeRequest
@@ -36,6 +40,7 @@ import io.provenance.marker.v1.EventMarkerSetDenomMetadata
 import io.provenance.marker.v1.EventMarkerTransfer
 import io.provenance.marker.v1.EventMarkerWithdraw
 import io.provenance.marker.v1.MarkerAccount
+import io.provenance.marker.v1.MarkerTransferAuthorization
 import io.provenance.marker.v1.MsgActivateRequest
 import io.provenance.marker.v1.MsgAddAccessRequest
 import io.provenance.marker.v1.MsgAddMarkerRequest
@@ -50,6 +55,7 @@ import io.provenance.marker.v1.MsgTransferRequest
 import io.provenance.marker.v1.MsgWithdrawRequest
 import io.provenance.marker.v1.RemoveAdministratorProposal
 import io.provenance.marker.v1.SetAdministratorProposal
+import io.provenance.marker.v1.SetDenomMetadataProposal
 import io.provenance.marker.v1.SupplyDecreaseProposal
 import io.provenance.marker.v1.SupplyIncreaseProposal
 import io.provenance.marker.v1.WithdrawEscrowProposal
@@ -174,7 +180,8 @@ fun accountDescriptors() =
         Vesting.BaseVestingAccount.getDescriptor(),
         Vesting.ContinuousVestingAccount.getDescriptor(),
         Vesting.DelayedVestingAccount.getDescriptor(),
-        Vesting.PeriodicVestingAccount.getDescriptor()
+        Vesting.PeriodicVestingAccount.getDescriptor(),
+        Vesting.PermanentLockedAccount.getDescriptor()
     )
 
 fun pubKeyDescriptors() =
@@ -191,6 +198,7 @@ fun msgDescriptors() =
         Tx.MsgMultiSend.getDescriptor(),
         cosmos.gov.v1beta1.Tx.MsgSubmitProposal.getDescriptor(),
         cosmos.gov.v1beta1.Tx.MsgVote.getDescriptor(),
+        cosmos.gov.v1beta1.Tx.MsgVoteWeighted.getDescriptor(),
         cosmos.gov.v1beta1.Tx.MsgDeposit.getDescriptor(),
         cosmos.distribution.v1beta1.Tx.MsgSetWithdrawAddress.getDescriptor(),
         cosmos.distribution.v1beta1.Tx.MsgWithdrawDelegatorReward.getDescriptor(),
@@ -269,7 +277,12 @@ fun msgDescriptors() =
         MsgUpdateAttributeRequest.getDescriptor(),
         MsgDeleteDistinctAttributeRequest.getDescriptor(),
         MsgAddContractSpecToScopeSpecRequest.getDescriptor(),
-        MsgDeleteContractSpecFromScopeSpecRequest.getDescriptor()
+        MsgDeleteContractSpecFromScopeSpecRequest.getDescriptor(),
+        cosmos.authz.v1beta1.Tx.MsgGrant.getDescriptor(),
+        cosmos.authz.v1beta1.Tx.MsgExec.getDescriptor(),
+        cosmos.authz.v1beta1.Tx.MsgRevoke.getDescriptor(),
+        cosmos.feegrant.v1beta1.Tx.MsgGrantAllowance.getDescriptor(),
+        cosmos.feegrant.v1beta1.Tx.MsgRevokeAllowance.getDescriptor()
     )
 
 fun contentDescriptors() =
@@ -295,7 +308,8 @@ fun contentDescriptors() =
         Proposal.ClearAdminProposal.getDescriptor(),
         Proposal.PinCodesProposal.getDescriptor(),
         Proposal.UnpinCodesProposal.getDescriptor(),
-        Client.ClientUpdateProposal.getDescriptor()
+        Client.ClientUpdateProposal.getDescriptor(),
+        SetDenomMetadataProposal.getDescriptor()
     )
 
 fun events() = listOf(
@@ -338,9 +352,19 @@ fun events() = listOf(
     EventOSLocatorUpdated.getDescriptor(),
     EventOSLocatorDeleted.getDescriptor(),
     EventAttributeAdd.getDescriptor(),
-    EventAttributeDelete.getDescriptor()
+    EventAttributeDelete.getDescriptor(),
+    EventAttributeDistinctDelete.getDescriptor(),
+    Event.EventGrant.getDescriptor(),
+    Event.EventRevoke.getDescriptor()
 )
 
 fun miscAnys() = listOf(
-    Tendermint.Header.getDescriptor()
+    Tendermint.Header.getDescriptor(),
+    Authz.GenericAuthorization.getDescriptor(),
+    cosmos.bank.v1beta1.Authz.SendAuthorization.getDescriptor(),
+    Feegrant.BasicAllowance.getDescriptor(),
+    Feegrant.PeriodicAllowance.getDescriptor(),
+    Feegrant.AllowedMsgAllowance.getDescriptor(),
+    cosmos.staking.v1beta1.Authz.StakeAuthorization.getDescriptor(),
+    MarkerTransferAuthorization.getDescriptor()
 )

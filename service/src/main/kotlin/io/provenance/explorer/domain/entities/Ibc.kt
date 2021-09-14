@@ -150,7 +150,7 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
         ) = transaction {
             findMatchingRecord(ledger)?.apply {
                 this.acknowledged = true
-                this.ackSuccess = ledger.ack!!
+                this.ackSuccess = ledger.ack
                 this.ackLogs = ledger.logs
                 this.ackBlockHeight = txData.blockHeight
                 this.ackTxHashId = txData.txHashId

@@ -1,7 +1,7 @@
 package io.provenance.explorer
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.PropertyNamingStrategy
+import com.fasterxml.jackson.databind.PropertyNamingStrategies
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.extensions.configureProvenance
@@ -29,7 +29,7 @@ fun main(args: Array<String>) {
 }
 
 val OBJECT_MAPPER = ObjectMapper()
-    .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE)
+    .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
     .configureProvenance()
 
 /* Singleton instance that can safely be shared globally */

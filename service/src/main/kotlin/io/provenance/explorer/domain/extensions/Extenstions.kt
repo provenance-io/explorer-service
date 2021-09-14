@@ -2,7 +2,6 @@ package io.provenance.explorer.domain.extensions
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -10,14 +9,11 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.google.common.hash.Hashing
 import com.google.protobuf.ByteString
-import com.google.protobuf.Message
 import com.google.protobuf.Timestamp
-import com.google.protobuf.util.JsonFormat
 import com.hubspot.jackson.datatype.protobuf.ProtobufModule
 import cosmos.base.abci.v1beta1.Abci
 import cosmos.staking.v1beta1.Staking
 import cosmos.tx.v1beta1.TxOuterClass
-import io.provenance.explorer.JSON_NODE_FACTORY
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.Bech32
@@ -53,7 +49,7 @@ fun ByteString.toDbHash() = Hashing.sha512().hashBytes(this.toByteArray()).asByt
 fun ByteString.toHash() = this.toByteArray().toBech32Data().hexData
 
 // PubKeySecp256k1
-fun ByteString.secpPubKeyToBech32(hrpPrefix: String) = let {
+fun ByteString.secp256k1PubKeyToBech32(hrpPrefix: String) = let {
     val base64 = this.toByteArray()
     require(base64.size == 33) { "Invalid Base 64 pub key byte length must be 33 not ${base64.size}" }
     require(base64[0] == 0x02.toByte() || base64[0] == 0x03.toByte()) { "Invalid first byte must be 2 or 3 not  ${base64[0]}" }
@@ -61,6 +57,14 @@ fun ByteString.secpPubKeyToBech32(hrpPrefix: String) = let {
     val ripemd = shah256.toRIPEMD160()
     require(ripemd.size == 20) { "RipeMD size must be 20 not ${ripemd.size}" }
     Bech32.encode(hrpPrefix, ripemd)
+}
+
+// PubKeySecp256r1
+fun ByteString.secp256r1PubKeyToBech32(hrpPrefix: String, protoType: String) = let {
+    val protoSha = protoType.toByteArray().toSha256()
+    val key = protoSha + this.toByteArray()
+    val keySha = key.toSha256()
+    Bech32.encode(hrpPrefix, keySha)
 }
 
 // PubKeyEd25519
@@ -162,61 +166,6 @@ fun List<SignatureRecord>.toSigObj(hrpPrefix: String) =
             this.first().multiSigObject?.toMultiSig()?.threshold
         )
     else Signatures(listOf(), null)
-
-val protoTypesToCheck = arrayOf(
-    "/provenance.metadata.v1.MsgWriteScopeRequest",
-    "/provenance.metadata.v1.MsgDeleteScopeRequest",
-    "/provenance.metadata.v1.MsgWriteRecordSpecificationRequest",
-    "/provenance.metadata.v1.MsgDeleteRecordSpecificationRequest",
-    "/provenance.metadata.v1.MsgWriteScopeSpecificationRequest",
-    "/provenance.metadata.v1.MsgDeleteScopeSpecificationRequest",
-    "/provenance.metadata.v1.MsgWriteContractSpecificationRequest",
-    "/provenance.metadata.v1.MsgDeleteContractSpecificationRequest",
-    "/provenance.metadata.v1.MsgAddScopeDataAccessRequest",
-    "/provenance.metadata.v1.MsgDeleteScopeDataAccessRequest",
-    "/provenance.metadata.v1.MsgAddScopeOwnerRequest",
-    "/provenance.metadata.v1.MsgDeleteScopeOwnerRequest",
-    "/provenance.metadata.v1.MsgWriteSessionRequest",
-    "/provenance.metadata.v1.MsgWriteRecordRequest",
-    "/provenance.metadata.v1.MsgDeleteRecordRequest",
-    "/provenance.metadata.v1.MsgAddContractSpecToScopeSpecRequest",
-    "/provenance.metadata.v1.MsgDeleteContractSpecFromScopeSpecRequest"
-)
-
-val protoTypesFieldsToCheck = arrayOf(
-    "scopeId",
-    "specificationId",
-    "recordId",
-    "sessionId",
-    "contractSpecificationId",
-    "scopeSpecificationId"
-)
-
-fun Message.toObjectNode(protoPrinter: JsonFormat.Printer) =
-    OBJECT_MAPPER.readValue(protoPrinter.print(this), ObjectNode::class.java)
-        .let { node ->
-            node.get("@type")?.asText()?.let { proto ->
-                if (protoTypesToCheck.contains(proto)) {
-                    protoTypesFieldsToCheck.forEach { fromBase64ToMAddress(node, it) }
-                }
-            }
-            node.remove("@type")
-            node
-        }
-
-fun fromBase64ToMAddress(jsonNode: JsonNode, fieldName: String) {
-    var found = false
-
-    if (jsonNode.has(fieldName)) {
-        val newValue = jsonNode.get(fieldName).asText().fromBase64ToMAddress().toString()
-        (jsonNode as ObjectNode).replace(fieldName, JSON_NODE_FACTORY.textNode(newValue))
-        found = true // stop after first find
-    }
-
-    if (!found) {
-        jsonNode.forEach { fromBase64ToMAddress(it, fieldName) }
-    }
-}
 
 fun String.toObjectNode() = OBJECT_MAPPER.readValue(StringEscapeUtils.unescapeJson(this), ObjectNode::class.java)
 

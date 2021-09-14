@@ -99,18 +99,18 @@ class Bech32 {
         /** Decodes a Bech32 String */
         fun decode(bech32: String): Bech32Data {
             require(bech32.length in MIN_VALID_LENGTH..MAX_VALID_LENGTH) { "invalid bech32 string length" }
-            require(bech32.toCharArray().none { c -> c.toInt() < MIN_VALID_CODEPOINT || c.toInt() > MAX_VALID_CODEPOINT }) {
-                "invalid character in bech32: ${bech32.toCharArray().map { c -> c.toInt() }
+            require(bech32.toCharArray().none { c -> c.code < MIN_VALID_CODEPOINT || c.code > MAX_VALID_CODEPOINT }) {
+                "invalid character in bech32: ${bech32.toCharArray().map { c -> c.code }
                     .filter { c -> c < MIN_VALID_CODEPOINT || c > MAX_VALID_CODEPOINT }}"
             }
 
-            require(bech32 == bech32.toLowerCase() || bech32 == bech32.toUpperCase()) {
+            require(bech32 == bech32.lowercase() || bech32 == bech32.uppercase()) {
                 "bech32 must be either all upper or lower case"
             }
             require(bech32.substring(1).dropLast(CHECKSUM_SIZE).contains('1')) { "invalid index of '1'" }
 
-            val hrp = bech32.substringBeforeLast('1').toLowerCase()
-            val dataString = bech32.substringAfterLast('1').toLowerCase()
+            val hrp = bech32.substringBeforeLast('1').lowercase()
+            val dataString = bech32.substringAfterLast('1').lowercase()
 
             require(dataString.toCharArray().all { c -> charset.contains(c) }) { "invalid data encoding character in bech32" }
 
@@ -189,9 +189,9 @@ class Bech32 {
 
         /** Expands the human readable prefix per BIP173 for Checksum encoding */
         private fun expandHrp(hrp: String) =
-            hrp.map { c -> c.toInt() shr 5 }
+            hrp.map { c -> c.code shr 5 }
                 .plus(0)
-                .plus(hrp.map { c -> c.toInt() and 31 })
+                .plus(hrp.map { c -> c.code and 31 })
                 .toIntArray()
 
         /** Polynomial division function for checksum calculation.  For details see BIP173 */

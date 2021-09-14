@@ -49,4 +49,5 @@ tasks.register<io.provenance.DownloadProtosTask>("downloadProtos") {
     provenanceVersion = Versions.Provenance
     cosmosVersion = Versions.Cosmos
     wasmdVersion = Versions.Wasmd
+    ibcVersion = Versions.Ibc
 }

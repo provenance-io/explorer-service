@@ -630,7 +630,7 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun getGasStats(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
-            val tblName = "tx_single_message_gas_stats_${granularity.toLowerCase()}"
+            val tblName = "tx_single_message_gas_stats_${granularity.lowercase()}"
             val query = """
                 |SELECT
                 |   $tblName.tx_timestamp,
@@ -716,7 +716,7 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         }.firstOrNull()
 
         fun getGasVolume(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
-            val tblName = "tx_gas_fee_volume_${granularity.toLowerCase()}"
+            val tblName = "tx_gas_fee_volume_${granularity.lowercase()}"
             val query = """
                 |SELECT
                 |   $tblName.tx_timestamp,

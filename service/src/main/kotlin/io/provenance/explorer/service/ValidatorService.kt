@@ -217,8 +217,7 @@ class ValidatorService(
         validatorSet: List<Query.Validator>,
         count: Int,
         page: Int,
-        status: String,
-        isAtHeight: Boolean = false
+        status: String
     ) =
         let {
             getStakingValidators(status).map { v ->

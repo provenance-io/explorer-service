@@ -86,6 +86,7 @@ fun Any.toMsgSend() = this.unpack(Tx.MsgSend::class.java)
 fun Any.toMsgMultiSend() = this.unpack(Tx.MsgMultiSend::class.java)
 fun Any.toMsgSubmitProposal() = this.unpack(cosmos.gov.v1beta1.Tx.MsgSubmitProposal::class.java)
 fun Any.toMsgVote() = this.unpack(cosmos.gov.v1beta1.Tx.MsgVote::class.java)
+fun Any.toMsgVoteWeighted() = this.unpack(cosmos.gov.v1beta1.Tx.MsgVoteWeighted::class.java)
 fun Any.toMsgDeposit() = this.unpack(cosmos.gov.v1beta1.Tx.MsgDeposit::class.java)
 fun Any.toMsgSetWithdrawAddress() = this.unpack(cosmos.distribution.v1beta1.Tx.MsgSetWithdrawAddress::class.java)
 fun Any.toMsgWithdrawDelegatorReward() = this.unpack(cosmos.distribution.v1beta1.Tx.MsgWithdrawDelegatorReward::class.java)
@@ -167,6 +168,11 @@ fun Any.toMsgConnectionOpenConfirm() = this.unpack(MsgConnectionOpenConfirm::cla
 fun Any.toTendermintClientState() = this.unpack(Tendermint.ClientState::class.java)
 fun Any.toLocalhostClientState() = this.unpack(Localhost.ClientState::class.java)
 fun Any.toSoloMachineClientState() = this.unpack(Solomachine.ClientState::class.java)
+fun Any.toMsgGrant() = this.unpack(cosmos.authz.v1beta1.Tx.MsgGrant::class.java)
+fun Any.toMsgExec() = this.unpack(cosmos.authz.v1beta1.Tx.MsgExec::class.java)
+fun Any.toMsgRevoke() = this.unpack(cosmos.authz.v1beta1.Tx.MsgRevoke::class.java)
+fun Any.toMsgGrantAllowance() = this.unpack(cosmos.feegrant.v1beta1.Tx.MsgGrantAllowance::class.java)
+fun Any.toMsgRevokeAllowance() = this.unpack(cosmos.feegrant.v1beta1.Tx.MsgRevokeAllowance::class.java)
 
 // ///////// ADDRESSES
 fun Any.getAssociatedAddresses(): List<String> =
@@ -184,6 +190,7 @@ fun Any.getAssociatedAddresses(): List<String> =
         typeUrl.endsWith("MsgSubmitEvidence") -> this.toMsgSubmitEvidence().let { listOf(it.submitter) }
         typeUrl.endsWith("MsgSubmitProposal") -> this.toMsgSubmitProposal().let { listOf(it.proposer) }
         typeUrl.endsWith("MsgVote") -> this.toMsgVote().let { listOf(it.voter) }
+        typeUrl.endsWith("MsgVoteWeighted") -> this.toMsgVoteWeighted().let { listOf(it.voter) }
         typeUrl.endsWith("MsgDeposit") -> this.toMsgDeposit().let { listOf(it.depositor) }
         typeUrl.endsWith("MsgUnjail") -> this.toMsgUnjail().let { listOf(it.validatorAddr) }
         typeUrl.endsWith("MsgCreateValidator") -> this.toMsgCreateValidator()
@@ -277,6 +284,11 @@ fun Any.getAssociatedAddresses(): List<String> =
         typeUrl.endsWith("MsgConnectionOpenTry") -> this.toMsgConnectionOpenTry().let { listOf(it.signer) }
         typeUrl.endsWith("MsgConnectionOpenAck") -> this.toMsgConnectionOpenAck().let { listOf(it.signer) }
         typeUrl.endsWith("MsgConnectionOpenConfirm") -> this.toMsgConnectionOpenConfirm().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgGrant") -> this.toMsgGrant().let { listOf(it.granter, it.grantee) }
+        typeUrl.endsWith("MsgExec") -> this.toMsgExec().let { listOf(it.grantee) }
+        typeUrl.endsWith("MsgRevoke") -> this.toMsgRevoke().let { listOf(it.granter, it.grantee) }
+        typeUrl.endsWith("MsgGrantAllowance") -> this.toMsgGrantAllowance().let { listOf(it.granter, it.grantee) }
+        typeUrl.endsWith("MsgRevokeAllowance") -> this.toMsgRevokeAllowance().let { listOf(it.granter, it.grantee) }
 
         else -> listOf<String>().also { logger().debug("This typeUrl is not yet supported as an address-based msg: $typeUrl") }
     }
