@@ -55,6 +55,12 @@ open class DownloadProtosTask : DefaultTask() {
     var ibcVersion: String? = null
 
     /**
+     * Hard coded to v0.17.0 for backwards compatibility. Needed to serialize/deserialize older wasmd protos.
+     */
+    @Input
+    val cosmwasmVersion: String = "v0.17.0"
+
+    /**
      * Connects directly to provenance-io GitHub release directory
      * and downloads the `provenanceVersion` proto zip file.
      *
@@ -100,6 +106,14 @@ open class DownloadProtosTask : DefaultTask() {
             destinationDir = thirdPartyPath(),
             includePattern = Regex(".*/proto/.*\\.proto\$"),
             excludePattern = Regex(".*testutil/.*"),
+            protoRootDir = "proto"
+        )
+
+        untar(
+            file = unGzip(toTempFile("https://github.com/CosmWasm/wasmd/tarball/${this.cosmwasmVersion}")),
+            destinationDir = thirdPartyPath(),
+            includePattern = Regex(".*/proto/.*\\.proto\$"),
+            excludePattern = Regex(".*third_party/.*|.*proto/ibc/.*"),
             protoRootDir = "proto"
         )
     }
