@@ -47,6 +47,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * With upgraded versions, added in support for new Msg types and pubkey `secp256r1`
 * Now pulling `wasmd` protos from `provenance-io/wasmd` instead of `CosmWasm/wasmd` [#238](https://github.com/provenance-io/explorer-service/issues/238)
   * Current version at v0.19.0
+  * Pinned CosmWasm/wasmd protos to `v0.17.0` for backwards compatibility
 
 ### Improvements
 * Translated Smart Contract msg bytes to human-readable json

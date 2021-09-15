@@ -138,6 +138,12 @@ fun Any.toMsgExecuteContract() = this.unpack(cosmwasm.wasm.v1.Tx.MsgExecuteContr
 fun Any.toMsgMigrateContract() = this.unpack(cosmwasm.wasm.v1.Tx.MsgMigrateContract::class.java)
 fun Any.toMsgUpdateAdmin() = this.unpack(cosmwasm.wasm.v1.Tx.MsgUpdateAdmin::class.java)
 fun Any.toMsgClearAdmin() = this.unpack(cosmwasm.wasm.v1.Tx.MsgClearAdmin::class.java)
+fun Any.toMsgStoreCodeOld() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgStoreCode::class.java)
+fun Any.toMsgInstantiateContractOld() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgInstantiateContract::class.java)
+fun Any.toMsgExecuteContractOld() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgExecuteContract::class.java)
+fun Any.toMsgMigrateContractOld() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgMigrateContract::class.java)
+fun Any.toMsgUpdateAdminOld() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgUpdateAdmin::class.java)
+fun Any.toMsgClearAdminOld() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgClearAdmin::class.java)
 fun Any.toMsgAddScopeDataAccessRequest() = this.unpack(MsgAddScopeDataAccessRequest::class.java)
 fun Any.toMsgDeleteScopeDataAccessRequest() = this.unpack(MsgDeleteScopeDataAccessRequest::class.java)
 fun Any.toMsgAddScopeOwnerRequest() = this.unpack(MsgAddScopeOwnerRequest::class.java)
@@ -245,12 +251,19 @@ fun Any.getAssociatedAddresses(): List<String> =
         typeUrl.endsWith("MsgBindOSLocatorRequest") -> this.toMsgBindOSLocatorRequest().let { listOf(it.locator.owner) }
         typeUrl.endsWith("MsgDeleteOSLocatorRequest") -> this.toMsgDeleteOSLocatorRequest().let { listOf(it.locator.owner) }
         typeUrl.endsWith("MsgModifyOSLocatorRequest") -> this.toMsgModifyOSLocatorRequest().let { listOf(it.locator.owner) }
-        typeUrl.endsWith("MsgStoreCode") -> this.toMsgStoreCode().let { listOf(it.sender) }
-        typeUrl.endsWith("MsgInstantiateContract") -> this.toMsgInstantiateContract().let { listOf(it.sender, it.admin) }
-        typeUrl.endsWith("MsgExecuteContract") -> this.toMsgExecuteContract().let { listOf(it.sender) }
-        typeUrl.endsWith("MsgMigrateContract") -> this.toMsgMigrateContract().let { listOf(it.sender) }
-        typeUrl.endsWith("MsgUpdateAdmin") -> this.toMsgUpdateAdmin().let { listOf(it.sender, it.newAdmin) }
-        typeUrl.endsWith("MsgClearAdmin") -> this.toMsgClearAdmin().let { listOf(it.sender) }
+        typeUrl.endsWith("v1.Tx.MsgStoreCode") -> this.toMsgStoreCode().let { listOf(it.sender) }
+        typeUrl.endsWith("v1.Tx.MsgInstantiateContract") -> this.toMsgInstantiateContract().let { listOf(it.sender, it.admin) }
+        typeUrl.endsWith("v1.Tx.MsgExecuteContract") -> this.toMsgExecuteContract().let { listOf(it.sender) }
+        typeUrl.endsWith("v1.Tx.MsgMigrateContract") -> this.toMsgMigrateContract().let { listOf(it.sender) }
+        typeUrl.endsWith("v1.Tx.MsgUpdateAdmin") -> this.toMsgUpdateAdmin().let { listOf(it.sender, it.newAdmin) }
+        typeUrl.endsWith("v1.Tx.MsgClearAdmin") -> this.toMsgClearAdmin().let { listOf(it.sender) }
+        typeUrl.endsWith("v1beta1.Tx.MsgStoreCode") -> this.toMsgStoreCodeOld().let { listOf(it.sender) }
+        typeUrl.endsWith("v1beta1.Tx.MsgInstantiateContract") -> this.toMsgInstantiateContractOld()
+            .let { listOf(it.sender, it.admin) }
+        typeUrl.endsWith("v1beta1.Tx.MsgExecuteContract") -> this.toMsgExecuteContractOld().let { listOf(it.sender) }
+        typeUrl.endsWith("v1beta1.Tx.MsgMigrateContract") -> this.toMsgMigrateContractOld().let { listOf(it.sender) }
+        typeUrl.endsWith("v1beta1.Tx.MsgUpdateAdmin") -> this.toMsgUpdateAdminOld().let { listOf(it.sender, it.newAdmin) }
+        typeUrl.endsWith("v1beta1.Tx.MsgClearAdmin") -> this.toMsgClearAdminOld().let { listOf(it.sender) }
         typeUrl.endsWith("MsgAddScopeDataAccessRequest") -> this.toMsgAddScopeDataAccessRequest()
             .let { it.signersList + it.dataAccessList }
         typeUrl.endsWith("MsgDeleteScopeDataAccessRequest") -> this.toMsgDeleteScopeDataAccessRequest()
