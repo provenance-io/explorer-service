@@ -5,8 +5,10 @@ import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.BlockTxCountsCacheRecord
+import io.provenance.explorer.domain.entities.BlockTxRetryRecord
 import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
+import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorGasFeeCacheRecord
@@ -119,7 +121,7 @@ class AsyncService(
         }
     }
 
-    @Scheduled(cron = "0 0 0 * * ?") // Everyday at 12 am
+    @Scheduled(cron = "0 30 0/1 * * ?") // Every hour at the 30 minute mark
     fun updateProposalStatus() = transaction {
         GovProposalRecord.getNonFinalProposals().forEach { govService.updateProposal(it) }
     }
@@ -145,5 +147,15 @@ class AsyncService(
     @Scheduled(cron = "0/5 * * * * ?") // Every 5 seconds
     fun updateSpotlight() = transaction {
         explorerService.createSpotlight()
+    }
+
+    @Scheduled(cron = "0 0/5 * * * ?") // Every 1 minute
+    fun retryBlockTxs() {
+        BlockTxRetryRecord.getRecordsToRetry().map { height ->
+            val block = asyncCache.getBlock(height, true)!!
+            val success = transaction { TxCacheRecord.findByHeight(height).toList() }.size == block.block.data.txsCount
+            BlockTxRetryRecord.updateRecord(height, success)
+            height
+        }.let { if (it.isNotEmpty()) BlockTxRetryRecord.deleteRecords(it) }
     }
 }

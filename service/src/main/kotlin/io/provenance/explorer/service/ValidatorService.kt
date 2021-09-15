@@ -354,12 +354,15 @@ class ValidatorService(
     fun getProposerConsensusAddr(blockMeta: Query.GetBlockByHeightResponse) =
         blockMeta.block.header.proposerAddress.translateByteArray(props).consensusAccountAddr
 
-    fun saveProposerRecord(blockMeta: Query.GetBlockByHeightResponse, timestamp: DateTime, blockHeight: Int) =
-        transaction {
-            val consAddr = getProposerConsensusAddr(blockMeta)
-            val proposer = findAddressByConsensus(consAddr)!!.operatorAddress
+    fun saveProposerRecord(blockMeta: Query.GetBlockByHeightResponse, timestamp: DateTime, blockHeight: Int) {
+        val consAddr = getProposerConsensusAddr(blockMeta)
+        val proposer = findAddressByConsensus(consAddr)!!.operatorAddress
+        try {
             BlockProposerRecord.save(blockHeight, null, timestamp, proposer)
+        } catch (e: Exception) {
+            // do nothing
         }
+    }
 
     fun saveMissedBlocks(blockMeta: Query.GetBlockByHeightResponse) = transaction {
         val lastBlock = blockMeta.block.lastCommit

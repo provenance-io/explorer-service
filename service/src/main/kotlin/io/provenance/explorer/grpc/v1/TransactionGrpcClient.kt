@@ -41,7 +41,7 @@ class TransactionGrpcClient(channelUri: URI) {
 
     fun getTxsByHeight(height: Int, total: Int): MutableList<Abci.TxResponse> {
         var offset = 0
-        val limit = 100
+        val limit = 10
 
         val results = txClient.getTxsEvent(
             ServiceOuterClass.GetTxsEventRequest.newBuilder()

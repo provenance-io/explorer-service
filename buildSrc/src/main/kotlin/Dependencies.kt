@@ -33,7 +33,7 @@ object PluginVersions { // please keep this sorted in sections
     const val GoryLenkoGitProps = "1.5.2"
 
     const val SpringDependency = "1.0.11.RELEASE"
-    const val SpringBoot = "2.5.4"
+    const val SpringBoot = "2.4.3"
     const val Protobuf = "0.8.17"
 }
 
@@ -47,7 +47,7 @@ object Versions {
     const val BouncyCastle = "1.69"
     const val Exposed = "0.34.1"
     const val Flyway = PluginVersions.Flyway
-    const val Jackson = "2.12.5"
+    const val Jackson = "2.11.2"
     const val JacksonProtobuf = "0.9.12"
     const val Khttp = "1.0.0"
     const val Logback = "0.1.5"

@@ -52,8 +52,8 @@ class MigrationService(
             }
         }.let { true }
 
-    fun updateProposers(): Boolean {
-        BlockProposerRecord.findMissingRecords().forEach { block ->
+    fun updateProposers(min: Int, max: Int, limit: Int): Boolean {
+        BlockProposerRecord.findMissingRecords(min, max, limit).forEach { block ->
             validatorService.saveProposerRecord(block.block, block.blockTimestamp, block.height)
         }
         return true

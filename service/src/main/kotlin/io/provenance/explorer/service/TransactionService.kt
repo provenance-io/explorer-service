@@ -244,4 +244,4 @@ class TransactionService(
 }
 
 fun List<TxMessageTypeRecord>.mapToRes() =
-    this.map { TxType(it.category ?: it.module, it.type) }.sortedWith(compareBy(TxType::module, TxType::type))
+    this.map { TxType(it.category ?: it.module, it.type) }.toSet().sortedWith(compareBy(TxType::module, TxType::type))

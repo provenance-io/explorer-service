@@ -33,6 +33,20 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+* Added a block tx retry table to store heights that failed to fetch txs #232
+  * Added async to then retry those blocks
+* Decreased time to update proposal status
+  * from every day at 12 am to every hour at the 30 minute mark
+
+### Bug Fixes
+* Added additional MsgConverter lines to handle older tx msg types
+* Downgraded Spring Boot Version: 2.5.4 -> 2.4.3
+* Downgraded jackson-databind dependency: 2.12.2 -> 2.11.2
+
+### Data
+* Added `block_tx_retry` table #232
+
 ## [v2.4.0](https://github.com/provenance-io/explorer-service/releases/tag/v2.4.0) - 2021-09-15
 ### Release Name: Bjarni Herjulfsson
 

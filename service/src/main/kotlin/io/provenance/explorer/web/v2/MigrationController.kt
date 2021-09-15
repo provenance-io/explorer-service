@@ -36,7 +36,8 @@ class MigrationController(private val migrationService: MigrationService) {
 
     @ApiOperation("Updates existing blocks with proposer records")
     @GetMapping("/update/block/proposers")
-    fun updateBlockProposers(): ResponseEntity<Boolean> = ResponseEntity.ok(migrationService.updateProposers())
+    fun updateBlockProposers(@RequestParam min: Int, @RequestParam max: Int, @RequestParam limit: Int) =
+        ResponseEntity.ok(migrationService.updateProposers(min, max, limit))
 
     @ApiOperation("Updates accounts with data")
     @PutMapping("/update/accounts")
