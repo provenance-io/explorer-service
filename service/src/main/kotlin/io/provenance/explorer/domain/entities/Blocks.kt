@@ -6,9 +6,7 @@ import io.provenance.explorer.domain.core.sql.DateTrunc
 import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.ExtractDOW
 import io.provenance.explorer.domain.core.sql.ExtractDay
-import io.provenance.explorer.domain.core.sql.ExtractEpoch
 import io.provenance.explorer.domain.core.sql.ExtractHour
-import io.provenance.explorer.domain.core.sql.LagDesc
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.startOfDay
@@ -34,6 +32,7 @@ import org.jetbrains.exposed.sql.Sum
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.count
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.jodatime.DateColumnType
 import org.jetbrains.exposed.sql.jodatime.datetime
@@ -46,7 +45,6 @@ import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
-import java.math.BigDecimal
 
 object BlockCacheTable : CacheIdTable<Int>(name = "block_cache") {
     val height = integer("height")
@@ -86,19 +84,6 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
             BlockCacheTable.slice(dateTrunc)
                 .select { BlockCacheTable.height.between(minHeight, maxHeight) }
                 .first()[dateTrunc].toInt()
-        }
-
-        fun getBlockCreationInterval(limit: Int): List<Pair<Int, BigDecimal?>> = transaction {
-            val lag = LagDesc(BlockCacheTable.blockTimestamp, BlockCacheTable.height)
-            val lagExtract = ExtractEpoch(lag)
-            val baseExtract = ExtractEpoch(BlockCacheTable.blockTimestamp)
-            val creationTime = lagExtract.minus(baseExtract)
-
-            BlockCacheTable.slice(BlockCacheTable.height, creationTime)
-                .selectAll()
-                .orderBy(BlockCacheTable.height, SortOrder.DESC)
-                .limit(limit)
-                .map { Pair(it[BlockCacheTable.height], it[creationTime]) }
         }
 
         fun getBlocksWithTxs(count: Int, offset: Int) = transaction {
@@ -164,13 +149,9 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun save(height: Int, minGasFee: Double?, timestamp: DateTime?, proposer: String?) = transaction {
             (
-                BlockProposerRecord.findById(height) ?: try {
-                    new(height) {
-                        this.proposerOperatorAddress = proposer!!
-                        this.blockTimestamp = timestamp!!
-                    }
-                } catch (e: Exception) {
-                    BlockProposerRecord.findById(height)!!
+                BlockProposerRecord.findById(height) ?: new(height) {
+                    this.proposerOperatorAddress = proposer!!
+                    this.blockTimestamp = timestamp!!
                 }
                 ).apply { this.minGasFee = minGasFee }
         }
@@ -189,11 +170,13 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
                 .average()
         }
 
-        fun findMissingRecords() = transaction {
+        fun findMissingRecords(min: Int, max: Int, limit: Int) = transaction {
             BlockCacheTable
                 .leftJoin(BlockProposerTable, { BlockCacheTable.height }, { BlockProposerTable.blockHeight })
                 .slice(BlockCacheTable.columns)
-                .select { BlockProposerTable.blockHeight.isNull() }
+                .select { (BlockProposerTable.blockHeight.isNull()) and (BlockCacheTable.height.between(min, max)) }
+                .orderBy(BlockCacheTable.height, SortOrder.ASC)
+                .limit(limit)
                 .let { BlockCacheRecord.wrapRows(it).toSet() }
         }
 
@@ -447,8 +430,56 @@ class BlockTxCountsCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         }
     }
 
-    val blockHeight by BlockTxCountsCacheTable.blockHeight
+    var blockHeight by BlockTxCountsCacheTable.blockHeight
     var blockTimestamp by BlockTxCountsCacheTable.blockTimestamp
     var txCount by BlockTxCountsCacheTable.txCount
-    val processed by BlockTxCountsCacheTable.processed
+    var processed by BlockTxCountsCacheTable.processed
+}
+
+object BlockTxRetryTable : IdTable<Int>(name = "block_tx_retry") {
+    val height = integer("height")
+    val retried = bool("retried").default(false)
+    val success = bool("success").default(false)
+    val errorBlock = text("error_block").nullable().default(null)
+    override val id = height.entityId()
+}
+
+class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<BlockTxRetryRecord>(BlockTxRetryTable) {
+
+        fun insert(height: Int, e: Exception) = transaction {
+            BlockTxRetryTable.insertIgnore {
+                it[this.height] = height
+                it[this.errorBlock] = e.stackTraceToString()
+            }
+        }
+
+        fun getRecordsToRetry() = transaction {
+            BlockTxRetryRecord
+                .find { (BlockTxRetryTable.retried eq false) and (BlockTxRetryTable.success eq false) }
+                .limit(50)
+                .map { it.height }
+        }
+
+        fun updateRecord(height: Int, success: Boolean) = transaction {
+            BlockTxRetryRecord.find { BlockTxRetryTable.height eq height }.first().apply {
+                this.retried = true
+                this.success = success
+            }
+        }
+
+        fun deleteRecords(heights: List<Int>) = transaction {
+            BlockTxRetryTable
+                .deleteWhere {
+                    (BlockTxRetryTable.retried eq true) and
+                        (BlockTxRetryTable.success eq true) and
+                        (BlockTxRetryTable.height inList heights)
+                }
+        }
+    }
+
+    var height by BlockTxRetryTable.height
+    var retried by BlockTxRetryTable.retried
+    var success by BlockTxRetryTable.success
+    var errorBlock by BlockTxRetryTable.errorBlock
 }

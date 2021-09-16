@@ -332,8 +332,17 @@ fun Any.getAssociatedDenoms(): List<String> =
             .let { it.account.getDenomByAddress()?.let { denom -> listOf(denom) } ?: listOf() }
         typeUrl.endsWith("MsgDeleteAttributeRequest") -> this.toMsgDeleteAttributeRequest()
             .let { it.account.getDenomByAddress()?.let { denom -> listOf(denom) } ?: listOf() }
-        typeUrl.endsWith("MsgInstantiateContract") -> this.toMsgInstantiateContract().let { it.fundsList.map { c -> c.denom } }
-        typeUrl.endsWith("MsgExecuteContract") -> this.toMsgExecuteContract().let { it.fundsList.map { c -> c.denom } }
+        typeUrl.endsWith("v1.Tx.MsgInstantiateContract") -> this.toMsgInstantiateContract().let {
+            it.fundsList.map { c
+                ->
+                c.denom
+            }
+        }
+        typeUrl.endsWith("v1.Tx.MsgExecuteContract") -> this.toMsgExecuteContract().let { it.fundsList.map { c -> c.denom } }
+        typeUrl.endsWith("v1beta1.Tx.MsgInstantiateContract") -> this.toMsgInstantiateContractOld()
+            .let { it.fundsList.map { c -> c.denom } }
+        typeUrl.endsWith("v1beta1.Tx.MsgExecuteContract") -> this.toMsgExecuteContractOld()
+            .let { it.fundsList.map { c -> c.denom } }
         typeUrl.endsWith("MsgTransfer") -> this.toMsgTransfer().let { listOf(it.token.denom) }
 
         else -> listOf<String>()

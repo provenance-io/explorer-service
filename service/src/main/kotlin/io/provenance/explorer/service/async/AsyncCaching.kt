@@ -12,6 +12,7 @@ import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
+import io.provenance.explorer.domain.entities.BlockTxRetryRecord
 import io.provenance.explorer.domain.entities.IbcChannelRecord
 import io.provenance.explorer.domain.entities.SigJoinType
 import io.provenance.explorer.domain.entities.SignatureJoinRecord
@@ -90,7 +91,7 @@ class AsyncCaching(
             BlockCacheRecord.updateHitCount(blockHeight)
         }?.block?.also {
             if (checkTxs && it.block.data.txsCount > 0)
-                addTxsToCache(it.block.height(), it.block.data.txsCount, it.block.header.time)
+                saveTxs(it)
         } ?: saveBlockEtc(blockService.getBlockAtHeightFromChain(blockHeight))
     }
 
@@ -154,6 +155,7 @@ class AsyncCaching(
             .map { addTxToCacheWithTimestamp(txClient.getTxByHash(it.txhash), blockTime) }
     } catch (e: Exception) {
         logger.error("Failed to retrieve transactions at block: $blockHeight", e)
+        BlockTxRetryRecord.insert(blockHeight, e)
         listOf()
     }
 
