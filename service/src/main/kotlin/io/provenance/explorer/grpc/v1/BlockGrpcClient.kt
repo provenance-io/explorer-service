@@ -1,15 +1,22 @@
 package io.provenance.explorer.grpc.v1
 
+import com.google.protobuf.util.JsonFormat
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.base.tendermint.v1beta1.ServiceGrpc
 import io.grpc.ManagedChannelBuilder
+import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.GrpcLoggingInterceptor
+import io.provenance.explorer.domain.exceptions.FigmentApiException
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
 
 @Component
-class BlockGrpcClient(channelUri: URI) {
+class BlockGrpcClient(
+    channelUri: URI,
+    private val protoParser: JsonFormat.Parser,
+    private val explorerProps: ExplorerProperties
+) {
 
     private val tmClient: ServiceGrpc.ServiceBlockingStub
 
@@ -40,4 +47,17 @@ class BlockGrpcClient(channelUri: URI) {
         }
 
     fun getLatestBlock() = tmClient.getLatestBlock(Query.GetLatestBlockRequest.getDefaultInstance())
+
+    fun getBlockAtHeightFromFigment(height: Int): Query.GetBlockByHeightResponse {
+        val res = khttp.get(
+            url = "${explorerProps.figmentUrl}/apikey/${explorerProps.figmentApikey}/cosmos/base/tendermint/v1beta1/blocks/$height",
+            headers = mapOf("Content-Type" to "application/json")
+        )
+
+        if (res.statusCode == 200) {
+            val builder = Query.GetBlockByHeightResponse.newBuilder()
+            protoParser.ignoringUnknownFields().merge(res.jsonObject.toString(), builder)
+            return builder.build()
+        } else throw FigmentApiException("Error reaching figment: ${res.jsonObject}")
+    }
 }
