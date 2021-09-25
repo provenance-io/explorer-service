@@ -18,10 +18,12 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.innerJoin
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.joda.time.DateTime
 
 object GovProposalTable : IntIdTable(name = "gov_proposal") {
     val proposalId = long("proposal_id")
@@ -304,3 +306,66 @@ class GovDepositRecord(id: EntityID<Int>) : IntEntity(id) {
     var txHash by GovDepositTable.txHash
     var txTimestamp by GovDepositTable.txTimestamp
 }
+
+object ProposalMonitorTable : IntIdTable(name = "proposal_monitor") {
+    val proposalId = long("proposal_id")
+    val submittedHeight = integer("submitted_height")
+    val proposedCompletionHeight = integer("proposed_completion_height")
+    val votingEndTime = datetime("voting_end_time")
+    val proposalType = varchar("proposal_type", 256)
+    val dataHash = varchar("matching_data_hash", 256)
+    val readyForProcessing = bool("ready_for_processing").default(false)
+    val processed = bool("processed").default(false)
+}
+
+class ProposalMonitorRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<ProposalMonitorRecord>(ProposalMonitorTable) {
+
+        fun insert(
+            proposalId: Long,
+            submittedHeight: Int,
+            proposedCompletionHeight: Int,
+            votingEndTime: DateTime,
+            proposalType: ProposalType,
+            dataHash: String
+        ) = transaction {
+            ProposalMonitorTable.insert {
+                it[this.proposalId] = proposalId
+                it[this.submittedHeight] = submittedHeight
+                it[this.proposedCompletionHeight] = proposedCompletionHeight
+                it[this.votingEndTime] = votingEndTime
+                it[this.proposalType] = proposalType.toString()
+                it[this.dataHash] = dataHash
+            }
+        }
+
+        fun ProposalMonitorRecord.checkIfProposalReadyForProcessing(proposalStatus: String, currentBlockTime: DateTime) =
+            if (proposalStatus == Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name &&
+                this.votingEndTime.isBefore(currentBlockTime)
+            )
+                this.apply { this.readyForProcessing = true }
+            else null
+
+        fun getUnprocessed() = transaction {
+            ProposalMonitorRecord
+                .find { (ProposalMonitorTable.readyForProcessing eq false) and (ProposalMonitorTable.processed eq false) }
+                .toList()
+        }
+
+        fun getReadyForProcessing() = transaction {
+            ProposalMonitorRecord
+                .find { (ProposalMonitorTable.readyForProcessing eq true) and (ProposalMonitorTable.processed eq false) }
+                .toList()
+        }
+    }
+    var proposalId by ProposalMonitorTable.proposalId
+    var submittedHeight by ProposalMonitorTable.submittedHeight
+    var proposedCompletionHeight by ProposalMonitorTable.proposedCompletionHeight
+    var votingEndTime by ProposalMonitorTable.votingEndTime
+    var proposalType by ProposalMonitorTable.proposalType
+    var dataHash by ProposalMonitorTable.dataHash
+    var readyForProcessing by ProposalMonitorTable.readyForProcessing
+    var processed by ProposalMonitorTable.processed
+}
+
+enum class ProposalType { STORE_CODE }

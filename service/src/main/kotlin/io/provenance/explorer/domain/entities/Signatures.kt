@@ -46,25 +46,13 @@ class SignatureRecord(id: EntityID<Int>) : IntEntity(id) {
             when {
                 pubkey.typeUrl.contains("secp256k1") ->
                     pubkey.unpack(cosmos.crypto.secp256k1.Keys.PubKey::class.java)
-                        .let { key ->
-                            listOf(
-                                insertAndGetId(key.key.toBase64(), pubkey.typeUrl, pubkey, multiSig)
-                            )
-                        }
+                        .let { key -> listOf(insertAndGetId(key.key.toBase64(), pubkey.typeUrl, pubkey, multiSig)) }
                 pubkey.typeUrl.contains("secp256r1") ->
                     pubkey.unpack(cosmos.crypto.secp256r1.Keys.PubKey::class.java)
-                        .let { key ->
-                            listOf(
-                                insertAndGetId(key.key.toBase64(), pubkey.typeUrl, pubkey, multiSig)
-                            )
-                        }
+                        .let { key -> listOf(insertAndGetId(key.key.toBase64(), pubkey.typeUrl, pubkey, multiSig)) }
                 pubkey.typeUrl.contains("ed25519") ->
                     pubkey.unpack(cosmos.crypto.ed25519.Keys.PubKey::class.java)
-                        .let { key ->
-                            listOf(
-                                insertAndGetId(key.key.toBase64(), pubkey.typeUrl, pubkey, multiSig)
-                            )
-                        }
+                        .let { key -> listOf(insertAndGetId(key.key.toBase64(), pubkey.typeUrl, pubkey, multiSig)) }
                 pubkey.typeUrl.contains("LegacyAminoPubKey") ->
                     pubkey.unpack(Keys.LegacyAminoPubKey::class.java).let { multi ->
                         multi.publicKeysList

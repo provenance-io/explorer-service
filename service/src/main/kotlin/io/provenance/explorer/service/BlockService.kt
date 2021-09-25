@@ -40,3 +40,5 @@ class BlockService(private val blockClient: BlockGrpcClient) {
 
     fun updateBlockMinHeightIndex(minHeightRead: Int) = BlockIndexRecord.save(null, minHeightRead)
 }
+
+fun Int.getBlock() = BlockCacheRecord.findById(this)!!

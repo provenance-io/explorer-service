@@ -8,6 +8,8 @@ import io.provenance.explorer.domain.entities.BlockTxCountsCacheRecord
 import io.provenance.explorer.domain.entities.BlockTxRetryRecord
 import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
+import io.provenance.explorer.domain.entities.ProposalMonitorRecord
+import io.provenance.explorer.domain.entities.ProposalMonitorRecord.Companion.checkIfProposalReadyForProcessing
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
@@ -20,6 +22,7 @@ import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.service.GovService
+import io.provenance.explorer.service.getBlock
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.LocalDate
@@ -122,8 +125,14 @@ class AsyncService(
     }
 
     @Scheduled(cron = "0 30 0/1 * * ?") // Every hour at the 30 minute mark
-    fun updateProposalStatus() = transaction {
+    fun performProposalUpdates() = transaction {
         GovProposalRecord.getNonFinalProposals().forEach { govService.updateProposal(it) }
+        val currentBlock = blockService.getMaxBlockCacheHeight().getBlock()
+        ProposalMonitorRecord.getUnprocessed().forEach {
+            val proposal = GovProposalRecord.findByProposalId(it.proposalId)!!
+            it.checkIfProposalReadyForProcessing(proposal.status, currentBlock.blockTimestamp)
+        }
+        ProposalMonitorRecord.getReadyForProcessing().forEach { govService.processProposal(it) }
     }
 
     @Scheduled(cron = "0 0 0/1 * * ?") // At the start of every hour
@@ -149,7 +158,7 @@ class AsyncService(
         explorerService.createSpotlight()
     }
 
-    @Scheduled(cron = "0 0/5 * * * ?") // Every 1 minute
+    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minute
     fun retryBlockTxs() {
         BlockTxRetryRecord.getRecordsToRetry().map { height ->
             val block = asyncCache.getBlock(height, true)!!

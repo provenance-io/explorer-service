@@ -36,7 +36,7 @@ import io.provenance.explorer.domain.core.toMAddressContractSpec
 import io.provenance.explorer.domain.core.toMAddressScope
 import io.provenance.explorer.domain.core.toMAddressScopeSpec
 import io.provenance.explorer.domain.core.toMAddressSession
-import io.provenance.explorer.domain.core.toUuid
+import io.provenance.explorer.domain.core.toUuidOrNull
 import io.provenance.explorer.grpc.extensions.MdEvents.CSPC
 import io.provenance.explorer.grpc.extensions.MdEvents.CSPU
 import io.provenance.explorer.service.getDenomByAddress
@@ -251,12 +251,12 @@ fun Any.getAssociatedAddresses(): List<String> =
         typeUrl.endsWith("MsgBindOSLocatorRequest") -> this.toMsgBindOSLocatorRequest().let { listOf(it.locator.owner) }
         typeUrl.endsWith("MsgDeleteOSLocatorRequest") -> this.toMsgDeleteOSLocatorRequest().let { listOf(it.locator.owner) }
         typeUrl.endsWith("MsgModifyOSLocatorRequest") -> this.toMsgModifyOSLocatorRequest().let { listOf(it.locator.owner) }
-        typeUrl.endsWith("v1.Tx.MsgStoreCode") -> this.toMsgStoreCode().let { listOf(it.sender) }
-        typeUrl.endsWith("v1.Tx.MsgInstantiateContract") -> this.toMsgInstantiateContract().let { listOf(it.sender, it.admin) }
-        typeUrl.endsWith("v1.Tx.MsgExecuteContract") -> this.toMsgExecuteContract().let { listOf(it.sender) }
-        typeUrl.endsWith("v1.Tx.MsgMigrateContract") -> this.toMsgMigrateContract().let { listOf(it.sender) }
-        typeUrl.endsWith("v1.Tx.MsgUpdateAdmin") -> this.toMsgUpdateAdmin().let { listOf(it.sender, it.newAdmin) }
-        typeUrl.endsWith("v1.Tx.MsgClearAdmin") -> this.toMsgClearAdmin().let { listOf(it.sender) }
+        typeUrl.endsWith("v1.MsgStoreCode") -> this.toMsgStoreCode().let { listOf(it.sender) }
+        typeUrl.endsWith("v1.MsgInstantiateContract") -> this.toMsgInstantiateContract().let { listOf(it.sender, it.admin) }
+        typeUrl.endsWith("v1.MsgExecuteContract") -> this.toMsgExecuteContract().let { listOf(it.sender) }
+        typeUrl.endsWith("v1.MsgMigrateContract") -> this.toMsgMigrateContract().let { listOf(it.sender) }
+        typeUrl.endsWith("v1.MsgUpdateAdmin") -> this.toMsgUpdateAdmin().let { listOf(it.sender, it.newAdmin) }
+        typeUrl.endsWith("v1.MsgClearAdmin") -> this.toMsgClearAdmin().let { listOf(it.sender) }
         typeUrl.endsWith("v1beta1.MsgStoreCode") -> this.toMsgStoreCodeOld().let { listOf(it.sender) }
         typeUrl.endsWith("v1beta1.MsgInstantiateContract") -> this.toMsgInstantiateContractOld()
             .let { listOf(it.sender, it.admin) }
@@ -332,8 +332,8 @@ fun Any.getAssociatedDenoms(): List<String> =
             .let { it.account.getDenomByAddress()?.let { denom -> listOf(denom) } ?: listOf() }
         typeUrl.endsWith("MsgDeleteAttributeRequest") -> this.toMsgDeleteAttributeRequest()
             .let { it.account.getDenomByAddress()?.let { denom -> listOf(denom) } ?: listOf() }
-        typeUrl.endsWith("v1.Tx.MsgInstantiateContract") -> this.toMsgInstantiateContract().let { it.fundsList.map { c -> c.denom } }
-        typeUrl.endsWith("v1.Tx.MsgExecuteContract") -> this.toMsgExecuteContract().let { it.fundsList.map { c -> c.denom } }
+        typeUrl.endsWith("v1.MsgInstantiateContract") -> this.toMsgInstantiateContract().let { it.fundsList.map { c -> c.denom } }
+        typeUrl.endsWith("v1.MsgExecuteContract") -> this.toMsgExecuteContract().let { it.fundsList.map { c -> c.denom } }
         typeUrl.endsWith("v1beta1.MsgInstantiateContract") -> this.toMsgInstantiateContractOld()
             .let { it.fundsList.map { c -> c.denom } }
         typeUrl.endsWith("v1beta1.MsgExecuteContract") -> this.toMsgExecuteContractOld()
@@ -346,22 +346,6 @@ fun Any.getAssociatedDenoms(): List<String> =
 
 // ///////// IBC
 fun Any.isIbcTransferMsg() = typeUrl.endsWith("MsgTransfer")
-
-enum class IbcEventType { DENOM, ADDRESS }
-
-enum class IbcDenomEvents(val eventType: IbcEventType, val event: String, val idField: String) {
-    RECV_PACKET_DENOM(IbcEventType.DENOM, "denomination_trace", "denom"),
-    RECV_PACKET_ADDR(IbcEventType.ADDRESS, "fungible_token_packet", "receiver"),
-    ACKNOWLEDGE_DENOM(IbcEventType.DENOM, "fungible_token_packet", "denom")
-}
-
-fun Any.getIbcDenomEvents() =
-    when {
-        typeUrl.endsWith("MsgRecvPacket") -> listOf(IbcDenomEvents.RECV_PACKET_DENOM, IbcDenomEvents.RECV_PACKET_ADDR)
-        typeUrl.endsWith("MsgAcknowledgement") -> listOf(IbcDenomEvents.ACKNOWLEDGE_DENOM)
-        else -> listOf<IbcDenomEvents>()
-            .also { logger().debug("This typeUrl is not yet supported in as an ibc denom event-based msg: $typeUrl") }
-    }
 
 // Returns Pair(Event type, Pair(port, channel))
 fun Any.getIbcChannelEvents() =
@@ -451,8 +435,12 @@ fun Any.getAssociatedMetadata() =
     }
 
 fun SessionIdComponents?.toMAddress() =
-    if (this != null && this.sessionUuid != null && (this.scopeUuid != null || this.scopeAddr != null)) {
-        val scope = this.scopeUuid.toUuid() ?: this.scopeAddr.toMAddress().getPrimaryUuid()
+    if (this != null &&
+        this != SessionIdComponents.getDefaultInstance() &&
+        this.sessionUuid != null &&
+        (this.scopeUuid != null || this.scopeAddr != null)
+    ) {
+        val scope = this.scopeUuid.toUuidOrNull() ?: this.scopeAddr.toMAddress().getPrimaryUuid()
         this.sessionUuid.toMAddressSession(scope)
     } else null
 
@@ -466,3 +454,85 @@ fun Any.getAssociatedGovMsgs() =
         typeUrl.endsWith("MsgDeposit") -> GovMsgType.DEPOSIT to this
         else -> null.also { logger().debug("This typeUrl is not a governance-based msg: $typeUrl") }
     }
+
+// ///////// SMART CONTRACTS
+fun Any.getAssociatedSmContractMsgs() =
+    when {
+        typeUrl.endsWith("v1.MsgStoreCode") -> null
+        typeUrl.endsWith("v1beta1.MsgStoreCode") -> null
+        typeUrl.endsWith("v1.MsgInstantiateContract") -> this.toMsgInstantiateContract()
+            .let { listOf(SmContractValue.CODE to it.codeId) }
+        typeUrl.endsWith("v1beta1.MsgInstantiateContract") -> this.toMsgInstantiateContractOld()
+            .let { listOf(SmContractValue.CODE to it.codeId) }
+        typeUrl.endsWith("v1.MsgExecuteContract") -> this.toMsgExecuteContract()
+            .let { listOf(SmContractValue.CONTRACT to it.contract) }
+        typeUrl.endsWith("v1beta1.MsgExecuteContract") -> this.toMsgExecuteContractOld()
+            .let { listOf(SmContractValue.CONTRACT to it.contract) }
+        typeUrl.endsWith("v1.MsgMigrateContract") -> this.toMsgMigrateContract()
+            .let { listOf(SmContractValue.CODE to it.codeId, SmContractValue.CONTRACT to it.contract) }
+        typeUrl.endsWith("v1beta1.MsgMigrateContract") -> this.toMsgMigrateContractOld()
+            .let { listOf(SmContractValue.CODE to it.codeId, SmContractValue.CONTRACT to it.contract) }
+        typeUrl.endsWith("v1.MsgUpdateAdmin") -> this.toMsgUpdateAdmin()
+            .let { listOf(SmContractValue.CONTRACT to it.contract) }
+        typeUrl.endsWith("v1beta1.MsgUpdateAdmin") -> this.toMsgUpdateAdminOld()
+            .let { listOf(SmContractValue.CONTRACT to it.contract) }
+        typeUrl.endsWith("v1.MsgClearAdmin") -> this.toMsgClearAdmin()
+            .let { listOf(SmContractValue.CONTRACT to it.contract) }
+        typeUrl.endsWith("v1beta1.MsgClearAdmin") -> this.toMsgClearAdminOld()
+            .let { listOf(SmContractValue.CONTRACT to it.contract) }
+        else -> null.also { logger().debug("This typeUrl is not a smart-contract-based msg: $typeUrl") }
+    }
+
+enum class SmContractValue { CODE, CONTRACT }
+
+enum class SmContractEventKeys(val eventType: String, val eventKey: Map<String, SmContractValue>) {
+    V1BETA1("message", mapOf("code_id" to SmContractValue.CODE, "contract_address" to SmContractValue.CONTRACT)),
+    STORE_CODE_V1("store_code", mapOf("code_id" to SmContractValue.CODE)),
+    INSTANTIATE_V1("instantiate", mapOf("_contract_address" to SmContractValue.CONTRACT, "code_id" to SmContractValue.CODE)),
+    EXECUTE_V1("execute", mapOf("_contract_address" to SmContractValue.CONTRACT))
+}
+
+fun getSmContractEventByEvent(event: String) = SmContractEventKeys.values().firstOrNull { it.eventType == event }
+
+// ///////// DENOM EVENTS
+enum class DenomEvents(val event: String, val idField: String, val parse: Boolean = false) {
+    TRANSFER("transfer", "amount", true),
+    MARKER_TRANSFER("provenance.marker.v1.EventMarkerTransfer", "denom"),
+    MARKER_ADD("provenance.marker.v1.EventMarkerAdd", "denom"),
+    MARKER_MINT("provenance.marker.v1.EventMarkerMint", "denom"),
+    MARKER_WITHDRAW("provenance.marker.v1.EventMarkerWithdraw", "denom"),
+    MARKER_ACTIVATE("provenance.marker.v1.EventMarkerActivate", "denom"),
+    MARKER_ADD_ACCESS("provenance.marker.v1.EventMarkerAddAccess", "denom"),
+    MARKER_FINALIZE("provenance.marker.v1.EventMarkerFinalize", "denom"),
+    MARKER_BURN("provenance.marker.v1.EventMarkerBurn", "denom"),
+    IBC_ACKNOWLEDGE("fungible_token_packet", "denom"),
+    IBC_RECV_PACKET("denomination_trace", "denom"),
+}
+
+fun getDenomEventByEvent(event: String) = DenomEvents.values().firstOrNull { it.event == event }
+
+fun String.denomEventRegexParse() =
+    if (this.isNotBlank()) Regex("^([0-9]+)(.*)\$").matchEntire(this)!!.groups[2]!!.value
+    else null
+
+// ///////// ADDRESS EVENTS
+enum class AddressEvents(val event: String, vararg val idField: String) {
+    TRANSFER("transfer", "sender", "recipient"),
+    MARKER_TRANSFER("provenance.marker.v1.EventMarkerTransfer", "administrator", "to_address", "from_address"),
+    MARKER_ADD("provenance.marker.v1.EventMarkerAdd", "manager"),
+    MARKER_MINT("provenance.marker.v1.EventMarkerMint", "administrator"),
+    MARKER_WITHDRAW("provenance.marker.v1.EventMarkerWithdraw", "administrator", "to_address"),
+    MARKER_ACTIVATE("provenance.marker.v1.EventMarkerActivate", "administrator"),
+    MARKER_ADD_ACCESS("provenance.marker.v1.EventMarkerAddAccess", "administrator"),
+    MARKER_FINALIZE("provenance.marker.v1.EventMarkerFinalize", "administrator"),
+    MARKER_BURN("provenance.marker.v1.EventMarkerBurn", "administrator"),
+    IBC_RECV_PACKET("fungible_token_packet", "receiver"),
+    NAME_BOUND("provenance.name.v1.EventNameBound", "address"),
+    NAME_BOUND_OLD("name_bound", "address"),
+    GRANT("cosmos.authz.v1beta1.EventGrant", "granter", "grantee"),
+    REVOKE("cosmos.authz.v1beta1.EventRevoke", "granter", "grantee"),
+}
+
+fun getAddressEventByEvent(event: String) = AddressEvents.values().firstOrNull { it.event == event }
+
+fun String.scrubQuotes() = this.removeSurrounding("\"")

@@ -47,6 +47,7 @@ dependencies {
     api(Libraries.KotlinXCoRoutinesCore)
     api(Libraries.ApacheCommonsText)
     api(Libraries.Khttp)
+    implementation(Libraries.KaseChange)
 
     implementation(Libraries.GrpcNetty)
     implementation(Libraries.GrpcStart)

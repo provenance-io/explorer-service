@@ -229,12 +229,12 @@ fun Any.getSigners() =
         typeUrl.endsWith("MsgBindOSLocatorRequest") -> this.toMsgBindOSLocatorRequest().let { listOf(it.locator.owner) }
         typeUrl.endsWith("MsgDeleteOSLocatorRequest") -> this.toMsgDeleteOSLocatorRequest().let { listOf(it.locator.owner) }
         typeUrl.endsWith("MsgModifyOSLocatorRequest") -> this.toMsgModifyOSLocatorRequest().let { listOf(it.locator.owner) }
-        typeUrl.endsWith("v1.Tx.MsgStoreCode") -> this.toMsgStoreCode().let { listOf(it.sender) }
-        typeUrl.endsWith("v1.Tx.MsgInstantiateContract") -> this.toMsgInstantiateContract().let { listOf(it.sender) }
-        typeUrl.endsWith("v1.Tx.MsgExecuteContract") -> this.toMsgExecuteContract().let { listOf(it.sender) }
-        typeUrl.endsWith("v1.Tx.MsgMigrateContract") -> this.toMsgMigrateContract().let { listOf(it.sender) }
-        typeUrl.endsWith("v1.Tx.MsgUpdateAdmin") -> this.toMsgUpdateAdmin().let { listOf(it.sender) }
-        typeUrl.endsWith("v1.Tx.MsgClearAdmin") -> this.toMsgClearAdmin().let { listOf(it.sender) }
+        typeUrl.endsWith("v1.MsgStoreCode") -> this.toMsgStoreCode().let { listOf(it.sender) }
+        typeUrl.endsWith("v1.MsgInstantiateContract") -> this.toMsgInstantiateContract().let { listOf(it.sender) }
+        typeUrl.endsWith("v1.MsgExecuteContract") -> this.toMsgExecuteContract().let { listOf(it.sender) }
+        typeUrl.endsWith("v1.MsgMigrateContract") -> this.toMsgMigrateContract().let { listOf(it.sender) }
+        typeUrl.endsWith("v1.MsgUpdateAdmin") -> this.toMsgUpdateAdmin().let { listOf(it.sender) }
+        typeUrl.endsWith("v1.MsgClearAdmin") -> this.toMsgClearAdmin().let { listOf(it.sender) }
         typeUrl.endsWith("v1beta1.MsgStoreCode") -> this.toMsgStoreCodeOld().let { listOf(it.sender) }
         typeUrl.endsWith("v1beta1.MsgInstantiateContract") -> this.toMsgInstantiateContractOld().let { listOf(it.sender) }
         typeUrl.endsWith("v1beta1.MsgExecuteContract") -> this.toMsgExecuteContractOld().let { listOf(it.sender) }

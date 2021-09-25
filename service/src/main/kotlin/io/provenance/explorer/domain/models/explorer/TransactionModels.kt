@@ -27,7 +27,9 @@ data class TxQueryParams(
     val toDate: DateTime?,
     val nftId: Int?,
     val nftType: String?,
-    val nftUuid: String?
+    val nftUuid: String?,
+    val smCodeId: Int?,
+    val smContractAddrId: Int?
 )
 
 fun TxQueryParams.onlyTxQuery() = addressId == null && markerId == null && msgTypes.isEmpty()
@@ -92,11 +94,23 @@ data class TxType(
 )
 
 enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
+    ACCOUNT(
+        "account",
+        listOf(
+            "add_attribute",
+            "delete_attribute",
+            "grant_allowance",
+            "revoke_allowance",
+            "grant",
+            "revoke",
+            "exec"
+        )
+    ),
     DELEGATION(
         "staking",
         listOf(
             "begin_redelegate",
-            "begin_unbonding",
+            "undelegate",
             "delegate",
             "fund_community_pool",
             "set_withdraw_address",
@@ -111,6 +125,10 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
         "governance",
         listOf("submit_proposal", "deposit", "vote")
     ),
+    SMART_CONTRACT(
+        "smart_contract",
+        listOf("store_code", "instantiate_contract", "execute_contract", "migrate_contract", "clear_admin")
+    ),
     TRANSFER(
         "transfer",
         listOf("send", "multisend", "transfer", "ibc_transfer")
@@ -118,9 +136,9 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
     ASSET(
         "asset",
         listOf(
-            "addmarker",
-            "addaccess",
-            "deleteaccess",
+            "add_marker",
+            "add_access",
+            "delete_access",
             "finalize",
             "activate",
             "cancel",
@@ -128,34 +146,34 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
             "mint",
             "burn",
             "withdraw",
-            "setmetadata",
-            "add_attribute",
-            "delete_attribute"
+            "set_denom_metadata",
         )
     ),
     NFT(
         "nft",
         listOf(
-            "p8e_memorialize_contract_request",
-            "write_p8e_contract_spec_request",
-            "write_scope_request",
-            "delete_scope_request",
-            "add_scope_data_access_request",
-            "delete_scope_data_access_request",
-            "add_scope_owner_request",
-            "delete_scope_owner_request",
-            "write_session_request",
-            "write_record_request",
-            "delete_record_request",
-            "write_scope_specification_request",
-            "delete_scope_specification_request",
-            "write_contract_specification_request",
-            "delete_contract_specification_request",
-            "write_record_specification_request",
-            "delete_record_specification_request",
-            "write_os_locator_request",
-            "delete_os_locator_request",
-            "modify_os_locator_request"
+            "p8e_memorialize_contract",
+            "write_p8e_contract_spec",
+            "write_scope",
+            "delete_scope",
+            "add_scope_data_access",
+            "delete_scope_data_access",
+            "add_scope_owner",
+            "delete_scope_owner",
+            "write_session",
+            "write_record",
+            "delete_record",
+            "write_scope_specification",
+            "delete_scope_specification",
+            "write_contract_specification",
+            "delete_contract_specification",
+            "write_record_specification",
+            "delete_record_specification",
+            "write_os_locator",
+            "delete_os_locator",
+            "modify_os_locator",
+            "add_contract_spec_to_scope_spec",
+            "delete_contract_spec_from_scope_spec"
         )
     ),
     IBC(
@@ -175,9 +193,11 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
             "create_client",
             "upgrade_client",
             "client_misbehaviour",
-            "acknowledge_packet",
+            "acknowledgement",
             "recv_packet",
-            "ibc_transfer"
+            "ibc_transfer",
+            "wasm-ibc-close",
+            "wasm-ibc-send"
         )
     )
 }
@@ -228,4 +248,22 @@ data class TxGasVolume(
     val gasWanted: BigInteger,
     val gasUsed: BigInteger,
     val feeAmount: BigDecimal
+)
+
+data class TxSmartContract(
+    val txHash: String,
+    val txMsgType: String,
+    val smCode: Int,
+    val smContractAddr: String?,
+    val block: Int,
+    val txTime: String,
+    val txFee: CoinStr,
+    val signers: Signatures,
+    val txStatus: String
+)
+
+data class MsgProtoBreakout(
+    val proto: String,
+    val module: String,
+    val type: String
 )
