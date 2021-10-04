@@ -33,6 +33,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Updated `/cosmos/base/tendermint/v1beta1/blocks/{height}` to come from Figment url instead of local node #231
+  * Defaults to Figment, with local node as backup in case Figment call fails
+  * Added new properties `explorer.figment-apikey`, `explorer.figment-url` defaulted to Figure's key and test url
+
 ### Improvements
 * Added a block tx retry table to store heights that failed to fetch txs #232
   * Added async to then retry those blocks

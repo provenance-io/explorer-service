@@ -29,6 +29,8 @@ services:
       - EXPLORER_MAINNET=false
       # Hits the locally running node
       - EXPLORER_PB_URL=http://host.docker.internal:9090
+      - EXPLORER_FIGMENT_APIKEY=45af964c1cc7292d06db51b5d9a523a4
+      - EXPLORER_FIGMENT_URL=https://pio-testnet-1--lcd.datahub.figment.io
     depends_on:
       - explorer-postgres
     links:

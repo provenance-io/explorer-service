@@ -20,7 +20,12 @@ class BlockService(private val blockClient: BlockGrpcClient) {
 
     fun getLatestBlockHeightIndex(): Int = getBlockIndexFromCache()!!.maxHeightRead!!
 
-    fun getBlockAtHeightFromChain(height: Int) = blockClient.getBlockAtHeight(height)
+    fun getBlockAtHeightFromChain(height: Int) = try {
+        blockClient.getBlockAtHeightFromFigment(height)
+    } catch (e: Exception) {
+        logger.error(e.message)
+        blockClient.getBlockAtHeight(height)
+    }
 
     fun getLatestBlockHeight(): Int = blockClient.getLatestBlock().block.height()
 
