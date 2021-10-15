@@ -48,6 +48,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added additional MsgConverter lines to handle older tx msg types
 * Downgraded Spring Boot Version: 2.5.4 -> 2.4.3
 * Downgraded jackson-databind dependency: 2.12.2 -> 2.11.2
+* Updated signature finding based on msg type #249
 
 ### Data
 * Added `block_tx_retry` table #232

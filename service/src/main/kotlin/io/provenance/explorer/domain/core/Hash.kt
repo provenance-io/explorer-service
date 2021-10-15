@@ -87,6 +87,16 @@ object Hash {
         }
     }
 
+    fun sha256(hexInput: String): ByteArray {
+        val bytes: ByteArray = Numeric.hexStringToByteArray(hexInput)
+        return try {
+            val digest = MessageDigest.getInstance("SHA-256")
+            digest.digest(bytes)
+        } catch (e: NoSuchAlgorithmException) {
+            throw RuntimeException("Couldn't find a SHA-256 provider", e)
+        }
+    }
+
     fun hmacSha512(key: ByteArray?, input: ByteArray): ByteArray {
         val hMac =
             HMac(SHA512Digest())

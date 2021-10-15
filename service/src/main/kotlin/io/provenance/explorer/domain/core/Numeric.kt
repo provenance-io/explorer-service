@@ -39,9 +39,7 @@ object Numeric {
         if (value.length < 3) {
             return false
         }
-        return if (!value.startsWith(HEX_PREFIX)) {
-            false
-        } else true
+        return value.startsWith(HEX_PREFIX)
         // If TestRpc resolves the following issue, we can reinstate this code
 // https://github.com/ethereumjs/testrpc/issues/220
 // if (value.length() > 3 && value.charAt(2) == '0') {

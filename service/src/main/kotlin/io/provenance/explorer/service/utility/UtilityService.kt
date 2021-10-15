@@ -3,8 +3,10 @@ package io.provenance.explorer.service.utility
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.ErrorFinding
+import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.UnknownTxType
@@ -12,6 +14,7 @@ import io.provenance.explorer.domain.extensions.fromBase64
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
 import io.provenance.explorer.service.AssetService
+import io.provenance.explorer.service.async.AsyncCaching
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 
@@ -19,7 +22,9 @@ import org.springframework.stereotype.Service
 class UtilityService(
     private val protoPrinter: JsonFormat.Printer,
     private val markerClient: MarkerGrpcClient,
-    private val assetService: AssetService
+    private val assetService: AssetService,
+    private val async: AsyncCaching,
+    private val props: ExplorerProperties
 ) {
 
     protected val logger = logger(UtilityService::class)
@@ -79,6 +84,13 @@ class UtilityService(
     fun decodeToString(str: String) = str.fromBase64()
 
     fun addMarker(denom: String) = assetService.getAssetRaw(denom)
+
+    fun funWithSignature(txHash: List<String>) = transaction {
+        txHash.forEach { hash ->
+            val tx = TxCacheRecord.findByHash(hash)!!
+            async.saveSignaturesTx(tx.txV2)
+        }
+    }
 }
 
 data class MsgObj(

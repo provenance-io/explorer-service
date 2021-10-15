@@ -12,7 +12,7 @@ import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insertIgnoreAndGetId
+import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.transactions.transaction
 
 object AccountTable : IntIdTable(name = "account") {
@@ -37,10 +37,10 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findListByAddress(list: List<String>) = AccountRecord.find { AccountTable.accountAddress.inList(list) }
 
         fun insertUnknownAccount(addr: String) = transaction {
-            AccountTable.insertIgnoreAndGetId {
+            findByAddress(addr) ?: AccountTable.insertAndGetId {
                 it[this.accountAddress] = addr
                 it[this.type] = "BaseAccount"
-            }.let { findById(it!!)!! }
+            }.let { findById(it)!! }
         }
 
         fun insertIgnore(acc: Any) =
@@ -87,7 +87,7 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
             baseAccount: Auth.BaseAccount,
             data: Any
         ) = transaction {
-            AccountTable.insertIgnoreAndGetId {
+            findByAddress(address) ?: AccountTable.insertAndGetId {
                 it[this.accountAddress] = address
                 it[this.type] = type
                 it[this.accountNumber] = number
@@ -95,7 +95,7 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.data] = data
             }.also {
                 SignatureJoinRecord.insert(baseAccount.pubKey, SigJoinType.ACCOUNT, address)
-            }.let { findById(it!!)!! }
+            }.let { findById(it)!! }
         }
 
         fun AccountRecord.update(acc: Any) =
