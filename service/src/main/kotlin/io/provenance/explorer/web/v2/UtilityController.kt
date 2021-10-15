@@ -54,4 +54,8 @@ class UtilityController(private val us: UtilityService) {
     @ApiOperation("For Testing base64 encoded string")
     @GetMapping("/test/base64")
     fun base64ToStringTest(@RequestParam str: String) = ResponseEntity.ok(us.decodeToString(str))
+
+    @ApiOperation("For Testing signature translation")
+    @GetMapping("/fun/sigs")
+    fun txSigtoAddr(@RequestParam hash: List<String>) = ResponseEntity.ok(us.funWithSignature(hash))
 }

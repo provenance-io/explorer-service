@@ -17,17 +17,11 @@ import cosmos.tx.v1beta1.TxOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.Bech32
-import io.provenance.explorer.domain.core.Hash
 import io.provenance.explorer.domain.core.toBech32Data
 import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.entities.MissedBlocksRecord
-import io.provenance.explorer.domain.entities.SignatureRecord
 import io.provenance.explorer.domain.models.explorer.Addresses
-import io.provenance.explorer.domain.models.explorer.Signatures
-import io.provenance.explorer.grpc.extensions.toAddress
-import io.provenance.explorer.grpc.extensions.toMultiSig
 import org.apache.commons.text.StringEscapeUtils
-import org.bouncycastle.crypto.digests.RIPEMD160Digest
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import tendermint.types.BlockOuterClass
@@ -47,42 +41,6 @@ fun String.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
 fun ByteArray.base64EncodeString(): String = String(Base64.getEncoder().encode(this))
 fun ByteString.toDbHash() = Hashing.sha512().hashBytes(this.toByteArray()).asBytes().base64EncodeString()
 fun ByteString.toHash() = this.toByteArray().toBech32Data().hexData
-
-// PubKeySecp256k1
-fun ByteString.secp256k1PubKeyToBech32(hrpPrefix: String) = let {
-    val base64 = this.toByteArray()
-    require(base64.size == 33) { "Invalid Base 64 pub key byte length must be 33 not ${base64.size}" }
-    require(base64[0] == 0x02.toByte() || base64[0] == 0x03.toByte()) { "Invalid first byte must be 2 or 3 not  ${base64[0]}" }
-    val shah256 = base64.toSha256()
-    val ripemd = shah256.toRIPEMD160()
-    require(ripemd.size == 20) { "RipeMD size must be 20 not ${ripemd.size}" }
-    Bech32.encode(hrpPrefix, ripemd)
-}
-
-// PubKeySecp256r1
-fun ByteString.secp256r1PubKeyToBech32(hrpPrefix: String, protoType: String) = let {
-    val protoSha = protoType.toByteArray().toSha256()
-    val key = protoSha + this.toByteArray()
-    val keySha = key.toSha256()
-    Bech32.encode(hrpPrefix, keySha)
-}
-
-// PubKeyEd25519
-// Used by validators to create keys
-fun ByteString.edPubKeyToBech32(hrpPrefix: String) = let {
-    val base64 = this.toByteArray()
-    require(base64.size == 32) { "Invalid Base 64 pub key byte length must be 32 not ${base64.size}" }
-    base64.toSha256().copyOfRange(0, 20).toBech32Data(hrpPrefix).address
-}
-
-fun ByteArray.toSha256() = Hash.sha256(this)
-
-fun ByteArray.toRIPEMD160() = RIPEMD160Digest().let {
-    it.update(this, 0, this.size)
-    val buffer = ByteArray(it.digestSize)
-    it.doFinal(buffer, 0)
-    buffer
-}
 
 fun Abci.TxResponse.type() = this.logsList?.flatMap { it.eventsList }
     ?.firstOrNull { it.type == "message" }
@@ -158,14 +116,6 @@ fun DateTime.startOfDay() = this.withZone(DateTimeZone.UTC).withTimeAtStartOfDay
 fun String.toDateTime() = DateTime.parse(this)
 
 fun BlockOuterClass.Block.height() = this.header.height.toInt()
-
-fun List<SignatureRecord>.toSigObj(hrpPrefix: String) =
-    if (this.isNotEmpty())
-        Signatures(
-            this.map { rec -> rec.pubkeyObject.toAddress(hrpPrefix) ?: rec.base64Sig },
-            this.first().multiSigObject?.toMultiSig()?.threshold
-        )
-    else Signatures(listOf(), null)
 
 fun String.toObjectNode() = OBJECT_MAPPER.readValue(StringEscapeUtils.unescapeJson(this), ObjectNode::class.java)
 

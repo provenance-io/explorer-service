@@ -21,6 +21,7 @@ import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDecCoin
 import io.provenance.explorer.domain.extensions.toOffset
+import io.provenance.explorer.domain.extensions.toSingleSigKeyValue
 import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.extensions.translateByteArray
 import io.provenance.explorer.domain.extensions.validatorUptime
@@ -36,7 +37,6 @@ import io.provenance.explorer.domain.models.explorer.ValidatorCommission
 import io.provenance.explorer.domain.models.explorer.ValidatorDetails
 import io.provenance.explorer.domain.models.explorer.ValidatorSummary
 import io.provenance.explorer.grpc.extensions.toAddress
-import io.provenance.explorer.grpc.extensions.toSingleSigKeyValue
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime

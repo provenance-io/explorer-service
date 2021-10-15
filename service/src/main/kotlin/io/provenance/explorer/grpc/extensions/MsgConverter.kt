@@ -257,13 +257,13 @@ fun Any.getAssociatedAddresses(): List<String> =
         typeUrl.endsWith("v1.Tx.MsgMigrateContract") -> this.toMsgMigrateContract().let { listOf(it.sender) }
         typeUrl.endsWith("v1.Tx.MsgUpdateAdmin") -> this.toMsgUpdateAdmin().let { listOf(it.sender, it.newAdmin) }
         typeUrl.endsWith("v1.Tx.MsgClearAdmin") -> this.toMsgClearAdmin().let { listOf(it.sender) }
-        typeUrl.endsWith("v1beta1.Tx.MsgStoreCode") -> this.toMsgStoreCodeOld().let { listOf(it.sender) }
-        typeUrl.endsWith("v1beta1.Tx.MsgInstantiateContract") -> this.toMsgInstantiateContractOld()
+        typeUrl.endsWith("v1beta1.MsgStoreCode") -> this.toMsgStoreCodeOld().let { listOf(it.sender) }
+        typeUrl.endsWith("v1beta1.MsgInstantiateContract") -> this.toMsgInstantiateContractOld()
             .let { listOf(it.sender, it.admin) }
-        typeUrl.endsWith("v1beta1.Tx.MsgExecuteContract") -> this.toMsgExecuteContractOld().let { listOf(it.sender) }
-        typeUrl.endsWith("v1beta1.Tx.MsgMigrateContract") -> this.toMsgMigrateContractOld().let { listOf(it.sender) }
-        typeUrl.endsWith("v1beta1.Tx.MsgUpdateAdmin") -> this.toMsgUpdateAdminOld().let { listOf(it.sender, it.newAdmin) }
-        typeUrl.endsWith("v1beta1.Tx.MsgClearAdmin") -> this.toMsgClearAdminOld().let { listOf(it.sender) }
+        typeUrl.endsWith("v1beta1.MsgExecuteContract") -> this.toMsgExecuteContractOld().let { listOf(it.sender) }
+        typeUrl.endsWith("v1beta1.MsgMigrateContract") -> this.toMsgMigrateContractOld().let { listOf(it.sender) }
+        typeUrl.endsWith("v1beta1.MsgUpdateAdmin") -> this.toMsgUpdateAdminOld().let { listOf(it.sender, it.newAdmin) }
+        typeUrl.endsWith("v1beta1.MsgClearAdmin") -> this.toMsgClearAdminOld().let { listOf(it.sender) }
         typeUrl.endsWith("MsgAddScopeDataAccessRequest") -> this.toMsgAddScopeDataAccessRequest()
             .let { it.signersList + it.dataAccessList }
         typeUrl.endsWith("MsgDeleteScopeDataAccessRequest") -> this.toMsgDeleteScopeDataAccessRequest()
@@ -332,16 +332,11 @@ fun Any.getAssociatedDenoms(): List<String> =
             .let { it.account.getDenomByAddress()?.let { denom -> listOf(denom) } ?: listOf() }
         typeUrl.endsWith("MsgDeleteAttributeRequest") -> this.toMsgDeleteAttributeRequest()
             .let { it.account.getDenomByAddress()?.let { denom -> listOf(denom) } ?: listOf() }
-        typeUrl.endsWith("v1.Tx.MsgInstantiateContract") -> this.toMsgInstantiateContract().let {
-            it.fundsList.map { c
-                ->
-                c.denom
-            }
-        }
+        typeUrl.endsWith("v1.Tx.MsgInstantiateContract") -> this.toMsgInstantiateContract().let { it.fundsList.map { c -> c.denom } }
         typeUrl.endsWith("v1.Tx.MsgExecuteContract") -> this.toMsgExecuteContract().let { it.fundsList.map { c -> c.denom } }
-        typeUrl.endsWith("v1beta1.Tx.MsgInstantiateContract") -> this.toMsgInstantiateContractOld()
+        typeUrl.endsWith("v1beta1.MsgInstantiateContract") -> this.toMsgInstantiateContractOld()
             .let { it.fundsList.map { c -> c.denom } }
-        typeUrl.endsWith("v1beta1.Tx.MsgExecuteContract") -> this.toMsgExecuteContractOld()
+        typeUrl.endsWith("v1beta1.MsgExecuteContract") -> this.toMsgExecuteContractOld()
             .let { it.fundsList.map { c -> c.denom } }
         typeUrl.endsWith("MsgTransfer") -> this.toMsgTransfer().let { listOf(it.token.denom) }
 

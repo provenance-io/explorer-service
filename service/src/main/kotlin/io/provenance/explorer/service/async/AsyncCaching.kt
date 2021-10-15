@@ -30,9 +30,11 @@ import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.entities.UNKNOWN
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.updateHitCount
+import io.provenance.explorer.domain.extensions.getSigners
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toObjectNode
+import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.models.explorer.LedgerInfo
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.grpc.extensions.GovMsgType
@@ -447,14 +449,25 @@ class AsyncCaching(
             }
         }
 
-    private fun saveSignaturesTx(tx: ServiceOuterClass.GetTxResponse) = transaction {
+    fun saveSignaturesTx(tx: ServiceOuterClass.GetTxResponse) = transaction {
         tx.tx.authInfo.signerInfosList.forEach { sig ->
-            SignatureJoinRecord.insert(
-                sig.publicKey,
-                SigJoinType.TRANSACTION,
-                tx.txResponse.txhash
-            )
+            SignatureJoinRecord.insert(sig.publicKey, SigJoinType.TRANSACTION, tx.txResponse.txhash)
         }
+
+        // get signers
+
+        tx.tx.body.messagesList.flatMap { it.getSigners() }.toSet()
+            .mapNotNull {
+                when {
+                    it.startsWith(props.provValOperPrefix()) -> it.translateAddress(props).accountAddr
+                    it.startsWith(props.provAccPrefix()) -> it
+                    else -> logger().debug("Address type is not supported: Addr $this").let { null }
+                }
+            }.map { addr ->
+                accountService.saveAccount(addr).let { accountService.updateAccounts(setOf(it.id.value)) }
+                AccountRecord.findByAddress(addr)!!.baseAccount!!.pubKey
+            }
+            .forEach { SignatureJoinRecord.insert(it, SigJoinType.TRANSACTION, tx.txResponse.txhash) }
     }
 }
 

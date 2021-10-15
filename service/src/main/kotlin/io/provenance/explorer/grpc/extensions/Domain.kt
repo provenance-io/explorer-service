@@ -1,7 +1,6 @@
 package io.provenance.explorer.grpc.extensions
 
 import com.google.protobuf.Any
-import com.google.protobuf.ByteString
 import cosmos.auth.v1beta1.Auth
 import cosmos.base.query.v1beta1.Pagination
 import cosmos.crypto.multisig.Keys
@@ -10,7 +9,6 @@ import io.provenance.explorer.domain.core.toBech32Data
 import io.provenance.explorer.domain.extensions.edPubKeyToBech32
 import io.provenance.explorer.domain.extensions.secp256k1PubKeyToBech32
 import io.provenance.explorer.domain.extensions.secp256r1PubKeyToBech32
-import io.provenance.explorer.domain.extensions.toBase64
 import io.provenance.explorer.domain.extensions.toSha256
 import io.provenance.explorer.service.prettyRole
 import io.provenance.marker.v1.Access
@@ -56,23 +54,6 @@ fun Any.getModuleAccName() =
     if (this.typeUrl.getTypeShortName() == Auth.ModuleAccount::class.java.simpleName)
         this.unpack(Auth.ModuleAccount::class.java).name
     else null
-
-// PubKey Extensions
-fun Any.toSingleSigKeyValue() = this.toSingleSig().let { it?.toBase64() }
-
-fun Any.toSingleSig(): ByteString? =
-    when {
-        typeUrl.contains("secp256k1") -> this.unpack(cosmos.crypto.secp256k1.Keys.PubKey::class.java).key
-        typeUrl.contains("secp256r1") -> this.unpack(cosmos.crypto.secp256r1.Keys.PubKey::class.java).key
-        typeUrl.contains("ed25519") -> this.unpack(cosmos.crypto.ed25519.Keys.PubKey::class.java).key
-        else -> null.also { logger().error("This typeUrl is not supported in single sig: $typeUrl") }
-    }
-
-fun Any.toMultiSig() =
-    when {
-        typeUrl.contains("LegacyAminoPubKey") -> this.unpack(Keys.LegacyAminoPubKey::class.java)
-        else -> null.also { logger().error("This typeUrl is not supported in multi sig: $typeUrl") }
-    }
 
 fun Any.toAddress(hrpPrefix: String) =
     when {
