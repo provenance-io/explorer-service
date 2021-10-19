@@ -2,23 +2,22 @@ package io.provenance.explorer.grpc.v1
 
 import io.grpc.ManagedChannelBuilder
 import io.provenance.attribute.v1.Attribute
-import io.provenance.attribute.v1.QueryAttributesRequest
+import io.provenance.attribute.v1.queryAttributesRequest
+import io.provenance.attribute.v1.queryParamsRequest
 import io.provenance.explorer.config.GrpcLoggingInterceptor
-import io.provenance.explorer.grpc.extensions.getPaginationBuilder
-import io.provenance.name.v1.QueryReverseLookupRequest
+import io.provenance.explorer.grpc.extensions.getPagination
+import io.provenance.name.v1.queryReverseLookupRequest
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
-import io.provenance.attribute.v1.QueryGrpc as AttrQueryGrpc
-import io.provenance.attribute.v1.QueryParamsRequest as AttrRequest
-import io.provenance.name.v1.QueryGrpc as NameQueryGrpc
-import io.provenance.name.v1.QueryParamsRequest as NameRequest
+import io.provenance.attribute.v1.QueryGrpcKt as AttrQueryGrpc
+import io.provenance.name.v1.QueryGrpcKt as NameQueryGrpc
 
 @Component
 class AttributeGrpcClient(channelUri: URI) {
 
-    private val attrClient: AttrQueryGrpc.QueryBlockingStub
-    private val nameClient: NameQueryGrpc.QueryBlockingStub
+    private val attrClient: AttrQueryGrpc.QueryCoroutineStub
+    private val nameClient: NameQueryGrpc.QueryCoroutineStub
 
     init {
         val channel =
@@ -36,20 +35,20 @@ class AttributeGrpcClient(channelUri: URI) {
                 .intercept(GrpcLoggingInterceptor())
                 .build()
 
-        attrClient = AttrQueryGrpc.newBlockingStub(channel)
-        nameClient = NameQueryGrpc.newBlockingStub(channel)
+        attrClient = AttrQueryGrpc.QueryCoroutineStub(channel)
+        nameClient = NameQueryGrpc.QueryCoroutineStub(channel)
     }
 
-    fun getAllAttributesForAddress(address: String?): MutableList<Attribute> {
+    suspend fun getAllAttributesForAddress(address: String?): MutableList<Attribute> {
         if (address == null) return mutableListOf()
         var offset = 0
         val limit = 100
 
         val results = attrClient.attributes(
-            QueryAttributesRequest.newBuilder()
-                .setAccount(address)
-                .setPagination(getPaginationBuilder(offset, limit))
-                .build()
+            queryAttributesRequest {
+                this.account = address
+                this.pagination = getPagination(offset, limit)
+            }
         )
 
         val total = results.pagination?.total ?: results.attributesCount.toLong()
@@ -58,10 +57,10 @@ class AttributeGrpcClient(channelUri: URI) {
         while (attributes.count() < total) {
             offset += limit
             attrClient.attributes(
-                QueryAttributesRequest.newBuilder()
-                    .setAccount(address)
-                    .setPagination(getPaginationBuilder(offset, limit))
-                    .build()
+                queryAttributesRequest {
+                    this.account = address
+                    this.pagination = getPagination(offset, limit)
+                }
             )
                 .let { attributes.addAll(it.attributesList) }
         }
@@ -69,14 +68,14 @@ class AttributeGrpcClient(channelUri: URI) {
         return attributes
     }
 
-    fun getNamesForAddress(address: String, offset: Int, limit: Int) =
+    suspend fun getNamesForAddress(address: String, offset: Int, limit: Int) =
         nameClient.reverseLookup(
-            QueryReverseLookupRequest.newBuilder()
-                .setAddress(address)
-                .setPagination(getPaginationBuilder(offset, limit))
-                .build()
+            queryReverseLookupRequest {
+                this.address = address
+                this.pagination = getPagination(offset, limit)
+            }
         )
 
-    fun getAttrParams() = attrClient.params(AttrRequest.newBuilder().build())
-    fun getNameParams() = nameClient.params(NameRequest.newBuilder().build())
+    suspend fun getAttrParams() = attrClient.params(queryParamsRequest { })
+    suspend fun getNameParams() = nameClient.params(io.provenance.name.v1.queryParamsRequest { })
 }

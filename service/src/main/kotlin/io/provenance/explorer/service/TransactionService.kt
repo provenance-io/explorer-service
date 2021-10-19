@@ -5,8 +5,10 @@ import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.getParentForType
+import io.provenance.explorer.domain.core.isMAddress
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toMAddress
+import io.provenance.explorer.domain.core.toMAddressScope
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
@@ -95,8 +97,8 @@ class TransactionService(
         val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
         val addr = transaction { address?.getAddressType(props) }
         val markerId = if (denom != null) MarkerCacheRecord.findByDenom(denom)?.id?.value else null
-        val nft = nftAddr?.toMAddress()
-            ?.let { Triple(it.getParentForType()?.name, nftService.getNftDbId(it), it.getPrimaryUuid().toString()) }
+        val nftMAddress = if (nftAddr != null && nftAddr.isMAddress()) nftAddr.toMAddress() else nftAddr?.toMAddressScope()
+        val nft = nftMAddress?.let { Triple(it.getParentForType()?.name, nftService.getNftDbId(it), it.getPrimaryUuid().toString()) }
 
         val params =
             TxQueryParams(

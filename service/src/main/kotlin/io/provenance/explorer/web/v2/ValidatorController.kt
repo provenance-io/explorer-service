@@ -1,5 +1,6 @@
 package io.provenance.explorer.web.v2
 
+import io.provenance.explorer.domain.models.explorer.Timeframe
 import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.service.ValidatorService
 import io.swagger.annotations.Api
@@ -80,4 +81,17 @@ class ValidatorController(private val validatorService: ValidatorService, privat
         @PathVariable id: String,
         @RequestParam(required = false, defaultValue = "100") blockCount: Int
     ) = ResponseEntity.ok(validatorService.getBlockLatencyData(id, blockCount))
+
+    @ApiOperation("Returns distinct validators with missed blocks for the timeframe")
+    @GetMapping("/missed_blocks/distinct")
+    fun missedBlocksDistinct(
+        @RequestParam(required = false, defaultValue = "HOUR") timeframe: Timeframe
+    ) = ResponseEntity.ok(validatorService.getDistinctValidatorsWithMissedBlocksInTimeframe(timeframe))
+
+    @ApiOperation("Returns validators with missed blocks for the timeframe")
+    @GetMapping("/missed_blocks")
+    fun missedBlocks(
+        @RequestParam(required = false, defaultValue = "HOUR") timeframe: Timeframe,
+        @RequestParam(required = false) validatorAddr: String?,
+    ) = ResponseEntity.ok(validatorService.getMissedBlocksForValidatorInTimeframe(timeframe, validatorAddr))
 }

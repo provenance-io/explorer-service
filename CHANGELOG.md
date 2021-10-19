@@ -40,6 +40,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added ingestion and API for Smart Contract msg types #70
   * API under `/api/v2/smart_contract`
   * Proposal monitoring to find when a `StoreCodeProposal` is created
+* Generating Kotlin protobuf classes using official Protobuf Kotlin DSL #254
+* Added `/api/v2/validators/missed_blocks` and `/api/v2/validators/missed_blocks/distinct` APIs #257 
+  * Used for devops validator monitoring
 
 ### Improvements
 * Added a block tx retry table to store heights that failed to fetch txs #232
@@ -50,6 +53,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Reworked how msg type was being derived #248
   * Now deriving `module`, `type` from `proto.typeUrl` instead of scraping events for possible values
 * Reworked account insert/update to use upsert instead
+* Adding initial use cases for Kotlin Coroutines #255
+* Improved NFT API with additional data #253
+  * Added APIs for specification json responses
 
 ### Bug Fixes
 * Added additional MsgConverter lines to handle older tx msg types
@@ -58,6 +64,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Updated signature finding based on msg type #249
 * Added API response handler for IllegalArgumentExceptions #245
 * Fixed NullPointerException when `session_id_components` was actually null
+* Fixed bug in `update_gas_fee_volume()` procedure #258
 
 ### Data
 * Migration 1.32 - Added `block_tx_retry` table #232
@@ -67,6 +74,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Migration 1.34 - Added unique key to `tx_message_type` #248
   * Upserted records to make records uniform
 * Migration 1.35 - Added `proposal_monitor` table #70
+* Migration 1.36 - Updated `update_gas_fee_volume()` procedure #258
+* Migration 1.37 - Added `missed_block_periods()` function to find missed blocks for inputs #257 
 
 ## [v2.4.0](https://github.com/provenance-io/explorer-service/releases/tag/v2.4.0) - 2021-09-15
 ### Release Name: Bjarni Herjulfsson

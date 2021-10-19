@@ -18,8 +18,8 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.innerJoin
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
+import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -329,7 +329,7 @@ class ProposalMonitorRecord(id: EntityID<Int>) : IntEntity(id) {
             proposalType: ProposalType,
             dataHash: String
         ) = transaction {
-            ProposalMonitorTable.insert {
+            ProposalMonitorTable.insertIgnore {
                 it[this.proposalId] = proposalId
                 it[this.submittedHeight] = submittedHeight
                 it[this.proposedCompletionHeight] = proposedCompletionHeight

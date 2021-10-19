@@ -1,30 +1,37 @@
 package io.provenance.explorer.grpc.v1
 
+import cosmos.auth.v1beta1.queryAccountRequest
+import cosmos.bank.v1beta1.queryAllBalancesRequest
+import cosmos.bank.v1beta1.queryDenomMetadataRequest
+import cosmos.bank.v1beta1.queryDenomMetadataResponse
+import cosmos.bank.v1beta1.queryDenomsMetadataRequest
+import cosmos.bank.v1beta1.queryParamsRequest
+import cosmos.bank.v1beta1.querySupplyOfRequest
+import cosmos.distribution.v1beta1.queryDelegationTotalRewardsRequest
+import cosmos.staking.v1beta1.queryDelegatorDelegationsRequest
+import cosmos.staking.v1beta1.queryDelegatorDelegationsResponse
+import cosmos.staking.v1beta1.queryDelegatorUnbondingDelegationsRequest
+import cosmos.staking.v1beta1.queryRedelegationsRequest
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
-import io.provenance.explorer.grpc.extensions.getPaginationBuilder
+import io.provenance.explorer.grpc.extensions.getPagination
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
-import cosmos.auth.v1beta1.QueryGrpc as AuthQueryGrpc
-import cosmos.auth.v1beta1.QueryOuterClass as AuthOuterClass
-import cosmos.bank.v1beta1.QueryGrpc as BankQueryGrpc
-import cosmos.bank.v1beta1.QueryOuterClass as BankOuterClass
-import cosmos.distribution.v1beta1.QueryGrpc as DistGrpc
-import cosmos.distribution.v1beta1.QueryOuterClass as DistOuterClass
-import cosmos.mint.v1beta1.QueryGrpc as MintGrpc
-import cosmos.mint.v1beta1.QueryOuterClass as MintOuterClass
-import cosmos.staking.v1beta1.QueryGrpc as StakingGrpc
-import cosmos.staking.v1beta1.QueryOuterClass as StakingOuterClass
+import cosmos.auth.v1beta1.QueryGrpcKt as AuthQueryGrpc
+import cosmos.bank.v1beta1.QueryGrpcKt as BankQueryGrpc
+import cosmos.distribution.v1beta1.QueryGrpcKt as DistGrpc
+import cosmos.mint.v1beta1.QueryGrpcKt as MintGrpc
+import cosmos.staking.v1beta1.QueryGrpcKt as StakingGrpc
 
 @Component
 class AccountGrpcClient(channelUri: URI) {
 
-    private val authClient: AuthQueryGrpc.QueryBlockingStub
-    private val bankClient: BankQueryGrpc.QueryBlockingStub
-    private val stakingClient: StakingGrpc.QueryBlockingStub
-    private val distClient: DistGrpc.QueryBlockingStub
-    private val mintClient: MintGrpc.QueryBlockingStub
+    private val authClient: AuthQueryGrpc.QueryCoroutineStub
+    private val bankClient: BankQueryGrpc.QueryCoroutineStub
+    private val stakingClient: StakingGrpc.QueryCoroutineStub
+    private val distClient: DistGrpc.QueryCoroutineStub
+    private val mintClient: MintGrpc.QueryCoroutineStub
 
     init {
         val channel =
@@ -36,89 +43,81 @@ class AccountGrpcClient(channelUri: URI) {
                         it.usePlaintext()
                     }
                 }
-                .idleTimeout(60, TimeUnit.SECONDS)
-                .keepAliveTime(10, TimeUnit.SECONDS)
-                .keepAliveTimeout(10, TimeUnit.SECONDS)
+                .idleTimeout(5, TimeUnit.MINUTES)
+                .keepAliveTime(60, TimeUnit.SECONDS)
+                .keepAliveTimeout(20, TimeUnit.SECONDS)
                 .intercept(GrpcLoggingInterceptor())
                 .build()
 
-        authClient = AuthQueryGrpc.newBlockingStub(channel)
-        bankClient = BankQueryGrpc.newBlockingStub(channel)
-        stakingClient = StakingGrpc.newBlockingStub(channel)
-        distClient = DistGrpc.newBlockingStub(channel)
-        mintClient = MintGrpc.newBlockingStub(channel)
+        authClient = AuthQueryGrpc.QueryCoroutineStub(channel)
+        bankClient = BankQueryGrpc.QueryCoroutineStub(channel)
+        stakingClient = StakingGrpc.QueryCoroutineStub(channel)
+        distClient = DistGrpc.QueryCoroutineStub(channel)
+        mintClient = MintGrpc.QueryCoroutineStub(channel)
     }
 
-    fun getAccountInfo(address: String) =
+    suspend fun getAccountInfo(address: String) =
         try {
-            authClient.account(AuthOuterClass.QueryAccountRequest.newBuilder().setAddress(address).build()).account
+            authClient.account(queryAccountRequest { this.address = address }).account
         } catch (e: Exception) {
             null
         }
 
-    fun getAccountBalances(address: String, offset: Int, limit: Int) =
+    suspend fun getAccountBalances(address: String, offset: Int, limit: Int) =
         bankClient.allBalances(
-            BankOuterClass.QueryAllBalancesRequest.newBuilder()
-                .setAddress(address)
-                .setPagination(getPaginationBuilder(offset, limit))
-                .build()
+            queryAllBalancesRequest {
+                this.address = address
+                this.pagination = getPagination(offset, limit)
+            }
         )
 
-    fun getCurrentSupply(denom: String) =
-        bankClient.supplyOf(BankOuterClass.QuerySupplyOfRequest.newBuilder().setDenom(denom).build()).amount
+    suspend fun getCurrentSupply(denom: String) =
+        bankClient.supplyOf(querySupplyOfRequest { this.denom = denom }).amount
 
-    fun getDenomMetadata(denom: String) =
+    suspend fun getDenomMetadata(denom: String) =
         try {
-            bankClient.denomMetadata(BankOuterClass.QueryDenomMetadataRequest.newBuilder().setDenom(denom).build())
+            bankClient.denomMetadata(queryDenomMetadataRequest { this.denom = denom })
         } catch (e: Exception) {
-            BankOuterClass.QueryDenomMetadataResponse.getDefaultInstance()
+            queryDenomMetadataResponse { }
         }
 
-    fun getAllDenomMetadata() =
-        bankClient.denomsMetadata(
-            BankOuterClass.QueryDenomsMetadataRequest.newBuilder()
-                .setPagination(getPaginationBuilder(0, 100))
-                .build()
-        )
+    suspend fun getAllDenomMetadata() =
+        bankClient.denomsMetadata(queryDenomsMetadataRequest { this.pagination = getPagination(0, 100) })
 
-    fun getDelegations(address: String, offset: Int, limit: Int) =
+    suspend fun getDelegations(address: String, offset: Int, limit: Int) =
         try {
             stakingClient.delegatorDelegations(
-                StakingOuterClass.QueryDelegatorDelegationsRequest.newBuilder()
-                    .setDelegatorAddr(address)
-                    .setPagination(getPaginationBuilder(offset, limit))
-                    .build()
+                queryDelegatorDelegationsRequest {
+                    this.delegatorAddr = address
+                    this.pagination = getPagination(offset, limit)
+                }
             )
         } catch (e: Exception) {
-            StakingOuterClass.QueryDelegatorDelegationsResponse.getDefaultInstance()
+            queryDelegatorDelegationsResponse { }
         }
 
-    fun getUnbondingDelegations(address: String, offset: Int, limit: Int) =
+    suspend fun getUnbondingDelegations(address: String, offset: Int, limit: Int) =
         stakingClient.delegatorUnbondingDelegations(
-            StakingOuterClass.QueryDelegatorUnbondingDelegationsRequest.newBuilder()
-                .setDelegatorAddr(address)
-                .setPagination(getPaginationBuilder(offset, limit))
-                .build()
+            queryDelegatorUnbondingDelegationsRequest {
+                this.delegatorAddr = address
+                this.pagination = getPagination(offset, limit)
+            }
         )
 
-    fun getRedelegations(address: String, offset: Int, limit: Int) =
+    suspend fun getRedelegations(address: String, offset: Int, limit: Int) =
         stakingClient.redelegations(
-            StakingOuterClass.QueryRedelegationsRequest.newBuilder()
-                .setDelegatorAddr(address)
-                .setPagination(getPaginationBuilder(offset, limit))
-                .build()
+            queryRedelegationsRequest {
+                this.delegatorAddr = address
+                this.pagination = getPagination(offset, limit)
+            }
         )
 
-    fun getRewards(delAddr: String) =
-        distClient.delegationTotalRewards(
-            DistOuterClass.QueryDelegationTotalRewardsRequest.newBuilder()
-                .setDelegatorAddress(delAddr)
-                .build()
-        )
+    suspend fun getRewards(delAddr: String) =
+        distClient.delegationTotalRewards(queryDelegationTotalRewardsRequest { this.delegatorAddress = delAddr })
 
-    fun getBankParams() = bankClient.params(BankOuterClass.QueryParamsRequest.newBuilder().build())
+    suspend fun getBankParams() = bankClient.params(queryParamsRequest { })
 
-    fun getAuthParams() = authClient.params(AuthOuterClass.QueryParamsRequest.newBuilder().build())
+    suspend fun getAuthParams() = authClient.params(cosmos.auth.v1beta1.queryParamsRequest { })
 
-    fun getMintParams() = mintClient.params(MintOuterClass.QueryParamsRequest.newBuilder().build())
+    suspend fun getMintParams() = mintClient.params(cosmos.mint.v1beta1.queryParamsRequest { })
 }

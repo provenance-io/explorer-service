@@ -23,6 +23,13 @@ import javax.validation.constraints.Min
 )
 class SmartContractController(private val scService: SmartContractService) {
 
+    @ApiOperation("Returns paginated list of smart contract codes, code ID descending")
+    @GetMapping("/codes/all")
+    fun getCodesList(
+        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
+    ) = ResponseEntity.ok(scService.getAllScCodesPaginated(page, count))
+
     @ApiOperation("Returns a smart contract code object")
     @GetMapping("/code/{id}")
     fun getCode(@PathVariable id: Int) = ResponseEntity.ok(scService.getCode(id))
@@ -35,7 +42,7 @@ class SmartContractController(private val scService: SmartContractService) {
         @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
     ) = ResponseEntity.ok(scService.getContractsByCode(id, page, count))
 
-    @ApiOperation("Returns paginated list of smart contract codes, code ID descending")
+    @ApiOperation("Returns paginated list of smart contracts, creation date descending")
     @GetMapping("/contract/all")
     fun getContractsList(
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
