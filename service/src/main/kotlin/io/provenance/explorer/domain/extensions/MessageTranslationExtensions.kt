@@ -39,13 +39,16 @@ val protoTypesFieldsToCheckForMetadata = arrayOf(
 val protoTypesToCheckForSmartContract = arrayOf(
     "/cosmwasm.wasm.v1beta1.MsgInstantiateContract",
     "/cosmwasm.wasm.v1beta1.MsgExecuteContract",
-    "/cosmwasm.wasm.v1beta1.MsgMigrateContract"
+    "/cosmwasm.wasm.v1beta1.MsgMigrateContract",
+    "/cosmwasm.wasm.v1.MsgInstantiateContract",
+    "/cosmwasm.wasm.v1.MsgExecuteContract",
+    "/cosmwasm.wasm.v1.MsgMigrateContract"
 )
 
 val protoTypesFieldsToCheckForSmartContract = arrayOf(
-    "init_msg",
+    "initMsg",
     "msg",
-    "migrate_msg"
+    "migrateMsg"
 )
 
 fun Message.toObjectNode(protoPrinter: JsonFormat.Printer) =
@@ -58,6 +61,13 @@ fun Message.toObjectNode(protoPrinter: JsonFormat.Printer) =
                     protoTypesFieldsToCheckForSmartContract.forEach { fromBase64ToObject(node, it) }
             }
             (node as ObjectNode).remove("@type")
+            node
+        }
+
+fun Message.toObjectNodeNonTxMsg(protoPrinter: JsonFormat.Printer, fieldNames: List<String>) =
+    OBJECT_MAPPER.readTree(protoPrinter.print(this))
+        .let { node ->
+            fieldNames.forEach { fromBase64ToObject(node, it) }
             node
         }
 

@@ -58,4 +58,12 @@ class UtilityController(private val us: UtilityService) {
     @ApiOperation("For Testing signature translation")
     @GetMapping("/fun/sigs")
     fun txSigtoAddr(@RequestParam hash: List<String>) = ResponseEntity.ok(us.funWithSignature(hash))
+
+    @ApiOperation("For Fetching tx types from DB and formatting data from proto")
+    @GetMapping("/txTypes")
+    fun getTxTypes() = ResponseEntity.ok(us.getMsgTypeToProto())
+
+    @ApiOperation("For Testing msg conversion")
+    @GetMapping("/test")
+    fun test(@RequestParam propId: Long) = ResponseEntity.ok(us.test(propId))
 }

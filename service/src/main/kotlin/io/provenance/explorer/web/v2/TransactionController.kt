@@ -167,4 +167,28 @@ class TransactionController(private val transactionService: TransactionService) 
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
     ) =
         ResponseEntity.ok(transactionService.getGovernanceTxs(address, msgType, txStatus, page, count, fromDate, toDate))
+
+    @ApiOperation("Returns transactions for smart contract module with unique response type")
+    @GetMapping("/module/smart_contract")
+    fun txsForSmartContracts(
+        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = false) code: Int?,
+        @RequestParam(required = false) contract: String?,
+        @RequestParam(required = false) msgType: String?,
+        @RequestParam(required = false) txStatus: TxStatus?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
+    ) = ResponseEntity.ok(
+        transactionService.getSmartContractTxs(
+            code,
+            contract,
+            msgType,
+            txStatus,
+            page,
+            count,
+            fromDate,
+            toDate
+        )
+    )
 }

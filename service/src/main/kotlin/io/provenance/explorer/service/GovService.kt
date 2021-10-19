@@ -4,19 +4,28 @@ import com.google.protobuf.Any
 import com.google.protobuf.util.JsonFormat
 import cosmos.gov.v1beta1.Gov
 import cosmos.gov.v1beta1.Tx
+import cosmwasm.wasm.v1beta1.Proposal
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.DepositType
 import io.provenance.explorer.domain.entities.GovDepositRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.GovVoteRecord
+import io.provenance.explorer.domain.entities.ProposalMonitorRecord
+import io.provenance.explorer.domain.entities.ProposalType
+import io.provenance.explorer.domain.entities.SmCodeRecord
+import io.provenance.explorer.domain.entities.SpotlightCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.stringfy
+import io.provenance.explorer.domain.extensions.to256Hash
+import io.provenance.explorer.domain.extensions.toBase64
 import io.provenance.explorer.domain.extensions.toCoinStr
+import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDecCoin
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.CoinStr
@@ -42,14 +51,17 @@ import io.provenance.explorer.domain.models.explorer.toData
 import io.provenance.explorer.grpc.extensions.toMsgDeposit
 import io.provenance.explorer.grpc.extensions.toMsgVote
 import io.provenance.explorer.grpc.v1.GovGrpcClient
+import io.provenance.explorer.grpc.v1.SmartContractGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
+import java.math.BigDecimal
 
 @Service
 class GovService(
     private val govClient: GovGrpcClient,
     private val protoPrinter: JsonFormat.Printer,
-    private val valService: ValidatorService
+    private val valService: ValidatorService,
+    private val smContractClient: SmartContractGrpcClient
 ) {
     protected val logger = logger(GovService::class)
 
@@ -63,6 +75,55 @@ class GovService(
         govClient.getProposal(record.proposalId).let { res ->
             if (res.proposal.status.name != record.status)
                 record.apply { this.status = res.proposal.status.name }
+        }
+    }
+
+    fun addProposalToMonitor(txMsg: Tx.MsgSubmitProposal, proposalId: Long, txInfo: TxData) = transaction {
+        val (proposalType, dataHash) = when {
+            txMsg.content.typeUrl.endsWith("v1beta1.StoreCodeProposal") ->
+                ProposalType.STORE_CODE to
+                    // base64(sha256(gzipUncompress(wasmByteCode))) == base64(storedCode.data_hash)
+                    txMsg.content.unpack(Proposal.StoreCodeProposal::class.java)
+                        .wasmByteCode.gzipUncompress().to256Hash()
+            txMsg.content.typeUrl.endsWith("v1.StoreCodeProposal") ->
+                ProposalType.STORE_CODE to
+                    // base64(sha256(gzipUncompress(wasmByteCode))) == base64(storedCode.data_hash)
+                    txMsg.content.unpack(cosmwasm.wasm.v1.Proposal.StoreCodeProposal::class.java)
+                        .wasmByteCode.gzipUncompress().to256Hash()
+            else -> return@transaction
+        }
+        val votingEndTime = GovProposalRecord.findByProposalId(proposalId)!!.data.votingEndTime.toDateTime()
+        val avgBlockTime = SpotlightCacheRecord.getSpotlight().avgBlockTime.multiply(BigDecimal(1000)).toLong()
+        val blocksUntilCompletion = (votingEndTime.millis - txInfo.txTimestamp.millis).floorDiv(avgBlockTime).toInt()
+
+        ProposalMonitorRecord.insert(
+            proposalId,
+            txInfo.blockHeight,
+            txInfo.blockHeight + blocksUntilCompletion,
+            votingEndTime,
+            proposalType,
+            dataHash
+        )
+    }
+
+    fun processProposal(proposal: ProposalMonitorRecord) = transaction {
+        when (ProposalType.valueOf(proposal.proposalType)) {
+            ProposalType.STORE_CODE -> {
+                val creationHeight = BlockCacheRecord.getFirstBlockAfterTime(proposal.votingEndTime).height
+                val records = SmCodeRecord.all().sortedByDescending { it.id.value }
+                val matching = records.firstOrNull { proposal.dataHash == it.dataHash }
+                // find existing record and update, else search for next code id only.
+                matching?.apply { this.creationHeight = creationHeight }
+                    ?.also { proposal.apply { this.processed = true } }
+                    ?: records.first().id.value.let { start ->
+                        smContractClient.getSmCode(start.toLong() + 1)?.let {
+                            if (it.codeInfo.dataHash.toBase64() == proposal.dataHash) {
+                                SmCodeRecord.getOrInsert(start + 1, it, creationHeight)
+                                proposal.apply { this.processed = true }
+                            }
+                        }
+                    }
+            }
         }
     }
 
@@ -90,7 +151,8 @@ class GovService(
         val (initial, current) = GovDepositRecord.findByProposalId(proposalId).filter { it.denom == NHASH }
             .let { list ->
                 val current = list.sumOf { it.amount }
-                val initial = list.first { it.depositType == DepositType.INITIAL_DEPOSIT.name }.amount
+                val initial =
+                    list.firstOrNull { it.depositType == DepositType.INITIAL_DEPOSIT.name }?.amount ?: BigDecimal.ZERO
                 initial to current
             }
         val needed = getParams(GovParamType.deposit).depositParams.minDepositList.first { it.denom == NHASH }.amount
@@ -151,7 +213,10 @@ class GovService(
         val tally = VotesTally(
             Tally(indTallies.getOrDefault(Gov.VoteOption.VOTE_OPTION_YES.name, 0), CoinStr(tallies.yes, NHASH)),
             Tally(indTallies.getOrDefault(Gov.VoteOption.VOTE_OPTION_NO.name, 0), CoinStr(tallies.no, NHASH)),
-            Tally(indTallies.getOrDefault(Gov.VoteOption.VOTE_OPTION_NO_WITH_VETO.name, 0), CoinStr(tallies.noWithVeto, NHASH)),
+            Tally(
+                indTallies.getOrDefault(Gov.VoteOption.VOTE_OPTION_NO_WITH_VETO.name, 0),
+                CoinStr(tallies.noWithVeto, NHASH)
+            ),
             Tally(indTallies.getOrDefault(Gov.VoteOption.VOTE_OPTION_ABSTAIN.name, 0), CoinStr(tallies.abstain, NHASH)),
             Tally(dbRecords.count(), CoinStr(tallies.sum().stringfy(), NHASH))
         )

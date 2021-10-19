@@ -49,6 +49,7 @@ object Versions {
     const val Flyway = PluginVersions.Flyway
     const val Jackson = "2.11.2"
     const val JacksonProtobuf = "0.9.12"
+    const val KaseChange = "1.3.0"
     const val Khttp = "1.0.0"
     const val Logback = "0.1.5"
     const val SpringBoot = PluginVersions.SpringBoot
@@ -90,6 +91,7 @@ object Libraries {
     const val BouncyCastle = "org.bouncycastle:bcprov-jdk15on:${Versions.BouncyCastle}"
     const val ApacheCommonsText = "org.apache.commons:commons-text:${Versions.ApacheCommonsText}"
     const val Khttp = "khttp:khttp:${Versions.Khttp}"
+    const val KaseChange = "net.pearx.kasechange:kasechange:${Versions.KaseChange}"
 
     // Logging
     const val LogbackCore = "ch.qos.logback.contrib:logback-json-core:${Versions.Logback}"

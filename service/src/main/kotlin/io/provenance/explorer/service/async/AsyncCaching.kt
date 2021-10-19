@@ -1,11 +1,13 @@
 package io.provenance.explorer.service.async
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.google.protobuf.Any
 import com.google.protobuf.Timestamp
 import cosmos.base.abci.v1beta1.Abci
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.tx.v1beta1.ServiceOuterClass
 import cosmos.tx.v1beta1.TxOuterClass
+import cosmwasm.wasm.v1beta1.Proposal
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toMAddress
@@ -24,10 +26,10 @@ import io.provenance.explorer.domain.entities.TxEventRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
-import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.TxNftJoinRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
-import io.provenance.explorer.domain.entities.UNKNOWN
+import io.provenance.explorer.domain.entities.TxSmCodeRecord
+import io.provenance.explorer.domain.entities.TxSmContractRecord
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.getSigners
@@ -36,20 +38,29 @@ import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.models.explorer.LedgerInfo
+import io.provenance.explorer.domain.models.explorer.MsgProtoBreakout
 import io.provenance.explorer.domain.models.explorer.TxData
+import io.provenance.explorer.grpc.extensions.AddressEvents
+import io.provenance.explorer.grpc.extensions.DenomEvents
 import io.provenance.explorer.grpc.extensions.GovMsgType
-import io.provenance.explorer.grpc.extensions.IbcEventType
+import io.provenance.explorer.grpc.extensions.SmContractEventKeys
+import io.provenance.explorer.grpc.extensions.SmContractValue
+import io.provenance.explorer.grpc.extensions.denomEventRegexParse
+import io.provenance.explorer.grpc.extensions.getAddressEventByEvent
 import io.provenance.explorer.grpc.extensions.getAssociatedAddresses
 import io.provenance.explorer.grpc.extensions.getAssociatedDenoms
 import io.provenance.explorer.grpc.extensions.getAssociatedGovMsgs
 import io.provenance.explorer.grpc.extensions.getAssociatedMetadata
 import io.provenance.explorer.grpc.extensions.getAssociatedMetadataEvents
+import io.provenance.explorer.grpc.extensions.getAssociatedSmContractMsgs
+import io.provenance.explorer.grpc.extensions.getDenomEventByEvent
 import io.provenance.explorer.grpc.extensions.getIbcChannelEvents
-import io.provenance.explorer.grpc.extensions.getIbcDenomEvents
 import io.provenance.explorer.grpc.extensions.getIbcLedgerMsgs
+import io.provenance.explorer.grpc.extensions.getSmContractEventByEvent
 import io.provenance.explorer.grpc.extensions.isIbcTimeoutOnClose
 import io.provenance.explorer.grpc.extensions.isIbcTransferMsg
 import io.provenance.explorer.grpc.extensions.isMetadataDeletionMsg
+import io.provenance.explorer.grpc.extensions.scrubQuotes
 import io.provenance.explorer.grpc.extensions.toMsgAcknowledgement
 import io.provenance.explorer.grpc.extensions.toMsgDeposit
 import io.provenance.explorer.grpc.extensions.toMsgRecvPacket
@@ -64,7 +75,10 @@ import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.GovService
 import io.provenance.explorer.service.IbcService
 import io.provenance.explorer.service.NftService
+import io.provenance.explorer.service.SmartContractService
 import io.provenance.explorer.service.ValidatorService
+import net.pearx.kasechange.toSnakeCase
+import net.pearx.kasechange.universalWordSplitter
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -81,6 +95,7 @@ class AsyncCaching(
     private val nftService: NftService,
     private val govService: GovService,
     private val ibcService: IbcService,
+    private val smContractService: SmartContractService,
     private val props: ExplorerProperties
 ) {
 
@@ -135,7 +150,6 @@ class AsyncCaching(
                             ent.value,
                             blockRes.block.height()
                         ).also { updated -> if (updated) ValidatorStateRecord.refreshCurrentStateView() }
-                        TxAddressJoinType.ACCOUNT.name -> accountService.updateAccounts(ent.value)
                     }
                 }
             }
@@ -186,11 +200,12 @@ class AsyncCaching(
         saveNftData(txPair.first, txPair.second)
         saveGovData(txPair.second, blockTime)
         saveIbcChannelData(txPair.first, txPair.second, blockTime)
+        saveSmartContractData(txPair.first, txPair.second, blockTime)
         saveSignaturesTx(txPair.second)
         return TxUpdatedItems(addrs, markers)
     }
 
-    private fun saveEvents(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse, msgId: Int, msgType: String, idx: Int) = transaction {
+    private fun saveEvents(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse, msgId: Int, msgType: Int, idx: Int) = transaction {
         tx.txResponse.logsList[idx].eventsList.forEach { event ->
             val eventId = TxEventRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, event.type, msgId, msgType).value
             event.attributesList.forEach { attr ->
@@ -205,68 +220,46 @@ class AsyncCaching(
 
     fun saveMessages(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
         tx.tx.body.messagesList.forEachIndexed { idx, msg ->
+            val (_, module, type) = msg.getMsgType()
+            val msgRec = TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module, idx)
             if (tx.txResponse.logsCount > 0) {
-                val type: String
-                val module: String
-                when (val msgType = TxMessageTypeRecord.findByProtoType(msg.typeUrl)) {
-                    null -> {
-                        val typePair = getMsgType(tx, idx)
-                        type = typePair.first
-                        module = typePair.second
-                    }
-                    else -> {
-                        if (msgType.module == UNKNOWN) {
-                            val typePair = getMsgType(tx, idx)
-                            type = typePair.first
-                            module = typePair.second
-                        } else {
-                            type = msgType.type
-                            module = msgType.module
-                        }
-                    }
-                }
-                val msgId = TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module, idx).value
-                saveEvents(txId, tx, msgId, type, idx)
+                saveEvents(txId, tx, msgRec.id.value, msgRec.txMessageType.id.value, idx)
 
                 if (tx.tx.body.messagesCount == 1) {
                     TxSingleMessageCacheRecord.insert(
                         tx.txResponse.timestamp.toDateTime(),
                         tx.txResponse.txhash,
                         tx.txResponse.gasUsed.toInt(),
-                        type
+                        msgRec.txMessageType.type
                     )
                 }
-            } else
-                TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, UNKNOWN, UNKNOWN, idx)
+            }
         }
     }
 
-    private fun getMsgType(tx: ServiceOuterClass.GetTxResponse, idx: Int) =
-        (
-            try {
-                tx.txResponse.logsList[idx].eventsList.first { event -> event.type == "message" }
-            } catch (ex: Exception) {
-                tx.txResponse.logsList.first().eventsList.filter { event -> event.type == "message" }[idx]
-            }
-            ).let { event ->
-            val type = event.attributesList.first { att -> att.key == "action" }.value
-            val module = event.attributesList.firstOrNull { att -> att.key == "module" }?.value ?: UNKNOWN
-            Pair(type, module)
-        }
+    fun Any.getMsgType(): MsgProtoBreakout {
+        val protoType = this.typeUrl
+        val module = if (!protoType.startsWith("/ibc")) protoType.split(".")[1]
+        else protoType.split(".").let { list -> "${list[0].drop(1)}_${list[2]}" }
+        val type = protoType.split("Msg")[1].removeSuffix("Request").toSnakeCase(universalWordSplitter(false))
+        return MsgProtoBreakout(protoType, module, type)
+    }
 
     private fun saveAddresses(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
         val msgAddrs = tx.tx.body.messagesList.flatMap { it.getAssociatedAddresses() }
-        val eventAddrs = tx.tx.body.messagesList.flatMapIndexed { idx, msg ->
-            val events = msg.getIbcDenomEvents().filter { it.eventType == IbcEventType.ADDRESS }
-                .associate { it.event to it.idField }
-            if (tx.txResponse.logsCount > 0)
-                tx.txResponse.logsList[idx].eventsList
-                    .filter { it.type in events.map { e -> e.key } }
-                    .flatMap { e -> e.attributesList.filter { a -> a.key == events[e.type] }.map { it.value } }
-            else listOf()
-        }
+        val eventAddrs = tx.txResponse.logsList
+            .flatMap { it.eventsList }
+            .filter { it.type in AddressEvents.values().map { addr -> addr.event } }
+            .flatMap { e ->
+                getAddressEventByEvent(e.type)!!.let {
+                    e.attributesList
+                        .filter { attr -> attr.key in it.idField }
+                        .map { found -> found.value.scrubQuotes() }
+                }
+            }
+
         (msgAddrs + eventAddrs).toSet()
-            .filter { !it.isNullOrEmpty() }
+            .filter { it.isNotEmpty() }
             .map { saveAddr(it, txId, tx) }
             .filter { it.second != null }.groupBy({ it.first }) { it.second!! }
     }
@@ -289,14 +282,22 @@ class AsyncCaching(
     private fun saveMarkers(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
         val msgDenoms = tx.tx.body.messagesList.map { it.getAssociatedDenoms() to it.isIbcTransferMsg() }
         val denoms = msgDenoms.flatMap { it.first }
-        val eventDenoms = tx.tx.body.messagesList.flatMapIndexed { idx, msg ->
-            val events = msg.getIbcDenomEvents().filter { it.eventType == IbcEventType.DENOM }.associate { it.event to it.idField }
-            if (tx.txResponse.logsCount > 0)
-                tx.txResponse.logsList[idx].eventsList
-                    .filter { it.type in events.map { e -> e.key } }
-                    .flatMap { e -> e.attributesList.filter { a -> a.key == events[e.type] }.map { it.value } }
-            else listOf()
-        }
+        // captures all events that have a denom
+        val eventDenoms =
+            tx.txResponse.logsList
+                .flatMap { it.eventsList }
+                .filter { it.type in DenomEvents.values().map { de -> de.event } }
+                .flatMap { e ->
+                    getDenomEventByEvent(e.type)!!.let {
+                        e.attributesList
+                            .filter { attr -> attr.key == it.idField }
+                            .mapNotNull { found ->
+                                if (it.parse) found.value.scrubQuotes().denomEventRegexParse()
+                                else found.value.scrubQuotes()
+                            }
+                    }
+                }
+
         (denoms + eventDenoms).toSet().mapNotNull { de ->
             val denom = msgDenoms.firstOrNull { it.first.contains(de) }
             if (denom != null && denom.second)
@@ -360,6 +361,7 @@ class AsyncCaching(
                                     pair.second.toMsgSubmitProposal().let {
                                         govService.saveProposal(id, txInfo, it.proposer, isSubmit = true)
                                         govService.saveDeposit(id, txInfo, null, it)
+                                        govService.addProposalToMonitor(it, id, txInfo)
                                     }
                                 }
                         GovMsgType.DEPOSIT ->
@@ -449,13 +451,72 @@ class AsyncCaching(
             }
         }
 
+    private fun saveSmartContractData(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse, blockTime: DateTime) =
+        transaction {
+            val codesToBeSaved = mutableListOf<Long>()
+            val contractsToBeSaved = mutableListOf<String>()
+            tx.tx.body.messagesList.mapNotNull { it.getAssociatedSmContractMsgs() }
+                .forEach fe@{ data ->
+                    data.forEach { pair ->
+                        when (pair.first) {
+                            SmContractValue.CODE -> codesToBeSaved.add(pair.second as Long)
+                            SmContractValue.CONTRACT -> contractsToBeSaved.add(pair.second as String)
+                        }
+                    }
+                }
+
+            tx.txResponse.logsList
+                .flatMap { it.eventsList }
+                .filter { it.type in SmContractEventKeys.values().map { sc -> sc.eventType } }
+                .flatMap { e ->
+                    getSmContractEventByEvent(e.type)!!.let {
+                        e.attributesList
+                            .filter { attr -> attr.key in it.eventKey.keys }
+                            .map mp@{ found ->
+                                when (it.eventKey[found.key]) {
+                                    SmContractValue.CODE -> codesToBeSaved.add(found.value.toLong())
+                                    SmContractValue.CONTRACT -> contractsToBeSaved.add(found.value)
+                                    else -> return@mp // do nothing
+                                }
+                            }
+                    }
+                }
+
+            val txInfo = TxData(tx.txResponse.height.toInt(), txId.value, tx.txResponse.txhash, blockTime)
+            codesToBeSaved.map { smContractService.saveCode(it, txInfo) }
+                .forEach { code -> TxSmCodeRecord.insert(txInfo, code) }
+            contractsToBeSaved.associateBy { contract -> smContractService.saveContract(contract, txInfo) }
+                .forEach { contract -> TxSmContractRecord.insert(txInfo, contract.key, contract.value) }
+
+            // find gov proposals
+
+            tx.tx.body.messagesList.mapNotNull { it.getAssociatedGovMsgs() }
+                .filter { it.first == GovMsgType.PROPOSAL }
+                .map { it.second.toMsgSubmitProposal() }
+                .forEach {
+                    when {
+                        it.content.typeUrl.endsWith("v1beta1.StoreCodeProposal") ->
+                            it.content.unpack(Proposal.StoreCodeProposal::class.java)
+                        it.content.typeUrl.endsWith("v1.StoreCodeProposal") ->
+                            it.content.unpack(cosmwasm.wasm.v1.Proposal.StoreCodeProposal::class.java)
+                    }
+                }
+            // translate content type
+            // store code -> hash wasm bytes
+            //          -> add to retry table
+            //          -> when future txs use same wasm bytes, link up records
+            //      -> could also monitor proposals, if this proposal passes, check for next code id
+            //             -> if bytes match proposal bytes, link up record as creation height
+
+            // How does a store code get created? Is it just an event? Is it tied to a block? Does a msg get dispatched?
+        }
+
     fun saveSignaturesTx(tx: ServiceOuterClass.GetTxResponse) = transaction {
         tx.tx.authInfo.signerInfosList.forEach { sig ->
             SignatureJoinRecord.insert(sig.publicKey, SigJoinType.TRANSACTION, tx.txResponse.txhash)
         }
 
         // get signers
-
         tx.tx.body.messagesList.flatMap { it.getSigners() }.toSet()
             .mapNotNull {
                 when {
@@ -463,10 +524,7 @@ class AsyncCaching(
                     it.startsWith(props.provAccPrefix()) -> it
                     else -> logger().debug("Address type is not supported: Addr $this").let { null }
                 }
-            }.map { addr ->
-                accountService.saveAccount(addr).let { accountService.updateAccounts(setOf(it.id.value)) }
-                AccountRecord.findByAddress(addr)!!.baseAccount!!.pubKey
-            }
+            }.map { accountService.saveAccount(it).baseAccount!!.pubKey }
             .forEach { SignatureJoinRecord.insert(it, SigJoinType.TRANSACTION, tx.txResponse.txhash) }
     }
 }

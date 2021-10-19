@@ -10,6 +10,7 @@ import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
+import io.provenance.explorer.domain.entities.SmContractRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinType
 import io.provenance.explorer.domain.entities.TxCacheRecord
@@ -33,6 +34,7 @@ import io.provenance.explorer.domain.models.explorer.TxDetails
 import io.provenance.explorer.domain.models.explorer.TxGov
 import io.provenance.explorer.domain.models.explorer.TxMessage
 import io.provenance.explorer.domain.models.explorer.TxQueryParams
+import io.provenance.explorer.domain.models.explorer.TxSmartContract
 import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.domain.models.explorer.TxSummary
 import io.provenance.explorer.domain.models.explorer.TxType
@@ -99,7 +101,7 @@ class TransactionService(
         val params =
             TxQueryParams(
                 addr?.second, addr?.first, address, markerId, denom, msgTypeIds, txHeight, txStatus,
-                count, page.toOffset(count), fromDate, toDate, nft?.second, nft?.first, nft?.third
+                count, page.toOffset(count), fromDate, toDate, nft?.second, nft?.first, nft?.third, null, null
             )
 
         val total = TxCacheRecord.findByQueryParamsForCount(params)
@@ -220,7 +222,7 @@ class TransactionService(
             val params =
                 TxQueryParams(
                     addr?.second, addr?.first, address, null, null, msgTypeIds, null, txStatus,
-                    count, page.toOffset(count), fromDate, toDate, null, null, null
+                    count, page.toOffset(count), fromDate, toDate, null, null, null, null, null
                 )
 
             val total = TxMessageRecord.findByQueryParamsForCount(params)
@@ -241,6 +243,43 @@ class TransactionService(
                 )
             }.let { PagedResults(total.pageCountOfResults(count), it, total.toLong()) }
         }
+
+    fun getSmartContractTxs(
+        codeId: Int?,
+        contract: String?,
+        msgType: String?,
+        txStatus: TxStatus?,
+        page: Int,
+        count: Int,
+        fromDate: DateTime?,
+        toDate: DateTime?
+    ) = transaction {
+        val msgTypes = if (msgType != null) listOf(msgType) else MsgTypeSet.SMART_CONTRACT.types
+        val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
+        val contractId = contract?.let { SmContractRecord.findByContractAddress(it)?.id?.value }
+
+        val params =
+            TxQueryParams(
+                null, null, null, null, null, msgTypeIds, null, txStatus,
+                count, page.toOffset(count), fromDate, toDate, null, null, null, codeId, contractId
+            )
+
+        val total = TxMessageRecord.findByQueryParamsForCount(params)
+        TxMessageRecord.findByQueryForResults(params).map { msg ->
+            val scDetail = msg.txMessage.getScMsgDetail(msg.msgIdx, msg.txHashId.txV2)!!
+            TxSmartContract(
+                msg.txHash,
+                msg.txMessageType.type,
+                scDetail.first,
+                scDetail.second,
+                msg.blockHeight,
+                msg.txHashId.txTimestamp.toString(),
+                msg.txHashId.txV2.toCoinStr(),
+                TxCacheRecord.findSigsByHash(msg.txHash).toSigObj(props.provAccPrefix()),
+                if (msg.txHashId.errorCode == null) "success" else "failed"
+            )
+        }.let { PagedResults(total.pageCountOfResults(count), it, total.toLong()) }
+    }
 }
 
 fun List<TxMessageTypeRecord>.mapToRes() =

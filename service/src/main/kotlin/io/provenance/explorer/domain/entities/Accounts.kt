@@ -21,6 +21,7 @@ object AccountTable : IntIdTable(name = "account") {
     val accountNumber = long("account_number").nullable()
     val baseAccount = jsonb<AccountTable, Auth.BaseAccount>("base_account", OBJECT_MAPPER).nullable()
     val data = jsonb<AccountTable, Any>("data", OBJECT_MAPPER).nullable()
+    val isContract = bool("is_contract").default(false)
 }
 
 class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -36,14 +37,15 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findListByAddress(list: List<String>) = AccountRecord.find { AccountTable.accountAddress.inList(list) }
 
-        fun insertUnknownAccount(addr: String) = transaction {
+        fun insertUnknownAccount(addr: String, isContract: Boolean = false) = transaction {
             findByAddress(addr) ?: AccountTable.insertAndGetId {
                 it[this.accountAddress] = addr
                 it[this.type] = "BaseAccount"
+                it[this.isContract] = isContract
             }.let { findById(it)!! }
         }
 
-        fun insertIgnore(acc: Any) =
+        fun insertIgnore(acc: Any, isContract: Boolean = false) =
             acc.typeUrl.getTypeShortName().let { type ->
                 when (type) {
                     Auth.ModuleAccount::class.java.simpleName ->
@@ -53,7 +55,8 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
                                 acc.typeUrl.getAccountType(),
                                 it.baseAccount.accountNumber,
                                 it.baseAccount,
-                                acc
+                                acc,
+                                isContract
                             )
                         }
                     Auth.BaseAccount::class.java.simpleName ->
@@ -63,7 +66,8 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
                                 acc.typeUrl.getAccountType(),
                                 it.accountNumber,
                                 it,
-                                acc
+                                acc,
+                                isContract
                             )
                         }
                     MarkerAccount::class.java.simpleName ->
@@ -73,7 +77,8 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
                                 acc.typeUrl.getAccountType(),
                                 it.baseAccount.accountNumber,
                                 it.baseAccount,
-                                acc
+                                acc,
+                                isContract
                             )
                         }
                     else -> throw IllegalArgumentException("This account type has not been handled yet: ${acc.typeUrl}")
@@ -85,52 +90,28 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
             type: String,
             number: Long,
             baseAccount: Auth.BaseAccount,
-            data: Any
+            data: Any,
+            isContract: Boolean
         ) = transaction {
-            findByAddress(address) ?: AccountTable.insertAndGetId {
-                it[this.accountAddress] = address
-                it[this.type] = type
-                it[this.accountNumber] = number
-                it[this.baseAccount] = baseAccount
-                it[this.data] = data
-            }.also {
-                SignatureJoinRecord.insert(baseAccount.pubKey, SigJoinType.ACCOUNT, address)
-            }.let { findById(it)!! }
-        }
-
-        fun AccountRecord.update(acc: Any) =
-            acc.typeUrl.getTypeShortName().let { type ->
-                when (type) {
-                    Auth.ModuleAccount::class.java.simpleName ->
-                        acc.unpack(Auth.ModuleAccount::class.java).let { mod ->
-                            this.apply {
-                                this.baseAccount = mod.baseAccount
-                                this.accountNumber = mod.baseAccount.accountNumber
-                                this.data = acc
-                            }
-                            SignatureJoinRecord.insert(mod.baseAccount.pubKey, SigJoinType.ACCOUNT, mod.baseAccount.address)
-                        }
-                    Auth.BaseAccount::class.java.simpleName ->
-                        acc.unpack(Auth.BaseAccount::class.java).let { mod ->
-                            this.apply {
-                                this.baseAccount = mod
-                                this.accountNumber = mod.accountNumber
-                                this.data = acc
-                            }
-                            SignatureJoinRecord.insert(mod.pubKey, SigJoinType.ACCOUNT, mod.address)
-                        }
-                    MarkerAccount::class.java.simpleName ->
-                        acc.unpack(MarkerAccount::class.java).let { mod ->
-                            this.apply {
-                                this.baseAccount = mod.baseAccount
-                                this.accountNumber = mod.baseAccount.accountNumber
-                                this.data = acc
-                            }
-                            SignatureJoinRecord.insert(mod.baseAccount.pubKey, SigJoinType.ACCOUNT, mod.baseAccount.address)
-                        }
-                    else -> throw IllegalArgumentException("This account type has not been handled yet: ${acc.typeUrl}")
+            (
+                findByAddress(address)?.apply {
+                    this.baseAccount = baseAccount
+                    this.accountNumber = baseAccount.accountNumber
+                    this.data = data
+                    this.isContract = isContract
+                } ?: AccountTable.insertAndGetId {
+                    it[this.accountAddress] = address
+                    it[this.type] = type
+                    it[this.accountNumber] = number
+                    it[this.baseAccount] = baseAccount
+                    it[this.data] = data
+                    it[this.isContract] = isContract
+                }.let { findById(it)!! }
+                )
+                .also {
+                    SignatureJoinRecord.insert(baseAccount.pubKey, SigJoinType.ACCOUNT, address)
                 }
-            }
+        }
     }
 
     var accountAddress by AccountTable.accountAddress
@@ -138,4 +119,5 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
     var accountNumber by AccountTable.accountNumber
     var baseAccount by AccountTable.baseAccount
     var data by AccountTable.data
+    var isContract by AccountTable.isContract
 }

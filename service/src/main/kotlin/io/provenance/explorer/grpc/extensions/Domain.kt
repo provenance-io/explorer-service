@@ -4,6 +4,7 @@ import com.google.protobuf.Any
 import cosmos.auth.v1beta1.Auth
 import cosmos.base.query.v1beta1.Pagination
 import cosmos.crypto.multisig.Keys
+import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toBech32Data
 import io.provenance.explorer.domain.extensions.edPubKeyToBech32
@@ -23,7 +24,7 @@ fun Any.toMarker(): MarkerAccount =
         when (it) {
             MarkerAccount::class.java.simpleName -> this.unpack(MarkerAccount::class.java)
             else -> {
-                throw Exception("This marker type has not been mapped yet")
+                throw ResourceNotFoundException("This marker type has not been mapped yet")
             }
         }
     }

@@ -171,6 +171,7 @@ data class MetadataAddress internal constructor(val bytes: ByteArray) {
 }
 
 fun String.toUuid() = UUID.fromString(this)
+fun String.toUuidOrNull() = try { UUID.fromString(this) } catch (e: Exception) { null }
 fun ByteString.toMAddress() = MetadataAddress.fromBytes(this.toByteArray())
 fun String.toMAddress() = MetadataAddress.fromBech32(this)
 fun String.toMAddressScope() = MetadataAddress.forScope(this.toUuid())

@@ -34,6 +34,15 @@ class GlobalControllerAdvice : ResponseEntityExceptionHandler() {
         logger.info("404 on '${request.requestURI}' with error '${exception.message}'")
         return ResponseEntity.notFound().build()
     }
+
+    /**
+     * Catch IllegalArgumentException, return 404
+     */
+    @ExceptionHandler(IllegalArgumentException::class)
+    fun handleIllegalArg(exception: IllegalArgumentException, request: HttpServletRequest): ResponseEntity<Any> {
+        logger.info("404 on '${request.requestURI}' with error '${exception.message}'")
+        return ResponseEntity.notFound().build()
+    }
 }
 
 open class ResourceNotFoundException(message: String? = "", cause: Throwable? = null) : RuntimeException(message, cause)

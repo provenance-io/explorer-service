@@ -22,13 +22,19 @@ import org.springframework.web.bind.annotation.RestController
 )
 class MigrationController(private val migrationService: MigrationService) {
 
-    @ApiOperation("Updates existing transactions with new data points")
-    @GetMapping("/update/txs")
-    fun updateTxs(): ResponseEntity<Boolean> = ResponseEntity.ok(migrationService.updateTxs())
+    @ApiOperation("Updates existing transactions with given type ids with new data points")
+    @GetMapping("/update/txs/type")
+    fun updateTxsByType(
+        @RequestParam typeIds: List<Int>,
+        @RequestParam min: Int,
+        @RequestParam max: Int,
+        @RequestParam inc: Int
+    ) = ResponseEntity.ok(migrationService.reprocessTxsFromTypeId(typeIds, min, max, inc))
 
-    @ApiOperation("Updates existing blocks with txs")
-    @PutMapping("/update/blocks")
-    fun updateBlocks(@RequestBody blocks: List<Int>) = ResponseEntity.ok(migrationService.updateBlocks(blocks))
+    @ApiOperation("Updates existing transactions with given heights with new data points")
+    @PutMapping("/update/txs/height")
+    fun updateTxsByHeight(@RequestBody heights: List<Int>) =
+        ResponseEntity.ok(migrationService.reprocessTxsFromHeight(heights))
 
     @ApiOperation("Updates validator cache for missing records")
     @GetMapping("/update/validatorCache")
@@ -48,14 +54,4 @@ class MigrationController(private val migrationService: MigrationService) {
     @GetMapping("/update/blocks/missed")
     fun updateMissedBlocks(@RequestParam start: Int, @RequestParam end: Int, @RequestParam inc: Int) =
         ResponseEntity.ok(migrationService.updateMissedBlocks(start, end, inc))
-
-    @ApiOperation("Updates tx message msg id")
-    @GetMapping("/update/messages/msgid")
-    fun updateTxMessageId(@RequestParam start: Int, @RequestParam end: Int, @RequestParam inc: Int) =
-        ResponseEntity.ok(migrationService.updateTxMessageMsgIdx(start, end, inc))
-
-    @ApiOperation("Updates tx message count per tx")
-    @GetMapping("/update/messages")
-    fun updateTxMessages(@RequestParam limit: Int, @RequestParam min: Int, @RequestParam max: Int) =
-        ResponseEntity.ok(migrationService.updateTxMessageCount(min, max, limit))
 }

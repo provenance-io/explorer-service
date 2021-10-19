@@ -32,6 +32,7 @@ class TransactionGrpcClient(channelUri: URI) {
                 .keepAliveTime(10, TimeUnit.SECONDS)
                 .keepAliveTimeout(10, TimeUnit.SECONDS)
                 .intercept(GrpcLoggingInterceptor())
+                .maxInboundMessageSize((25 * 1e6).toInt())
                 .build()
 
         txClient = ServiceGrpc.newBlockingStub(channel)

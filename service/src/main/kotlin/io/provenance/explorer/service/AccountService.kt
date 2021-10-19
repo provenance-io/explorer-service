@@ -5,7 +5,6 @@ import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
-import io.provenance.explorer.domain.entities.AccountRecord.Companion.update
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.fromBase64
 import io.provenance.explorer.domain.extensions.isAddressAsType
@@ -44,9 +43,9 @@ class AccountService(
 
     fun getAccountRaw(address: String) = transaction { AccountRecord.findByAddress(address) } ?: saveAccount(address)
 
-    fun saveAccount(address: String) =
-        accountClient.getAccountInfo(address)?.let { AccountRecord.insertIgnore(it) }
-            ?: if (address.isAddressAsType(props.provAccPrefix())) AccountRecord.insertUnknownAccount(address)
+    fun saveAccount(address: String, isContract: Boolean = false) =
+        accountClient.getAccountInfo(address)?.let { AccountRecord.insertIgnore(it, isContract) }
+            ?: if (address.isAddressAsType(props.provAccPrefix())) AccountRecord.insertUnknownAccount(address, isContract)
             else throw ResourceNotFoundException("Invalid account: '$address'")
 
     fun getAccountDetail(address: String) = getAccountRaw(address).let {
@@ -151,16 +150,6 @@ class AccountService(
             },
             res.totalList.map { t -> CoinStr(t.amount.toDecCoin(), t.denom) }
         )
-    }
-
-    fun updateAccounts(accs: Set<Int>) = transaction {
-        logger.info("Updating accounts")
-        accs.forEach { id ->
-            val record = AccountRecord.findById(id)!!
-            val data = accountClient.getAccountInfo(record.accountAddress)
-            if (data != null && data != record.data)
-                record.update(data)
-        }
     }
 }
 
