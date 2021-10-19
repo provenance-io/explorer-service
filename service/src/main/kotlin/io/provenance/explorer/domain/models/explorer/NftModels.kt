@@ -1,13 +1,19 @@
 package io.provenance.explorer.domain.models.explorer
 
+import io.provenance.explorer.domain.entities.NftScopeRecord
+import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.metadata.v1.Description
 import io.provenance.metadata.v1.Party
+import io.provenance.metadata.v1.RecordOutput
 
 data class ScopeListview(
     val scopeAddr: String,
     val specName: String?,
     val specAddr: String,
-    val lastUpdated: String
+    val lastUpdated: String,
+    val isOwner: Boolean,
+    val isDataAccess: Boolean,
+    val isValueOwner: Boolean
 )
 
 data class ScopeDetail(
@@ -16,6 +22,7 @@ data class ScopeDetail(
     val specAddr: String,
     val description: SpecDescrip?,
     val owners: List<PartyAndRole>,
+    val dataAccess: List<String>,
     val valueOwner: String?
 )
 
@@ -48,11 +55,26 @@ data class RecordDetail(
     val recordAddr: String,
     val recordSpecAddr: String,
     val lastModified: String,
-    val responsibleParties: List<PartyAndRole>
+    val responsibleParties: List<PartyAndRole>,
+    val outputs: List<RecordInputOutput>
 )
+
+data class RecordInputOutput(
+    val name: String,
+    val hash: String,
+    val status: String
+)
+
+fun RecordOutput.toDataObject(name: String) = RecordInputOutput(name, this.hash, this.status.name)
 
 data class RecordSpecDetail(
     val contractSpecAddr: String,
     val recordSpecAddr: String,
     val responsibleParties: List<String>
+)
+
+data class NftVOTransferObj(
+    val scope: NftScopeRecord,
+    val address: String,
+    val tx: TxCacheRecord
 )

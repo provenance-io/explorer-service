@@ -55,6 +55,7 @@ import io.provenance.explorer.grpc.v1.MetadataGrpcClient
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import io.provenance.explorer.service.async.AsyncCaching
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -174,14 +175,14 @@ class ExplorerService(
 
     fun getChainId() = asyncCaching.getChainIdString()
 
-    fun getParams(): Params {
-        val authParams = accountClient.getAuthParams().params
-        val bankParams = accountClient.getBankParams().params
+    fun getParams(): Params = runBlocking {
+        val authParams = async { accountClient.getAuthParams().params }.await()
+        val bankParams = async { accountClient.getBankParams().params }.await()
         val distParams = validatorClient.getDistParams().params
         val votingParams = govClient.getParams(GovParamType.voting).votingParams
         val tallyParams = govClient.getParams(GovParamType.tallying).tallyParams
         val depositParams = govClient.getParams(GovParamType.deposit).depositParams
-        val mintParams = accountClient.getMintParams().params
+        val mintParams = async { accountClient.getMintParams().params }.await()
         val slashingParams = validatorClient.getSlashingParams().params
         val stakingParams = validatorClient.getStakingParams().params
         val transferParams = ibcClient.getTransferParams().params
@@ -191,7 +192,7 @@ class ExplorerService(
         val metadataParams = metadataClient.getMetadataParams().params
         val nameParams = attrClient.getNameParams().params
 
-        return Params(
+        Params(
             CosmosParams(
                 AuthParams(
                     authParams.maxMemoCharacters,

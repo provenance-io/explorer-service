@@ -16,6 +16,7 @@ object PluginIds { // please keep this sorted in sections
     const val SpringBoot = "org.springframework.boot"
     const val Protobuf = "com.google.protobuf"
     const val Grpc = "grpc"
+    const val GrpcKt = "grpckt"
 
     // Provenance
     const val ProvenanceDownloadProtos = "io.provenance.download-protos"
@@ -40,7 +41,7 @@ object PluginVersions { // please keep this sorted in sections
 object Versions {
     // kotlin
     const val Kotlin = PluginVersions.Kotlin
-    const val KotlinXCoroutines = "1.5.1"
+    const val KotlinXCoroutines = "1.5.2"
 
     // 3rd Party
     const val ApacheCommonsText = "1.9"
@@ -54,11 +55,12 @@ object Versions {
     const val Logback = "0.1.5"
     const val SpringBoot = PluginVersions.SpringBoot
     const val Swagger = "3.0.0"
-    const val Protobuf = "3.15.0"
+    const val Protobuf = "3.19.1"
     const val Grpc = "1.40.1"
+    const val KotlinGrpc = "1.2.0"
     const val GrpcStarter = "4.5.6"
-    const val ProtocArtifact = "3.17.3"
     const val Postgres = "42.2.23"
+    const val Encryption = "0.4.0"
 
     // Testing
     const val Jupiter = "5.7.1"
@@ -66,8 +68,8 @@ object Versions {
     const val Kotest = "4.4.3"
 
     // external protos
-    const val Provenance = "v1.7.0"
-    const val Cosmos = "v0.44.0"
+    const val Provenance = "v1.7.5"
+    const val Cosmos = "v0.44.3"
     const val Wasmd = "v0.19.0"
     const val Ibc = "v1.1.0"
 }
@@ -77,6 +79,7 @@ object Libraries {
     const val KotlinReflect = "org.jetbrains.kotlin:kotlin-reflect:${Versions.Kotlin}"
     const val KotlinStdlib = "org.jetbrains.kotlin:kotlin-stdlib:${Versions.Kotlin}"
     const val KotlinXCoRoutinesCore = "org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.KotlinXCoroutines}"
+    const val KotlinXCoRoutinesGuava = "org.jetbrains.kotlinx:kotlinx-coroutines-guava:${Versions.KotlinXCoroutines}"
 
     // 3rd Party
     const val Exposed = "org.jetbrains.exposed:exposed-core:${Versions.Exposed}"
@@ -92,6 +95,7 @@ object Libraries {
     const val ApacheCommonsText = "org.apache.commons:commons-text:${Versions.ApacheCommonsText}"
     const val Khttp = "khttp:khttp:${Versions.Khttp}"
     const val KaseChange = "net.pearx.kasechange:kasechange:${Versions.KaseChange}"
+    const val Encryption = "io.provenance.scope:encryption:${Versions.Encryption}"
 
     // Logging
     const val LogbackCore = "ch.qos.logback.contrib:logback-json-core:${Versions.Logback}"
@@ -99,11 +103,14 @@ object Libraries {
     const val LogbackJackson = "ch.qos.logback.contrib:logback-jackson:${Versions.Logback}"
 
     // Protobuf
-    const val ProtobufJava = "com.google.protobuf:protobuf-java:${Versions.Protobuf}"
+    const val ProtobufJavaUtil = "com.google.protobuf:protobuf-java-util:${Versions.Protobuf}"
+    const val ProtobufKotlin = "com.google.protobuf:protobuf-kotlin:${Versions.Protobuf}"
     const val GrpcProtobuf = "io.grpc:grpc-protobuf:${Versions.Grpc}"
     const val GrpcStub = "io.grpc:grpc-stub:${Versions.Grpc}"
-    const val ProtocArtifact = "com.google.protobuf:protoc:${Versions.ProtocArtifact}"
+    const val GrpcKotlinStub = "io.grpc:grpc-kotlin-stub:${Versions.KotlinGrpc}"
+    const val ProtocArtifact = "com.google.protobuf:protoc:${Versions.Protobuf}"
     const val GrpcArtifact = "io.grpc:protoc-gen-grpc-java:${Versions.Grpc}"
+    const val GrpcKotlinArtifact = "io.grpc:protoc-gen-grpc-kotlin:${Versions.KotlinGrpc}:jdk7@jar"
     const val GrpcNetty = "io.grpc:grpc-netty:${Versions.Grpc}"
     const val GrpcStart = "io.github.lognet:grpc-spring-boot-starter:${Versions.GrpcStarter}"
 

@@ -117,6 +117,8 @@ Columns: &#9989;
 * name -> from scope spec
 * scope spec addr
 * Last updated from tx
+* isOwner -> boolean to contain the given address
+* isValueOwner -> boolean to match the given address
 
 ## Asset - NFT count
 * fetch count of NFTs owned by asset holding address  &#9989;

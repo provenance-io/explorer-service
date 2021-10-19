@@ -17,15 +17,6 @@ sourceSets {
             resources.srcDirs("src/test/resources")
         }
     }
-//    create("integrationTest") {
-//        withConvention(KotlinSourceSet::class) {
-//            kotlin.srcDirs("src/test/kotlin")
-//            compileClasspath += sourceSets.main.get().output + sourceSets.test.get().output +
-//                configurations.testRuntimeOnly + configurations.testImplementation
-//            runtimeClasspath += output + compileClasspath + test.get().output
-//            resources.srcDirs(file("src/test/resources"))
-//        }
-//    }
 }
 
 configurations.all {
@@ -45,12 +36,16 @@ dependencies {
 
     api(Libraries.BouncyCastle)
     api(Libraries.KotlinXCoRoutinesCore)
+    api(Libraries.KotlinXCoRoutinesGuava)
     api(Libraries.ApacheCommonsText)
     api(Libraries.Khttp)
     implementation(Libraries.KaseChange)
+    api(Libraries.Encryption) {
+        exclude("io.provenance.scope", "contract-proto")
+        exclude("io.provenance.protobuf", "pb-proto-java")
+    }
 
     implementation(Libraries.GrpcNetty)
-    implementation(Libraries.GrpcStart)
 
     api(Libraries.LogbackCore)
     api(Libraries.LogbackClassic)

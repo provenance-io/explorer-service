@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController
 
 @Validated
 @RestController
-@RequestMapping(path = ["/api/v2"], produces = [MediaType.APPLICATION_JSON_VALUE])
+@RequestMapping(path = ["/api/v2/migration"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Api(
     value = "Migration controller", produces = "application/json", consumes = "application/json", tags = ["Migrations"],
     description = "This should NEVER be used by the UI"

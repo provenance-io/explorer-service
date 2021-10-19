@@ -54,3 +54,6 @@ data class TokenDistribution(
     val amount: TokenDistributionAmount,
     val percent: String
 )
+
+enum class Timeframe { WEEK, DAY, HOUR, FOREVER }
+const val hourlyBlockCount = 720

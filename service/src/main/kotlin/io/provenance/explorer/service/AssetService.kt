@@ -29,6 +29,11 @@ import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
 import io.provenance.explorer.grpc.v1.MetadataGrpcClient
 import io.provenance.marker.v1.MarkerStatus
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
@@ -75,7 +80,7 @@ class AssetService(
         MarkerCacheRecord.findByDenom(denom)?.let { Pair(it.id, it) }
     }
 
-    private fun getAndInsertMarker(denom: String) =
+    private fun getAndInsertMarker(denom: String) = runBlocking {
         markerClient.getMarkerDetail(denom)?.let {
             MarkerCacheRecord.insertIgnore(
                 it.baseAccount.address,
@@ -97,11 +102,14 @@ class AssetService(
                 TxMarkerJoinRecord.findLatestTxByDenom(denom)
             )
         }
+    }
 
     fun getAssetDetail(denom: String) =
-        getAssetFromDB(denom)
-            ?.let { (id, record) ->
+        runBlocking {
+            getAssetFromDB(denom)?.let { (id, record) ->
                 val txCount = TxMarkerJoinRecord.findCountByDenom(id.value)
+                val attributes = async { attrClient.getAllAttributesForAddress(record.markerAddress) }
+                val balances = async { accountService.getBalances(record.markerAddress!!, 1, 1) }
                 AssetDetail(
                     record.denom,
                     record.markerAddress,
@@ -111,35 +119,30 @@ class AssetService(
                     ) else null,
                     CoinStr(record.supply.toBigInteger().toString(), record.denom),
                     record.data?.isMintable() ?: false,
-                    if (record.markerAddress != null) markerClient.getMarkerHolders(
-                        denom,
-                        0,
-                        10
-                    ).pagination.total.toInt() else 0,
+                    if (record.markerAddress != null) markerClient.getMarkerHoldersCount(denom).pagination.total.toInt() else 0,
                     txCount,
-                    attrClient.getAllAttributesForAddress(record.markerAddress).map { attr -> attr.toResponse() },
+                    attributes.await().map { attr -> attr.toResponse() },
                     accountService.getDenomMetadataSingle(denom).toObjectNode(protoPrinter),
                     TokenCounts(
-                        if (record.markerAddress != null) accountService.getBalances(
-                            record.markerAddress!!,
-                            0,
-                            1
-                        ).pagination.total else 0,
+                        if (record.markerAddress != null) balances.await().pagination.total else 0,
                         if (record.markerAddress != null) metadataClient.getScopesByOwner(record.markerAddress!!).pagination.total.toInt() else 0
                     ),
                     record.status.prettyStatus(),
                     record.markerType.prettyMarkerType()
                 )
             } ?: throw ResourceNotFoundException("Invalid asset: $denom")
+        }
 
-    fun getAssetHolders(denom: String, page: Int, count: Int) = accountService.getCurrentSupply(denom).let { supply ->
-        val res = markerClient.getMarkerHolders(denom, page.toOffset(count), count)
-        val list = res.balancesList.map { bal ->
-            val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount
-            AssetHolder(bal.address, CountStrTotal(balance, supply, denom))
-        }.sortedByDescending { it.balance.count.toBigDecimal() }
-        PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
-    }
+    fun getAssetHolders(denom: String, page: Int, count: Int) =
+        runBlocking {
+            val supply = accountService.getCurrentSupply(denom)
+            val res = markerClient.getMarkerHolders(denom, page.toOffset(count), count)
+            val list = res.balancesList.asFlow().map { bal ->
+                val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount
+                AssetHolder(bal.address, CountStrTotal(balance, supply, denom))
+            }.toList().sortedWith(compareBy { it.balance.count.toBigDecimal() }).asReversed()
+            PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
+        }
 
     fun getTokenDistributionStats() = transaction { TokenDistributionAmountsRecord.getStats() }
 
@@ -216,18 +219,20 @@ class AssetService(
     fun getMetadata(denom: String?) = accountService.getDenomMetadata(denom).map { it.toObjectNode(protoPrinter) }
 
     // Updates the Marker cache
-    fun updateAssets(denoms: Set<String>, txTime: Timestamp) = transaction {
-        logger.info("saving assets")
-        denoms.forEach { marker ->
-            val data = markerClient.getMarkerDetail(marker)
-            MarkerCacheRecord.findByDenom(marker)?.apply {
-                if (data != null) this.status = data.status.toString()
-                this.supply = accountService.getCurrentSupply(marker).toBigDecimal()
-                this.lastTx = txTime.toDateTime()
-                this.data = data
+    fun updateAssets(denoms: Set<String>, txTime: Timestamp) =
+        transaction {
+            denoms.forEach { marker ->
+                runBlocking {
+                    val data = markerClient.getMarkerDetail(marker)
+                    MarkerCacheRecord.findByDenom(marker)?.apply {
+                        if (data != null) this.status = data.status.toString()
+                        this.supply = accountService.getCurrentSupply(marker).toBigDecimal()
+                        this.lastTx = txTime.toDateTime()
+                        this.data = data
+                    }
+                }
             }
         }
-    }
 }
 
 fun BigDecimal.asPercentOf(divisor: BigDecimal): BigDecimal = this.divide(divisor, 20, RoundingMode.CEILING)

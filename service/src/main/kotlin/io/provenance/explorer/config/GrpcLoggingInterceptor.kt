@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component
 import java.util.concurrent.TimeUnit
 
 @Component
-class GrpcLoggingInterceptor : ClientInterceptor {
+class GrpcLoggingInterceptor() : ClientInterceptor {
     private val logger = logger()
     override fun <M, R> interceptCall(
         method: MethodDescriptor<M, R>,
@@ -20,7 +20,7 @@ class GrpcLoggingInterceptor : ClientInterceptor {
     ): ClientCall<M, R> {
         return object : BackendForwardingClientCall<M, R>(
             method,
-            next.newCall(method, callOptions.withDeadlineAfter(10000, TimeUnit.MILLISECONDS))
+            next.newCall(method, callOptions.withDeadlineAfter(60, TimeUnit.SECONDS))
         ) {
             override fun sendMessage(message: M) {
                 logger.debug("Requesting external api method: $methodName")

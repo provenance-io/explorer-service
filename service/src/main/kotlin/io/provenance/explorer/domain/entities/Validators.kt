@@ -65,7 +65,10 @@ object StakingValidatorCacheTable : IntIdTable(name = "staking_validator_cache")
 class StakingValidatorCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<StakingValidatorCacheRecord>(StakingValidatorCacheTable) {
 
-        val logger = logger(StakingValidatorCacheRecord::class)
+        fun findByOperAddr(operAddr: String) = transaction {
+            StakingValidatorCacheRecord.find { StakingValidatorCacheTable.operatorAddress eq operAddr }
+                .firstOrNull()
+        }
 
         fun insertIgnore(
             operator: String,
@@ -138,7 +141,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
             if (ids.isNotEmpty()) {
                 val arguments = ids.joinToString(", ", "(", ")")
                 val query = "SELECT * FROM current_validator_state WHERE operator_addr_id in $arguments".trimIndent()
-                query.execAndMap() { it.toCurrentValidatorState() }
+                query.execAndMap { it.toCurrentValidatorState() }
             } else listOf()
         }
 
@@ -152,6 +155,12 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
             val query = "SELECT * FROM current_validator_state WHERE consensus_address = ?".trimIndent()
             val arguments = listOf(Pair(VarCharColumnType(128), address))
             query.execAndMap(arguments) { it.toCurrentValidatorState() }.firstOrNull()
+        }
+
+        fun findByConsensusAddressIn(addresses: List<String>) = transaction {
+            val arguments = addresses.joinToString("', '", "('", "')")
+            val query = "SELECT * FROM current_validator_state WHERE consensus_address IN $arguments".trimIndent()
+            query.execAndMap { it.toCurrentValidatorState() }
         }
 
         fun findByOperator(address: String) = transaction {

@@ -23,7 +23,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=explorer
       - DB_SCHEMA=explorer
-      - DB_CONNECTION_POOL_SIZE=5
+      - DB_CONNECTION_POOL_SIZE=40
       - SPOTLIGHT_TTL_MS=5000
       - INITIAL_HIST_DAY_COUNT=14
       - EXPLORER_MAINNET=false
