@@ -45,6 +45,14 @@ class SmCodeRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.data] = data
                 }.value
             }
+
+        fun getPaginated(offset: Int, limit: Int) = transaction {
+            SmCodeRecord
+                .all()
+                .orderBy(Pair(SmCodeTable.id, SortOrder.DESC))
+                .limit(limit, offset.toLong())
+                .toList()
+        }
     }
 
     var creationHeight by SmCodeTable.creationHeight

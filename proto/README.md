@@ -30,8 +30,8 @@ in the `./buildSrc/src/main/kotlin/Dependencies.kt` file:
 
 ```kotlin
     //external protos
-    const val Provenance = "v1.7.0"
-    const val Cosmos = "v0.44.0"
+    const val Provenance = "v1.7.5"
+    const val Cosmos = "v0.44.3"
     const val Wasmd = "v0.19.0"
     const val Ibc = "v1.1.0"
 ```
@@ -39,7 +39,7 @@ in the `./buildSrc/src/main/kotlin/Dependencies.kt` file:
 To manually specify the versions run this `gradle` task  *from the root project directory*:
 
 ```bash
-./gradlew downloadProtos --provenance-version v1.7.0 --cosmos-version v0.44.0 --wasmd-version v0.19.0 --ibc-version v1.1.0
+./gradlew downloadProtos --provenance-version v1.7.5 --cosmos-version v0.44.3 --wasmd-version v0.19.0 --ibc-version v1.1.0
 ```
 
 > The proto download process does not need to be run very often, 
@@ -51,5 +51,5 @@ To manually specify the versions run this `gradle` task  *from the root project 
 Once the protos have been downloaded, run the `gradle` task *from the root project directory*:
 
 ```bash
-./gradlew clean proto:build
+./gradlew clean proto:generateProto
 ```

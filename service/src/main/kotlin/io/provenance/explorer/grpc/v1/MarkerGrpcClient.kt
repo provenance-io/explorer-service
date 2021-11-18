@@ -2,22 +2,26 @@ package io.provenance.explorer.grpc.v1
 
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
-import io.provenance.explorer.grpc.extensions.getPaginationBuilder
+import io.provenance.explorer.grpc.extensions.getPagination
+import io.provenance.explorer.grpc.extensions.getPaginationNoCount
 import io.provenance.explorer.grpc.extensions.toMarker
 import io.provenance.marker.v1.MarkerAccount
-import io.provenance.marker.v1.QueryGrpc
-import io.provenance.marker.v1.QueryHoldingRequest
+import io.provenance.marker.v1.QueryGrpcKt
 import io.provenance.marker.v1.QueryHoldingResponse
-import io.provenance.marker.v1.QueryMarkerRequest
+import io.provenance.marker.v1.queryHoldingRequest
+import io.provenance.marker.v1.queryMarkerRequest
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
 import io.provenance.marker.v1.QueryParamsRequest as MarkerRequest
 
 @Component
-class MarkerGrpcClient(channelUri: URI) {
+class MarkerGrpcClient(channelUri: URI, private val semaphore: Semaphore) {
 
-    private val markerClient: QueryGrpc.QueryBlockingStub
+    private val markerClient: QueryGrpcKt.QueryCoroutineStub
+    private val markerClientFuture: QueryGrpcKt.QueryCoroutineStub
 
     init {
         val channel =
@@ -29,44 +33,44 @@ class MarkerGrpcClient(channelUri: URI) {
                         it.usePlaintext()
                     }
                 }
-                .idleTimeout(60, TimeUnit.SECONDS)
-                .keepAliveTime(10, TimeUnit.SECONDS)
-                .keepAliveTimeout(10, TimeUnit.SECONDS)
+                .idleTimeout(5, TimeUnit.MINUTES)
+                .keepAliveTime(60, TimeUnit.SECONDS)
+                .keepAliveTimeout(20, TimeUnit.SECONDS)
                 .intercept(GrpcLoggingInterceptor())
                 .build()
 
-        markerClient = QueryGrpc.newBlockingStub(channel)
+        markerClient = QueryGrpcKt.QueryCoroutineStub(channel)
+        markerClientFuture = QueryGrpcKt.QueryCoroutineStub(channel)
     }
 
-    fun getMarkerDetail(id: String): MarkerAccount? =
-        try {
-            markerClient.marker(QueryMarkerRequest.newBuilder().setId(id).build()).marker.toMarker()
-        } catch (e: Exception) {
-            null
+    suspend fun getMarkerDetail(id: String): MarkerAccount? =
+        semaphore.withPermit {
+            try {
+                markerClient.marker(queryMarkerRequest { this.id = id }).marker.toMarker()
+            } catch (e: Exception) {
+                null
+            }
         }
 
-    fun getMarkerHolders(denom: String, offset: Int, count: Int): QueryHoldingResponse =
-        try {
+    suspend fun getMarkerHolders(denom: String, offset: Int, count: Int): QueryHoldingResponse =
+        semaphore.withPermit {
             markerClient.holding(
-                QueryHoldingRequest.newBuilder()
-                    .setId(denom)
-                    .setPagination(getPaginationBuilder(offset, count))
-                    .build()
+                queryHoldingRequest {
+                    this.id = denom
+                    this.pagination = getPaginationNoCount(offset, count)
+                }
             )
-        } catch (e: Exception) {
-            QueryHoldingResponse.getDefaultInstance()
         }
 
-    fun getAllMarkerHolders(denom: String): QueryHoldingResponse =
-        try {
+    suspend fun getMarkerHoldersCount(denom: String): QueryHoldingResponse =
+        semaphore.withPermit {
             markerClient.holding(
-                QueryHoldingRequest.newBuilder()
-                    .setId(denom)
-                    .build()
+                queryHoldingRequest {
+                    this.id = denom
+                    this.pagination = getPagination(0, 1)
+                }
             )
-        } catch (e: Exception) {
-            QueryHoldingResponse.getDefaultInstance()
         }
 
-    fun getMarkerParams() = markerClient.params(MarkerRequest.newBuilder().build())
+    suspend fun getMarkerParams() = markerClient.params(MarkerRequest.newBuilder().build())
 }

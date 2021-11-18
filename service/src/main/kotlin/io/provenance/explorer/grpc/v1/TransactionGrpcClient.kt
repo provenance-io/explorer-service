@@ -53,10 +53,10 @@ class TransactionGrpcClient(channelUri: URI) {
 
         val txResps = results.txResponsesList.toMutableList()
 
-        if (txResps.count() == 0)
+        if (txResps.isEmpty())
             throw TendermintApiException(
                 "Blockchain failed to retrieve txs for height $height. Expected $total, " +
-                    "Returned 0. This is not normal."
+                    "Returned 0. This happens sometimes. The block will retry."
             )
 
         while (txResps.count() < total) {

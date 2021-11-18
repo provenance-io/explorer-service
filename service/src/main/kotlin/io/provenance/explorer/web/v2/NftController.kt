@@ -38,4 +38,16 @@ class NftController(private val nftService: NftService) {
     @ApiOperation("Returns records for the NFT")
     @GetMapping("/scope/{addr}/records")
     fun getNftRecords(@PathVariable addr: String) = ResponseEntity.ok(nftService.getRecordsForScope(addr))
+
+    @ApiOperation("Returns the scope spec as a json object")
+    @GetMapping("/scopeSpec/{scopeSpec}/json")
+    fun getScopeSpecJson(@PathVariable scopeSpec: String) = ResponseEntity.ok(nftService.getScopeSpecJson(scopeSpec))
+
+    @ApiOperation("Returns the contract spec as a json object")
+    @GetMapping("/contractSpec/{contractSpec}/json")
+    fun getContractSpecJson(@PathVariable contractSpec: String) = ResponseEntity.ok(nftService.getContractSpecJson(contractSpec))
+
+    @ApiOperation("Returns the record spec as a json object")
+    @GetMapping("/recordSpec/{recordSpec}/json")
+    fun getRecordSpecJson(@PathVariable recordSpec: String) = ResponseEntity.ok(nftService.getRecordSpecJson(recordSpec))
 }

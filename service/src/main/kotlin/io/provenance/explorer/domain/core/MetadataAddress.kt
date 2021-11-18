@@ -183,3 +183,8 @@ fun String.toMAddressContractSpec() = MetadataAddress.forContractSpecification(t
 fun UUID.toMAddressContractSpec() = MetadataAddress.forContractSpecification(this)
 
 fun String.blankToNull() = this.ifBlank { null }
+
+fun String.isMAddress() =
+    this.startsWith(PREFIX_SCOPE_SPECIFICATION) || this.startsWith(PREFIX_SCOPE) ||
+        this.startsWith(PREFIX_CONTRACT_SPECIFICATION) || this.startsWith(PREFIX_SESSION) ||
+        this.startsWith(PREFIX_RECORD_SPECIFICATION) || this.startsWith(PREFIX_RECORD)

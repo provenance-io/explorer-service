@@ -170,7 +170,7 @@ class AsyncCaching(
             .also { calculateBlockTxFee(it, blockHeight) }
             .map { addTxToCacheWithTimestamp(txClient.getTxByHash(it.txhash), blockTime) }
     } catch (e: Exception) {
-        logger.error("Failed to retrieve transactions at block: $blockHeight", e)
+        logger.error("Failed to retrieve transactions at block: $blockHeight", e.message)
         BlockTxRetryRecord.insert(blockHeight, e)
         listOf()
     }

@@ -28,6 +28,8 @@ import io.provenance.explorer.grpc.extensions.getModuleAccName
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.MetadataGrpcClient
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 
@@ -43,51 +45,63 @@ class AccountService(
 
     fun getAccountRaw(address: String) = transaction { AccountRecord.findByAddress(address) } ?: saveAccount(address)
 
-    fun saveAccount(address: String, isContract: Boolean = false) =
+    fun saveAccount(address: String, isContract: Boolean = false) = runBlocking {
         accountClient.getAccountInfo(address)?.let { AccountRecord.insertIgnore(it, isContract) }
-            ?: if (address.isAddressAsType(props.provAccPrefix())) AccountRecord.insertUnknownAccount(address, isContract)
-            else throw ResourceNotFoundException("Invalid account: '$address'")
-
-    fun getAccountDetail(address: String) = getAccountRaw(address).let {
-        AccountDetail(
-            it.type,
-            it.accountAddress,
-            it.accountNumber,
-            it.baseAccount?.sequence?.toInt(),
-            AccountRecord.findSigsByAddress(it.accountAddress).toSigObj(props.provAccPrefix()),
-            it.data?.getModuleAccName(),
-            attrClient.getAllAttributesForAddress(it.accountAddress).map { attr -> attr.toResponse() },
-            TokenCounts(
-                getBalances(it.accountAddress, 0, 1).pagination.total,
-                metadataClient.getScopesByOwner(it.accountAddress).pagination.total.toInt()
+            ?: if (address.isAddressAsType(props.provAccPrefix())) AccountRecord.insertUnknownAccount(
+                address,
+                isContract
             )
-        )
+            else throw ResourceNotFoundException("Invalid account: '$address'")
     }
 
-    fun getNamesOwnedByAccount(address: String, page: Int, limit: Int) =
+    fun getAccountDetail(address: String) = runBlocking {
+        getAccountRaw(address).let {
+            val attributes = async { attrClient.getAllAttributesForAddress(it.accountAddress) }
+            val balances = async { getBalances(it.accountAddress, 0, 1) }
+            AccountDetail(
+                it.type,
+                it.accountAddress,
+                it.accountNumber,
+                it.baseAccount?.sequence?.toInt(),
+                AccountRecord.findSigsByAddress(it.accountAddress).toSigObj(props.provAccPrefix()),
+                it.data?.getModuleAccName(),
+                attributes.await().map { attr -> attr.toResponse() },
+                TokenCounts(
+                    balances.await().pagination.total,
+                    metadataClient.getScopesByOwner(it.accountAddress).pagination.total.toInt()
+                ),
+                it.isContract
+            )
+        }
+    }
+
+    fun getNamesOwnedByAccount(address: String, page: Int, limit: Int) = runBlocking {
         attrClient.getNamesForAddress(address, page.toOffset(limit), limit).let { res ->
             val names = res.nameList.toList()
             PagedResults(res.pagination.total.pageCountOfResults(limit), names, res.pagination.total)
         }
+    }
 
-    fun getBalances(address: String, page: Int, limit: Int) =
+    suspend fun getBalances(address: String, page: Int, limit: Int) =
         accountClient.getAccountBalances(address, page.toOffset(limit), limit)
 
-    fun getAccountBalances(address: String, page: Int, limit: Int) =
+    fun getAccountBalances(address: String, page: Int, limit: Int) = runBlocking {
         getBalances(address, page, limit).let { res ->
             val bals = res.balancesList.map { it.toData() }
             PagedResults(res.pagination.total.pageCountOfResults(limit), bals, res.pagination.total)
         }
+    }
 
-    fun getCurrentSupply(denom: String) = accountClient.getCurrentSupply(denom).amount
+    fun getCurrentSupply(denom: String) = runBlocking { accountClient.getCurrentSupply(denom).amount }
 
-    fun getDenomMetadataSingle(denom: String) = accountClient.getDenomMetadata(denom).metadata
+    fun getDenomMetadataSingle(denom: String) = runBlocking { accountClient.getDenomMetadata(denom).metadata }
 
-    fun getDenomMetadata(denom: String?) =
+    fun getDenomMetadata(denom: String?) = runBlocking {
         if (denom != null) listOf(accountClient.getDenomMetadata(denom).metadata)
         else accountClient.getAllDenomMetadata().metadatasList
+    }
 
-    fun getDelegations(address: String, page: Int, limit: Int) =
+    fun getDelegations(address: String, page: Int, limit: Int) = runBlocking {
         accountClient.getDelegations(address, page.toOffset(limit), limit).let { res ->
             val list = res.delegationResponsesList.map {
                 Delegation(
@@ -103,8 +117,9 @@ class AccountService(
             }
             PagedResults(res.pagination.total.pageCountOfResults(limit), list, res.pagination.total)
         }
+    }
 
-    fun getUnbondingDelegations(address: String) =
+    fun getUnbondingDelegations(address: String) = runBlocking {
         accountClient.getUnbondingDelegations(address, 0, 100).let { res ->
             res.unbondingResponsesList.flatMap { list ->
                 list.entriesList.map {
@@ -121,8 +136,9 @@ class AccountService(
                 }
             }
         }
+    }
 
-    fun getRedelegations(address: String) =
+    fun getRedelegations(address: String) = runBlocking {
         accountClient.getRedelegations(address, 0, 100).let { res ->
             res.redelegationResponsesList.flatMap { list ->
                 list.entriesList.map {
@@ -139,17 +155,20 @@ class AccountService(
                 }
             }
         }
+    }
 
-    fun getRewards(address: String) = accountClient.getRewards(address).let { res ->
-        AccountRewards(
-            res.rewardsList.map { list ->
-                Reward(
-                    list.validatorAddress,
-                    list.rewardList.map { r -> CoinStr(r.amount.toDecCoin(), r.denom) }
-                )
-            },
-            res.totalList.map { t -> CoinStr(t.amount.toDecCoin(), t.denom) }
-        )
+    fun getRewards(address: String) = runBlocking {
+        accountClient.getRewards(address).let { res ->
+            AccountRewards(
+                res.rewardsList.map { list ->
+                    Reward(
+                        list.validatorAddress,
+                        list.rewardList.map { r -> CoinStr(r.amount.toDecCoin(), r.denom) }
+                    )
+                },
+                res.totalList.map { t -> CoinStr(t.amount.toDecCoin(), t.denom) }
+            )
+        }
     }
 }
 

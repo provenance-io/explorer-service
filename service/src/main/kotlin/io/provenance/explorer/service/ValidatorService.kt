@@ -8,6 +8,7 @@ import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.MissedBlocksRecord
+import io.provenance.explorer.domain.entities.SpotlightCacheRecord
 import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
@@ -32,10 +33,16 @@ import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.CountTotal
 import io.provenance.explorer.domain.models.explorer.CurrentValidatorState
 import io.provenance.explorer.domain.models.explorer.Delegation
+import io.provenance.explorer.domain.models.explorer.MissedBlockSet
+import io.provenance.explorer.domain.models.explorer.MissedBlocksTimeframe
 import io.provenance.explorer.domain.models.explorer.PagedResults
+import io.provenance.explorer.domain.models.explorer.Timeframe
 import io.provenance.explorer.domain.models.explorer.ValidatorCommission
 import io.provenance.explorer.domain.models.explorer.ValidatorDetails
+import io.provenance.explorer.domain.models.explorer.ValidatorMissedBlocks
+import io.provenance.explorer.domain.models.explorer.ValidatorMoniker
 import io.provenance.explorer.domain.models.explorer.ValidatorSummary
+import io.provenance.explorer.domain.models.explorer.hourlyBlockCount
 import io.provenance.explorer.grpc.extensions.toAddress
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -111,7 +118,7 @@ class ValidatorService(
                 addr.operatorAddress,
                 addr.accountAddr,
                 grpcClient.getDelegatorWithdrawalAddress(addr.accountAddr),
-                stakingValidator.consensusPubkey.toAddress(props.provValConsPrefix()) ?: "",
+                addr.consensusAddr,
                 CountTotal(
                     (getMissedBlocks(addr.consensusAddr)?.totalCount ?: 0).toBigInteger(),
                     currentHeight - (signingInfo?.startHeight?.toBigInteger() ?: BigInteger.ZERO)
@@ -411,4 +418,62 @@ class ValidatorService(
             val data = res.associate { it.blockHeight to it.blockLatency!! }
             BlockLatencyData(address, data, average)
         }
+
+    fun getDistinctValidatorsWithMissedBlocksInTimeframe(timeframe: Timeframe) = transaction {
+        val currentHeight = SpotlightCacheRecord.getSpotlight().latestBlock.height
+        val frame = when (timeframe) {
+            Timeframe.WEEK -> hourlyBlockCount * 24 * 7
+            Timeframe.DAY -> hourlyBlockCount * 24
+            Timeframe.HOUR -> hourlyBlockCount
+            Timeframe.FOREVER -> currentHeight - 1
+        }
+
+        val validators = MissedBlocksRecord
+            .findDistinctValidatorsWithMissedBlocksForPeriod(currentHeight - frame, currentHeight)
+            .let { ValidatorStateRecord.findByConsensusAddressIn(it.toList()) }
+            .map { ValidatorMissedBlocks(ValidatorMoniker(it.consensusAddr, it.operatorAddress, it.moniker)) }
+
+        MissedBlocksTimeframe(currentHeight - frame, currentHeight, validators)
+    }
+
+    fun getMissedBlocksForValidatorInTimeframe(timeframe: Timeframe, validatorAddr: String?) = transaction {
+        if (timeframe == Timeframe.FOREVER && validatorAddr == null)
+            throw IllegalArgumentException("If timeframe is FOREVER, you must have a validator operator address specified.")
+        if (validatorAddr != null && !validatorAddr.startsWith(props.provValOperPrefix()))
+            throw IllegalArgumentException("'validatorAddr' must begin with the validator operator address prefix : ${props.provValOperPrefix()}")
+
+        val currentHeight = SpotlightCacheRecord.getSpotlight().latestBlock.height
+        val frame = when (timeframe) {
+            Timeframe.WEEK -> hourlyBlockCount * 24 * 7
+            Timeframe.DAY -> hourlyBlockCount * 24
+            Timeframe.HOUR -> hourlyBlockCount
+            Timeframe.FOREVER -> currentHeight - 1
+        }
+
+        val valConsAddr = if (validatorAddr != null)
+            StakingValidatorCacheRecord.findByOperAddr(validatorAddr)?.consensusAddress
+        else
+            null
+
+        val results = MissedBlocksRecord
+            .findValidatorsWithMissedBlocksForPeriod(currentHeight - frame, currentHeight, valConsAddr)
+        val vals = ValidatorStateRecord.findByConsensusAddressIn(results.map { it.validator.valConsAddress })
+            .associateBy { it.consensusAddr }
+
+        val list = results
+            .groupBy(
+                { it.validator },
+                { MissedBlockSet(it.blocks.minOrNull()!!, it.blocks.maxOrNull()!!, it.blocks.size) }
+            )
+            .map { (k, v) -> ValidatorMissedBlocks(k, v) }
+
+        list.forEach { res ->
+            vals[res.validator.valConsAddress].let { match ->
+                res.validator.operatorAddr = match?.operatorAddress
+                res.validator.moniker = match?.moniker
+            }
+        }
+
+        MissedBlocksTimeframe(currentHeight - frame, currentHeight, list)
+    }
 }

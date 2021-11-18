@@ -1,13 +1,15 @@
 package io.provenance.explorer.domain.extensions
 
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.google.protobuf.Message
 import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.JSON_NODE_FACTORY
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.domain.core.isMAddress
 
-val protoTypesToCheckForMetadata = arrayOf(
+val protoTypesToCheckForMetadata = listOf(
     "/provenance.metadata.v1.MsgWriteScopeRequest",
     "/provenance.metadata.v1.MsgDeleteScopeRequest",
     "/provenance.metadata.v1.MsgWriteRecordSpecificationRequest",
@@ -27,16 +29,20 @@ val protoTypesToCheckForMetadata = arrayOf(
     "/provenance.metadata.v1.MsgDeleteContractSpecFromScopeSpecRequest"
 )
 
-val protoTypesFieldsToCheckForMetadata = arrayOf(
+val protoTypesFieldsToCheckForMetadata = listOf(
     "scopeId",
     "specificationId",
     "recordId",
     "sessionId",
     "contractSpecificationId",
-    "scopeSpecificationId"
+    "scopeSpecificationId",
+    "contractSpecIds",
+    "scopeSpecId",
+    "contractSpecId",
+    "recordSpecId"
 )
 
-val protoTypesToCheckForSmartContract = arrayOf(
+val protoTypesToCheckForSmartContract = listOf(
     "/cosmwasm.wasm.v1beta1.MsgInstantiateContract",
     "/cosmwasm.wasm.v1beta1.MsgExecuteContract",
     "/cosmwasm.wasm.v1beta1.MsgMigrateContract",
@@ -45,7 +51,7 @@ val protoTypesToCheckForSmartContract = arrayOf(
     "/cosmwasm.wasm.v1.MsgMigrateContract"
 )
 
-val protoTypesFieldsToCheckForSmartContract = arrayOf(
+val protoTypesFieldsToCheckForSmartContract = listOf(
     "initMsg",
     "msg",
     "migrateMsg"
@@ -71,6 +77,13 @@ fun Message.toObjectNodeNonTxMsg(protoPrinter: JsonFormat.Printer, fieldNames: L
             node
         }
 
+fun Message.toObjectNodeMAddressValues(protoPrinter: JsonFormat.Printer, fieldNames: List<String>) =
+    OBJECT_MAPPER.readTree(protoPrinter.print(this))
+        .let { node ->
+            fieldNames.forEach { fromBase64ToMAddress(node, it) }
+            node
+        }
+
 fun fromBase64ToObject(jsonNode: JsonNode, fieldName: String) {
     var found = false
 
@@ -89,9 +102,26 @@ fun fromBase64ToMAddress(jsonNode: JsonNode, fieldName: String) {
     var found = false
 
     if (jsonNode.has(fieldName)) {
-        val newValue = jsonNode.get(fieldName).asText().fromBase64ToMAddress().toString()
-        (jsonNode as ObjectNode).replace(fieldName, JSON_NODE_FACTORY.textNode(newValue))
-        found = true // stop after first find
+        when {
+            jsonNode.get(fieldName).isTextual -> {
+                val value = jsonNode.get(fieldName).asText()
+                if (!value.isMAddress())
+                    (jsonNode as ObjectNode).replace(
+                        fieldName,
+                        JSON_NODE_FACTORY.textNode(value.fromBase64ToMAddress().toString())
+                    )
+            }
+            jsonNode.get(fieldName).isArray -> {
+                val oldArray = (jsonNode.get(fieldName) as ArrayNode)
+                val newArray = JSON_NODE_FACTORY.arrayNode()
+                oldArray.forEach {
+                    val value = it.asText().fromBase64ToMAddress().toString()
+                    newArray.add(JSON_NODE_FACTORY.textNode(value))
+                }
+                (jsonNode as ObjectNode).replace(fieldName, newArray)
+            }
+        }
+        found = true
     }
 
     if (!found) {

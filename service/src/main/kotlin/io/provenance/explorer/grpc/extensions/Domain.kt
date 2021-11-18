@@ -3,6 +3,7 @@ package io.provenance.explorer.grpc.extensions
 import com.google.protobuf.Any
 import cosmos.auth.v1beta1.Auth
 import cosmos.base.query.v1beta1.Pagination
+import cosmos.base.query.v1beta1.pageRequest
 import cosmos.crypto.multisig.Keys
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
@@ -80,3 +81,19 @@ fun getEscrowAccountAddress(portId: String, channelId: String, hrpPrefix: String
 
 fun getPaginationBuilder(offset: Int, limit: Int) =
     Pagination.PageRequest.newBuilder().setOffset(offset.toLong()).setLimit(limit.toLong()).setCountTotal(true)
+
+fun getPaginationBuilderNoCount(offset: Int, limit: Int) =
+    Pagination.PageRequest.newBuilder().setOffset(offset.toLong()).setLimit(limit.toLong())
+
+fun getPagination(offset: Int, limit: Int) =
+    pageRequest {
+        this.offset = offset.toLong()
+        this.limit = limit.toLong()
+        this.countTotal = true
+    }
+
+fun getPaginationNoCount(offset: Int, limit: Int) =
+    pageRequest {
+        this.offset = offset.toLong()
+        this.limit = limit.toLong()
+    }

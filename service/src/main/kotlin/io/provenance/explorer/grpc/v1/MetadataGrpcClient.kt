@@ -2,22 +2,25 @@ package io.provenance.explorer.grpc.v1
 
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
-import io.provenance.explorer.grpc.extensions.getPaginationBuilder
-import io.provenance.metadata.v1.OwnershipRequest
-import io.provenance.metadata.v1.QueryGrpc
-import io.provenance.metadata.v1.RecordSpecificationsForContractSpecificationRequest
-import io.provenance.metadata.v1.ScopeRequest
-import io.provenance.metadata.v1.ScopeSpecificationRequest
-import io.provenance.metadata.v1.ScopesAllRequest
+import io.provenance.explorer.grpc.extensions.getPagination
+import io.provenance.metadata.v1.QueryGrpcKt.QueryCoroutineStub
+import io.provenance.metadata.v1.contractSpecificationRequest
+import io.provenance.metadata.v1.ownershipRequest
+import io.provenance.metadata.v1.queryParamsRequest
+import io.provenance.metadata.v1.recordSpecificationRequest
+import io.provenance.metadata.v1.recordSpecificationsForContractSpecificationRequest
+import io.provenance.metadata.v1.scopeRequest
+import io.provenance.metadata.v1.scopeSpecificationRequest
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
-import io.provenance.metadata.v1.QueryParamsRequest as MetadataRequest
 
 @Component
-class MetadataGrpcClient(channelUri: URI) {
+class MetadataGrpcClient(channelUri: URI, private val semaphore: Semaphore) {
 
-    private val metadataClient: QueryGrpc.QueryBlockingStub
+    private val metadataClient: QueryCoroutineStub
 
     init {
         val channel =
@@ -35,46 +38,48 @@ class MetadataGrpcClient(channelUri: URI) {
                 .intercept(GrpcLoggingInterceptor())
                 .build()
 
-        metadataClient = QueryGrpc.newBlockingStub(channel)
+        metadataClient = QueryCoroutineStub(channel)
     }
 
-    fun getAllScopes(offset: Int = 0, limit: Int = 10) =
-        metadataClient.scopesAll(
-            ScopesAllRequest.newBuilder()
-                .setPagination(getPaginationBuilder(offset, limit))
-                .build()
-        )
+    suspend fun getScopesByOwner(address: String, offset: Int = 0, limit: Int = 10) =
+        semaphore.withPermit {
+            metadataClient.ownership(
+                ownershipRequest {
+                    this.address = address
+                    this.pagination = getPagination(offset, limit)
+                }
+            )
+        }
 
-    fun getScopesByOwner(address: String, offset: Int = 0, limit: Int = 10) =
-        metadataClient.ownership(
-            OwnershipRequest.newBuilder()
-                .setAddress(address)
-                .setPagination(getPaginationBuilder(offset, limit))
-                .build()
-        )
-
-    fun getScopeById(uuid: String, includeSessions: Boolean = false) =
+    suspend fun getScopeById(uuid: String, includeRecords: Boolean = false, includeSessions: Boolean = false) =
         metadataClient.scope(
-            ScopeRequest.newBuilder()
-                .setScopeId(uuid)
-                .setIncludeRecords(true)
-                .setIncludeSessions(includeSessions)
-                .build()
+            scopeRequest {
+                this.scopeId = uuid
+                this.includeRecords = includeRecords
+                this.includeSessions = includeSessions
+            }
         )
 
-    fun getScopeSpecById(addr: String) =
-        metadataClient.scopeSpecification(
-            ScopeSpecificationRequest.newBuilder()
-                .setSpecificationId(addr)
-                .build()
+    suspend fun getScopeSpecById(addr: String) =
+        metadataClient.scopeSpecification(scopeSpecificationRequest { this.specificationId = addr })
+
+    suspend fun getContractSpecById(addr: String, includeRecords: Boolean = false) =
+        metadataClient.contractSpecification(
+            contractSpecificationRequest {
+                this.specificationId = addr
+                this.includeRecordSpecs = includeRecords
+            }
         )
 
-    fun getRecordSpecsForContractSpec(contractSpec: String) =
-        metadataClient.recordSpecificationsForContractSpecification(
-            RecordSpecificationsForContractSpecificationRequest.newBuilder()
-                .setSpecificationId(contractSpec)
-                .build()
-        )
+    suspend fun getRecordSpecById(addr: String) =
+        metadataClient.recordSpecification(recordSpecificationRequest { this.specificationId = addr })
 
-    fun getMetadataParams() = metadataClient.params(MetadataRequest.newBuilder().build())
+    suspend fun getRecordSpecsForContractSpec(contractSpec: String) =
+        semaphore.withPermit {
+            metadataClient.recordSpecificationsForContractSpecification(
+                recordSpecificationsForContractSpecificationRequest { this.specificationId = contractSpec }
+            )
+        }
+
+    suspend fun getMetadataParams() = metadataClient.params(queryParamsRequest { })
 }

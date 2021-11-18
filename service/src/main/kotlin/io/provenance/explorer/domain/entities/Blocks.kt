@@ -9,14 +9,18 @@ import io.provenance.explorer.domain.core.sql.ExtractDay
 import io.provenance.explorer.domain.core.sql.ExtractHour
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.average
+import io.provenance.explorer.domain.extensions.exec
+import io.provenance.explorer.domain.extensions.map
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
+import io.provenance.explorer.domain.models.explorer.MissedBlockPeriod
 import io.provenance.explorer.domain.models.explorer.TxHeatmap
 import io.provenance.explorer.domain.models.explorer.TxHeatmapDay
 import io.provenance.explorer.domain.models.explorer.TxHeatmapHour
 import io.provenance.explorer.domain.models.explorer.TxHeatmapRaw
 import io.provenance.explorer.domain.models.explorer.TxHeatmapRes
 import io.provenance.explorer.domain.models.explorer.TxHistory
+import io.provenance.explorer.domain.models.explorer.ValidatorMoniker
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.EntityClass
 import org.jetbrains.exposed.dao.IntEntity
@@ -24,11 +28,12 @@ import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.Max
 import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
 import org.jetbrains.exposed.sql.Sum
+import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.count
@@ -231,6 +236,30 @@ object MissedBlocksTable : IntIdTable(name = "missed_blocks") {
 
 class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<MissedBlocksRecord>(MissedBlocksTable) {
+
+        fun findValidatorsWithMissedBlocksForPeriod(fromHeight: Int, toHeight: Int, valConsAddr: String?) = transaction {
+            val query = "SELECT * FROM missed_block_periods(?, ?, ?) "
+            val arguments = mutableListOf<Pair<ColumnType, *>>(
+                Pair(IntegerColumnType(), fromHeight),
+                Pair(IntegerColumnType(), toHeight),
+                Pair(VarCharColumnType(128), valConsAddr)
+            )
+            query.exec(arguments).map {
+                if (it.getString("val_cons_address") != null)
+                    MissedBlockPeriod(
+                        ValidatorMoniker(it.getString("val_cons_address"), null, null),
+                        (it.getArray("blocks").array as Array<out Int>).toList()
+                    )
+                else null
+            }.toMutableList().mapNotNull { it }
+        }
+
+        fun findDistinctValidatorsWithMissedBlocksForPeriod(fromHeight: Int, toHeight: Int) = transaction {
+            val query = "SELECT distinct val_cons_address FROM missed_block_periods(?, ?, NULL);"
+            val arguments = listOf(Pair(IntegerColumnType(), fromHeight), Pair(IntegerColumnType(), toHeight))
+
+            query.exec(arguments).map { it.getString("val_cons_address") }
+        }
 
         fun findLatestForVal(valconsAddr: String) = transaction {
             MissedBlocksRecord.find { MissedBlocksTable.valConsAddr eq valconsAddr }

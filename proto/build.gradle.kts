@@ -7,18 +7,26 @@ import com.google.protobuf.gradle.protoc
 
 sourceSets.main {
     proto.srcDirs("../third_party/proto/")
-    java.srcDirs("build/generated/source/proto/main/java")
 }
 
 dependencies {
-    api(Libraries.ProtobufJava)
-    api(Libraries.GrpcStub)
+//    protobuf(files("cosmWasm-v0.17.0.tar.gz"))
+    api(Libraries.ProtobufJavaUtil)
+    implementation(Libraries.ProtobufKotlin)
+    api(Libraries.GrpcKotlinStub)
     api(Libraries.GrpcProtobuf)
+    implementation(Libraries.GrpcStub)
 
     if (JavaVersion.current().isJava9Compatible) {
         // Workaround for @javax.annotation.Generated
         // see: https://github.com/grpc/grpc-java/issues/3633
         api("javax.annotation:javax.annotation-api:1.3.1")
+    }
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
+    kotlinOptions {
+        freeCompilerArgs = listOf("-Xopt-in=kotlin.RequiresOptIn")
     }
 }
 
@@ -34,12 +42,18 @@ protobuf {
         id(PluginIds.Grpc) {
             artifact = Libraries.GrpcArtifact
         }
+        id(PluginIds.GrpcKt) {
+            artifact = Libraries.GrpcKotlinArtifact
+        }
     }
     generateProtoTasks {
-        ofSourceSet("main").forEach {
+        all().forEach {
             it.plugins {
-                // Apply the "grpc" plugin whose spec is defined above, without options.
                 id(PluginIds.Grpc)
+                id(PluginIds.GrpcKt)
+            }
+            it.builtins {
+                id(PluginIds.Kotlin)
             }
         }
     }
@@ -51,3 +65,13 @@ tasks.register<io.provenance.DownloadProtosTask>("downloadProtos") {
     wasmdVersion = Versions.Wasmd
     ibcVersion = Versions.Ibc
 }
+
+//tasks.register("downloadTest"){
+//    mapOf("cosmWasm-v0.17.0.tar.gz" to "https://github.com/CosmWasm/wasmd/tarball/v0.17.0")
+//        .forEach { (k, v) -> download(v,k) }
+//}
+//
+//fun download(url : String, path : String){
+//    val destFile = File(path)
+//    ant.invokeMethod("get", mapOf("src" to url, "dest" to destFile))
+//}

@@ -99,3 +99,31 @@ data class ValidatorAtHeight(
     val isProposer: Boolean = false,
     val didVote: Boolean = true
 )
+
+data class MissedBlocksTimeframe(
+    val fromHeight: Int,
+    val toHeight: Int,
+    val addresses: List<ValidatorMissedBlocks>
+)
+
+data class ValidatorMissedBlocks(
+    val validator: ValidatorMoniker,
+    val missedBlocks: List<MissedBlockSet> = listOf()
+)
+
+data class MissedBlockSet(
+    val min: Int,
+    val max: Int,
+    val count: Int
+)
+
+data class ValidatorMoniker(
+    val valConsAddress: String,
+    var operatorAddr: String?,
+    var moniker: String?
+)
+
+data class MissedBlockPeriod(
+    val validator: ValidatorMoniker,
+    val blocks: List<Int>
+)

@@ -26,6 +26,7 @@ import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.GovService
 import io.provenance.explorer.service.async.AsyncCaching
 import io.provenance.explorer.service.gzipUncompress
+import kotlinx.coroutines.runBlocking
 import net.pearx.kasechange.toSnakeCase
 import net.pearx.kasechange.universalWordSplitter
 import org.bouncycastle.util.encoders.Hex
@@ -74,25 +75,29 @@ class UtilityService(
     }
 
     // searches for accounts that may or may not have the denom balance
-    fun searchAccountsForDenom(accounts: List<String>, denom: String): List<Map<String, String>> {
-        var offset = 0
-        val limit = 100
+    fun searchAccountsForDenom(accounts: List<String>, denom: String): List<Map<String, String>> =
+        runBlocking {
+            var offset = 0
+            val limit = 100
 
-        val results = markerClient.getMarkerHolders(denom, offset, limit)
-        val total = results.pagination?.total ?: results.balancesCount.toLong()
-        val holders = results.balancesList.toMutableList()
+            val results = markerClient.getMarkerHolders(denom, offset, limit)
+            val total = results.pagination?.total ?: results.balancesCount.toLong()
+            val holders = results.balancesList.toMutableList()
 
-        while (holders.count() < total) {
-            offset += limit
-            markerClient.getMarkerHolders(denom, offset, limit).let { holders.addAll(it.balancesList) }
+            while (holders.count() < total) {
+                offset += limit
+                markerClient.getMarkerHolders(denom, offset, limit).let { holders.addAll(it.balancesList) }
+            }
+
+            val map = holders.associateBy { it.address }
+
+            accounts.toSet().map { a ->
+                mapOf(
+                    "address" to a,
+                    denom to (map[a]?.coinsList?.firstOrNull { c -> c.denom == denom }?.amount ?: "Nothing")
+                )
+            }
         }
-
-        val map = holders.associateBy { it.address }
-
-        return accounts.toSet().map { a ->
-            mapOf("address" to a, denom to (map[a]?.coinsList?.firstOrNull { c -> c.denom == denom }?.amount ?: "Nothing"))
-        }
-    }
 
     fun stringToJson(str: String) = str.toObjectNode()
 

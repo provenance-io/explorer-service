@@ -12,6 +12,8 @@ import io.provenance.explorer.domain.entities.SmContractTable
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toObjectNodeNonTxMsg
 import io.provenance.explorer.domain.extensions.toOffset
+import io.provenance.explorer.domain.models.explorer.Code
+import io.provenance.explorer.domain.models.explorer.Contract
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.grpc.extensions.toMsgClearAdmin
@@ -51,25 +53,38 @@ class SmartContractService(
     }
 
     fun getAllScContractsPaginated(page: Int, count: Int) = transaction {
-        SmContractRecord.getPaginated(count, page.toOffset(count)).let {
-            val total = SmContractRecord.count()
-            PagedResults(total.pageCountOfResults(count), it, total)
-        }
+        SmContractRecord.getPaginated(page.toOffset(count), count)
+            .map { it.toContractObject() }
+            .let {
+                val total = SmContractRecord.count()
+                PagedResults(total.pageCountOfResults(count), it, total)
+            }
+    }
+
+    fun getAllScCodesPaginated(page: Int, count: Int) = transaction {
+        SmCodeRecord.getPaginated(page.toOffset(count), count)
+            .map { it.toCodeObject() }
+            .let {
+                val total = SmCodeRecord.count()
+                PagedResults(total.pageCountOfResults(count), it, total)
+            }
     }
 
     fun getCode(code: Int) = transaction {
-        SmCodeRecord.findById(code) ?: throw ResourceNotFoundException("Invalid code ID: $code")
+        SmCodeRecord.findById(code)?.toCodeObject() ?: throw ResourceNotFoundException("Invalid code ID: $code")
     }
 
     fun getContractsByCode(codeId: Int, page: Int, count: Int) = transaction {
-        SmContractRecord.getPaginated(count, page.toOffset(count), codeId).let {
-            val total = SmContractRecord.count(Op.build { SmContractTable.codeId eq codeId })
-            PagedResults(total.pageCountOfResults(count), it, total)
-        }
+        SmContractRecord.getPaginated(page.toOffset(count), count, codeId)
+            .map { it.toContractObject() }
+            .let {
+                val total = SmContractRecord.count(Op.build { SmContractTable.codeId eq codeId })
+                PagedResults(total.pageCountOfResults(count), it, total)
+            }
     }
 
     fun getContract(contract: String) = transaction {
-        SmContractRecord.findByContractAddress(contract)
+        SmContractRecord.findByContractAddress(contract)?.toContractObject()
             ?: throw ResourceNotFoundException("Invalid contract address: $contract")
     }
 
@@ -77,6 +92,11 @@ class SmartContractService(
         scClient.getSmContractHistory(contract).entriesList.map { it.toObjectNodeNonTxMsg(protoPrinter, listOf("msg")) }
     }
 }
+
+fun SmCodeRecord.toCodeObject() = Code(this.id.value, this.creationHeight, this.creator, this.dataHash)
+
+fun SmContractRecord.toContractObject() =
+    Contract(this.contractAddress, this.creationHeight, this.codeId, this.creator, this.admin, this.label)
 
 fun ByteArray.isGZIPStream(): Boolean {
     return (
