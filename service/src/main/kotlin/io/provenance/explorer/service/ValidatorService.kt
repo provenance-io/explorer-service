@@ -154,11 +154,13 @@ class ValidatorService(
 
     fun getStakingValidators(status: String, valSet: List<String>? = null, offset: Int? = null, limit: Int? = null) =
         transaction {
-            ValidatorStateRecord.findByStatus(status, valSet, offset, limit)
+            val activeSet = grpcClient.getStakingParams().params.maxValidators
+            ValidatorStateRecord.findByStatus(activeSet, status, valSet, offset, limit)
         }
 
     fun getStakingValidatorsCount(status: String, valSet: List<String>? = null) = transaction {
-        ValidatorStateRecord.findByStatusCount(status, valSet)
+        val activeSet = grpcClient.getStakingParams().params.maxValidators
+        ValidatorStateRecord.findByStatusCount(activeSet, status, valSet)
     }
 
     fun getSigningInfos() = grpcClient.getSigningInfos()

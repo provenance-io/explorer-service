@@ -65,6 +65,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added API response handler for IllegalArgumentExceptions #245
 * Fixed NullPointerException when `session_id_components` was actually null
 * Fixed bug in `update_gas_fee_volume()` procedure #258
+* Fixed bug with active validator set not repecting staking param `max_validators` #261
 
 ### Data
 * Migration 1.32 - Added `block_tx_retry` table #232
@@ -76,6 +77,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Migration 1.35 - Added `proposal_monitor` table #70
 * Migration 1.36 - Updated `update_gas_fee_volume()` procedure #258
 * Migration 1.37 - Added `missed_block_periods()` function to find missed blocks for inputs #257 
+* Migration 1.38 - Added `get_validator_list()` function to properly identify state, and gather list for inputs #261
 
 ## [v2.4.0](https://github.com/provenance-io/explorer-service/releases/tag/v2.4.0) - 2021-09-15
 ### Release Name: Bjarni Herjulfsson

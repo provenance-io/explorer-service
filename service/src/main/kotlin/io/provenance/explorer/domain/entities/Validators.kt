@@ -4,6 +4,7 @@ import cosmos.base.tendermint.v1beta1.Query
 import cosmos.staking.v1beta1.Staking
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.core.sql.ArrayColumnType
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.mapper
@@ -12,7 +13,9 @@ import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.IntegerColumnType
+import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
@@ -169,76 +172,71 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
             query.execAndMap(arguments) { it.toCurrentValidatorState() }.firstOrNull()
         }
 
-        fun findByStatus(status: String, valSet: List<String>? = null, offset: Int? = null, limit: Int? = null) = transaction {
-            val inSet = valSet?.joinToString("', '", "('", "')")
-            val whereClause = if (inSet != null) "consensus_address in $inSet" else null
-            val andWhere = if (whereClause != null) "AND $whereClause" else ""
-            val limitOffset = if (offset != null && limit != null) " OFFSET $offset LIMIT $limit" else ""
-
-            when (status) {
-                "active" -> {
-                    val query = """SELECT * FROM current_validator_state 
-                        WHERE status = ? $andWhere 
-                        ORDER BY token_count DESC
-                        $limitOffset
-                    """.trimIndent()
-                    val arguments = listOf(Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name))
-                    query.execAndMap(arguments) { it.toCurrentValidatorState() }
+        fun findByStatus(
+            activeSet: Int,
+            searchState: String,
+            consensusAddrSet: List<String>? = null,
+            offset: Int? = null,
+            limit: Int? = null
+        ) =
+            transaction {
+                when (searchState) {
+                    "active", "jailed", "candidate" -> {
+                        val offsetDefault = offset ?: 0
+                        val limitDefault = limit ?: 10000
+                        val query = "SELECT * FROM get_validator_list(?, ?, ?, ?, ?, ?) "
+                        val arguments = mutableListOf<Pair<ColumnType, *>>(
+                            Pair(IntegerColumnType(), activeSet),
+                            Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
+                            Pair(TextColumnType(), searchState),
+                            Pair(IntegerColumnType(), limitDefault),
+                            Pair(IntegerColumnType(), offsetDefault),
+                            Pair(ArrayColumnType(TextColumnType()), consensusAddrSet)
+                        )
+                        query.execAndMap(arguments) { it.toCurrentValidatorState() }
+                    }
+                    "all" -> {
+                        val inSet = consensusAddrSet?.joinToString("', '", "('", "')")
+                        val whereClause = if (inSet != null) "consensus_address in $inSet" else null
+                        val limitOffset = if (offset != null && limit != null) " OFFSET $offset LIMIT $limit" else ""
+                        val where = if (whereClause != null) "WHERE $whereClause " else ""
+                        val query =
+                            "SELECT * FROM current_validator_state $where ORDER BY token_count DESC $limitOffset".trimIndent()
+                        query.execAndMap { it.toCurrentValidatorState() }
+                    }
+                    else -> listOf<CurrentValidatorState>()
+                        .also { logger.error("This status is not supported: $searchState") }
                 }
-                "jailed" -> {
-                    val query = """SELECT * FROM current_validator_state 
-                        WHERE jailed = true $andWhere 
-                        ORDER BY token_count DESC
-                        $limitOffset
-                    """.trimIndent()
-                    query.execAndMap() { it.toCurrentValidatorState() }
-                }
-                "candidate" -> {
-                    val query = """SELECT * FROM current_validator_state 
-                        WHERE status != ? AND jailed = false $andWhere 
-                        ORDER BY token_count DESC
-                        $limitOffset
-                    """.trimIndent()
-                    val arguments = listOf(Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name))
-                    query.execAndMap(arguments) { it.toCurrentValidatorState() }
-                }
-                "all" -> {
-                    val where = if (whereClause != null) "WHERE $whereClause " else ""
-                    val query = "SELECT * FROM current_validator_state $where ORDER BY token_count DESC $limitOffset".trimIndent()
-                    query.execAndMap() { it.toCurrentValidatorState() }
-                }
-                else -> listOf<CurrentValidatorState>()
-                    .also { logger.error("This status is not supported: $status") }
             }
-        }
 
-        fun findByStatusCount(status: String, valSet: List<String>? = null) = transaction {
-            val inSet = valSet?.joinToString("', '", "('", "')")
-            val whereClause = if (inSet != null) "consensus_address in $inSet" else null
-            val andWhere = if (whereClause != null) "AND $whereClause" else ""
-
-            when (status) {
-                "active" -> {
-                    val query = "SELECT count(*) AS count FROM current_validator_state WHERE status = ? $andWhere".trimIndent()
-                    val arguments = listOf(Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name))
-                    query.execAndMap(arguments) { it.toCount() }.first()
-                }
-                "jailed" -> {
-                    val query = "SELECT count(*) AS count FROM current_validator_state WHERE jailed = true $andWhere".trimIndent()
-                    query.execAndMap() { it.toCount() }.first()
-                }
-                "candidate" -> {
-                    val query =
-                        "SELECT count(*) AS count FROM current_validator_state WHERE status != ? AND jailed = false $andWhere".trimIndent()
-                    val arguments = listOf(Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name))
+        fun findByStatusCount(
+            activeSet: Int,
+            searchState: String,
+            consensusAddrSet: List<String>? = null
+        ) = transaction {
+            when (searchState) {
+                "active", "jailed", "candidate" -> {
+                    val offsetDefault = 0
+                    val limitDefault = 10000
+                    val query = "SELECT count(*) AS count FROM get_validator_list(?, ?, ?, ?, ?, ?) "
+                    val arguments = mutableListOf<Pair<ColumnType, *>>(
+                        Pair(IntegerColumnType(), activeSet),
+                        Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
+                        Pair(TextColumnType(), searchState),
+                        Pair(IntegerColumnType(), limitDefault),
+                        Pair(IntegerColumnType(), offsetDefault),
+                        Pair(ArrayColumnType(TextColumnType()), consensusAddrSet)
+                    )
                     query.execAndMap(arguments) { it.toCount() }.first()
                 }
                 "all" -> {
+                    val inSet = consensusAddrSet?.joinToString("', '", "('", "')")
+                    val whereClause = if (inSet != null) "consensus_address in $inSet" else null
                     val where = if (whereClause != null) "WHERE $whereClause " else ""
                     val query = "SELECT count(*) AS count FROM current_validator_state $where".trimIndent()
-                    query.execAndMap() { it.toCount() }.first()
+                    query.execAndMap { it.toCount() }.first()
                 }
-                else -> 0.toLong().also { logger.error("This status is not supported: $status") }
+                else -> 0.toLong().also { logger.error("This status is not supported: $searchState") }
             }
         }
     }
