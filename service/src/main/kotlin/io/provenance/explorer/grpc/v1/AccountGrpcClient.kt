@@ -43,9 +43,9 @@ class AccountGrpcClient(channelUri: URI) {
                         it.usePlaintext()
                     }
                 }
-                .idleTimeout(5, TimeUnit.MINUTES)
-                .keepAliveTime(60, TimeUnit.SECONDS)
-                .keepAliveTimeout(20, TimeUnit.SECONDS)
+                .idleTimeout(60, TimeUnit.SECONDS)
+                .keepAliveTime(10, TimeUnit.SECONDS)
+                .keepAliveTimeout(10, TimeUnit.SECONDS)
                 .intercept(GrpcLoggingInterceptor())
                 .build()
 

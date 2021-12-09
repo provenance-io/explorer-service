@@ -58,8 +58,8 @@ object Versions {
     const val Protobuf = "3.19.1"
     const val Grpc = "1.40.1"
     const val KotlinGrpc = "1.2.0"
-    const val GrpcStarter = "4.5.6"
     const val Postgres = "42.2.23"
+    const val Encryption = "0.4.0"
 
     // Testing
     const val Jupiter = "5.7.1"
@@ -94,6 +94,7 @@ object Libraries {
     const val ApacheCommonsText = "org.apache.commons:commons-text:${Versions.ApacheCommonsText}"
     const val Khttp = "khttp:khttp:${Versions.Khttp}"
     const val KaseChange = "net.pearx.kasechange:kasechange:${Versions.KaseChange}"
+    const val Encryption = "io.provenance.scope:encryption:${Versions.Encryption}"
 
     // Logging
     const val LogbackCore = "ch.qos.logback.contrib:logback-json-core:${Versions.Logback}"

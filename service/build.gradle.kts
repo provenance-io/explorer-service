@@ -40,6 +40,10 @@ dependencies {
     api(Libraries.ApacheCommonsText)
     api(Libraries.Khttp)
     implementation(Libraries.KaseChange)
+    api(Libraries.Encryption) {
+        exclude("io.provenance.scope", "contract-proto")
+        exclude("io.provenance.protobuf", "pb-proto-java")
+    }
 
     implementation(Libraries.GrpcNetty)
 

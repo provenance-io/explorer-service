@@ -501,14 +501,6 @@ class AsyncCaching(
                             it.content.unpack(cosmwasm.wasm.v1.Proposal.StoreCodeProposal::class.java)
                     }
                 }
-            // translate content type
-            // store code -> hash wasm bytes
-            //          -> add to retry table
-            //          -> when future txs use same wasm bytes, link up records
-            //      -> could also monitor proposals, if this proposal passes, check for next code id
-            //             -> if bytes match proposal bytes, link up record as creation height
-
-            // How does a store code get created? Is it just an event? Is it tied to a block? Does a msg get dispatched?
         }
 
     fun saveSignaturesTx(tx: ServiceOuterClass.GetTxResponse) = transaction {
