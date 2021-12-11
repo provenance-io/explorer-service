@@ -37,3 +37,12 @@ data class GasStats(
     val stdDevGasPrice: Int,
     val messageType: String
 )
+
+data class ChainUpgrade(
+    val upgradeHeight: Int,
+    val upgradeName: String,
+    val initialVersion: String,
+    val currentVersion: String,
+    val skipped: Boolean,
+    var scheduled: Boolean = false
+)

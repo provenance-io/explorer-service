@@ -74,4 +74,8 @@ class GeneralController(
     @ApiOperation("Returns statistics on min gas fees for the chain")
     @GetMapping("/token/stats")
     fun getTokenStats() = ResponseEntity.ok(tokenSupplyService.getTokenStats())
+
+    @ApiOperation("Returns a list of upgrades made against the chain")
+    @GetMapping("/chain/upgrades")
+    fun getChainUpgrades() = ResponseEntity.ok(explorerService.getChainUpgrades())
 }
