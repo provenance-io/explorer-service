@@ -27,6 +27,12 @@ class ExplorerProperties {
     @NotNull
     lateinit var figmentUrl: String
 
+    @NotNull
+    lateinit var genesisVersionUrl: String
+
+    @NotNull
+    lateinit var upgradeVersionRegex: String
+
     fun initialHistoricalDays() = initialHistoricalDayCount.toInt()
 
     fun spotlightTtlMs() = spotlightTtlMs.toLong()

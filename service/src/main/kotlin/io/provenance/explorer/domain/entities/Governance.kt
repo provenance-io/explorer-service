@@ -75,6 +75,12 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
             GovProposalRecord.find { GovProposalTable.proposalId eq proposalId }.firstOrNull()
         }
 
+        fun findByProposalType(type: String) = transaction {
+            GovProposalRecord.find { GovProposalTable.proposalType eq type.getProposalType() }
+                .orderBy(Pair(GovProposalTable.proposalId, SortOrder.ASC))
+                .toList()
+        }
+
         fun getNonFinalProposals() = transaction {
             GovProposalRecord.find {
                 GovProposalTable.status notInList listOf(

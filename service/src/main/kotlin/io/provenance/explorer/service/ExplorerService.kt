@@ -1,11 +1,14 @@
 package io.provenance.explorer.service
 
+import com.google.protobuf.Any
 import cosmos.base.tendermint.v1beta1.Query
+import cosmos.upgrade.v1beta1.Upgrade
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
+import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
@@ -22,6 +25,7 @@ import io.provenance.explorer.domain.models.explorer.AttributeParams
 import io.provenance.explorer.domain.models.explorer.AuthParams
 import io.provenance.explorer.domain.models.explorer.BankParams
 import io.provenance.explorer.domain.models.explorer.BlockSummary
+import io.provenance.explorer.domain.models.explorer.ChainUpgrade
 import io.provenance.explorer.domain.models.explorer.ClientParams
 import io.provenance.explorer.domain.models.explorer.CosmosParams
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
@@ -57,6 +61,9 @@ import io.provenance.explorer.service.async.AsyncCaching
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import org.apache.http.client.methods.HttpGet
+import org.apache.http.impl.client.HttpClients
+import org.apache.http.impl.client.LaxRedirectStrategy
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
@@ -122,7 +129,8 @@ class ExplorerService(
             icon = validatorService.getImgUrl(stakingValidator.description.identity),
             votingPower = CountTotal(
                 if (votingVals != null)
-                    validatorsResponse.validatorsList.filter { it.address in votingVals }.sumOf { v -> v.votingPower.toBigInteger() }
+                    validatorsResponse.validatorsList.filter { it.address in votingVals }
+                        .sumOf { v -> v.votingPower.toBigInteger() }
                 else null,
                 validatorsResponse.validatorsList.sumOf { v -> v.votingPower.toBigInteger() }
             ),
@@ -174,6 +182,37 @@ class ExplorerService(
         ChainGasFeeCacheRecord.findForDates(fromDate, toDate, count).reversed()
 
     fun getChainId() = asyncCaching.getChainIdString()
+
+    fun getChainUpgrades(): List<ChainUpgrade> {
+        val typeUrl = Any.pack(Upgrade.SoftwareUpgradeProposal.getDefaultInstance()).typeUrl
+        val scheduledName = govClient.getIfUpgradeScheduled()?.plan?.name
+        val genesis = ChainUpgrade(
+            0,
+            "Genesis",
+            props.genesisVersionUrl.getChainVersionFromUrl(props.upgradeVersionRegex),
+            props.genesisVersionUrl.getLatestPatchVersion(props.upgradeVersionRegex, null),
+            false,
+            false
+        )
+        val upgrades = GovProposalRecord.findByProposalType(typeUrl)
+            .windowed(2, 1, true) { chunk ->
+                (chunk.first() to chunk.getOrNull(1)).let { (one, two) ->
+                    val nextUpgrade = two?.content?.get("plan")?.get("info")?.asText()
+                    ChainUpgrade(
+                        one.content.get("plan").get("height").asInt(),
+                        one.content.get("plan").get("name").asText(),
+                        one.content.get("plan").get("info").asText().getChainVersionFromUrl(props.upgradeVersionRegex),
+                        one.content.get("plan").get("info").asText()
+                            .getLatestPatchVersion(props.upgradeVersionRegex, nextUpgrade),
+                        govClient.getIfUpgradeApplied(one.content.get("plan").get("name").asText())
+                            ?.let { it.height.toInt() != one.content.get("plan").get("height").asInt() }
+                            ?: true,
+                        scheduledName?.let { name -> name == one.content.get("plan").get("name").asText() } ?: false
+                    )
+                }
+            }
+        return (listOf(genesis) + upgrades).sortedBy { it.upgradeHeight }
+    }
 
     fun getParams(): Params = runBlocking {
         val authParams = async { accountClient.getAuthParams().params }.await()
@@ -318,3 +357,35 @@ fun Query.GetBlockByHeightResponse.getVotingSet(props: ExplorerProperties, filte
     this.block.lastCommit.signaturesList
         .filter { if (filter != null) it.blockIdFlagValue != filter else true }
         .associate { it.validatorAddress.translateByteArray(props).consensusAccountAddr to it.blockIdFlag }
+
+fun String.getChainVersionFromUrl(regex: String) = Regex(regex).find(this)?.value!!
+
+fun String.getLatestPatchVersion(regex: String, nextUpgradeUrl: String?): String {
+    val currVersion = this.getChainVersionFromUrl(regex)
+    val nextVersion = nextUpgradeUrl?.getChainVersionFromUrl(regex)
+    val versionList = currVersion.split(".").toTypedArray()
+    var noMore = false
+    var latestPatch = versionList.last().toInt()
+    while (!noMore) {
+        versionList[versionList.size - 1] = (latestPatch + 1).toString()
+        Regex(regex).replace(this, versionList.joinToString("."))
+            .checkForResponse().let {
+                if (it && versionList.joinToString(".") != nextVersion)
+                    latestPatch += 1
+                else noMore = true
+            }
+    }
+
+    versionList[versionList.size - 1] = latestPatch.toString()
+    return versionList.joinToString(".")
+}
+
+// this == the URL to check for a response
+fun String.checkForResponse(): Boolean {
+    return HttpClients.custom().setRedirectStrategy(LaxRedirectStrategy()).build()
+        .use { client ->
+            client.execute(HttpGet(this)) { response ->
+                !(response == null || response.statusLine.statusCode != 200)
+            }
+        }
+}

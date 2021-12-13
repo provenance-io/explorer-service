@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit
 class GovGrpcClient(channelUri: URI) {
 
     private val govClient: QueryGrpc.QueryBlockingStub
+    private val upgradeClient: cosmos.upgrade.v1beta1.QueryGrpc.QueryBlockingStub
 
     init {
         val channel =
@@ -31,6 +32,7 @@ class GovGrpcClient(channelUri: URI) {
                 .build()
 
         govClient = QueryGrpc.newBlockingStub(channel)
+        upgradeClient = cosmos.upgrade.v1beta1.QueryGrpc.newBlockingStub(channel)
     }
 
     fun getProposal(proposalId: Long) =
@@ -41,4 +43,22 @@ class GovGrpcClient(channelUri: URI) {
 
     fun getTally(proposalId: Long) =
         govClient.tallyResult(QueryOuterClass.QueryTallyResultRequest.newBuilder().setProposalId(proposalId).build())
+
+    fun getIfUpgradeApplied(planName: String) =
+        try {
+            upgradeClient.appliedPlan(
+                cosmos.upgrade.v1beta1.QueryOuterClass.QueryAppliedPlanRequest.newBuilder()
+                    .setName(planName)
+                    .build()
+            )
+        } catch (e: Exception) {
+            null
+        }
+
+    fun getIfUpgradeScheduled() =
+        try {
+            upgradeClient.currentPlan(cosmos.upgrade.v1beta1.QueryOuterClass.QueryCurrentPlanRequest.newBuilder().build())
+        } catch (e: Exception) {
+            null
+        }
 }

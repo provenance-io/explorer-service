@@ -19,10 +19,6 @@ sourceSets {
     }
 }
 
-configurations.all {
-    exclude(group = "log4j")
-}
-
 dependencies {
     api(project(":database"))
     api(project(":proto"))
@@ -40,6 +36,7 @@ dependencies {
     api(Libraries.ApacheCommonsText)
     api(Libraries.Khttp)
     implementation(Libraries.KaseChange)
+    api("org.apache.httpcomponents:httpclient:4.5.12")
 
     implementation(Libraries.GrpcNetty)
 
@@ -64,6 +61,14 @@ dependencies {
 dependencyManagement {
     resolutionStrategy {
         cacheChangingModulesFor(0, "seconds")
+    }
+}
+
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.apache.logging.log4j") {
+            useVersion("2.15.0")
+        }
     }
 }
 

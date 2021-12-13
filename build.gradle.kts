@@ -92,4 +92,12 @@ subprojects {
         testImplementation(Libraries.SpringMockk)
         testImplementation(Libraries.KotestAssert)
     }
+
+    configurations.all {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "org.apache.logging.log4j") {
+                useVersion("2.15.0")
+            }
+        }
+    }
 }
