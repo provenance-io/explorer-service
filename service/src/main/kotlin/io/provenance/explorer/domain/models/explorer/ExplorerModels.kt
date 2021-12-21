@@ -46,3 +46,10 @@ data class ChainUpgrade(
     val skipped: Boolean,
     var scheduled: Boolean = false
 )
+
+enum class PrefixType { VALIDATOR, ACCOUNT, SCOPE }
+
+data class ChainPrefix(
+    val type: PrefixType,
+    val prefix: String
+)

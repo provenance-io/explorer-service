@@ -27,7 +27,7 @@ data class AuthParams(
 )
 
 data class BankParams(
-    val defaultSendEnabled: Boolean,
+    val defaultSendEnabled: Boolean
 )
 
 data class DistParams(
@@ -84,6 +84,7 @@ data class StakingParams(
     val unbondingTime: Long,
     val maxValidators: Int,
     val maxEntries: Int,
+    val historicalEntries: Int,
     val bondDenom: String,
 )
 

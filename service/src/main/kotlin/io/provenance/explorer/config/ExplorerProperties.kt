@@ -33,9 +33,14 @@ class ExplorerProperties {
     @NotNull
     lateinit var upgradeVersionRegex: String
 
+    @NotNull
+    lateinit var hiddenApis: String
+
     fun initialHistoricalDays() = initialHistoricalDayCount.toInt()
 
     fun spotlightTtlMs() = spotlightTtlMs.toLong()
+
+    fun hiddenApis() = hiddenApis.toBoolean()
 
     // tp or pb
     fun provAccPrefix() =

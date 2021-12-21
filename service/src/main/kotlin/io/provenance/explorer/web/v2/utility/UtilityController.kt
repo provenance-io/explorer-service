@@ -1,4 +1,4 @@
-package io.provenance.explorer.web.v2
+package io.provenance.explorer.web.v2.utility
 
 import io.provenance.explorer.domain.entities.UnknownTxType
 import io.provenance.explorer.service.utility.UtilityService

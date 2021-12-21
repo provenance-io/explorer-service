@@ -1,6 +1,6 @@
-package io.provenance.explorer.web.v2
+package io.provenance.explorer.web.v2.utility
 
-import io.provenance.explorer.service.MigrationService
+import io.provenance.explorer.service.utility.MigrationService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import org.springframework.http.MediaType

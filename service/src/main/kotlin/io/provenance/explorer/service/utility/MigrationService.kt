@@ -1,4 +1,4 @@
-package io.provenance.explorer.service
+package io.provenance.explorer.service.utility
 
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.Distinct
@@ -8,6 +8,8 @@ import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheTable
 import io.provenance.explorer.domain.entities.TxMessageTable
+import io.provenance.explorer.service.AccountService
+import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.service.async.AsyncCaching
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.IntegerColumnType

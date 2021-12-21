@@ -40,10 +40,27 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Added `docs/txs/Feepayer.md` to lay out changes
   * Support for ingestion
   * Added support on tx query responses - updated field `fee` and new field `feepayer`
+* Added API for chain prefixes #269
+  * API under `/api/v2/chain/prefixes`
 
 ### Improvements
-* Updated ingetstion to use the same TxData object for block-related data
+* Updated ingestion to use the same TxData object for block-related data
 * Increased local DB connection size to 40 to match container connection size
+* Added `EXPLORER_HIDDEN_APIS` to allowing hiding of maintenance APIs from Swagger #271
+* Updated the Param set #270
+
+### Bug Fixes
+* Updated `AccountDetail.publicKeys` to be a public key object showing the key and key type #267
+  ```json
+  { 
+    ...
+     "publicKeys": {
+       "pubKey": "AireALVFyk8k1alZLcJLEdfaDFuyDua9eZsswvYsHUGN",
+       "type": "secp256k1"
+     },
+    ... 
+  }
+  ```
 
 ### Data
 * Migration 1.39 - Added Tx fee and feepayer tables #252
