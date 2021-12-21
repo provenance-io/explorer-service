@@ -28,7 +28,7 @@ object TxAddressJoinTable : IntIdTable(name = "tx_address_join") {
 class TxAddressJoinRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxAddressJoinRecord>(TxAddressJoinTable) {
 
-        private fun findByHashAndAddress(txHashId: EntityID<Int>, addrPair: Pair<String, Int?>, addr: String) =
+        private fun findByHashAndAddress(txHashId: Int, addrPair: Pair<String, Int?>, addr: String) =
             transaction {
                 TxAddressJoinRecord
                     .find {
@@ -66,12 +66,12 @@ class TxAddressJoinRecord(id: EntityID<Int>) : IntEntity(id) {
             ).toList()
         }
 
-        fun insert(txHash: String, txId: EntityID<Int>, blockHeight: Int, addrPair: Pair<String, Int?>, address: String) =
+        fun insert(txInfo: TxData, addrPair: Pair<String, Int?>, address: String) =
             transaction {
-                findByHashAndAddress(txId, addrPair, address) ?: TxAddressJoinTable.insert {
-                    it[this.blockHeight] = blockHeight
-                    it[this.txHashId] = txId
-                    it[this.txHash] = txHash
+                findByHashAndAddress(txInfo.txHashId!!, addrPair, address) ?: TxAddressJoinTable.insert {
+                    it[this.blockHeight] = txInfo.blockHeight
+                    it[this.txHashId] = txInfo.txHashId
+                    it[this.txHash] = txInfo.txHash
                     it[this.addressId] = addrPair.second!!
                     it[this.addressType] = addrPair.first
                     it[this.address] = address
@@ -113,17 +113,17 @@ class TxMarkerJoinRecord(id: EntityID<Int>) : IntEntity(id) {
             TxMarkerJoinRecord.find { TxMarkerJoinTable.markerId eq markerId }.count().toBigInteger()
         }
 
-        private fun findByHashAndDenom(txId: EntityID<Int>, markerId: Int) = transaction {
+        private fun findByHashAndDenom(txId: Int, markerId: Int) = transaction {
             TxMarkerJoinRecord
                 .find { (TxMarkerJoinTable.txHashId eq txId) and (TxMarkerJoinTable.markerId eq markerId) }
                 .firstOrNull()
         }
 
-        fun insert(txHash: String, txId: EntityID<Int>, blockHeight: Int, markerId: Int, denom: String) = transaction {
-            findByHashAndDenom(txId, markerId) ?: TxMarkerJoinTable.insert {
-                it[this.blockHeight] = blockHeight
-                it[this.txHash] = txHash
-                it[this.txHashId] = txId
+        fun insert(txInfo: TxData, markerId: Int, denom: String) = transaction {
+            findByHashAndDenom(txInfo.txHashId!!, markerId) ?: TxMarkerJoinTable.insert {
+                it[this.blockHeight] = txInfo.blockHeight
+                it[this.txHash] = txInfo.txHash
+                it[this.txHashId] = txInfo.txHashId
                 it[this.denom] = denom
                 it[this.markerId] = markerId
             }
@@ -149,7 +149,7 @@ object TxNftJoinTable : IntIdTable(name = "tx_nft_join") {
 class TxNftJoinRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxNftJoinRecord>(TxNftJoinTable) {
 
-        private fun findByHashIdAndUuid(txHashId: EntityID<Int>, mdTriple: Triple<MdParent, Int, String>) =
+        private fun findByHashIdAndUuid(txHashId: Int, mdTriple: Triple<MdParent, Int, String>) =
             transaction {
                 TxNftJoinRecord
                     .find {
@@ -160,12 +160,12 @@ class TxNftJoinRecord(id: EntityID<Int>) : IntEntity(id) {
                     .firstOrNull()
             }
 
-        fun insert(txHash: String, txId: EntityID<Int>, blockHeight: Int, mdTriple: Triple<MdParent, Int, String>) =
+        fun insert(txInfo: TxData, mdTriple: Triple<MdParent, Int, String>) =
             transaction {
-                findByHashIdAndUuid(txId, mdTriple) ?: TxNftJoinTable.insert {
-                    it[this.blockHeight] = blockHeight
-                    it[this.txHashId] = txId
-                    it[this.txHash] = txHash
+                findByHashIdAndUuid(txInfo.txHashId!!, mdTriple) ?: TxNftJoinTable.insert {
+                    it[this.blockHeight] = txInfo.blockHeight
+                    it[this.txHashId] = txInfo.txHashId
+                    it[this.txHash] = txInfo.txHash
                     it[this.metadataId] = mdTriple.second
                     it[this.metadataType] = mdTriple.first.name
                     it[this.metadataUuid] = mdTriple.third

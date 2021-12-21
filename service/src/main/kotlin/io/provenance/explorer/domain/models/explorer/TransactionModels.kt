@@ -44,11 +44,16 @@ data class TxDetails(
     val errorCode: Int?,
     val codespace: String?,
     val errorLog: String?,
-    val fee: CoinStr,
+    val fee: List<TxFee>,
     val signers: Signatures,
     val memo: String,
-    val monikers: Map<String, String>
+    val monikers: Map<String, String>,
+    val feepayer: TxFeepayer
 )
+
+data class TxFeepayer(val type: String, val address: String)
+
+data class TxFee(val type: String, val fees: List<CoinStr>)
 
 data class Gas(
     val gasUsed: Int,
@@ -212,7 +217,8 @@ data class TxSummary(
     val time: String,
     val fee: CoinStr,
     val signers: Signatures,
-    val status: String
+    val status: String,
+    val feepayer: TxFeepayer
 )
 
 data class MsgInfo(
@@ -240,7 +246,8 @@ data class TxGov(
     val txTime: String,
     val txFee: CoinStr,
     val signers: Signatures,
-    val txStatus: String
+    val txStatus: String,
+    val feepayer: TxFeepayer
 )
 
 data class TxGasVolume(
@@ -259,7 +266,8 @@ data class TxSmartContract(
     val txTime: String,
     val txFee: CoinStr,
     val signers: Signatures,
-    val txStatus: String
+    val txStatus: String,
+    val feepayer: TxFeepayer
 )
 
 data class MsgProtoBreakout(
