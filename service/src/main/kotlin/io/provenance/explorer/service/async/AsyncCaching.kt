@@ -15,6 +15,7 @@ import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.BlockTxRetryRecord
+import io.provenance.explorer.domain.entities.FeePayer
 import io.provenance.explorer.domain.entities.IbcChannelRecord
 import io.provenance.explorer.domain.entities.SigJoinType
 import io.provenance.explorer.domain.entities.SignatureJoinRecord
@@ -23,6 +24,8 @@ import io.provenance.explorer.domain.entities.TxAddressJoinType
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxEventAttrRecord
 import io.provenance.explorer.domain.entities.TxEventRecord
+import io.provenance.explorer.domain.entities.TxFeeRecord
+import io.provenance.explorer.domain.entities.TxFeepayerRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
@@ -79,7 +82,6 @@ import io.provenance.explorer.service.SmartContractService
 import io.provenance.explorer.service.ValidatorService
 import net.pearx.kasechange.toSnakeCase
 import net.pearx.kasechange.universalWordSplitter
-import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
@@ -113,21 +115,20 @@ class AsyncCaching(
     }
 
     fun getChainIdString() =
-        if (chainId.isEmpty()) getBlock(blockService.getLatestBlockHeightIndex())!!.block.header.chainId.also { this.chainId = it }
+        if (chainId.isEmpty()) getBlock(blockService.getLatestBlockHeightIndex())!!.block.header.chainId.also {
+            this.chainId = it
+        }
         else this.chainId
 
     fun saveBlockEtc(blockRes: Query.GetBlockByHeightResponse?): Query.GetBlockByHeightResponse? {
         if (blockRes == null) return null
         logger.info("saving block ${blockRes.block.height()}")
         val blockTimestamp = blockRes.block.header.time.toDateTime()
-        blockService.addBlockToCache(
-            blockRes.block.height(), blockRes.block.data.txsCount, blockTimestamp, blockRes
-        )
+        blockService.addBlockToCache(blockRes.block.height(), blockRes.block.data.txsCount, blockTimestamp, blockRes)
         validatorService.saveProposerRecord(blockRes, blockTimestamp, blockRes.block.height())
         validatorService.saveValidatorsAtHeight(blockRes.block.height())
         validatorService.saveMissedBlocks(blockRes)
-        if (blockRes.block.data.txsCount > 0)
-            saveTxs(blockRes)
+        if (blockRes.block.data.txsCount > 0) saveTxs(blockRes)
         return blockRes
     }
 
@@ -138,7 +139,8 @@ class AsyncCaching(
     )
 
     fun saveTxs(blockRes: Query.GetBlockByHeightResponse) {
-        val toBeUpdated = addTxsToCache(blockRes.block.height(), blockRes.block.data.txsCount, blockRes.block.header.time)
+        val toBeUpdated =
+            addTxsToCache(blockRes.block.height(), blockRes.block.data.txsCount, blockRes.block.header.time)
         toBeUpdated.flatMap { it.markers }.toSet().let { assetService.updateAssets(it, blockRes.block.header.time) }
         toBeUpdated.flatMap { it.addresses.entries }
             .groupBy({ it.key }) { it.value }
@@ -159,7 +161,8 @@ class AsyncCaching(
 
     fun addTxsToCache(blockHeight: Int, expectedNumTxs: Int, blockTime: Timestamp) =
         if (txCountForHeight(blockHeight).toInt() == expectedNumTxs)
-            logger.info("Cache hit for transaction at height $blockHeight with $expectedNumTxs transactions").let { listOf() }
+            logger.info("Cache hit for transaction at height $blockHeight with $expectedNumTxs transactions")
+                .let { listOf() }
         else {
             logger.info("Searching for $expectedNumTxs transactions at height $blockHeight")
             tryAddTxs(blockHeight, expectedNumTxs, blockTime)
@@ -178,7 +181,8 @@ class AsyncCaching(
     private fun calculateBlockTxFee(result: List<Abci.TxResponse>, height: Int) = transaction {
         result.map { it.tx.unpack(TxOuterClass.Tx::class.java) }
             .let { list ->
-                val numerator = list.sumOf { it.authInfo.fee.amountList.firstOrNull()?.amount?.toBigInteger() ?: BigInteger.ZERO }
+                val numerator =
+                    list.sumOf { it.authInfo.fee.amountList.firstOrNull()?.amount?.toBigInteger() ?: BigInteger.ZERO }
                 val denominator = list.sumOf { it.authInfo.fee.gasLimit.toBigInteger() }
                 numerator.toDouble().div(denominator.toDouble())
             }.let { BlockProposerRecord.save(height, it, null, null) }
@@ -193,42 +197,59 @@ class AsyncCaching(
         blockTime: DateTime
     ): TxUpdatedItems {
         val txPair = TxCacheRecord.insertIgnore(res, blockTime).let { Pair(it, res) }
-        saveTxGasFees(res, blockTime)
-        saveMessages(txPair.first, txPair.second)
-        val addrs = saveAddresses(txPair.first, txPair.second)
-        val markers = saveMarkers(txPair.first, txPair.second)
-        saveNftData(txPair.first, txPair.second)
-        saveGovData(txPair.second, blockTime)
-        saveIbcChannelData(txPair.first, txPair.second, blockTime)
-        saveSmartContractData(txPair.first, txPair.second, blockTime)
-        saveSignaturesTx(txPair.second)
+        val txInfo = TxData(res.txResponse.height.toInt(), txPair.first.value, res.txResponse.txhash, blockTime)
+        saveTxGasFees(res, txInfo)
+        saveMessages(txInfo, txPair.second)
+        val addrs = saveAddresses(txInfo, txPair.second)
+        val markers = saveMarkers(txInfo, txPair.second)
+        saveNftData(txInfo, txPair.second)
+        saveGovData(txPair.second, txInfo)
+        saveIbcChannelData(txPair.second, txInfo)
+        saveSmartContractData(txPair.second, txInfo)
+        saveSignaturesTx(txPair.second, txInfo)
         return TxUpdatedItems(addrs, markers)
     }
 
-    private fun saveEvents(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse, msgId: Int, msgType: Int, idx: Int) = transaction {
+    private fun saveEvents(
+        txInfo: TxData,
+        tx: ServiceOuterClass.GetTxResponse,
+        msgId: Int,
+        msgType: Int,
+        idx: Int
+    ) = transaction {
         tx.txResponse.logsList[idx].eventsList.forEach { event ->
-            val eventId = TxEventRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, event.type, msgId, msgType).value
+            val eventId = TxEventRecord.insert(
+                txInfo.blockHeight,
+                txInfo.txHash,
+                txInfo.txHashId!!,
+                event.type,
+                msgId,
+                msgType
+            ).value
             event.attributesList.forEach { attr ->
                 TxEventAttrRecord.insert(attr.key, attr.value, eventId)
             }
         }
     }
 
-    private fun saveTxGasFees(tx: ServiceOuterClass.GetTxResponse, blockTime: DateTime) = transaction {
-        TxGasCacheRecord.insertIgnore(tx, blockTime)
-    }
+    private fun saveTxGasFees(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData) =
+        transaction {
+            TxGasCacheRecord.insertIgnore(tx, txInfo.txTimestamp)
+            TxFeeRecord.insert(txInfo, tx)
+        }
 
-    fun saveMessages(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
+    fun saveMessages(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse) = transaction {
         tx.tx.body.messagesList.forEachIndexed { idx, msg ->
             val (_, module, type) = msg.getMsgType()
-            val msgRec = TxMessageRecord.insert(tx.txResponse.height.toInt(), tx.txResponse.txhash, txId, msg, type, module, idx)
+            val msgRec =
+                TxMessageRecord.insert(txInfo.blockHeight, txInfo.txHash, txInfo.txHashId!!, msg, type, module, idx)
             if (tx.txResponse.logsCount > 0) {
-                saveEvents(txId, tx, msgRec.id.value, msgRec.txMessageType.id.value, idx)
+                saveEvents(txInfo, tx, msgRec.id.value, msgRec.txMessageType.id.value, idx)
 
                 if (tx.tx.body.messagesCount == 1) {
                     TxSingleMessageCacheRecord.insert(
-                        tx.txResponse.timestamp.toDateTime(),
-                        tx.txResponse.txhash,
+                        txInfo.txTimestamp,
+                        txInfo.txHash,
                         tx.txResponse.gasUsed.toInt(),
                         msgRec.txMessageType.type
                     )
@@ -245,7 +266,7 @@ class AsyncCaching(
         return MsgProtoBreakout(protoType, module, type)
     }
 
-    private fun saveAddresses(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
+    private fun saveAddresses(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse) = transaction {
         val msgAddrs = tx.tx.body.messagesList.flatMap { it.getAssociatedAddresses() }
         val eventAddrs = tx.txResponse.logsList
             .flatMap { it.eventsList }
@@ -260,26 +281,30 @@ class AsyncCaching(
 
         (msgAddrs + eventAddrs).toSet()
             .filter { it.isNotEmpty() }
-            .map { saveAddr(it, txId, tx) }
+            .map { saveAddr(it, txInfo) }
             .filter { it.second != null }.groupBy({ it.first }) { it.second!! }
     }
 
-    private fun saveAddr(addr: String, txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse): Pair<String, Int?> {
+    private fun saveAddr(addr: String, txInfo: TxData): Pair<String, Int?> {
         val addrPair = addr.getAddressType(props)
         var pairCopy = addrPair!!.copy()
         if (addrPair.second == null) {
-            when (addrPair.first) {
-                TxAddressJoinType.OPERATOR.name -> validatorService.saveValidator(addr)
-                    .let { pairCopy = addrPair.copy(second = it.first.value) }
-                TxAddressJoinType.ACCOUNT.name -> accountService.saveAccount(addr)
-                    .let { pairCopy = addrPair.copy(second = it.id.value) }
+            try {
+                when (addrPair.first) {
+                    TxAddressJoinType.OPERATOR.name ->
+                        validatorService.saveValidator(addr).let { pairCopy = addrPair.copy(second = it.first.value) }
+                    TxAddressJoinType.ACCOUNT.name -> accountService.saveAccount(addr)
+                        .let { pairCopy = addrPair.copy(second = it.id.value) }
+                }
+            } catch (ex: Exception) {
+                BlockTxRetryRecord.insertNonRetry(txInfo.blockHeight, ex)
             }
         }
-        TxAddressJoinRecord.insert(tx.txResponse.txhash, txId, tx.txResponse.height.toInt(), pairCopy, addr)
+        if (addrPair.second != null) TxAddressJoinRecord.insert(txInfo, pairCopy, addr)
         return addrPair
     }
 
-    private fun saveMarkers(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
+    private fun saveMarkers(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse) = transaction {
         val msgDenoms = tx.tx.body.messagesList.map { it.getAssociatedDenoms() to it.isIbcTransferMsg() }
         val denoms = msgDenoms.flatMap { it.first }
         // captures all events that have a denom
@@ -300,21 +325,17 @@ class AsyncCaching(
 
         (denoms + eventDenoms).toSet().mapNotNull { de ->
             val denom = msgDenoms.firstOrNull { it.first.contains(de) }
-            if (denom != null && denom.second)
-                if (tx.txResponse.code == 0) saveDenom(de, txId, tx) else null
-            else
-                saveDenom(de, txId, tx)
+            if (denom != null && denom.second) if (tx.txResponse.code == 0) saveDenom(de, txInfo) else null
+            else saveDenom(de, txInfo)
         }
     }
 
-    private fun saveDenom(denom: String, txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse): String {
-        assetService.getAssetRaw(denom).let { (id, _) ->
-            TxMarkerJoinRecord.insert(tx.txResponse.txhash, txId, tx.txResponse.height.toInt(), id!!.value, denom)
-        }
+    private fun saveDenom(denom: String, txInfo: TxData): String {
+        assetService.getAssetRaw(denom).let { (id, _) -> TxMarkerJoinRecord.insert(txInfo, id!!.value, denom) }
         return denom
     }
 
-    private fun saveNftData(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse) = transaction {
+    private fun saveNftData(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse) = transaction {
         // Gather MetadataAddresses from the Msgs themselves
         val msgAddrPairs = tx.tx.body.messagesList.map { it.getAssociatedMetadata() to it.isMetadataDeletionMsg() }
         val msgAddrs = msgAddrPairs.flatMap { it.first }.filterNotNull()
@@ -341,12 +362,11 @@ class AsyncCaching(
                 }
         }
         // Save the nft joins
-        nfts.forEach { nft -> TxNftJoinRecord.insert(tx.txResponse.txhash, txId, tx.txResponse.height.toInt(), nft) }
+        nfts.forEach { nft -> TxNftJoinRecord.insert(txInfo, nft) }
     }
 
-    private fun saveGovData(tx: ServiceOuterClass.GetTxResponse, blockTime: DateTime) = transaction {
+    private fun saveGovData(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData) = transaction {
         if (tx.txResponse.code == 0) {
-            val txInfo = TxData(tx.txResponse.height.toInt(), null, tx.txResponse.txhash, blockTime)
             tx.tx.body.messagesList.map { it.getAssociatedGovMsgs() }
                 .forEachIndexed fe@{ idx, pair ->
                     if (pair == null) return@fe
@@ -379,11 +399,18 @@ class AsyncCaching(
         }
     }
 
-    private fun saveIbcChannelData(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse, blockTime: DateTime) =
+    private fun saveIbcChannelData(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData) =
         transaction {
             if (tx.txResponse.code == 0) {
                 tx.tx.body.messagesList.filter { it.isIbcTimeoutOnClose() }
-                    .forEach { msg -> msg.toMsgTimeoutOnClose().packet.let { ibcService.saveIbcChannel(it.sourcePort, it.sourceChannel) } }
+                    .forEach { msg ->
+                        msg.toMsgTimeoutOnClose().packet.let {
+                            ibcService.saveIbcChannel(
+                                it.sourcePort,
+                                it.sourceChannel
+                            )
+                        }
+                    }
                 tx.tx.body.messagesList.map { it.getIbcChannelEvents() }
                     .forEachIndexed fe@{ idx, pair ->
                         if (pair == null) return@fe
@@ -397,7 +424,6 @@ class AsyncCaching(
                         ibcService.saveIbcChannel(port, channel)
                     }
 
-                val txInfo = TxData(tx.txResponse.height.toInt(), txId.value, tx.txResponse.txhash, blockTime)
                 tx.tx.body.messagesList
                     .map { msg -> msg.getIbcLedgerMsgs() }
                     .forEachIndexed fe@{ idx, any ->
@@ -405,7 +431,8 @@ class AsyncCaching(
                         val ledger = when {
                             any.typeUrl.endsWith("MsgTransfer") -> {
                                 val msg = any.toMsgTransfer()
-                                val channel = IbcChannelRecord.findBySrcPortSrcChannel(msg.sourcePort, msg.sourceChannel)
+                                val channel =
+                                    IbcChannelRecord.findBySrcPortSrcChannel(msg.sourcePort, msg.sourceChannel)
                                 ibcService.parseTransfer(
                                     LedgerInfo(
                                         channel = channel!!,
@@ -451,7 +478,7 @@ class AsyncCaching(
             }
         }
 
-    private fun saveSmartContractData(txId: EntityID<Int>, tx: ServiceOuterClass.GetTxResponse, blockTime: DateTime) =
+    private fun saveSmartContractData(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData) =
         transaction {
             val codesToBeSaved = mutableListOf<Long>()
             val contractsToBeSaved = mutableListOf<String>()
@@ -482,7 +509,6 @@ class AsyncCaching(
                     }
                 }
 
-            val txInfo = TxData(tx.txResponse.height.toInt(), txId.value, tx.txResponse.txhash, blockTime)
             codesToBeSaved.map { smContractService.saveCode(it, txInfo) }
                 .forEach { code -> TxSmCodeRecord.insert(txInfo, code) }
             contractsToBeSaved.associateBy { contract -> smContractService.saveContract(contract, txInfo) }
@@ -501,20 +527,18 @@ class AsyncCaching(
                             it.content.unpack(cosmwasm.wasm.v1.Proposal.StoreCodeProposal::class.java)
                     }
                 }
-            // translate content type
-            // store code -> hash wasm bytes
-            //          -> add to retry table
-            //          -> when future txs use same wasm bytes, link up records
-            //      -> could also monitor proposals, if this proposal passes, check for next code id
-            //             -> if bytes match proposal bytes, link up record as creation height
-
-            // How does a store code get created? Is it just an event? Is it tied to a block? Does a msg get dispatched?
         }
 
-    fun saveSignaturesTx(tx: ServiceOuterClass.GetTxResponse) = transaction {
+    fun saveSignaturesTx(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData) = transaction {
         tx.tx.authInfo.signerInfosList.forEach { sig ->
             SignatureJoinRecord.insert(sig.publicKey, SigJoinType.TRANSACTION, tx.txResponse.txhash)
         }
+
+        AccountRecord.findByAddress(tx.tx.authInfo.fee.granter)
+            ?.let { TxFeepayerRecord.insertIgnore(txInfo, FeePayer.GRANTER.name, it.id.value, it.accountAddress) }
+
+        AccountRecord.findByAddress(tx.tx.authInfo.fee.payer)
+            ?.let { TxFeepayerRecord.insertIgnore(txInfo, FeePayer.PAYER.name, it.id.value, it.accountAddress) }
 
         // get signers
         tx.tx.body.messagesList.flatMap { it.getSigners() }.toSet()
@@ -524,8 +548,22 @@ class AsyncCaching(
                     it.startsWith(props.provAccPrefix()) -> it
                     else -> logger().debug("Address type is not supported: Addr $this").let { null }
                 }
-            }.map { accountService.saveAccount(it).baseAccount!!.pubKey }
-            .forEach { SignatureJoinRecord.insert(it, SigJoinType.TRANSACTION, tx.txResponse.txhash) }
+            }.map { accountService.saveAccount(it) }
+            .also {
+                TxFeepayerRecord.insertIgnore(
+                    txInfo,
+                    FeePayer.FIRST_SIGNER.name,
+                    it[0].id.value,
+                    it[0].accountAddress
+                )
+            }
+            .forEach {
+                SignatureJoinRecord.insert(
+                    it.baseAccount!!.pubKey,
+                    SigJoinType.TRANSACTION,
+                    tx.txResponse.txhash
+                )
+            }
     }
 }
 

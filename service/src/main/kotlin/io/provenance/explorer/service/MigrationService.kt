@@ -2,7 +2,6 @@ package io.provenance.explorer.service
 
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.Distinct
-import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockCacheTable
 import io.provenance.explorer.domain.entities.BlockProposerRecord
@@ -23,7 +22,8 @@ import org.springframework.stereotype.Service
 @Service
 class MigrationService(
     private val asyncCaching: AsyncCaching,
-    private val validatorService: ValidatorService
+    private val validatorService: ValidatorService,
+    private val accountService: AccountService
 ) {
 
     protected val logger = logger(MigrationService::class)
@@ -38,7 +38,7 @@ class MigrationService(
     fun updateValidatorsCache() = validatorService.updateValidatorsAtHeight().let { true }
 
     fun updateAccounts(list: List<String>) = transaction {
-        AccountRecord.findListByAddress(list).forEach { AccountRecord.insertIgnore(it.data!!) }
+        list.forEach { accountService.saveAccount(it) }
     }
 
     fun updateMissedBlocks(startHeight: Int, endHeight: Int, inc: Int) {

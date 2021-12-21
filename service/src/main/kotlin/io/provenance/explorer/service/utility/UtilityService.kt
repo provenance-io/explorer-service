@@ -19,6 +19,7 @@ import io.provenance.explorer.domain.extensions.to256Hash
 import io.provenance.explorer.domain.extensions.toBase64
 import io.provenance.explorer.domain.extensions.toByteString
 import io.provenance.explorer.domain.extensions.toObjectNode
+import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.getCategoryForType
 import io.provenance.explorer.grpc.extensions.toMsgStoreCode
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
@@ -105,10 +106,12 @@ class UtilityService(
 
     fun addMarker(denom: String) = assetService.getAssetRaw(denom)
 
-    fun funWithSignature(txHash: List<String>) = transaction {
-        txHash.forEach { hash ->
-            val tx = TxCacheRecord.findByHash(hash)!!
-            async.saveSignaturesTx(tx.txV2)
+    fun funWithSignature(list: List<Int>) = transaction {
+        list.forEach { id ->
+            TxCacheRecord.findById(id)?.let { tx ->
+                val info = TxData(tx.height, tx.id.value, tx.hash, tx.txTimestamp)
+                async.saveSignaturesTx(tx.txV2, info)
+            }
         }
     }
 

@@ -2,23 +2,32 @@ package io.provenance.explorer.domain.entities
 
 import com.google.protobuf.Any
 import cosmos.tx.v1beta1.ServiceOuterClass
-import cosmos.tx.v1beta1.TxOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.DateTrunc
 import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_OVERAGE
+import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_USED
+import io.provenance.explorer.domain.entities.FeeType.MSG_BASED_FEE
+import io.provenance.explorer.domain.entities.FeeType.PRIORITY_FEE
+import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.exec
 import io.provenance.explorer.domain.extensions.map
 import io.provenance.explorer.domain.extensions.startOfDay
+import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDbHash
 import io.provenance.explorer.domain.models.explorer.GasStatistics
 import io.provenance.explorer.domain.models.explorer.GasStats
+import io.provenance.explorer.domain.models.explorer.TxData
+import io.provenance.explorer.domain.models.explorer.TxFee
+import io.provenance.explorer.domain.models.explorer.TxFeepayer
 import io.provenance.explorer.domain.models.explorer.TxGasVolume
 import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.domain.models.explorer.getCategoryForType
 import io.provenance.explorer.domain.models.explorer.onlyTxQuery
+import net.pearx.kasechange.toTitleCase
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -30,6 +39,7 @@ import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.Max
 import org.jetbrains.exposed.sql.Min
 import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
@@ -48,6 +58,7 @@ import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
+import java.math.BigDecimal
 
 object TxCacheTable : IntIdTable(name = "tx_cache") {
     val hash = varchar("hash", 64)
@@ -184,6 +195,8 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var codespace by TxCacheTable.codespace
     var txV2 by TxCacheTable.txV2
     val txMessages by TxMessageRecord referrersOn TxMessageTable.txHashId
+    val txFees by TxFeeRecord referrersOn TxFeeTable.txHashId
+    val txFeepayer by TxFeepayerRecord referrersOn TxFeepayerTable.txHashId
 }
 
 object TxMessageTypeTable : IntIdTable(name = "tx_message_type") {
@@ -194,6 +207,7 @@ object TxMessageTypeTable : IntIdTable(name = "tx_message_type") {
 }
 
 const val UNKNOWN = "unknown"
+
 class TxMessageTypeRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxMessageTypeRecord>(TxMessageTypeTable) {
 
@@ -332,10 +346,18 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
             query
         }
 
-        fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, message: Any, type: String, module: String, msgIdx: Int) =
+        fun insert(
+            blockHeight: Int,
+            txHash: String,
+            txId: Int,
+            message: Any,
+            type: String,
+            module: String,
+            msgIdx: Int
+        ) =
             transaction {
                 TxMessageTypeRecord.insert(type, module, message.typeUrl).let { typeId ->
-                    findByTxHashAndMessageHash(txId.value, message.value.toDbHash(), msgIdx)
+                    findByTxHashAndMessageHash(txId, message.value.toDbHash(), msgIdx)
                         ?: TxMessageTable.insertAndGetId {
                             it[this.blockHeight] = blockHeight
                             it[this.txHash] = txHash
@@ -370,14 +392,15 @@ object TxEventsTable : IntIdTable(name = "tx_msg_event") {
 class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxEventRecord>(TxEventsTable) {
 
-        private fun findByTxHashIdMessageIdAndEventType(txHashId: Int, messageId: Int, eventType: String) = transaction {
-            TxEventRecord.find { (TxEventsTable.txHashId eq txHashId) and (TxEventsTable.txMessageId eq messageId) and (TxEventsTable.eventType eq eventType) }
-                .firstOrNull()
-        }
-
-        fun insert(blockHeight: Int, txHash: String, txId: EntityID<Int>, type: String, msgId: Int, msgTypeId: Int) =
+        private fun findByTxHashIdMessageIdAndEventType(txHashId: Int, messageId: Int, eventType: String) =
             transaction {
-                findByTxHashIdMessageIdAndEventType(txId.value, msgId, type)?.id ?: TxEventsTable.insertAndGetId {
+                TxEventRecord.find { (TxEventsTable.txHashId eq txHashId) and (TxEventsTable.txMessageId eq messageId) and (TxEventsTable.eventType eq eventType) }
+                    .firstOrNull()
+            }
+
+        fun insert(blockHeight: Int, txHash: String, txId: Int, type: String, msgId: Int, msgTypeId: Int) =
+            transaction {
+                findByTxHashIdMessageIdAndEventType(txId, msgId, type)?.id ?: TxEventsTable.insertAndGetId {
                     it[this.blockHeight] = blockHeight
                     it[this.txHash] = txHash
                     it[this.txHashId] = txId
@@ -514,8 +537,7 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             transaction {
                 if (findByHash(tx.txResponse.txhash) == null) {
                     // calculate fee amount
-                    val authInfo = tx.txResponse.tx.unpack(TxOuterClass.Tx::class.java).authInfo
-                    val fee = authInfo.fee.amountList.firstOrNull()?.amount?.toDouble() ?: 0.0
+                    val fee = TxFeeRecord.calcBaseGasFee(tx.txResponse.gasWanted).toDouble()
 
                     TxGasCacheTable.insertIgnore {
                         it[hash] = tx.txResponse.txhash
@@ -579,4 +601,134 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var gasUsed by TxGasCacheTable.gasUsed
     var feeAmount by TxGasCacheTable.feeAmount
     var processed by TxGasCacheTable.processed
+}
+
+object TxFeepayerTable : IntIdTable(name = "tx_feepayer") {
+    val blockHeight = integer("block_height")
+    val txHash = varchar("tx_hash", 64)
+    val txHashId = reference("tx_hash_id", TxCacheTable)
+    val payerType = varchar("payer_type", 128)
+    val addressId = integer("address_id")
+    val address = varchar("address", 128)
+}
+
+enum class FeePayer { GRANTER, PAYER, FIRST_SIGNER }
+
+fun SizedIterable<TxFeepayerRecord>.getFeepayer() = this.map { TxFeepayer(it.payerType, it.address) }
+    .minByOrNull { FeePayer.valueOf(it.type).ordinal }!!
+
+class TxFeepayerRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxFeepayerRecord>(TxFeepayerTable) {
+
+        private fun findByUniqueness(hashId: Int, type: String, addrId: Int) = transaction {
+            TxFeepayerRecord.find {
+                (TxFeepayerTable.txHashId eq hashId) and
+                    (TxFeepayerTable.payerType eq type) and
+                    (TxFeepayerTable.addressId eq addrId)
+            }.firstOrNull()
+        }
+
+        fun insertIgnore(txInfo: TxData, type: String, addrId: Int, address: String) = transaction {
+            if (findByUniqueness(txInfo.txHashId!!, type, addrId) == null)
+                TxFeepayerTable.insertIgnore {
+                    it[blockHeight] = txInfo.blockHeight
+                    it[txHash] = txInfo.txHash
+                    it[txHashId] = txInfo.txHashId
+                    it[payerType] = type
+                    it[this.addressId] = addrId
+                    it[this.address] = address
+                }
+        }
+    }
+
+    var blockHeight by TxFeepayerTable.blockHeight
+    var txHash by TxFeepayerTable.txHash
+    var txHashId by TxCacheRecord referencedOn TxFeepayerTable.txHashId
+    var payerType by TxFeepayerTable.payerType
+    var addressId by TxFeepayerTable.addressId
+    var address by TxFeepayerTable.address
+}
+
+object TxFeeTable : IntIdTable(name = "tx_fee") {
+    val blockHeight = integer("block_height")
+    val txHash = varchar("tx_hash", 64)
+    val txHashId = reference("tx_hash_id", TxCacheTable)
+    val feeType = varchar("fee_type", 128)
+    val markerId = integer("marker_id")
+    val marker = varchar("marker", 256)
+    val amount = decimal("amount", 100, 10)
+}
+
+enum class FeeType { BASE_FEE_USED, BASE_FEE_OVERAGE, PRIORITY_FEE, MSG_BASED_FEE }
+
+fun List<TxFeeRecord>.toFees() = this.groupBy { it.feeType }
+    .map { (k, v) -> TxFee(k.toTitleCase(), v.map { it.amount.toCoinStr(it.marker) }) }
+
+fun List<TxFeeRecord>.toFeePaid() = this.sumOf { it.amount }.toCoinStr(this.first().marker)
+
+class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxFeeRecord>(TxFeeTable) {
+
+        // TODO: Replace 1905 with value from chain when 1.8.0 gets released
+        fun calcBaseGasFee(gasWanted: Long) = gasWanted * 1905
+
+        fun insert(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse) = transaction {
+            val success = tx.txResponse.code == 0
+            // calc baseFeeUsed, baseFeeOverage in nhash, and remaining as priority in nhash
+            tx.tx.authInfo.fee.amountList.first { it.denom == NHASH }.let {
+                val baseFee = calcBaseGasFee(tx.txResponse.gasWanted)
+                val baseFeeUsed = calcBaseGasFee(tx.txResponse.gasUsed)
+                Triple(it.amount.toLong() - baseFee, baseFee - baseFeeUsed, baseFeeUsed)
+            }.let { (priority, baseFeeOverage, baseFeeUsed) ->
+                val nhash = MarkerCacheRecord.findByDenom(NHASH)!!
+                // insert used fee
+                insertIgnore(txInfo, BASE_FEE_USED.name, nhash.id.value, nhash.denom, baseFeeUsed.toBigDecimal())
+                // insert paid too much fee
+                insertIgnore(txInfo, BASE_FEE_OVERAGE.name, nhash.id.value, nhash.denom, baseFeeOverage.toBigDecimal())
+                // insert any overage as priority for now
+                if (priority > 0)
+                    insertIgnore(txInfo, PRIORITY_FEE.name, nhash.id.value, nhash.denom, priority.toBigDecimal())
+            }
+
+            // Save remaining denoms as MSG_BASED_FEE, only if tx is successful
+            if (success)
+                tx.tx.authInfo.fee.amountList.filter { it.denom != NHASH }.forEach {
+                    val denom = MarkerCacheRecord.findByDenom(it.denom)!!
+                    insertIgnore(txInfo, MSG_BASED_FEE.name, denom.id.value, denom.denom, it.amount.toBigDecimal())
+                }
+        }
+
+        private fun findByUniqueness(hashId: Int, type: String, markerId: Int) = transaction {
+            TxFeeRecord.find {
+                (TxFeeTable.txHashId eq hashId) and (TxFeeTable.feeType eq type) and (TxFeeTable.markerId eq markerId)
+            }.firstOrNull()
+        }
+
+        private fun insertIgnore(
+            txInfo: TxData,
+            type: String,
+            markerId: Int,
+            marker: String,
+            amount: BigDecimal
+        ) = transaction {
+            if (findByUniqueness(txInfo.txHashId!!, type, markerId) == null)
+                TxFeeTable.insertIgnore {
+                    it[blockHeight] = txInfo.blockHeight
+                    it[txHash] = txInfo.txHash
+                    it[txHashId] = txInfo.txHashId
+                    it[feeType] = type
+                    it[this.markerId] = markerId
+                    it[this.marker] = marker
+                    it[this.amount] = amount
+                }
+        }
+    }
+
+    var blockHeight by TxFeeTable.blockHeight
+    var txHash by TxFeeTable.txHash
+    var txHashId by TxCacheRecord referencedOn TxFeeTable.txHashId
+    var feeType by TxFeeTable.feeType
+    var markerId by TxFeeTable.markerId
+    var marker by TxFeeTable.marker
+    var amount by TxFeeTable.amount
 }

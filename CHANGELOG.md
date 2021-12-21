@@ -33,6 +33,23 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Added API for chain upgrades #246
+  * API under `/api/v2/chain/upgrades`
+* Added support for Tx Fee breakdown and Tx Feepayer identification #252
+  * Added `docs/txs/Feepayer.md` to lay out changes
+  * Support for ingestion
+  * Added support on tx query responses - updated field `fee` and new field `feepayer`
+
+### Improvements
+* Updated ingetstion to use the same TxData object for block-related data
+* Increased local DB connection size to 40 to match container connection size
+
+### Data
+* Migration 1.39 - Added Tx fee and feepayer tables #252
+  * `tx_fee`, `tx_feepayer` tables
+  * Insertion logic to prep the tables
+
 ## [v3.0.0](https://github.com/provenance-io/explorer-service/releases/tag/v3.0.0) - 2021-11-29
 ### Release Name: Thorfinn Karlsefni
 
@@ -68,7 +85,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added API response handler for IllegalArgumentExceptions [#245](https://github.com/provenance-io/explorer-service/issues/245)
 * Fixed NullPointerException when `session_id_components` was actually null
 * Fixed bug in `update_gas_fee_volume()` procedure [#258](https://github.com/provenance-io/explorer-service/issues/258)
-* Fixed bug with active validator set not repecting staking param `max_validators` [#261](https://github.com/provenance-io/explorer-service/issues/261)
+* Fixed bug with active validator set not respecting staking param `max_validators` [#261](https://github.com/provenance-io/explorer-service/issues/261)
 
 ### Data
 * Migration 1.32 - Added `block_tx_retry` table [#232](https://github.com/provenance-io/explorer-service/issues/232)

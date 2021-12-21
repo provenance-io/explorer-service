@@ -489,6 +489,17 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
             }
         }
 
+        fun insertNonRetry(height: Int, e: Exception) = transaction {
+            BlockTxRetryTable.insertIgnore {
+                it[this.height] = height
+                it[this.retried] = true
+                it[this.success] = false
+                it[this.errorBlock] =
+                    "NON BLOCKING ERROR: Logged to know what happened, but didnt stop processing.\\n " +
+                    e.stackTraceToString()
+            }
+        }
+
         fun getRecordsToRetry() = transaction {
             BlockTxRetryRecord
                 .find { (BlockTxRetryTable.retried eq false) and (BlockTxRetryTable.success eq false) }

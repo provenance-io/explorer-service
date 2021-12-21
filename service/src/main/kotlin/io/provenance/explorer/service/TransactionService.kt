@@ -1,7 +1,6 @@
 package io.provenance.explorer.service
 
 import com.google.protobuf.util.JsonFormat
-import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.getParentForType
@@ -16,14 +15,16 @@ import io.provenance.explorer.domain.entities.SmContractRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinType
 import io.provenance.explorer.domain.entities.TxCacheRecord
-import io.provenance.explorer.domain.entities.TxCacheTable
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
+import io.provenance.explorer.domain.entities.getFeepayer
+import io.provenance.explorer.domain.entities.toFeePaid
+import io.provenance.explorer.domain.entities.toFees
+import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.getMinGasFee
 import io.provenance.explorer.domain.extensions.pageCountOfResults
-import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toSigObj
@@ -59,12 +60,7 @@ class TransactionService(
     protected val logger = logger(TransactionService::class)
 
     private fun getTxByHashFromCache(hash: String) =
-        transaction {
-            TxCacheRecord.findByHash(hash)?.let {
-                val rec = checkMsgCount(it)
-                Pair(rec.id, rec.txV2)
-            }
-        }
+        transaction { TxCacheRecord.findByHash(hash)?.let { checkMsgCount(it) } }
 
     fun getTxTypes(typeSet: MsgTypeSet?) = transaction {
         when (typeSet) {
@@ -75,7 +71,7 @@ class TransactionService(
 
     fun getTxTypesByTxHash(txHash: String) = transaction {
         getTxByHash(txHash)?.let { tx ->
-            TxMessageRecord.getDistinctTxMsgTypesByTxHash(tx.first).let { TxMessageTypeRecord.findByIdIn(it) }
+            TxMessageRecord.getDistinctTxMsgTypesByTxHash(tx.id).let { TxMessageTypeRecord.findByIdIn(it) }
                 .mapToRes()
         } ?: throw ResourceNotFoundException("Invalid transaction hash: '$txHash'")
     }
@@ -120,9 +116,10 @@ class TransactionService(
                 MsgInfo(transaction { rec.txMessages.count() }, displayMsgType),
                 getMonikers(rec.id),
                 rec.txTimestamp.toString(),
-                rec.txV2.toCoinStr(),
+                rec.txFees.filter { it.marker == NHASH }.toFeePaid(),
                 TxCacheRecord.findSigsByHash(rec.hash).toSigObj(props.provAccPrefix()),
-                if (rec.errorCode == null) "success" else "failed"
+                if (rec.errorCode == null) "success" else "failed",
+                rec.txFeepayer.getFeepayer()
             )
         }.let { return PagedResults(total.pageCountOfResults(count), it, total.toLong()) }
     }
@@ -139,31 +136,32 @@ class TransactionService(
 
     private fun getTxByHash(hash: String) = getTxByHashFromCache(hash)
 
-    fun getTransactionJson(txnHash: String) = getTxByHash(txnHash)?.second?.let { protoPrinter.print(it) }
+    fun getTransactionJson(txnHash: String) = getTxByHash(txnHash)?.txV2?.let { protoPrinter.print(it) }
         ?: throw ResourceNotFoundException("Invalid transaction hash: '$txnHash'")
 
-    fun getTransactionByHash(hash: String) = getTxByHash(hash)?.let { hydrateTxDetails(it.first.value, it.second) }
+    fun getTransactionByHash(hash: String) = getTxByHash(hash)?.let { hydrateTxDetails(it) }
         ?: throw ResourceNotFoundException("Invalid transaction hash: '$hash'")
 
-    private fun hydrateTxDetails(txId: Int, tx: ServiceOuterClass.GetTxResponse) = transaction {
+    private fun hydrateTxDetails(tx: TxCacheRecord) = transaction {
         TxDetails(
-            txHash = tx.txResponse.txhash,
-            height = tx.txResponse.height.toInt(),
+            txHash = tx.txV2.txResponse.txhash,
+            height = tx.txV2.txResponse.height.toInt(),
             gas = Gas(
-                tx.txResponse.gasUsed.toInt(),
-                tx.txResponse.gasWanted.toInt(),
-                tx.tx.authInfo.fee.gasLimit.toBigInteger(),
-                tx.tx.authInfo.fee.getMinGasFee()
+                tx.txV2.txResponse.gasUsed.toInt(),
+                tx.txV2.txResponse.gasWanted.toInt(),
+                tx.txV2.tx.authInfo.fee.gasLimit.toBigInteger(),
+                tx.txV2.tx.authInfo.fee.getMinGasFee()
             ),
-            time = asyncCache.getBlock(tx.txResponse.height.toInt())!!.block.header.time.formattedString(),
-            status = if (tx.txResponse.code > 0) "failed" else "success",
-            errorCode = tx.txResponse.code,
-            codespace = tx.txResponse.codespace,
-            errorLog = if (tx.txResponse.code > 0) tx.txResponse.rawLog else null,
-            fee = tx.toCoinStr(),
-            signers = TxCacheRecord.findSigsByHash(tx.txResponse.txhash).toSigObj(props.provAccPrefix()),
-            memo = tx.tx.body.memo,
-            monikers = getMonikers(EntityID(txId, TxCacheTable))
+            time = asyncCache.getBlock(tx.txV2.txResponse.height.toInt())!!.block.header.time.formattedString(),
+            status = if (tx.txV2.txResponse.code > 0) "failed" else "success",
+            errorCode = tx.txV2.txResponse.code,
+            codespace = tx.txV2.txResponse.codespace,
+            errorLog = if (tx.txV2.txResponse.code > 0) tx.txV2.txResponse.rawLog else null,
+            fee = tx.txFees.toList().toFees(),
+            signers = TxCacheRecord.findSigsByHash(tx.txV2.txResponse.txhash).toSigObj(props.provAccPrefix()),
+            memo = tx.txV2.tx.body.memo,
+            monikers = getMonikers(tx.id),
+            feepayer = tx.txFeepayer.getFeepayer()
         )
     }
 
@@ -239,9 +237,10 @@ class TransactionService(
                     govDetail.proposalTitle,
                     msg.blockHeight,
                     msg.txHashId.txTimestamp.toString(),
-                    msg.txHashId.txV2.toCoinStr(),
+                    msg.txHashId.txFees.filter { it.marker == NHASH }.toFeePaid(),
                     TxCacheRecord.findSigsByHash(msg.txHash).toSigObj(props.provAccPrefix()),
-                    if (msg.txHashId.errorCode == null) "success" else "failed"
+                    if (msg.txHashId.errorCode == null) "success" else "failed",
+                    msg.txHashId.txFeepayer.getFeepayer()
                 )
             }.let { PagedResults(total.pageCountOfResults(count), it, total.toLong()) }
         }
@@ -276,9 +275,10 @@ class TransactionService(
                 scDetail.second,
                 msg.blockHeight,
                 msg.txHashId.txTimestamp.toString(),
-                msg.txHashId.txV2.toCoinStr(),
+                msg.txHashId.txFees.filter { it.marker == NHASH }.toFeePaid(),
                 TxCacheRecord.findSigsByHash(msg.txHash).toSigObj(props.provAccPrefix()),
-                if (msg.txHashId.errorCode == null) "success" else "failed"
+                if (msg.txHashId.errorCode == null) "success" else "failed",
+                msg.txHashId.txFeepayer.getFeepayer()
             )
         }.let { PagedResults(total.pageCountOfResults(count), it, total.toLong()) }
     }
