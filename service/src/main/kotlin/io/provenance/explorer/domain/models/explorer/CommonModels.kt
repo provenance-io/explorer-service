@@ -17,6 +17,11 @@ data class Signatures(
     val threshold: Int?
 )
 
+data class AccountSignature(
+    val pubKey: String,
+    val type: String
+)
+
 data class CoinStr(val amount: String, val denom: String)
 
 fun CoinOuterClass.Coin.toData() = CoinStr(this.amount, this.denom)

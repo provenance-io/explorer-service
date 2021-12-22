@@ -7,6 +7,7 @@ import io.provenance.explorer.domain.core.Hash.sha256
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toBech32Data
 import io.provenance.explorer.domain.entities.SignatureRecord
+import io.provenance.explorer.domain.models.explorer.AccountSignature
 import io.provenance.explorer.domain.models.explorer.Signatures
 import io.provenance.explorer.grpc.extensions.toAddress
 import io.provenance.explorer.grpc.extensions.toMsgAcknowledgement
@@ -150,6 +151,9 @@ fun List<SignatureRecord>.toSigObj(hrpPrefix: String) =
             this.first().multiSigObject?.toMultiSig()?.threshold
         )
     else Signatures(listOf(), null)
+
+fun SignatureRecord.toAccountPubKey() =
+    this.pubkeyType.split(".").let { it[it.size - 2] }.let { AccountSignature(this.base64Sig, it) }
 
 // PubKey Extensions
 fun Any.toSingleSigKeyValue() = this.toSingleSig().let { it?.toBase64() }

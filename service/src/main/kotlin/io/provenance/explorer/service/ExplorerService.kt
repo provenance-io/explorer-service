@@ -4,6 +4,7 @@ import com.google.protobuf.Any
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.upgrade.v1beta1.Upgrade
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.domain.core.PREFIX_SCOPE
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
@@ -25,6 +26,7 @@ import io.provenance.explorer.domain.models.explorer.AttributeParams
 import io.provenance.explorer.domain.models.explorer.AuthParams
 import io.provenance.explorer.domain.models.explorer.BankParams
 import io.provenance.explorer.domain.models.explorer.BlockSummary
+import io.provenance.explorer.domain.models.explorer.ChainPrefix
 import io.provenance.explorer.domain.models.explorer.ChainUpgrade
 import io.provenance.explorer.domain.models.explorer.ClientParams
 import io.provenance.explorer.domain.models.explorer.CosmosParams
@@ -42,6 +44,7 @@ import io.provenance.explorer.domain.models.explorer.MintParams
 import io.provenance.explorer.domain.models.explorer.NameParams
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.Params
+import io.provenance.explorer.domain.models.explorer.PrefixType
 import io.provenance.explorer.domain.models.explorer.ProvParams
 import io.provenance.explorer.domain.models.explorer.SlashingParams
 import io.provenance.explorer.domain.models.explorer.Spotlight
@@ -214,6 +217,12 @@ class ExplorerService(
         return (listOf(genesis) + upgrades).sortedBy { it.upgradeHeight }
     }
 
+    fun getChainPrefixes() = listOf(
+        ChainPrefix(PrefixType.VALIDATOR, props.provValOperPrefix()),
+        ChainPrefix(PrefixType.ACCOUNT, props.provAccPrefix()),
+        ChainPrefix(PrefixType.SCOPE, PREFIX_SCOPE)
+    )
+
     fun getParams(): Params = runBlocking {
         val authParams = async { accountClient.getAuthParams().params }.await()
         val bankParams = async { accountClient.getBankParams().params }.await()
@@ -241,7 +250,7 @@ class ExplorerService(
                     authParams.sigVerifyCostSecp256K1,
                 ),
                 BankParams(
-                    bankParams.defaultSendEnabled,
+                    bankParams.defaultSendEnabled
                 ),
                 DistParams(
                     distParams.communityTax.toDecCoin(),
@@ -285,6 +294,7 @@ class ExplorerService(
                     stakingParams.unbondingTime.seconds,
                     stakingParams.maxValidators,
                     stakingParams.maxEntries,
+                    stakingParams.historicalEntries,
                     stakingParams.bondDenom,
                 ),
                 IBCParams(

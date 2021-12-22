@@ -9,12 +9,12 @@ import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.fromBase64
 import io.provenance.explorer.domain.extensions.isAddressAsType
 import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.toAccountPubKey
 import io.provenance.explorer.domain.extensions.toBase64
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDecCoin
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
-import io.provenance.explorer.domain.extensions.toSigObj
 import io.provenance.explorer.domain.models.explorer.AccountDetail
 import io.provenance.explorer.domain.models.explorer.AccountRewards
 import io.provenance.explorer.domain.models.explorer.AttributeObj
@@ -63,7 +63,7 @@ class AccountService(
                 it.accountAddress,
                 it.accountNumber,
                 it.baseAccount?.sequence?.toInt(),
-                AccountRecord.findSigsByAddress(it.accountAddress).toSigObj(props.provAccPrefix()),
+                AccountRecord.findSigsByAddress(it.accountAddress).first().toAccountPubKey(),
                 it.data?.getModuleAccName(),
                 attributes.await().map { attr -> attr.toResponse() },
                 TokenCounts(

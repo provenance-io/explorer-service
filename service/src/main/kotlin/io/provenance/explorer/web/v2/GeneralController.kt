@@ -78,4 +78,8 @@ class GeneralController(
     @ApiOperation("Returns a list of upgrades made against the chain")
     @GetMapping("/chain/upgrades")
     fun getChainUpgrades() = ResponseEntity.ok(explorerService.getChainUpgrades())
+
+    @ApiOperation("Returns a list of chain address prefixes")
+    @GetMapping("/chain/prefixes")
+    fun getChainPrefixes() = ResponseEntity.ok(explorerService.getChainPrefixes())
 }
