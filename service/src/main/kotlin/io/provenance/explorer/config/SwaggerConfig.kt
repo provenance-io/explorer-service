@@ -34,8 +34,8 @@ class SwaggerConfig(val props: ExplorerProperties) {
 
         val docket = Docket(DocumentationType.OAS_30)
             .apiInfo(apiInfo)
-            .host("localhost:8612")
-            .protocols(setOf("http"))
+            .host(props.swaggerUrl)
+            .protocols(setOf(props.swaggerProtocol))
             .consumes(setOf(MediaType.APPLICATION_JSON_VALUE))
             .produces(setOf(MediaType.APPLICATION_JSON_VALUE))
             .forCodeGeneration(true)

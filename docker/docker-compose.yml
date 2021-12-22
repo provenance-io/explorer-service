@@ -34,6 +34,8 @@ services:
       - EXPLORER_GENESIS_VERSION_URL=https://github.com/provenance-io/provenance/releases/download/v0.2.0/plan-v0.2.0.json
       - EXPLORER_UPGRADE_VERSION_REGEX=(v[0-9]+.[0-9]+.[0-9]+)
       - EXPLORER_HIDDEN_APIS=false
+      - EXPLORER_SWAGGER_URL=localhost:8612
+      - EXPLORER_SWAGGER_PROTOCOL=http
     depends_on:
       - explorer-postgres
     links:
