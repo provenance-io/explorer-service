@@ -63,7 +63,7 @@ class AccountService(
                 it.accountAddress,
                 it.accountNumber,
                 it.baseAccount?.sequence?.toInt(),
-                AccountRecord.findSigsByAddress(it.accountAddress).first().toAccountPubKey(),
+                AccountRecord.findSigsByAddress(it.accountAddress).firstOrNull().toAccountPubKey(),
                 it.data?.getModuleAccName(),
                 attributes.await().map { attr -> attr.toResponse() },
                 TokenCounts(

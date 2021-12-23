@@ -152,8 +152,9 @@ fun List<SignatureRecord>.toSigObj(hrpPrefix: String) =
         )
     else Signatures(listOf(), null)
 
-fun SignatureRecord.toAccountPubKey() =
-    this.pubkeyType.split(".").let { it[it.size - 2] }.let { AccountSignature(this.base64Sig, it) }
+fun SignatureRecord?.toAccountPubKey() =
+    this?.pubkeyType?.split(".")?.let { it[it.size - 2] }?.let { AccountSignature(this.base64Sig, it) }
+        ?: AccountSignature(null, null)
 
 // PubKey Extensions
 fun Any.toSingleSigKeyValue() = this.toSingleSig().let { it?.toBase64() }
@@ -177,8 +178,10 @@ fun Any.getSigners() =
         typeUrl.endsWith("MsgSend") -> this.toMsgSend().let { listOf(it.fromAddress) }
         typeUrl.endsWith("MsgMultiSend") -> this.toMsgMultiSend().let { it.inputsList.map { inp -> inp.address } }
         typeUrl.endsWith("MsgSetWithdrawAddress") -> this.toMsgSetWithdrawAddress().let { listOf(it.delegatorAddress) }
-        typeUrl.endsWith("MsgWithdrawDelegatorReward") -> this.toMsgWithdrawDelegatorReward().let { listOf(it.delegatorAddress) }
-        typeUrl.endsWith("MsgWithdrawValidatorCommission") -> this.toMsgWithdrawValidatorCommission().let { listOf(it.validatorAddress) }
+        typeUrl.endsWith("MsgWithdrawDelegatorReward") -> this.toMsgWithdrawDelegatorReward()
+            .let { listOf(it.delegatorAddress) }
+        typeUrl.endsWith("MsgWithdrawValidatorCommission") -> this.toMsgWithdrawValidatorCommission()
+            .let { listOf(it.validatorAddress) }
         typeUrl.endsWith("MsgFundCommunityPool") -> this.toMsgFundCommunityPool().let { listOf(it.depositor) }
         typeUrl.endsWith("MsgSubmitEvidence") -> this.toMsgSubmitEvidence().let { listOf(it.submitter) }
         typeUrl.endsWith("MsgSubmitProposal") -> this.toMsgSubmitProposal().let { listOf(it.proposer) }
@@ -204,13 +207,15 @@ fun Any.getSigners() =
         typeUrl.endsWith("MsgMintRequest") -> this.toMsgMintRequest().let { listOf(it.administrator) }
         typeUrl.endsWith("MsgBurnRequest") -> this.toMsgBurnRequest().let { listOf(it.administrator) }
         typeUrl.endsWith("MsgTransferRequest") -> this.toMsgTransferRequest().let { listOf(it.administrator) }
-        typeUrl.endsWith("MsgSetDenomMetadataRequest") -> this.toMsgSetDenomMetadataRequest().let { listOf(it.administrator) }
+        typeUrl.endsWith("MsgSetDenomMetadataRequest") -> this.toMsgSetDenomMetadataRequest()
+            .let { listOf(it.administrator) }
         typeUrl.endsWith("MsgBindNameRequest") -> this.toMsgBindNameRequest().let { listOf(it.parent.address) }
         typeUrl.endsWith("MsgDeleteNameRequest") -> this.toMsgDeleteNameRequest().let { listOf(it.record.address) }
         typeUrl.endsWith("MsgAddAttributeRequest") -> this.toMsgAddAttributeRequest().let { listOf(it.owner) }
         typeUrl.endsWith("MsgUpdateAttributeRequest") -> this.toMsgUpdateAttributeRequest().let { listOf(it.owner) }
         typeUrl.endsWith("MsgDeleteAttributeRequest") -> this.toMsgDeleteAttributeRequest().let { listOf(it.owner) }
-        typeUrl.endsWith("MsgDeleteDistinctAttributeRequest") -> this.toMsgDeleteDistinctAttributeRequest().let { listOf(it.owner) }
+        typeUrl.endsWith("MsgDeleteDistinctAttributeRequest") -> this.toMsgDeleteDistinctAttributeRequest()
+            .let { listOf(it.owner) }
         typeUrl.endsWith("MsgP8eMemorializeContractRequest") -> listOf(this.toMsgP8eMemorializeContractRequest().invoker)
         typeUrl.endsWith("MsgWriteP8eContractSpecRequest") -> this.toMsgWriteP8eContractSpecRequest().signersList
         typeUrl.endsWith("MsgWriteScopeRequest") -> this.toMsgWriteScopeRequest().signersList
@@ -231,8 +236,10 @@ fun Any.getSigners() =
         typeUrl.endsWith("MsgAddContractSpecToScopeSpecRequest") -> this.toMsgAddContractSpecToScopeSpecRequest().signersList
         typeUrl.endsWith("MsgDeleteContractSpecFromScopeSpecRequest") -> this.toMsgDeleteContractSpecFromScopeSpecRequest().signersList
         typeUrl.endsWith("MsgBindOSLocatorRequest") -> this.toMsgBindOSLocatorRequest().let { listOf(it.locator.owner) }
-        typeUrl.endsWith("MsgDeleteOSLocatorRequest") -> this.toMsgDeleteOSLocatorRequest().let { listOf(it.locator.owner) }
-        typeUrl.endsWith("MsgModifyOSLocatorRequest") -> this.toMsgModifyOSLocatorRequest().let { listOf(it.locator.owner) }
+        typeUrl.endsWith("MsgDeleteOSLocatorRequest") -> this.toMsgDeleteOSLocatorRequest()
+            .let { listOf(it.locator.owner) }
+        typeUrl.endsWith("MsgModifyOSLocatorRequest") -> this.toMsgModifyOSLocatorRequest()
+            .let { listOf(it.locator.owner) }
         typeUrl.endsWith("v1.MsgStoreCode") -> this.toMsgStoreCode().let { listOf(it.sender) }
         typeUrl.endsWith("v1.MsgInstantiateContract") -> this.toMsgInstantiateContract().let { listOf(it.sender) }
         typeUrl.endsWith("v1.MsgExecuteContract") -> this.toMsgExecuteContract().let { listOf(it.sender) }
@@ -240,7 +247,8 @@ fun Any.getSigners() =
         typeUrl.endsWith("v1.MsgUpdateAdmin") -> this.toMsgUpdateAdmin().let { listOf(it.sender) }
         typeUrl.endsWith("v1.MsgClearAdmin") -> this.toMsgClearAdmin().let { listOf(it.sender) }
         typeUrl.endsWith("v1beta1.MsgStoreCode") -> this.toMsgStoreCodeOld().let { listOf(it.sender) }
-        typeUrl.endsWith("v1beta1.MsgInstantiateContract") -> this.toMsgInstantiateContractOld().let { listOf(it.sender) }
+        typeUrl.endsWith("v1beta1.MsgInstantiateContract") -> this.toMsgInstantiateContractOld()
+            .let { listOf(it.sender) }
         typeUrl.endsWith("v1beta1.MsgExecuteContract") -> this.toMsgExecuteContractOld().let { listOf(it.sender) }
         typeUrl.endsWith("v1beta1.MsgMigrateContract") -> this.toMsgMigrateContractOld().let { listOf(it.sender) }
         typeUrl.endsWith("v1beta1.MsgUpdateAdmin") -> this.toMsgUpdateAdminOld().let { listOf(it.sender) }
