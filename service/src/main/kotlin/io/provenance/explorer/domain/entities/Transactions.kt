@@ -358,15 +358,19 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
             transaction {
                 TxMessageTypeRecord.insert(type, module, message.typeUrl).let { typeId ->
                     findByTxHashAndMessageHash(txId, message.value.toDbHash(), msgIdx)
-                        ?: TxMessageTable.insertAndGetId {
-                            it[this.blockHeight] = blockHeight
-                            it[this.txHash] = txHash
-                            it[this.txHashId] = txId
-                            it[this.txMessageType] = typeId
-                            it[this.txMessage] = message
-                            it[this.txMessageHash] = message.value.toDbHash()
-                            it[this.msgIdx] = msgIdx
-                        }.let { findById(it)!! }
+                        ?: try {
+                            TxMessageTable.insertAndGetId {
+                                it[this.blockHeight] = blockHeight
+                                it[this.txHash] = txHash
+                                it[this.txHashId] = txId
+                                it[this.txMessageType] = typeId
+                                it[this.txMessage] = message
+                                it[this.txMessageHash] = message.value.toDbHash()
+                                it[this.msgIdx] = msgIdx
+                            }.let { findById(it)!! }
+                        } catch (e: Exception) {
+                            findByTxHashAndMessageHash(txId, message.value.toDbHash(), msgIdx)!!
+                        }
                 }
             }
     }
@@ -527,7 +531,7 @@ object TxGasCacheTable : IntIdTable(name = "tx_gas_cache") {
     val gasWanted = integer("gas_wanted").nullable()
     val gasUsed = integer("gas_used")
     val feeAmount = double("fee_amount").nullable()
-    val processed = bool("processed")
+    val processed = bool("processed").default(false)
 }
 
 class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -545,7 +549,6 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                         it[gasUsed] = tx.txResponse.gasUsed.toInt()
                         it[gasWanted] = tx.txResponse.gasWanted.toInt()
                         it[feeAmount] = fee
-                        it[processed] = false // default
                     }
                 }
             }

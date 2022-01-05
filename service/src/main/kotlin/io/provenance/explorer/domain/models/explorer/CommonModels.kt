@@ -18,8 +18,8 @@ data class Signatures(
 )
 
 data class AccountSignature(
-    val pubKey: String,
-    val type: String
+    val pubKey: String?,
+    val type: String?
 )
 
 data class CoinStr(val amount: String, val denom: String)

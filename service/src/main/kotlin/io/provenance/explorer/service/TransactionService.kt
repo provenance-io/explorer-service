@@ -116,10 +116,10 @@ class TransactionService(
                 MsgInfo(transaction { rec.txMessages.count() }, displayMsgType),
                 getMonikers(rec.id),
                 rec.txTimestamp.toString(),
-                rec.txFees.filter { it.marker == NHASH }.toFeePaid(),
+                transaction { rec.txFees.filter { fee -> fee.marker == NHASH }.toFeePaid() },
                 TxCacheRecord.findSigsByHash(rec.hash).toSigObj(props.provAccPrefix()),
                 if (rec.errorCode == null) "success" else "failed",
-                rec.txFeepayer.getFeepayer()
+                transaction { rec.txFeepayer.getFeepayer() }
             )
         }.let { return PagedResults(total.pageCountOfResults(count), it, total.toLong()) }
     }
@@ -237,10 +237,10 @@ class TransactionService(
                     govDetail.proposalTitle,
                     msg.blockHeight,
                     msg.txHashId.txTimestamp.toString(),
-                    msg.txHashId.txFees.filter { it.marker == NHASH }.toFeePaid(),
+                    transaction { msg.txHashId.txFees.filter { fee -> fee.marker == NHASH }.toFeePaid() },
                     TxCacheRecord.findSigsByHash(msg.txHash).toSigObj(props.provAccPrefix()),
                     if (msg.txHashId.errorCode == null) "success" else "failed",
-                    msg.txHashId.txFeepayer.getFeepayer()
+                    transaction { msg.txHashId.txFeepayer.getFeepayer() }
                 )
             }.let { PagedResults(total.pageCountOfResults(count), it, total.toLong()) }
         }
@@ -275,10 +275,10 @@ class TransactionService(
                 scDetail.second,
                 msg.blockHeight,
                 msg.txHashId.txTimestamp.toString(),
-                msg.txHashId.txFees.filter { it.marker == NHASH }.toFeePaid(),
+                transaction { msg.txHashId.txFees.filter { fee -> fee.marker == NHASH }.toFeePaid() },
                 TxCacheRecord.findSigsByHash(msg.txHash).toSigObj(props.provAccPrefix()),
                 if (msg.txHashId.errorCode == null) "success" else "failed",
-                msg.txHashId.txFeepayer.getFeepayer()
+                transaction { msg.txHashId.txFeepayer.getFeepayer() }
             )
         }.let { PagedResults(total.pageCountOfResults(count), it, total.toLong()) }
     }
