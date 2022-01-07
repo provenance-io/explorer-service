@@ -6,6 +6,7 @@ import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.ArrayColumnType
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.mapper
 import io.provenance.explorer.domain.models.explorer.CurrentValidatorState
@@ -33,15 +34,9 @@ object ValidatorsCacheTable : CacheIdTable<Int>(name = "validators_cache") {
 
 class ValidatorsCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
     companion object : CacheEntityClass<Int, ValidatorsCacheRecord>(ValidatorsCacheTable) {
-        fun insertIgnore(blockHeight: Int, json: Query.GetValidatorSetByHeightResponse) =
-            transaction {
-                ValidatorsCacheTable.insertIgnore {
-                    it[this.height] = blockHeight
-                    it[this.validators] = json
-                    it[this.hitCount] = 0
-                    it[this.lastHit] = DateTime.now()
-                }.let { json }
-            }
+
+        fun buildInsert(blockHeight: Int, json: Query.GetValidatorSetByHeightResponse) =
+            listOf(blockHeight, json, DateTime.now(), 0).toProcedureObject()
 
         fun getMissingBlocks() = transaction {
             BlockCacheTable.leftJoin(ValidatorsCacheTable, { BlockCacheTable.height }, { ValidatorsCacheTable.height })

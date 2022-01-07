@@ -6,6 +6,7 @@ import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.DateTrunc
 import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_OVERAGE
 import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_USED
 import io.provenance.explorer.domain.entities.FeeType.MSG_BASED_FEE
@@ -25,8 +26,10 @@ import io.provenance.explorer.domain.models.explorer.TxFeepayer
 import io.provenance.explorer.domain.models.explorer.TxGasVolume
 import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.domain.models.explorer.TxStatus
+import io.provenance.explorer.domain.models.explorer.TxUpdate
 import io.provenance.explorer.domain.models.explorer.getCategoryForType
 import io.provenance.explorer.domain.models.explorer.onlyTxQuery
+import io.provenance.explorer.domain.models.explorer.toProcedureObject
 import io.provenance.explorer.service.AssetService
 import net.pearx.kasechange.toTitleCase
 import org.jetbrains.exposed.dao.IntEntity
@@ -47,10 +50,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.countDistinct
 import org.jetbrains.exposed.sql.innerJoin
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.insertIgnore
-import org.jetbrains.exposed.sql.insertIgnoreAndGetId
 import org.jetbrains.exposed.sql.jodatime.DateColumnType
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
@@ -74,23 +74,25 @@ object TxCacheTable : IntIdTable(name = "tx_cache") {
 
 class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxCacheRecord>(TxCacheTable) {
-        fun insertIgnore(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime) =
-            transaction {
-                (
-                    findByHash(tx.txResponse.txhash)?.id ?: TxCacheTable.insertIgnoreAndGetId {
-                        it[hash] = tx.txResponse.txhash
-                        it[height] = tx.txResponse.height.toInt()
-                        if (tx.txResponse.code > 0) it[errorCode] = tx.txResponse.code
-                        if (tx.txResponse.codespace.isNotBlank()) it[codespace] = tx.txResponse.codespace
-                        it[gasUsed] = tx.txResponse.gasUsed.toInt()
-                        it[gasWanted] = tx.txResponse.gasWanted.toInt()
-                        it[txTimestamp] = txTime
-                        it[txV2] = tx
-                    }
-                    )!!
-            }
 
-        fun findByEntityId(id: EntityID<Int>) = transaction { TxCacheRecord.findById(id) }
+        fun insertToProcedure(txUpdate: TxUpdate, height: Int, timestamp: DateTime) = transaction {
+            val txStr = txUpdate.toProcedureObject()
+            val query = "CALL add_tx($txStr, $height, '${timestamp.toProcedureObject()}')"
+            this.exec(query)
+        }
+
+        fun buildInsert(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime) =
+            listOf(
+                tx.txResponse.txhash,
+                tx.txResponse.height.toInt(),
+                tx.txResponse.gasWanted.toInt(),
+                tx.txResponse.gasUsed.toInt(),
+                txTime,
+                if (tx.txResponse.code > 0) tx.txResponse.code else null,
+                if (tx.txResponse.codespace.isNotBlank()) tx.txResponse.codespace else null,
+                tx,
+                0
+            ).toProcedureObject()
 
         fun findByHeight(height: Int) =
             TxCacheRecord.find { TxCacheTable.height eq height }
@@ -286,15 +288,6 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
                 .map { it[TxMessageTable.txMessageType].value }
         }
 
-        private fun findByTxHashAndMessageHash(txHashId: Int, messageHash: String, msgIdx: Int) = transaction {
-            TxMessageRecord.find {
-                (TxMessageTable.txHashId eq txHashId) and
-                    (TxMessageTable.txMessageHash eq messageHash) and
-                    (TxMessageTable.msgIdx eq msgIdx)
-            }
-                .firstOrNull()
-        }
-
         fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
             val columns = TxMessageTable.columns.toMutableList()
             val query =
@@ -347,33 +340,27 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
             query
         }
 
-        fun insert(
+        fun buildInsert(
             blockHeight: Int,
             txHash: String,
-            txId: Int,
             message: Any,
             type: String,
             module: String,
             msgIdx: Int
-        ) =
-            transaction {
-                TxMessageTypeRecord.insert(type, module, message.typeUrl).let { typeId ->
-                    findByTxHashAndMessageHash(txId, message.value.toDbHash(), msgIdx)
-                        ?: try {
-                            TxMessageTable.insertAndGetId {
-                                it[this.blockHeight] = blockHeight
-                                it[this.txHash] = txHash
-                                it[this.txHashId] = txId
-                                it[this.txMessageType] = typeId
-                                it[this.txMessage] = message
-                                it[this.txMessageHash] = message.value.toDbHash()
-                                it[this.msgIdx] = msgIdx
-                            }.let { findById(it)!! }
-                        } catch (e: Exception) {
-                            findByTxHashAndMessageHash(txId, message.value.toDbHash(), msgIdx)!!
-                        }
-                }
+        ) = transaction {
+            TxMessageTypeRecord.insert(type, module, message.typeUrl).let { typeId ->
+                listOf(
+                    0,
+                    blockHeight,
+                    txHash,
+                    typeId.value,
+                    message,
+                    message.value.toDbHash(),
+                    0,
+                    msgIdx
+                ).toProcedureObject() to typeId.value
             }
+        }
     }
 
     var blockHeight by TxMessageTable.blockHeight
@@ -397,23 +384,8 @@ object TxEventsTable : IntIdTable(name = "tx_msg_event") {
 class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxEventRecord>(TxEventsTable) {
 
-        private fun findByTxHashIdMessageIdAndEventType(txHashId: Int, messageId: Int, eventType: String) =
-            transaction {
-                TxEventRecord.find { (TxEventsTable.txHashId eq txHashId) and (TxEventsTable.txMessageId eq messageId) and (TxEventsTable.eventType eq eventType) }
-                    .firstOrNull()
-            }
-
-        fun insert(blockHeight: Int, txHash: String, txId: Int, type: String, msgId: Int, msgTypeId: Int) =
-            transaction {
-                findByTxHashIdMessageIdAndEventType(txId, msgId, type)?.id ?: TxEventsTable.insertAndGetId {
-                    it[this.blockHeight] = blockHeight
-                    it[this.txHash] = txHash
-                    it[this.txHashId] = txId
-                    it[this.txMessageId] = msgId
-                    it[this.txMsgTypeId] = msgTypeId
-                    it[this.eventType] = type
-                }
-            }
+        fun buildInsert(blockHeight: Int, txHash: String, type: String, msgTypeId: Int) =
+            listOf(0, blockHeight, 0, txHash, 0, type, msgTypeId).toProcedureObject()
     }
 
     var blockHeight by TxEventsTable.blockHeight
@@ -428,29 +400,22 @@ object TxEventAttrTable : IntIdTable(name = "tx_msg_event_attr") {
     val txMsgEventId = integer("tx_msg_event_id")
     val attrKey = varchar("attr_key", 256)
     val attrValue = text("attr_value")
+    val attrIdx = integer("attr_idx")
+    val attrHash = text("attr_hash")
 }
 
 class TxEventAttrRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxEventAttrRecord>(TxEventAttrTable) {
 
-        private fun findByTxMsgEventIdAndKey(eventId: Int, attrKey: String) = transaction {
-            TxEventAttrRecord.find { (TxEventAttrTable.txMsgEventId eq eventId) and (TxEventAttrTable.attrKey eq attrKey) }
-                .firstOrNull()
-        }
-
-        fun insert(key: String, value: String, eventId: Int) =
-            transaction {
-                findByTxMsgEventIdAndKey(eventId, key) ?: TxEventAttrTable.insert {
-                    it[this.txMsgEventId] = eventId
-                    it[this.attrKey] = key
-                    it[this.attrValue] = value
-                }
-            }
+        fun buildInsert(idx: Int, key: String, value: String) =
+            listOf(0, 0, key, value, idx, listOf(idx, key, value).joinToString("").toDbHash()).toProcedureObject()
     }
 
     var txMsgEventId by TxEventAttrTable.txMsgEventId
     var attrKey by TxEventAttrTable.attrKey
     var attrValue by TxEventAttrTable.attrValue
+    var attrIdx by TxEventAttrTable.attrIdx
+    var attrHash by TxEventAttrTable.attrHash
 }
 
 object TxSingleMessageCacheTable : IntIdTable(name = "tx_single_message_cache") {
@@ -464,15 +429,8 @@ object TxSingleMessageCacheTable : IntIdTable(name = "tx_single_message_cache") 
 class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxSingleMessageCacheRecord>(TxSingleMessageCacheTable) {
 
-        fun insert(txTime: DateTime, txHash: String, gasUsed: Int, type: String) = transaction {
-            TxSingleMessageCacheTable.insertIgnore {
-                it[this.txTimestamp] = txTime
-                it[this.txHash] = txHash
-                it[this.gasUsed] = gasUsed
-                it[this.txMessageType] = type
-                it[this.processed] = false
-            }
-        }
+        fun buildInsert(txTime: DateTime, txHash: String, gasUsed: Int, type: String) =
+            listOf(0, txTime, txHash, gasUsed, type, false).toProcedureObject()
 
         fun getGasStats(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
             val tblName = "tx_single_message_gas_stats_${granularity.lowercase()}"
@@ -538,25 +496,18 @@ object TxGasCacheTable : IntIdTable(name = "tx_gas_cache") {
 class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxGasCacheRecord>(TxGasCacheTable) {
 
-        fun insertIgnore(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime) =
-            transaction {
-                if (findByHash(tx.txResponse.txhash) == null) {
-                    // calculate fee amount
-                    val fee = TxFeeRecord.calcBaseGasFee(tx.txResponse.gasWanted).toDouble()
-
-                    TxGasCacheTable.insertIgnore {
-                        it[hash] = tx.txResponse.txhash
-                        it[txTimestamp] = txTime
-                        it[gasUsed] = tx.txResponse.gasUsed.toInt()
-                        it[gasWanted] = tx.txResponse.gasWanted.toInt()
-                        it[feeAmount] = fee
-                    }
-                }
+        fun buildInsert(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime) =
+            TxFeeRecord.calcBaseGasFee(tx.txResponse.gasWanted).toDouble().let {
+                listOf(
+                    0,
+                    tx.txResponse.txhash,
+                    txTime,
+                    tx.txResponse.gasWanted.toInt(),
+                    tx.txResponse.gasUsed.toInt(),
+                    it,
+                    false
+                ).toProcedureObject()
             }
-
-        private fun findByHash(hash: String) = transaction {
-            TxGasCacheRecord.find { TxGasCacheTable.hash eq hash }
-        }.firstOrNull()
 
         fun getGasVolume(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
             val tblName = "tx_gas_fee_volume_${granularity.lowercase()}"
@@ -624,25 +575,8 @@ fun SizedIterable<TxFeepayerRecord>.getFeepayer() = this.map { TxFeepayer(it.pay
 class TxFeepayerRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxFeepayerRecord>(TxFeepayerTable) {
 
-        private fun findByUniqueness(hashId: Int, type: String, addrId: Int) = transaction {
-            TxFeepayerRecord.find {
-                (TxFeepayerTable.txHashId eq hashId) and
-                    (TxFeepayerTable.payerType eq type) and
-                    (TxFeepayerTable.addressId eq addrId)
-            }.firstOrNull()
-        }
-
-        fun insertIgnore(txInfo: TxData, type: String, addrId: Int, address: String) = transaction {
-            if (findByUniqueness(txInfo.txHashId!!, type, addrId) == null)
-                TxFeepayerTable.insertIgnore {
-                    it[blockHeight] = txInfo.blockHeight
-                    it[txHash] = txInfo.txHash
-                    it[txHashId] = txInfo.txHashId
-                    it[payerType] = type
-                    it[this.addressId] = addrId
-                    it[this.address] = address
-                }
-        }
+        fun buildInsert(txInfo: TxData, type: String, addrId: Int, address: String) =
+            listOf(0, txInfo.blockHeight, -1, txInfo.txHash, type, addrId, address).toProcedureObject()
     }
 
     var blockHeight by TxFeepayerTable.blockHeight
@@ -676,56 +610,57 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
         // TODO: Replace 1905 with value from chain when 1.8.0 gets released
         fun calcBaseGasFee(gasWanted: Long) = gasWanted * 1905
 
-        fun insert(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse, assetService: AssetService) = transaction {
-            val success = tx.txResponse.code == 0
-            // calc baseFeeUsed, baseFeeOverage in nhash, and remaining as priority in nhash
-            tx.tx.authInfo.fee.amountList.first { it.denom == NHASH }.let {
-                val baseFee = calcBaseGasFee(tx.txResponse.gasWanted)
-                val baseFeeUsed = calcBaseGasFee(tx.txResponse.gasUsed)
-                Triple(it.amount.toLong() - baseFee, baseFee - baseFeeUsed, baseFeeUsed)
-            }.let { (priority, baseFeeOverage, baseFeeUsed) ->
-                val nhash = assetService.getAssetRaw(NHASH).second
-                // insert used fee
-                insertIgnore(txInfo, BASE_FEE_USED.name, nhash.id.value, nhash.denom, baseFeeUsed.toBigDecimal())
-                // insert paid too much fee
-                insertIgnore(txInfo, BASE_FEE_OVERAGE.name, nhash.id.value, nhash.denom, baseFeeOverage.toBigDecimal())
-                // insert any overage as priority for now
-                if (priority > 0)
-                    insertIgnore(txInfo, PRIORITY_FEE.name, nhash.id.value, nhash.denom, priority.toBigDecimal())
+        fun buildInserts(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse, assetService: AssetService) =
+            transaction {
+                val success = tx.txResponse.code == 0
+                val feeList = mutableListOf<String>()
+                // calc baseFeeUsed, baseFeeOverage in nhash, and remaining as priority in nhash
+                tx.tx.authInfo.fee.amountList.first { it.denom == NHASH }.let {
+                    val baseFee = calcBaseGasFee(tx.txResponse.gasWanted)
+                    val baseFeeUsed = calcBaseGasFee(tx.txResponse.gasUsed)
+                    Triple(it.amount.toLong() - baseFee, baseFee - baseFeeUsed, baseFeeUsed)
+                }.let { (priority, baseFeeOverage, baseFeeUsed) ->
+                    val nhash = assetService.getAssetRaw(NHASH).second
+                    // insert used fee
+                    feeList.add(
+                        buildInsert(txInfo, BASE_FEE_USED.name, nhash.id.value, nhash.denom, baseFeeUsed.toBigDecimal())
+                    )
+                    // insert paid too much fee
+                    feeList.add(
+                        buildInsert(
+                            txInfo,
+                            BASE_FEE_OVERAGE.name,
+                            nhash.id.value,
+                            nhash.denom,
+                            baseFeeOverage.toBigDecimal()
+                        )
+                    )
+                    // insert any overage as priority for now
+                    if (priority > 0)
+                        feeList.add(
+                            buildInsert(txInfo, PRIORITY_FEE.name, nhash.id.value, nhash.denom, priority.toBigDecimal())
+                        )
+                }
+
+                // Save remaining denoms as MSG_BASED_FEE, only if tx is successful
+                if (success)
+                    tx.tx.authInfo.fee.amountList.filter { it.denom != NHASH }.forEach {
+                        val denom = assetService.getAssetRaw(it.denom).second
+                        feeList.add(
+                            buildInsert(
+                                txInfo,
+                                MSG_BASED_FEE.name,
+                                denom.id.value,
+                                denom.denom,
+                                it.amount.toBigDecimal()
+                            )
+                        )
+                    }
+                feeList
             }
 
-            // Save remaining denoms as MSG_BASED_FEE, only if tx is successful
-            if (success)
-                tx.tx.authInfo.fee.amountList.filter { it.denom != NHASH }.forEach {
-                    val denom = assetService.getAssetRaw(it.denom).second
-                    insertIgnore(txInfo, MSG_BASED_FEE.name, denom.id.value, denom.denom, it.amount.toBigDecimal())
-                }
-        }
-
-        private fun findByUniqueness(hashId: Int, type: String, markerId: Int) = transaction {
-            TxFeeRecord.find {
-                (TxFeeTable.txHashId eq hashId) and (TxFeeTable.feeType eq type) and (TxFeeTable.markerId eq markerId)
-            }.firstOrNull()
-        }
-
-        private fun insertIgnore(
-            txInfo: TxData,
-            type: String,
-            markerId: Int,
-            marker: String,
-            amount: BigDecimal
-        ) = transaction {
-            if (findByUniqueness(txInfo.txHashId!!, type, markerId) == null)
-                TxFeeTable.insertIgnore {
-                    it[blockHeight] = txInfo.blockHeight
-                    it[txHash] = txInfo.txHash
-                    it[txHashId] = txInfo.txHashId
-                    it[feeType] = type
-                    it[this.markerId] = markerId
-                    it[this.marker] = marker
-                    it[this.amount] = amount
-                }
-        }
+        private fun buildInsert(txInfo: TxData, type: String, markerId: Int, marker: String, amount: BigDecimal) =
+            listOf(0, txInfo.blockHeight, 0, txInfo.txHash, type, markerId, marker, amount).toProcedureObject()
     }
 
     var blockHeight by TxFeeTable.blockHeight

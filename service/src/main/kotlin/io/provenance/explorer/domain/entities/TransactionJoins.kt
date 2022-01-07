@@ -1,6 +1,7 @@
 package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.domain.core.MdParent
+import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.models.explorer.TxData
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
@@ -10,7 +11,6 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.innerJoin
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -28,24 +28,14 @@ object TxAddressJoinTable : IntIdTable(name = "tx_address_join") {
 class TxAddressJoinRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxAddressJoinRecord>(TxAddressJoinTable) {
 
-        private fun findByHashAndAddress(txHashId: Int, addrPair: Pair<String, Int?>, addr: String) =
-            transaction {
-                TxAddressJoinRecord
-                    .find {
-                        (TxAddressJoinTable.txHashId eq txHashId) and
-                            (
-                                if (addrPair.second != null)
-                                    (TxAddressJoinTable.addressType eq addrPair.first) and (TxAddressJoinTable.addressId eq addrPair.second!!)
-                                else (TxAddressJoinTable.address eq addr)
-                                )
-                    }
-                    .firstOrNull()
-            }
-
         fun findValidatorsByTxHash(txHashId: EntityID<Int>) = transaction {
             val records = StakingValidatorCacheRecord.wrapRows(
                 TxAddressJoinTable
-                    .innerJoin(StakingValidatorCacheTable, { TxAddressJoinTable.addressId }, { StakingValidatorCacheTable.id })
+                    .innerJoin(
+                        StakingValidatorCacheTable,
+                        { TxAddressJoinTable.addressId },
+                        { StakingValidatorCacheTable.id }
+                    )
                     .select {
                         (TxAddressJoinTable.txHashId eq txHashId) and
                             (TxAddressJoinTable.addressType eq TxAddressJoinType.OPERATOR.name)
@@ -66,17 +56,16 @@ class TxAddressJoinRecord(id: EntityID<Int>) : IntEntity(id) {
             ).toList()
         }
 
-        fun insert(txInfo: TxData, addrPair: Pair<String, Int?>, address: String) =
-            transaction {
-                findByHashAndAddress(txInfo.txHashId!!, addrPair, address) ?: TxAddressJoinTable.insert {
-                    it[this.blockHeight] = txInfo.blockHeight
-                    it[this.txHashId] = txInfo.txHashId
-                    it[this.txHash] = txInfo.txHash
-                    it[this.addressId] = addrPair.second!!
-                    it[this.addressType] = addrPair.first
-                    it[this.address] = address
-                }
-            }
+        fun buildInsert(txInfo: TxData, addrPair: Pair<String, Int?>, address: String) =
+            listOf(
+                0,
+                txInfo.blockHeight,
+                txInfo.txHash,
+                address,
+                0,
+                addrPair.first,
+                addrPair.second!!
+            ).toProcedureObject()
     }
 
     var blockHeight by TxAddressJoinTable.blockHeight
@@ -113,21 +102,8 @@ class TxMarkerJoinRecord(id: EntityID<Int>) : IntEntity(id) {
             TxMarkerJoinRecord.find { TxMarkerJoinTable.markerId eq markerId }.count().toBigInteger()
         }
 
-        private fun findByHashAndDenom(txId: Int, markerId: Int) = transaction {
-            TxMarkerJoinRecord
-                .find { (TxMarkerJoinTable.txHashId eq txId) and (TxMarkerJoinTable.markerId eq markerId) }
-                .firstOrNull()
-        }
-
-        fun insert(txInfo: TxData, markerId: Int, denom: String) = transaction {
-            findByHashAndDenom(txInfo.txHashId!!, markerId) ?: TxMarkerJoinTable.insert {
-                it[this.blockHeight] = txInfo.blockHeight
-                it[this.txHash] = txInfo.txHash
-                it[this.txHashId] = txInfo.txHashId
-                it[this.denom] = denom
-                it[this.markerId] = markerId
-            }
-        }
+        fun buildInsert(txInfo: TxData, markerId: Int, denom: String) =
+            listOf(0, txInfo.blockHeight, txInfo.txHash, denom, 0, markerId).toProcedureObject()
     }
 
     var blockHeight by TxMarkerJoinTable.blockHeight
@@ -149,28 +125,16 @@ object TxNftJoinTable : IntIdTable(name = "tx_nft_join") {
 class TxNftJoinRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxNftJoinRecord>(TxNftJoinTable) {
 
-        private fun findByHashIdAndUuid(txHashId: Int, mdTriple: Triple<MdParent, Int, String>) =
-            transaction {
-                TxNftJoinRecord
-                    .find {
-                        (TxNftJoinTable.txHashId eq txHashId) and
-                            (TxNftJoinTable.metadataType eq mdTriple.first.name) and
-                            (TxNftJoinTable.metadataId eq mdTriple.second)
-                    }
-                    .firstOrNull()
-            }
-
-        fun insert(txInfo: TxData, mdTriple: Triple<MdParent, Int, String>) =
-            transaction {
-                findByHashIdAndUuid(txInfo.txHashId!!, mdTriple) ?: TxNftJoinTable.insert {
-                    it[this.blockHeight] = txInfo.blockHeight
-                    it[this.txHashId] = txInfo.txHashId
-                    it[this.txHash] = txInfo.txHash
-                    it[this.metadataId] = mdTriple.second
-                    it[this.metadataType] = mdTriple.first.name
-                    it[this.metadataUuid] = mdTriple.third
-                }
-            }
+        fun buildInsert(txInfo: TxData, mdTriple: Triple<MdParent, Int, String>) =
+            listOf(
+                0,
+                txInfo.blockHeight,
+                0,
+                txInfo.txHash,
+                mdTriple.first.name,
+                mdTriple.second,
+                mdTriple.third
+            ).toProcedureObject()
 
         fun findTxByUuid(uuid: String, offset: Int, limit: Int) = transaction {
             val query = TxNftJoinTable.innerJoin(TxCacheTable, { TxNftJoinTable.txHashId }, { TxCacheTable.id })
@@ -205,25 +169,11 @@ object TxSmCodeTable : IntIdTable(name = "tx_sm_code") {
 class TxSmCodeRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxSmCodeRecord>(TxSmCodeTable) {
 
-        private fun findByHashIdAndSmCode(txHashId: Int, smCode: Int) =
-            transaction {
-                TxSmCodeRecord
-                    .find { (TxSmCodeTable.txHashId eq txHashId) and (TxSmCodeTable.smCode eq smCode) }
-                    .firstOrNull()
-            }
-
         fun findByHashId(txHashId: Int) =
             transaction { TxSmCodeRecord.find { TxSmCodeTable.txHashId eq txHashId }.firstOrNull() }
 
-        fun insert(txInfo: TxData, smCode: Int) =
-            transaction {
-                findByHashIdAndSmCode(txInfo.txHashId!!, smCode) ?: TxSmCodeTable.insert {
-                    it[this.blockHeight] = txInfo.blockHeight
-                    it[this.txHashId] = txInfo.txHashId
-                    it[this.txHash] = txInfo.txHash
-                    it[this.smCode] = smCode
-                }
-            }
+        fun buildInsert(txInfo: TxData, smCode: Int) =
+            listOf(0, txInfo.blockHeight, -1, txInfo.txHash, smCode).toProcedureObject()
     }
 
     var blockHeight by TxSmCodeTable.blockHeight
@@ -243,23 +193,8 @@ object TxSmContractTable : IntIdTable(name = "tx_sm_contract") {
 class TxSmContractRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxSmContractRecord>(TxSmContractTable) {
 
-        private fun findByHashIdAndSmContractId(txHashId: Int, contractId: Int) =
-            transaction {
-                TxSmContractRecord
-                    .find { (TxSmContractTable.txHashId eq txHashId) and (TxSmContractTable.contractId eq contractId) }
-                    .firstOrNull()
-            }
-
-        fun insert(txInfo: TxData, smContractId: Int, contractAddr: String) =
-            transaction {
-                findByHashIdAndSmContractId(txInfo.txHashId!!, smContractId) ?: TxSmContractTable.insert {
-                    it[this.blockHeight] = txInfo.blockHeight
-                    it[this.txHashId] = txInfo.txHashId
-                    it[this.txHash] = txInfo.txHash
-                    it[this.contractId] = smContractId
-                    it[this.contractAddress] = contractAddr
-                }
-            }
+        fun buildInsert(txInfo: TxData, smContractId: Int, contractAddr: String) =
+            listOf(0, txInfo.blockHeight, -1, txInfo.txHash, smContractId, contractAddr).toProcedureObject()
     }
 
     var blockHeight by TxSmContractTable.blockHeight

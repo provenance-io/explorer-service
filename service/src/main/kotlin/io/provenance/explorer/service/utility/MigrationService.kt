@@ -10,7 +10,7 @@ import io.provenance.explorer.domain.entities.TxCacheTable
 import io.provenance.explorer.domain.entities.TxMessageTable
 import io.provenance.explorer.service.AccountService
 import io.provenance.explorer.service.ValidatorService
-import io.provenance.explorer.service.async.AsyncCaching
+import io.provenance.explorer.service.async.AsyncCachingV2
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.SortOrder
@@ -23,7 +23,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class MigrationService(
-    private val asyncCaching: AsyncCaching,
+    private val asyncCaching: AsyncCachingV2,
     private val validatorService: ValidatorService,
     private val accountService: AccountService
 ) {
@@ -36,8 +36,6 @@ class MigrationService(
         }
         return true
     }
-
-    fun updateValidatorsCache() = validatorService.updateValidatorsAtHeight().let { true }
 
     fun updateAccounts(list: List<String>) = transaction {
         list.forEach { accountService.saveAccount(it) }

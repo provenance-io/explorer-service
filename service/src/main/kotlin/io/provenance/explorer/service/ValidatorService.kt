@@ -33,6 +33,7 @@ import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.extensions.translateByteArray
 import io.provenance.explorer.domain.extensions.validatorUptime
 import io.provenance.explorer.domain.models.explorer.BlockLatencyData
+import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.CommissionRate
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
@@ -75,14 +76,8 @@ class ValidatorService(
         }?.validators
     } ?: throw ResourceNotFoundException("Invalid height: '$blockHeight'")
 
-    fun saveValidatorsAtHeight(blockHeight: Int) =
-        grpcClient.getValidatorsAtHeight(blockHeight).let { ValidatorsCacheRecord.insertIgnore(blockHeight, it) }
-
-    fun updateValidatorsAtHeight() {
-        logger.info("updating validator cache")
-        val list = transaction { ValidatorsCacheRecord.getMissingBlocks() }
-        list.forEach { height -> saveValidatorsAtHeight(height) }
-    }
+    fun buildValidatorsAtHeight(blockHeight: Int) =
+        grpcClient.getValidatorsAtHeight(blockHeight).let { ValidatorsCacheRecord.buildInsert(blockHeight, it) }
 
     // Gets a single staking validator from cache
     fun getStakingValidator(operatorAddress: String) =
@@ -413,6 +408,12 @@ class ValidatorService(
         } catch (e: Exception) {
             // do nothing
         }
+    }
+
+    fun buildProposerInsert(blockMeta: Query.GetBlockByHeightResponse, timestamp: DateTime, blockHeight: Int): BlockProposer {
+        val consAddr = getProposerConsensusAddr(blockMeta)
+        val proposer = findAddressByConsensus(consAddr)!!.operatorAddress
+        return BlockProposer(blockHeight, proposer, timestamp)
     }
 
     fun saveMissedBlocks(blockMeta: Query.GetBlockByHeightResponse) = transaction {

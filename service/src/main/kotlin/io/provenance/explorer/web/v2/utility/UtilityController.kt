@@ -9,7 +9,6 @@ import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -56,15 +55,7 @@ class UtilityController(private val us: UtilityService) {
     @GetMapping("/test/base64")
     fun base64ToStringTest(@RequestParam str: String) = ResponseEntity.ok(us.decodeToString(str))
 
-    @ApiOperation("For Testing signature translation")
-    @PutMapping("/fun/sigs")
-    fun txSigtoAddr(@RequestBody txs: List<Int>) = ResponseEntity.ok(us.funWithSignature(txs))
-
     @ApiOperation("For Fetching tx types from DB and formatting data from proto")
     @GetMapping("/txTypes")
     fun getTxTypes() = ResponseEntity.ok(us.getMsgTypeToProto())
-
-    @ApiOperation("For Testing msg conversion")
-    @GetMapping("/test")
-    fun test(@RequestParam propId: Long) = ResponseEntity.ok(us.test(propId))
 }
