@@ -33,6 +33,19 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Added pricing-engine call for Assets #276
+  * Added per token / total price values on asset listview and asset detail
+  * Added total AUM value to Spotlight record
+  * Added per token / total price values to account balances
+  * Added account AUM value
+  * Added per token / total price values to account delegation rewards response
+
+### Improvements
+* Updated Gradle to 7.3.3
+* Removed Jcenter ~~, replacing dependent build with JitPack for now~~
+* Replaced `khttp` with `ktor client` #281
+
 ## [v3.1.0](https://github.com/provenance-io/explorer-service/releases/tag/v3.1.0) - 2022-01-07
 ### Release Name: Benjamin of Tudela
 

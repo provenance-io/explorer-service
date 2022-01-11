@@ -18,6 +18,7 @@ import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.pageOfResults
+import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDecCoin
 import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.toOffset
@@ -78,8 +79,8 @@ class ExplorerService(
     private val props: ExplorerProperties,
     private val cacheService: CacheService,
     private val blockService: BlockService,
-    private val accountService: AccountService,
     private val validatorService: ValidatorService,
+    private val assetService: AssetService,
     private val asyncCaching: AsyncCaching,
     private val govClient: GovGrpcClient,
     private val accountClient: AccountGrpcClient,
@@ -154,12 +155,13 @@ class ExplorerService(
             latestBlock = getBlockAtHeight(blockService.getMaxBlockCacheHeight() - 1),
             avgBlockTime = BlockProposerRecord.findAvgBlockCreation(100),
             bondedTokens = CountStrTotal(it.first.toString(), it.second, NHASH),
-            totalTxCount = BlockCacheHourlyTxCountsRecord.getTotalTxCount().toBigInteger()
+            totalTxCount = BlockCacheHourlyTxCountsRecord.getTotalTxCount().toBigInteger(),
+            totalAum = assetService.getTotalAum().toCoinStr("USD")
         )
     }.let { cacheService.addSpotlightToCache(it) }
 
     fun getBondedTokenRatio() = let {
-        val totalBlockChainTokens = accountService.getCurrentSupply(NHASH)
+        val totalBlockChainTokens = assetService.getCurrentSupply(NHASH)
         val totalBondedTokens = validatorService.getStakingValidators("active").sumOf { it.tokenCount }
         Pair<BigDecimal, String>(totalBondedTokens, totalBlockChainTokens)
     }

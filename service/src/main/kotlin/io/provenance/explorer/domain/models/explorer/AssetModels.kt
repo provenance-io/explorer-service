@@ -6,7 +6,7 @@ import java.math.BigInteger
 data class AssetListed(
     val marker: String,
     val holdingAccount: String?,
-    val supply: CoinStr,
+    val supply: CoinStrWithPrice,
     val status: String,
     val mintable: Boolean = false,
     val lastTxTimestamp: String?,
@@ -17,7 +17,7 @@ data class AssetDetail(
     val marker: String,
     val holdingAccount: String?,
     val managingAccounts: AssetManagement?,
-    val supply: CoinStr,
+    val supply: CoinStrWithPrice,
     val mintable: Boolean = false,
     val holderCount: Int,
     val txnCount: BigInteger?,
@@ -47,7 +47,8 @@ data class AccountDetail(
     val accountName: String?,
     val attributes: List<AttributeObj>,
     val tokens: TokenCounts,
-    val isContract: Boolean
+    val isContract: Boolean,
+    val accountAum: CoinStr
 )
 
 data class AssetManagement(
@@ -57,12 +58,12 @@ data class AssetManagement(
 
 data class AccountRewards(
     val rewards: List<Reward>,
-    val total: List<CoinStr>
+    val total: List<CoinStrWithPrice>
 )
 
 data class Reward(
     val validatorAddress: String,
-    val reward: List<CoinStr>
+    val reward: List<CoinStrWithPrice>
 )
 
 data class AttributeObj(

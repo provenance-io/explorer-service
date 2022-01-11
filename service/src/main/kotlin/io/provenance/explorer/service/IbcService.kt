@@ -124,7 +124,7 @@ class IbcService(
                     record.supply.toBigInteger().toString(),
                     0,
                     txCount,
-                    accountService.getDenomMetadataSingle(record.denom).toObjectNode(protoPrinter),
+                    assetService.getDenomMetadataSingle(record.denom).toObjectNode(protoPrinter),
                     getDenomTrace(ibcHash).toObjectNode(protoPrinter)
                 )
             } ?: throw ResourceNotFoundException("Invalid asset: ${ibcHash.getIbcDenom()}")
