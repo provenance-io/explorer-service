@@ -39,7 +39,6 @@ subprojects {
     repositories {
         mavenLocal()
         mavenCentral()
-        jcenter()
         maven { url = project.uri("https://maven.java.net/content/groups/public") }
         maven { url = project.uri("https://oss.sonatype.org/content/repositories/snapshots") }
         maven { url = project.uri("https://dl.bintray.com/kotlin/exposed") }
