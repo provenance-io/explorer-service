@@ -34,9 +34,11 @@ dependencies {
     api(Libraries.KotlinXCoRoutinesCore)
     api(Libraries.KotlinXCoRoutinesGuava)
     api(Libraries.ApacheCommonsText)
-    api(Libraries.Khttp)
     implementation(Libraries.KaseChange)
-    api("org.apache.httpcomponents:httpclient:4.5.12")
+    api(Libraries.ApacheHttpClient)
+    implementation(Libraries.KtorClientCore)
+    implementation(Libraries.KtorClientEngine)
+    implementation(Libraries.Json)
 
     implementation(Libraries.GrpcNetty)
 

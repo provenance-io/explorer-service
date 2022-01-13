@@ -11,6 +11,7 @@ import io.provenance.explorer.domain.extensions.isAddressAsType
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toAccountPubKey
 import io.provenance.explorer.domain.extensions.toBase64
+import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDecCoin
 import io.provenance.explorer.domain.extensions.toObjectNode
@@ -23,7 +24,7 @@ import io.provenance.explorer.domain.models.explorer.Delegation
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.Reward
 import io.provenance.explorer.domain.models.explorer.TokenCounts
-import io.provenance.explorer.domain.models.explorer.toData
+import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
 import io.provenance.explorer.grpc.extensions.getModuleAccName
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
@@ -38,7 +39,8 @@ class AccountService(
     private val accountClient: AccountGrpcClient,
     private val props: ExplorerProperties,
     private val attrClient: AttributeGrpcClient,
-    private val metadataClient: MetadataGrpcClient
+    private val metadataClient: MetadataGrpcClient,
+    private val assetService: AssetService
 ) {
 
     protected val logger = logger(AccountService::class)
@@ -57,7 +59,8 @@ class AccountService(
     fun getAccountDetail(address: String) = runBlocking {
         getAccountRaw(address).let {
             val attributes = async { attrClient.getAllAttributesForAddress(it.accountAddress) }
-            val balances = async { getBalances(it.accountAddress, 0, 1) }
+            val tokenCount = async { getBalances(it.accountAddress, 0, 1) }
+            val balances = async { getBalances(it.accountAddress, 1, tokenCount.await().pagination.total.toInt()) }
             AccountDetail(
                 it.type,
                 it.accountAddress,
@@ -67,10 +70,12 @@ class AccountService(
                 it.data?.getModuleAccName(),
                 attributes.await().map { attr -> attr.toResponse() },
                 TokenCounts(
-                    balances.await().pagination.total,
+                    tokenCount.await().pagination.total,
                     metadataClient.getScopesByOwner(it.accountAddress).pagination.total.toInt()
                 ),
-                it.isContract
+                it.isContract,
+                assetService.getAumForList(balances.await().balancesList.associate { bal -> bal.denom to bal.amount })
+                    .toCoinStr("USD")
             )
         }
     }
@@ -87,18 +92,10 @@ class AccountService(
 
     fun getAccountBalances(address: String, page: Int, limit: Int) = runBlocking {
         getBalances(address, page, limit).let { res ->
-            val bals = res.balancesList.map { it.toData() }
+            val pricing = assetService.getPricingInfoIn(res.balancesList.map { it.denom })
+            val bals = res.balancesList.map { it.toCoinStrWithPrice(pricing[it.denom]) }
             PagedResults(res.pagination.total.pageCountOfResults(limit), bals, res.pagination.total)
         }
-    }
-
-    fun getCurrentSupply(denom: String) = runBlocking { accountClient.getCurrentSupply(denom).amount }
-
-    fun getDenomMetadataSingle(denom: String) = runBlocking { accountClient.getDenomMetadata(denom).metadata }
-
-    fun getDenomMetadata(denom: String?) = runBlocking {
-        if (denom != null) listOf(accountClient.getDenomMetadata(denom).metadata)
-        else accountClient.getAllDenomMetadata().metadatasList
     }
 
     fun getDelegations(address: String, page: Int, limit: Int) = runBlocking {
@@ -159,14 +156,17 @@ class AccountService(
 
     fun getRewards(address: String) = runBlocking {
         accountClient.getRewards(address).let { res ->
+            val pricing =
+                assetService.getPricingInfoIn(res.rewardsList.flatMap { list -> list.rewardList.map { it.denom } })
+
             AccountRewards(
                 res.rewardsList.map { list ->
                     Reward(
                         list.validatorAddress,
-                        list.rewardList.map { r -> CoinStr(r.amount.toDecCoin(), r.denom) }
+                        list.rewardList.map { r -> r.toCoinStrWithPrice(pricing[r.denom]) }
                     )
                 },
-                res.totalList.map { t -> CoinStr(t.amount.toDecCoin(), t.denom) }
+                res.totalList.map { t -> t.toCoinStrWithPrice(pricing[t.denom]) }
             )
         }
     }

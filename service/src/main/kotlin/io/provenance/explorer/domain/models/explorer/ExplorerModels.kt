@@ -19,7 +19,8 @@ data class Spotlight(
     val latestBlock: BlockSummary,
     val avgBlockTime: BigDecimal,
     val bondedTokens: CountStrTotal,
-    val totalTxCount: BigInteger
+    val totalTxCount: BigInteger,
+    val totalAum: CoinStr
 )
 
 data class GasStatistics(

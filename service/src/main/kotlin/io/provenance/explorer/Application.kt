@@ -3,6 +3,8 @@ package io.provenance.explorer
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.PropertyNamingStrategy
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.extensions.configureProvenance
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
@@ -36,3 +38,5 @@ val OBJECT_MAPPER = ObjectMapper()
 
 /* Singleton instance that can safely be shared globally */
 val JSON_NODE_FACTORY: JsonNodeFactory = JsonNodeFactory.instance
+
+val KTOR_CLIENT = HttpClient(CIO)

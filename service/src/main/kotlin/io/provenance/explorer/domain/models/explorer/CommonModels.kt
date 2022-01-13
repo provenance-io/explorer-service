@@ -1,6 +1,11 @@
 package io.provenance.explorer.domain.models.explorer
 
 import cosmos.base.v1beta1.CoinOuterClass
+import io.provenance.explorer.domain.entities.MarkerCacheRecord
+import io.provenance.explorer.domain.extensions.toCoinStr
+import io.provenance.explorer.domain.extensions.toDecCoin
+import io.provenance.explorer.service.toHashSupply
+import java.math.BigDecimal
 import java.math.BigInteger
 
 data class PagedResults<T>(val pages: Int, val results: List<T>, val total: Long)
@@ -23,8 +28,33 @@ data class AccountSignature(
 )
 
 data class CoinStr(val amount: String, val denom: String)
+data class CoinStrWithPrice(
+    val amount: String,
+    val denom: String,
+    val pricePerToken: CoinStr,
+    val totalBalancePrice: CoinStr
+)
 
 fun CoinOuterClass.Coin.toData() = CoinStr(this.amount, this.denom)
+
+fun BigDecimal.toCoinStrWithPrice(price: BigDecimal?, denom: String) =
+    (price ?: BigDecimal.ZERO).let {
+        CoinStrWithPrice(
+            this.toBigInteger().toString(),
+            denom,
+            it.toCoinStr("USD"),
+            it.multiply(this.toHashSupply(denom)).toCoinStr("USD")
+        )
+    }
+
+fun CoinOuterClass.Coin.toCoinStrWithPrice(price: BigDecimal?) =
+    this.amount.toBigDecimal().toCoinStrWithPrice(price, this.denom)
+
+fun MarkerCacheRecord.toCoinStrWithPrice(price: BigDecimal?) =
+    this.supply.toCoinStrWithPrice(price, this.denom)
+
+fun CoinOuterClass.DecCoin.toCoinStrWithPrice(price: BigDecimal?) =
+    this.amount.toDecCoin().toBigDecimal().toCoinStrWithPrice(price, this.denom)
 
 data class CountTotal(
     val count: BigInteger?,
@@ -61,4 +91,5 @@ data class TokenDistribution(
 )
 
 enum class Timeframe { WEEK, DAY, HOUR, FOREVER }
+
 const val hourlyBlockCount = 720

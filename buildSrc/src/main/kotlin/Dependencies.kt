@@ -45,20 +45,21 @@ object Versions {
 
     // 3rd Party
     const val ApacheCommonsText = "1.9"
+    const val ApacheHttpClient = "4.5.12"
     const val BouncyCastle = "1.69"
     const val Exposed = "0.34.1"
     const val Flyway = PluginVersions.Flyway
     const val Jackson = "2.11.2"
     const val JacksonProtobuf = "0.9.12"
+    const val Json = "20211205"
     const val KaseChange = "1.3.0"
-    const val Khttp = "1.0.0"
+    const val Ktor = "1.6.7"
     const val Logback = "0.1.5"
     const val SpringBoot = PluginVersions.SpringBoot
     const val Swagger = "3.0.0"
     const val Protobuf = "3.19.1"
     const val Grpc = "1.40.1"
     const val KotlinGrpc = "1.2.0"
-    const val GrpcStarter = "4.5.6"
     const val Postgres = "42.2.23"
 
     // Testing
@@ -92,8 +93,11 @@ object Libraries {
     const val Postgres = "org.postgresql:postgresql:${Versions.Postgres}"
     const val BouncyCastle = "org.bouncycastle:bcprov-jdk15on:${Versions.BouncyCastle}"
     const val ApacheCommonsText = "org.apache.commons:commons-text:${Versions.ApacheCommonsText}"
-    const val Khttp = "khttp:khttp:${Versions.Khttp}"
+    const val ApacheHttpClient = "org.apache.httpcomponents:httpclient:${Versions.ApacheHttpClient}"
+    const val KtorClientCore = "io.ktor:ktor-client-core:${Versions.Ktor}"
+    const val KtorClientEngine = "io.ktor:ktor-client-cio:${Versions.Ktor}"
     const val KaseChange = "net.pearx.kasechange:kasechange:${Versions.KaseChange}"
+    const val Json = "org.json:json:${Versions.Json}"
 
     // Logging
     const val LogbackCore = "ch.qos.logback.contrib:logback-json-core:${Versions.Logback}"

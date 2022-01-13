@@ -3,6 +3,12 @@ package io.provenance.explorer.service
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.slashing.v1beta1.Slashing
 import cosmos.staking.v1beta1.Staking
+import io.ktor.client.call.receive
+import io.ktor.client.features.ResponseException
+import io.ktor.client.request.get
+import io.ktor.client.request.parameter
+import io.ktor.client.statement.HttpResponse
+import io.provenance.explorer.KTOR_CLIENT
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
@@ -45,8 +51,10 @@ import io.provenance.explorer.domain.models.explorer.ValidatorSummary
 import io.provenance.explorer.domain.models.explorer.hourlyBlockCount
 import io.provenance.explorer.grpc.extensions.toAddress
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
+import org.json.JSONObject
 import org.springframework.stereotype.Service
 import java.math.BigInteger
 
@@ -109,7 +117,11 @@ class ValidatorService(
             val validatorSet = grpcClient.getLatestValidators()
             val latestValidator = validatorSet.firstOrNull { it.address == addr.consensusAddr }
             val votingPowerTotal = validatorSet.sumOf { it.votingPower.toBigInteger() }
-            validateStatus(addr.json, latestValidator, addr.operatorAddrId).also { if (it) ValidatorStateRecord.refreshCurrentStateView() }
+            validateStatus(
+                addr.json,
+                latestValidator,
+                addr.operatorAddrId
+            ).also { if (it) ValidatorStateRecord.refreshCurrentStateView() }
             val stakingValidator = getStakingValidator(addr.operatorAddress)
             ValidatorDetails(
                 if (latestValidator != null) CountTotal(latestValidator.votingPower.toBigInteger(), votingPowerTotal)
@@ -273,8 +285,16 @@ class ValidatorService(
             addressId = stakingVal.operatorAddress,
             consensusAddress = stakingVal.consensusAddr,
             proposerPriority = validator?.proposerPriority?.toInt(),
-            votingPower = (if (validator != null) CountTotal(validator.votingPower.toBigInteger(), totalVotingPower) else null),
-            uptime = if (stakingVal.json.isActive()) signingInfo.address.validatorUptime(signingInfo.startHeight.toBigInteger(), height) else null,
+            votingPower = (
+                if (validator != null) CountTotal(
+                    validator.votingPower.toBigInteger(),
+                    totalVotingPower
+                ) else null
+                ),
+            uptime = if (stakingVal.json.isActive()) signingInfo.address.validatorUptime(
+                signingInfo.startHeight.toBigInteger(),
+                height
+            ) else null,
             commission = stakingVal.json.commission.commissionRates.rate.toDecCoin(),
             bondedTokens = CountStrTotal(stakingVal.json.tokens, null, NHASH),
             selfBonded = CountStrTotal(selfBonded.first, null, selfBonded.second),
@@ -344,7 +364,11 @@ class ValidatorService(
         return ValidatorCommission(
             CountStrTotal(validator.tokens, null, NHASH),
             CountStrTotal(selfBonded.first, null, selfBonded.second),
-            CountStrTotal(validator.tokens.toBigInteger().minus(selfBonded.first.toBigInteger()).toString(), null, NHASH),
+            CountStrTotal(
+                validator.tokens.toBigInteger().minus(selfBonded.first.toBigInteger()).toString(),
+                null,
+                NHASH
+            ),
             delegatorCount,
             validator.delegatorShares.toDecCoin(),
             rewards?.amount?.toDecCoin()?.let { CoinStr(it, rewards.denom) } ?: CoinStr("0", NHASH),
@@ -388,29 +412,31 @@ class ValidatorService(
         }
     }
 
-    fun getImgUrl(identityStr: String) = transaction {
+    fun getImgUrl(identityStr: String) = runBlocking {
         if (identityStr.isNotBlank()) {
-            val res = khttp.get(
-                url = "https://keybase.io/_/api/1.0/user/lookup.json",
-                params = mapOf("key_suffix" to identityStr, "fields" to "pictures")
-            )
+            val res = try {
+                KTOR_CLIENT.get<HttpResponse>("https://keybase.io/_/api/1.0/user/lookup.json") {
+                    parameter("key_suffix", identityStr)
+                    parameter("fields", "pictures")
+                }
+            } catch (e: ResponseException) {
+                return@runBlocking null.also { logger.error("Error reaching Keybase: ${e.response}") }
+            }
 
-            if (res.statusCode == 200) {
+            if (res.status.value in 200..299) {
                 try {
-                    res.jsonObject.getJSONArray("them").let {
+                    JSONObject(res.receive<String>()).getJSONArray("them").let {
                         if (it.length() > 0) {
                             val them = it.getJSONObject(0)
-                            if (them.has("pictures")) {
-                                them.getJSONObject("pictures")
-                                    ?.getJSONObject("primary")
-                                    ?.getString("url")
-                            } else null
+                            if (them.has("pictures"))
+                                them.getJSONObject("pictures")?.getJSONObject("primary")?.getString("url")
+                            else null
                         } else null
                     }
                 } catch (e: Exception) {
                     null
                 }
-            } else null.also { logger.error("Error reaching Keybase: ${res.jsonObject}") }
+            } else null.also { logger.error("Error reaching Keybase: ${res.status}") }
         } else null
     }
 

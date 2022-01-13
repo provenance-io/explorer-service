@@ -42,6 +42,9 @@ class ExplorerProperties {
     @NotNull
     lateinit var swaggerProtocol: String
 
+    @NotNull
+    lateinit var pricingUrl: String
+
     fun initialHistoricalDays() = initialHistoricalDayCount.toInt()
 
     fun spotlightTtlMs() = spotlightTtlMs.toLong()
