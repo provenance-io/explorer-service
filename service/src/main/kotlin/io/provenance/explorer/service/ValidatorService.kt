@@ -48,6 +48,7 @@ import io.provenance.explorer.domain.models.explorer.ValidatorDetails
 import io.provenance.explorer.domain.models.explorer.ValidatorMissedBlocks
 import io.provenance.explorer.domain.models.explorer.ValidatorMoniker
 import io.provenance.explorer.domain.models.explorer.ValidatorSummary
+import io.provenance.explorer.domain.models.explorer.ValidatorSummaryAbbrev
 import io.provenance.explorer.domain.models.explorer.hourlyBlockCount
 import io.provenance.explorer.grpc.extensions.toAddress
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
@@ -228,6 +229,23 @@ class ValidatorService(
                 ).also { if (!updated) updated = true }
         }
         return updated
+    }
+
+    // Abbreviated data used for specific cases
+    fun getAllValidatorsAbbrev() = transaction {
+        val validatorSet = grpcClient.getLatestValidators()
+        val totalVotingPower = validatorSet.sumOf { it.votingPower.toBigInteger() }
+        val recs = getStakingValidators("all", null, null, null).map { currVal ->
+            val validator = validatorSet.firstOrNull { it.address == currVal.consensusAddr }
+            ValidatorSummaryAbbrev(
+                currVal.json.description.moniker,
+                currVal.operatorAddress,
+                validator?.let { CountTotal(validator.votingPower.toBigInteger(), totalVotingPower) },
+                currVal.json.commission.commissionRates.rate.toDecCoin(),
+                getImgUrl(currVal.json.description.identity)
+            )
+        }
+        PagedResults(recs.size.toLong().pageCountOfResults(recs.size), recs, recs.size.toLong())
     }
 
     // In point to get most recent validators

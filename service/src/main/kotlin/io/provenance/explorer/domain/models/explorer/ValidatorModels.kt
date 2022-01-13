@@ -22,6 +22,14 @@ data class ValidatorSummary(
     val imgUrl: String?
 )
 
+data class ValidatorSummaryAbbrev(
+    val moniker: String,
+    val addressId: String,
+    val votingPower: CountTotal?,
+    val commission: String,
+    val imgUrl: String?
+)
+
 data class ValidatorDetails(
     val votingPower: CountTotal?,
     val moniker: String,

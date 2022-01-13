@@ -44,6 +44,10 @@ class ValidatorController(private val validatorService: ValidatorService, privat
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int
     ) = ResponseEntity.ok(explorerService.getValidatorsAtHeight(blockHeight, count, page))
 
+    @ApiOperation("Returns all recent validators with an abbreviated data object")
+    @GetMapping("/recent/abbrev")
+    fun validatorsAllAbbrev() = ResponseEntity.ok(validatorService.getAllValidatorsAbbrev())
+
     @ApiOperation("Returns validator by address id")
     @GetMapping("/{id}")
     fun validator(@PathVariable id: String) = ResponseEntity.ok(validatorService.getValidator(id))
