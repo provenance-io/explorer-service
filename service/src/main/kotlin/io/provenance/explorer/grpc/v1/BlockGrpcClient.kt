@@ -7,7 +7,6 @@ import io.grpc.ManagedChannelBuilder
 import io.ktor.client.call.receive
 import io.ktor.client.features.ResponseException
 import io.ktor.client.request.get
-import io.ktor.client.request.header
 import io.ktor.client.statement.HttpResponse
 import io.provenance.explorer.KTOR_CLIENT
 import io.provenance.explorer.config.ExplorerProperties
@@ -57,9 +56,7 @@ class BlockGrpcClient(
 
     fun getBlockAtHeightFromFigment(height: Int) = runBlocking {
         val res = try {
-            KTOR_CLIENT.get<HttpResponse>("${explorerProps.figmentUrl}/apikey/${explorerProps.figmentApikey}/cosmos/base/tendermint/v1beta1/blocks/$height") {
-                header("Content-Type", "application/json")
-            }
+            KTOR_CLIENT.get<HttpResponse>("${explorerProps.figmentUrl}/apikey/${explorerProps.figmentApikey}/cosmos/base/tendermint/v1beta1/blocks/$height")
         } catch (e: ResponseException) {
             throw FigmentApiException("Error reaching figment: ${e.response}")
         }

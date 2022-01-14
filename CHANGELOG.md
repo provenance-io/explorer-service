@@ -45,6 +45,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Updated Gradle to 7.3.3
 * Removed Jcenter ~~, replacing dependent build with JitPack for now~~
 * Replaced `khttp` with `ktor client` #281
+* Added `api/v2/validators/recent/abbrev` so FE doesn't have to call the main validator query for all validators #282
 
 ## [v3.1.0](https://github.com/provenance-io/explorer-service/releases/tag/v3.1.0) - 2022-01-07
 ### Release Name: Benjamin of Tudela
