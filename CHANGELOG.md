@@ -40,6 +40,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Added per token / total price values to account balances
   * Added account AUM value
   * Added per token / total price values to account delegation rewards response
+  * Updated returned prices to be null for unknown pricing #285
 
 ### Improvements
 * Updated Gradle to 7.3.3

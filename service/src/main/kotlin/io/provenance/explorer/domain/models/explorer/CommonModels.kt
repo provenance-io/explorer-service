@@ -31,21 +31,19 @@ data class CoinStr(val amount: String, val denom: String)
 data class CoinStrWithPrice(
     val amount: String,
     val denom: String,
-    val pricePerToken: CoinStr,
-    val totalBalancePrice: CoinStr
+    val pricePerToken: CoinStr?,
+    val totalBalancePrice: CoinStr?
 )
 
 fun CoinOuterClass.Coin.toData() = CoinStr(this.amount, this.denom)
 
 fun BigDecimal.toCoinStrWithPrice(price: BigDecimal?, denom: String) =
-    (price ?: BigDecimal.ZERO).let {
-        CoinStrWithPrice(
-            this.toBigInteger().toString(),
-            denom,
-            it.toCoinStr("USD"),
-            it.multiply(this.toHashSupply(denom)).toCoinStr("USD")
-        )
-    }
+    CoinStrWithPrice(
+        this.toBigInteger().toString(),
+        denom,
+        price?.toCoinStr("USD"),
+        price?.multiply(this.toHashSupply(denom))?.toCoinStr("USD")
+    )
 
 fun CoinOuterClass.Coin.toCoinStrWithPrice(price: BigDecimal?) =
     this.amount.toBigDecimal().toCoinStrWithPrice(price, this.denom)

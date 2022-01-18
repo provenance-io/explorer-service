@@ -270,11 +270,11 @@ class AssetService(
     fun getPricingInfoIn(denoms: List<String>) =
         getPricingInfo(denoms).also { it.putAll(getPricingForNhash()) }
 
-    fun getPricingInfo(denoms: List<String>): MutableMap<String, BigDecimal> = runBlocking {
+    fun getPricingInfo(denoms: List<String>): MutableMap<String, BigDecimal?> = runBlocking {
         fun JSONObject.getDecimalOrNull(key: String) = try {
             this.getBigDecimal(key)
         } catch (e: Exception) {
-            BigDecimal.ZERO
+            null
         }
 
         val res = try {
@@ -282,7 +282,7 @@ class AssetService(
                 parameter("denom[]", denoms.joinToString(","))
             }
         } catch (e: ResponseException) {
-            return@runBlocking mutableMapOf<String, BigDecimal>().also { logger.error("Error: ${e.response}") }
+            return@runBlocking mutableMapOf<String, BigDecimal?>().also { logger.error("Error: ${e.response}") }
         }
 
         if (res.status.value in 200..299) {
@@ -293,9 +293,9 @@ class AssetService(
                     } else null
                 }.toMap().toMutableMap()
             } catch (e: Exception) {
-                mutableMapOf<String, BigDecimal>().also { logger.error("Error: $e") }
+                mutableMapOf<String, BigDecimal?>().also { logger.error("Error: $e") }
             }
-        } else mutableMapOf<String, BigDecimal>()
+        } else mutableMapOf<String, BigDecimal?>()
             .also { logger.error("Error reaching Pricing Engine: ${res.status.value}") }
     }
 
