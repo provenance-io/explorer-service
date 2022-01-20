@@ -27,6 +27,7 @@ import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.domain.models.explorer.getCategoryForType
 import io.provenance.explorer.domain.models.explorer.onlyTxQuery
+import io.provenance.explorer.service.AssetService
 import net.pearx.kasechange.toTitleCase
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
@@ -675,7 +676,7 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
         // TODO: Replace 1905 with value from chain when 1.8.0 gets released
         fun calcBaseGasFee(gasWanted: Long) = gasWanted * 1905
 
-        fun insert(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse) = transaction {
+        fun insert(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse, assetService: AssetService) = transaction {
             val success = tx.txResponse.code == 0
             // calc baseFeeUsed, baseFeeOverage in nhash, and remaining as priority in nhash
             tx.tx.authInfo.fee.amountList.first { it.denom == NHASH }.let {
@@ -683,7 +684,7 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                 val baseFeeUsed = calcBaseGasFee(tx.txResponse.gasUsed)
                 Triple(it.amount.toLong() - baseFee, baseFee - baseFeeUsed, baseFeeUsed)
             }.let { (priority, baseFeeOverage, baseFeeUsed) ->
-                val nhash = MarkerCacheRecord.findByDenom(NHASH)!!
+                val nhash = assetService.getAssetRaw(NHASH).second
                 // insert used fee
                 insertIgnore(txInfo, BASE_FEE_USED.name, nhash.id.value, nhash.denom, baseFeeUsed.toBigDecimal())
                 // insert paid too much fee
@@ -696,7 +697,7 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
             // Save remaining denoms as MSG_BASED_FEE, only if tx is successful
             if (success)
                 tx.tx.authInfo.fee.amountList.filter { it.denom != NHASH }.forEach {
-                    val denom = MarkerCacheRecord.findByDenom(it.denom)!!
+                    val denom = assetService.getAssetRaw(it.denom).second
                     insertIgnore(txInfo, MSG_BASED_FEE.name, denom.id.value, denom.denom, it.amount.toBigDecimal())
                 }
         }

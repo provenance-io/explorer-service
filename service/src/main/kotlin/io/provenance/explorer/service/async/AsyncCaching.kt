@@ -198,10 +198,10 @@ class AsyncCaching(
     ): TxUpdatedItems {
         val txPair = TxCacheRecord.insertIgnore(res, blockTime).let { Pair(it, res) }
         val txInfo = TxData(res.txResponse.height.toInt(), txPair.first.value, res.txResponse.txhash, blockTime)
-        saveTxGasFees(res, txInfo)
         saveMessages(txInfo, txPair.second)
         val addrs = saveAddresses(txInfo, txPair.second)
         val markers = saveMarkers(txInfo, txPair.second)
+        saveTxGasFees(res, txInfo)
         saveNftData(txInfo, txPair.second)
         saveGovData(txPair.second, txInfo)
         saveIbcChannelData(txPair.second, txInfo)
@@ -235,7 +235,7 @@ class AsyncCaching(
     private fun saveTxGasFees(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData) =
         transaction {
             TxGasCacheRecord.insertIgnore(tx, txInfo.txTimestamp)
-            TxFeeRecord.insert(txInfo, tx)
+            TxFeeRecord.insert(txInfo, tx, assetService)
         }
 
     fun saveMessages(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse) = transaction {
@@ -331,7 +331,7 @@ class AsyncCaching(
     }
 
     private fun saveDenom(denom: String, txInfo: TxData): String {
-        assetService.getAssetRaw(denom).let { (id, _) -> TxMarkerJoinRecord.insert(txInfo, id!!.value, denom) }
+        assetService.getAssetRaw(denom).let { (id, _) -> TxMarkerJoinRecord.insert(txInfo, id.value, denom) }
         return denom
     }
 
