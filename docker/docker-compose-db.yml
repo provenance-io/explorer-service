@@ -9,4 +9,8 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - ./db-init:/docker-entrypoint-initdb.d/
+      - ./db-init:/docker-entrypoint-initdb.d/ # inits the db with username/password
+      - pg-local-testnet:/var/lib/postgresql/data
+
+volumes:
+  pg-local-testnet:
