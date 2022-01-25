@@ -105,11 +105,12 @@ class AssetService(
                 TxMarkerJoinRecord.findLatestTxByDenom(denom)
             )
         } ?: getCurrentSupply(denom).let {
+            val (type, status) = denom.getBaseDenomType()
             MarkerCacheRecord.insertIgnore(
                 null,
-                denom.getBaseDenomType().name,
+                type.name,
                 denom,
-                MarkerStatus.MARKER_STATUS_ACTIVE.toString(),
+                status.toString(),
                 null,
                 it.toBigDecimal(),
                 TxMarkerJoinRecord.findLatestTxByDenom(denom)
@@ -339,8 +340,8 @@ fun String.prettyRole() = this.substringAfter("ACCESS_")
 
 fun String.getBaseDenomType() =
     when {
-        this.startsWith("ibc/") -> BaseDenomType.IBC_DENOM
-        else -> BaseDenomType.DENOM
+        this.startsWith("ibc/") -> Pair(BaseDenomType.IBC_DENOM, MarkerStatus.MARKER_STATUS_ACTIVE)
+        else -> Pair(BaseDenomType.DENOM, MarkerStatus.MARKER_STATUS_UNSPECIFIED)
     }
 
 fun BigDecimal.toHashSupply(denom: String) = if (denom == NHASH) this.divide(1000000000.toBigDecimal()) else this

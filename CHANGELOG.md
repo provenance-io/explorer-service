@@ -38,6 +38,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Created procedures to save all block/ tx data at once
     * Should eliminate rogue data insertion
 
+### Bug Fixes
+* Removing bad denoms #289
+  * For unknown denom types (NOT IBC), set status to `MARKER_STATUS_UNSPECIFIED` so they don't show up in listviews, but are still saved to the database for reference
+
 ### Data
 * Migration 1.40 - Data clean up #274
   * Removed duplicate data for `tx_message`, `tx_msg_event`, `tx_msg_event_attr`
@@ -46,6 +50,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Added types `tx_event`, `tx_msg`, `tx_update`, `block_update`
   * Added procedures `add_tx(tx_update, integer, timestamp)`, `add_block(block_update)`
   * Updated `tx_msg_event_attr` with `attr_idx`, `attr_hash`; updated new columns with data
+* Migration 1.42 - Invalid denom cleanup #289
+  * Updated `marker_cache.status` to `MARKER_STATUS_UNSPECIFIED` for all `marker_cache.marker_type = 'DENOM'`
 
 ## [v3.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v3.2.0) - 2022-01-18
 ### Release Name: John Carpini
