@@ -25,7 +25,7 @@ class BlockController(private val explorerService: ExplorerService) {
 
     @ApiOperation("Return block at specified height")
     @GetMapping("/height/{height}")
-    fun blockHeight(@PathVariable height: Int) = ResponseEntity.ok(explorerService.getBlockAtHeight(height, true))
+    fun blockHeight(@PathVariable height: Int) = ResponseEntity.ok(explorerService.getBlockAtHeight(height))
 
     @ApiOperation("Returns most recent blocks")
     @GetMapping("/recent")

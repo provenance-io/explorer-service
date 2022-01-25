@@ -4,6 +4,7 @@ import com.google.protobuf.Any
 import cosmos.crypto.multisig.Keys
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.extensions.toBase64
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
@@ -81,6 +82,7 @@ class SignatureRecord(id: EntityID<Int>) : IntEntity(id) {
 enum class SigJoinType { ACCOUNT, TRANSACTION }
 
 val SJT = SignatureJoinTable
+
 object SignatureJoinTable : IntIdTable(name = "signature_join") {
     val joinType = varchar("join_type", 128)
     val joinKey = varchar("join_key", 128)
@@ -104,6 +106,11 @@ class SignatureJoinRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.signatureId] = sigId
                 }
             }
+        }
+
+        fun buildInsert(pubkey: Any, joinType: SigJoinType, joinKey: String) = transaction {
+            SignatureRecord.insertAndGetIds(pubkey, null)
+                .map { sigId -> listOf(0, joinType.name, joinKey, sigId).toProcedureObject() }
         }
     }
 

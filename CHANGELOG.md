@@ -33,6 +33,20 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+* Reworked block/transaction ingestion #274
+  * Created procedures to save all block/ tx data at once
+    * Should eliminate rogue data insertion
+
+### Data
+* Migration 1.40 - Data clean up #274
+  * Removed duplicate data for `tx_message`, `tx_msg_event`, `tx_msg_event_attr`
+* Migration 1.41 - Added ingestion procedures #274
+  * Added unique indices for all tx-related tables
+  * Added types `tx_event`, `tx_msg`, `tx_update`, `block_update`
+  * Added procedures `add_tx(tx_update, integer, timestamp)`, `add_block(block_update)`
+  * Updated `tx_msg_event_attr` with `attr_idx`, `attr_hash`; updated new columns with data
+
 ## [v3.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v3.2.0) - 2022-01-18
 ### Release Name: John Carpini
 

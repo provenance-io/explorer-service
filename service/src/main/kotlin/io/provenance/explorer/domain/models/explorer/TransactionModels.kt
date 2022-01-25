@@ -1,6 +1,22 @@
 package io.provenance.explorer.domain.models.explorer
 
 import com.fasterxml.jackson.databind.node.ObjectNode
+import io.provenance.explorer.domain.core.sql.toArray
+import io.provenance.explorer.domain.core.sql.toObject
+import io.provenance.explorer.domain.entities.GovDepositTable
+import io.provenance.explorer.domain.entities.GovProposalTable
+import io.provenance.explorer.domain.entities.GovVoteTable
+import io.provenance.explorer.domain.entities.IbcLedgerTable
+import io.provenance.explorer.domain.entities.ProposalMonitorTable
+import io.provenance.explorer.domain.entities.SignatureJoinTable
+import io.provenance.explorer.domain.entities.TxAddressJoinTable
+import io.provenance.explorer.domain.entities.TxFeeTable
+import io.provenance.explorer.domain.entities.TxFeepayerTable
+import io.provenance.explorer.domain.entities.TxMarkerJoinTable
+import io.provenance.explorer.domain.entities.TxNftJoinTable
+import io.provenance.explorer.domain.entities.TxSingleMessageCacheTable
+import io.provenance.explorer.domain.entities.TxSmCodeTable
+import io.provenance.explorer.domain.entities.TxSmContractTable
 import org.joda.time.DateTime
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -33,7 +49,6 @@ data class TxQueryParams(
 )
 
 fun TxQueryParams.onlyTxQuery() = addressId == null && markerId == null && msgTypes.isEmpty()
-fun TxQueryParams.onlyAddress() = addressId != null && markerId == null && msgTypes.isEmpty()
 
 data class TxDetails(
     val txHash: String,
@@ -275,3 +290,45 @@ data class MsgProtoBreakout(
     val module: String,
     val type: String
 )
+
+data class TxUpdate(
+    var tx: String,
+    var txGasFee: String? = null,
+    var txFees: MutableList<String> = mutableListOf(),
+    var txMsgs: MutableList<String> = mutableListOf(),
+    var singleMsgs: MutableList<String> = mutableListOf(),
+    var addressJoin: MutableList<String> = mutableListOf(),
+    var markerJoin: MutableList<String> = mutableListOf(),
+    var nftJoin: MutableList<String> = mutableListOf(),
+    var proposals: MutableList<String> = mutableListOf(),
+    var proposalMonitors: MutableList<String> = mutableListOf(),
+    var deposits: MutableList<String> = mutableListOf(),
+    var votes: MutableList<String> = mutableListOf(),
+    var ibcLedgers: MutableList<String> = mutableListOf(),
+    var smCodes: MutableList<String> = mutableListOf(),
+    var smContracts: MutableList<String> = mutableListOf(),
+    var sigs: MutableList<String> = mutableListOf(),
+    var feePayers: MutableList<String> = mutableListOf(),
+)
+
+fun TxUpdate.toProcedureObject() =
+    listOf(
+        this.tx, this.txGasFee!!, this.txFees.toArray(TxFeeTable.tableName),
+        this.txMsgs.toArray("tx_msg"), this.singleMsgs.toArray(TxSingleMessageCacheTable.tableName),
+        this.addressJoin.toArray(TxAddressJoinTable.tableName), this.markerJoin.toArray(TxMarkerJoinTable.tableName),
+        this.nftJoin.toArray(TxNftJoinTable.tableName), this.proposals.toArray(GovProposalTable.tableName),
+        this.proposalMonitors.toArray(ProposalMonitorTable.tableName), this.deposits.toArray(GovDepositTable.tableName),
+        this.votes.toArray(GovVoteTable.tableName), this.ibcLedgers.toArray(IbcLedgerTable.tableName),
+        this.smCodes.toArray(TxSmCodeTable.tableName), this.smContracts.toArray(TxSmContractTable.tableName),
+        this.sigs.toArray(SignatureJoinTable.tableName), this.feePayers.toArray(TxFeepayerTable.tableName)
+    ).toObject()
+
+data class BlockUpdate(
+    var block: String,
+    var proposer: String,
+    var cache: String,
+    var txs: List<String>
+)
+
+fun BlockUpdate.toProcedureObject() =
+    listOf(this.block, this.proposer, this.cache, this.txs.toArray("tx_update")).toObject()

@@ -49,7 +49,7 @@ class IbcService(
         IbcChannelRecord.getOrInsert(port, channel, channelRes, client, escrowAccount)
     }
 
-    fun saveIbcLedger(ledger: LedgerInfo, txData: TxData) = transaction { IbcLedgerRecord.getOrInsert(ledger, txData) }
+    fun buildIbcLedger(ledger: LedgerInfo, txData: TxData) = transaction { IbcLedgerRecord.buildInsert(ledger, txData) }
 
     fun parseTransfer(ledger: LedgerInfo): LedgerInfo {
         ledger.denomTrace =

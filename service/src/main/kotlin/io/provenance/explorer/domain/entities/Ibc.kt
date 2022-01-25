@@ -6,6 +6,7 @@ import ibc.core.channel.v1.QueryOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.models.explorer.LedgerBySliceRes
 import io.provenance.explorer.domain.models.explorer.LedgerInfo
 import io.provenance.explorer.domain.models.explorer.TxData
@@ -177,6 +178,35 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.ackSuccess] = true
                 }
             }.let { IbcLedgerRecord.findById(it)!! }
+        }
+
+        fun buildInsert(ledger: LedgerInfo, txData: TxData) = transaction {
+            findMatchingRecord(ledger).let { ledg ->
+                listOf(
+                    ledger.channel.dstChainName,
+                    ledger.channel.id.value,
+                    ledger.denom,
+                    ledger.denomTrace,
+                    ledger.balanceIn?.toBigDecimal(),
+                    ledger.balanceOut?.toBigDecimal(),
+                    ledger.fromAddress,
+                    ledger.toAddress,
+                    ledger.passThroughAddress!!.id.value,
+                    ledger.passThroughAddress!!.accountAddress,
+                    ledger.logs,
+                    ledg?.blockHeight ?: txData.blockHeight,
+                    ledg?.txHashId ?: -1,
+                    ledg?.txHash ?: txData.txHash,
+                    ledg?.txTimestamp ?: txData.txTimestamp,
+                    ledg != null || ledger.balanceIn != null,
+                    if (ledg != null) ledger.ack else ledger.balanceIn != null,
+                    ledger.logs,
+                    txData.blockHeight,
+                    -1,
+                    txData.txHash,
+                    txData.txTimestamp
+                ).toProcedureObject()
+            }
         }
 
         val lastTxTime = Max(IbcLedgerTable.txTimestamp, DateColumnType(true))

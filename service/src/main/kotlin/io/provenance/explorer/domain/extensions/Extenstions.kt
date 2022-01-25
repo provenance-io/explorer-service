@@ -40,6 +40,7 @@ fun String.fromBase64ToMAddress() = Base64.getDecoder().decode(this).toByteStrin
 fun String.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
 fun ByteArray.base64EncodeString(): String = String(Base64.getEncoder().encode(this))
 fun ByteString.toDbHash() = Hashing.sha512().hashBytes(this.toByteArray()).asBytes().base64EncodeString()
+fun String.toDbHash() = Hashing.sha512().hashBytes(this.toByteArray()).asBytes().base64EncodeString()
 fun ByteArray.to256Hash() = Hashing.sha256().hashBytes(this).asBytes().base64EncodeString()
 fun ByteString.toHash() = this.toByteArray().toBech32Data().hexData
 

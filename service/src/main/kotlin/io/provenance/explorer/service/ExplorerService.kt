@@ -61,7 +61,7 @@ import io.provenance.explorer.grpc.v1.IbcGrpcClient
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
 import io.provenance.explorer.grpc.v1.MetadataGrpcClient
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
-import io.provenance.explorer.service.async.AsyncCaching
+import io.provenance.explorer.service.async.AsyncCachingV2
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
@@ -81,7 +81,7 @@ class ExplorerService(
     private val blockService: BlockService,
     private val validatorService: ValidatorService,
     private val assetService: AssetService,
-    private val asyncCaching: AsyncCaching,
+    private val asyncV2: AsyncCachingV2,
     private val govClient: GovGrpcClient,
     private val accountClient: AccountGrpcClient,
     private val ibcClient: IbcGrpcClient,
@@ -93,10 +93,10 @@ class ExplorerService(
 
     protected val logger = logger(ExplorerService::class)
 
-    fun getBlockAtHeight(height: Int?, checkTxs: Boolean = false) = runBlocking(Dispatchers.IO) {
+    fun getBlockAtHeight(height: Int?) = runBlocking(Dispatchers.IO) {
         val queryHeight = height ?: (blockService.getLatestBlockHeightIndex() - 2)
-        val blockResponse = asyncCaching.getBlock(queryHeight, checkTxs)!!
-        val nextBlock = asyncCaching.getBlock(queryHeight + 1, checkTxs)
+        val blockResponse = asyncV2.getBlock(queryHeight)!!
+        val nextBlock = asyncV2.getBlock(queryHeight + 1)
         val validatorsResponse = validatorService.getValidatorsByHeight(queryHeight)
         hydrateBlock(blockResponse, nextBlock, validatorsResponse)
     }
@@ -106,8 +106,8 @@ class ExplorerService(
         var blockHeight = if (page < 0) currentHeight else currentHeight - (count * page)
         val result = mutableListOf<BlockSummary>()
         while (result.size < count) {
-            val block = asyncCaching.getBlock(blockHeight)!!
-            val nextBlock = asyncCaching.getBlock(blockHeight + 1)
+            val block = asyncV2.getBlock(blockHeight)!!
+            val nextBlock = asyncV2.getBlock(blockHeight + 1)
             val validators = validatorService.getValidatorsByHeight(blockHeight)
             result.add(hydrateBlock(block, nextBlock, validators))
             blockHeight = block.block.height()
@@ -186,7 +186,7 @@ class ExplorerService(
     fun getGasFeeStatistics(fromDate: DateTime?, toDate: DateTime?, count: Int) =
         ChainGasFeeCacheRecord.findForDates(fromDate, toDate, count).reversed()
 
-    fun getChainId() = asyncCaching.getChainIdString()
+    fun getChainId() = asyncV2.getChainIdString()
 
     fun getChainUpgrades(): List<ChainUpgrade> {
         val typeUrl = Any.pack(Upgrade.SoftwareUpgradeProposal.getDefaultInstance()).typeUrl
@@ -343,7 +343,7 @@ class ExplorerService(
         val status = "all"
         val valFilter = validatorSet.map { it.address }
         val stakingValidators = validatorService.getStakingValidators(status, valFilter, page.toOffset(count), count)
-        val votingSet = asyncCaching.getBlock(height + 1)!!.getVotingSet(props)
+        val votingSet = asyncV2.getBlock(height + 1)!!.getVotingSet(props)
         val proposer = transaction { BlockProposerRecord.findById(height)!! }
         val results = validatorService.hydrateValidators(validatorSet, stakingValidators).map {
             ValidatorAtHeight(

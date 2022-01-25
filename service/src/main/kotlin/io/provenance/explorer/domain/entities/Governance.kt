@@ -8,6 +8,7 @@ import cosmos.gov.v1beta1.Gov
 import cosmos.gov.v1beta1.Tx
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.models.explorer.GovAddrData
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.VoteDbRecord
@@ -125,6 +126,37 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.txTimestamp] = txInfo.txTimestamp
                 }.let { GovProposalRecord.findById(it)!! }
             }
+
+        fun buildInsert(
+            proposal: Gov.Proposal,
+            protoPrinter: JsonFormat.Printer,
+            txInfo: TxData,
+            addrInfo: GovAddrData,
+            isSubmit: Boolean
+        ) = transaction {
+            proposal.content.toProposalTitleAndDescription(protoPrinter).let { (title, description) ->
+                val (hash, block, time) = findByProposalId(proposal.proposalId)?.let {
+                    if (isSubmit) Triple(txInfo.txHash, txInfo.blockHeight, txInfo.txTimestamp)
+                    else Triple(it.txHash, it.blockHeight, it.txTimestamp)
+                } ?: Triple(txInfo.txHash, txInfo.blockHeight, txInfo.txTimestamp)
+                listOf(
+                    -1,
+                    proposal.proposalId,
+                    proposal.content.typeUrl.getProposalType(),
+                    addrInfo.addrId,
+                    addrInfo.addr,
+                    addrInfo.isValidator,
+                    title,
+                    description,
+                    proposal.status.name,
+                    proposal,
+                    proposal.content.toProposalContent(protoPrinter),
+                    block,
+                    hash,
+                    time
+                ).toProcedureObject()
+            }
+        }
     }
 
     var proposalId by GovProposalTable.proposalId
@@ -228,6 +260,34 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.txTimestamp] = txInfo.txTimestamp
             }.let { GovVoteRecord.findById(it)!! }
         }
+
+        fun buildInsert(
+            txInfo: TxData,
+            vote: Tx.MsgVote,
+            addrInfo: GovAddrData
+        ) = transaction {
+            (
+                findByProposalIdAndAddrId(vote.proposalId, addrInfo.addrId)
+                    ?.let {
+                        if (txInfo.blockHeight > it.blockHeight)
+                            listOf(vote.option.name, txInfo.blockHeight, txInfo.txHash, txInfo.txTimestamp)
+                        else listOf(it.vote, it.blockHeight, it.txHash, it.txTimestamp)
+                    } ?: listOf(vote.option.name, txInfo.blockHeight, txInfo.txHash, txInfo.txTimestamp)
+                )
+                .let { (v, b, hash, time) ->
+                    listOf(
+                        -1,
+                        vote.proposalId,
+                        addrInfo.addrId,
+                        vote.voter,
+                        addrInfo.isValidator,
+                        v,
+                        b,
+                        hash,
+                        time
+                    ).toProcedureObject()
+                }
+        }
     }
 
     var proposalId by GovVoteTable.proposalId
@@ -299,6 +359,34 @@ class GovDepositRecord(id: EntityID<Int>) : IntEntity(id) {
                 }.let { GovDepositRecord.findById(it)!! }
             }
         }
+
+        fun buildInserts(
+            txInfo: TxData,
+            proposalId: Long,
+            depositType: DepositType,
+            amountList: List<CoinOuterClass.Coin>,
+            addrInfo: GovAddrData
+        ) = amountList.map { buildInsert(txInfo, proposalId, depositType, it, addrInfo) }
+
+        fun buildInsert(
+            txInfo: TxData,
+            proposalId: Long,
+            depositType: DepositType,
+            amount: CoinOuterClass.Coin,
+            addrInfo: GovAddrData
+        ) = listOf(
+            -1,
+            proposalId,
+            addrInfo.addrId,
+            addrInfo.addr,
+            addrInfo.isValidator,
+            depositType.name,
+            amount.amount.toBigDecimal(),
+            amount.denom,
+            txInfo.blockHeight,
+            txInfo.txHash,
+            txInfo.txTimestamp
+        ).toProcedureObject()
     }
 
     var proposalId by GovDepositTable.proposalId
@@ -345,7 +433,29 @@ class ProposalMonitorRecord(id: EntityID<Int>) : IntEntity(id) {
             }
         }
 
-        fun ProposalMonitorRecord.checkIfProposalReadyForProcessing(proposalStatus: String, currentBlockTime: DateTime) =
+        fun buildInsert(
+            proposalId: Long,
+            submittedHeight: Int,
+            proposedCompletionHeight: Int,
+            votingEndTime: DateTime,
+            proposalType: ProposalType,
+            dataHash: String
+        ) = listOf(
+            -1,
+            proposalId,
+            submittedHeight,
+            proposedCompletionHeight,
+            votingEndTime,
+            proposalType,
+            dataHash,
+            false,
+            false
+        ).toProcedureObject()
+
+        fun ProposalMonitorRecord.checkIfProposalReadyForProcessing(
+            proposalStatus: String,
+            currentBlockTime: DateTime
+        ) =
             if (proposalStatus == Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name &&
                 this.votingEndTime.isBefore(currentBlockTime)
             )
@@ -364,6 +474,7 @@ class ProposalMonitorRecord(id: EntityID<Int>) : IntEntity(id) {
                 .toList()
         }
     }
+
     var proposalId by ProposalMonitorTable.proposalId
     var submittedHeight by ProposalMonitorTable.submittedHeight
     var proposedCompletionHeight by ProposalMonitorTable.proposedCompletionHeight

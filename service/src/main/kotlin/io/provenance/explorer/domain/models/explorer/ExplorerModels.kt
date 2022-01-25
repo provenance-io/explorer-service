@@ -1,5 +1,6 @@
 package io.provenance.explorer.domain.models.explorer
 
+import org.joda.time.DateTime
 import java.math.BigDecimal
 import java.math.BigInteger
 
@@ -13,6 +14,14 @@ data class BlockSummary(
     val votingPower: CountTotal,
     val validatorCount: CountTotal,
     val txNum: Int
+)
+
+data class BlockProposer(
+    var blockHeight: Int,
+    var proposerOperatorAddress: String,
+    var blockTimestamp: DateTime,
+    var minGasFee: Double? = null,
+    var blockLatency: BigDecimal? = null
 )
 
 data class Spotlight(

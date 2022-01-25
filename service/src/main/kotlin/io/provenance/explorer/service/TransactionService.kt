@@ -42,7 +42,7 @@ import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.domain.models.explorer.TxSummary
 import io.provenance.explorer.domain.models.explorer.TxType
 import io.provenance.explorer.grpc.extensions.getModuleAccName
-import io.provenance.explorer.service.async.AsyncCaching
+import io.provenance.explorer.service.async.AsyncCachingV2
 import io.provenance.explorer.service.async.getAddressType
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -53,14 +53,13 @@ import org.springframework.stereotype.Service
 class TransactionService(
     private val protoPrinter: JsonFormat.Printer,
     private val props: ExplorerProperties,
-    private val asyncCache: AsyncCaching,
+    private val asyncV2: AsyncCachingV2,
     private val nftService: NftService
 ) {
 
     protected val logger = logger(TransactionService::class)
 
-    private fun getTxByHashFromCache(hash: String) =
-        transaction { TxCacheRecord.findByHash(hash)?.let { checkMsgCount(it) } }
+    private fun getTxByHashFromCache(hash: String) = transaction { TxCacheRecord.findByHash(hash) }
 
     fun getTxTypes(typeSet: MsgTypeSet?) = transaction {
         when (typeSet) {
@@ -104,7 +103,7 @@ class TransactionService(
 
         val total = TxCacheRecord.findByQueryParamsForCount(params)
         TxCacheRecord.findByQueryForResults(params).map {
-            val rec = checkMsgCount(it)
+            val rec = it
             val displayMsgType = transaction {
                 if (msgTypes.isNotEmpty())
                     rec.txMessages.map { msg -> msg.txMessageType.type }.first { type -> msgTypes.contains(type) }
@@ -123,13 +122,6 @@ class TransactionService(
             )
         }.let { return PagedResults(total.pageCountOfResults(count), it, total.toLong()) }
     }
-
-    // Triple checks that the tx messages are up to date in the db
-    fun checkMsgCount(curr: TxCacheRecord): TxCacheRecord =
-        if (transaction { curr.txMessages.count() < curr.txV2.tx.body.messagesCount.toLong() }) {
-            asyncCache.addTxToCache(curr.txV2, curr.txTimestamp)
-            TxCacheRecord.findByEntityId(curr.id)!!
-        } else curr
 
     fun MutableList<TxMessageRecord>.mapToTxMessages() =
         this.map { msg -> TxMessage(msg.txMessageType.type, msg.txMessage.toObjectNode(protoPrinter)) }
@@ -152,7 +144,7 @@ class TransactionService(
                 tx.txV2.tx.authInfo.fee.gasLimit.toBigInteger(),
                 tx.txV2.tx.authInfo.fee.getMinGasFee()
             ),
-            time = asyncCache.getBlock(tx.txV2.txResponse.height.toInt())!!.block.header.time.formattedString(),
+            time = asyncV2.getBlock(tx.txV2.txResponse.height.toInt())!!.block.header.time.formattedString(),
             status = if (tx.txV2.txResponse.code > 0) "failed" else "success",
             errorCode = tx.txV2.txResponse.code,
             codespace = tx.txV2.txResponse.codespace,

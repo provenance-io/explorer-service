@@ -36,10 +36,6 @@ class MigrationController(private val migrationService: MigrationService) {
     fun updateTxsByHeight(@RequestBody heights: List<Int>) =
         ResponseEntity.ok(migrationService.reprocessTxsFromHeight(heights))
 
-    @ApiOperation("Updates validator cache for missing records")
-    @GetMapping("/update/validatorCache")
-    fun updateValidatorCache() = ResponseEntity.ok(migrationService.updateValidatorsCache())
-
     @ApiOperation("Updates existing blocks with proposer records")
     @GetMapping("/update/block/proposers")
     fun updateBlockProposers(@RequestParam min: Int, @RequestParam max: Int, @RequestParam limit: Int) =

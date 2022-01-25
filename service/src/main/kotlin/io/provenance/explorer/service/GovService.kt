@@ -65,9 +65,9 @@ class GovService(
 ) {
     protected val logger = logger(GovService::class)
 
-    fun saveProposal(proposalId: Long, txInfo: TxData, addr: String, isSubmit: Boolean) = transaction {
+    fun buildProposal(proposalId: Long, txInfo: TxData, addr: String, isSubmit: Boolean) = transaction {
         govClient.getProposal(proposalId).let {
-            GovProposalRecord.getOrInsert(it.proposal, protoPrinter, txInfo, getAddressDetails(addr), isSubmit)
+            GovProposalRecord.buildInsert(it.proposal, protoPrinter, txInfo, getAddressDetails(addr), isSubmit)
         }
     }
 
@@ -78,7 +78,7 @@ class GovService(
         }
     }
 
-    fun addProposalToMonitor(txMsg: Tx.MsgSubmitProposal, proposalId: Long, txInfo: TxData) = transaction {
+    fun buildProposalMonitor(txMsg: Tx.MsgSubmitProposal, proposalId: Long, txInfo: TxData) = transaction {
         val (proposalType, dataHash) = when {
             txMsg.content.typeUrl.endsWith("v1beta1.StoreCodeProposal") ->
                 ProposalType.STORE_CODE to
@@ -90,13 +90,13 @@ class GovService(
                     // base64(sha256(gzipUncompress(wasmByteCode))) == base64(storedCode.data_hash)
                     txMsg.content.unpack(cosmwasm.wasm.v1.Proposal.StoreCodeProposal::class.java)
                         .wasmByteCode.gzipUncompress().to256Hash()
-            else -> return@transaction
+            else -> return@transaction null
         }
-        val votingEndTime = GovProposalRecord.findByProposalId(proposalId)!!.data.votingEndTime.toDateTime()
+        val votingEndTime = govClient.getProposal(proposalId)!!.proposal.votingEndTime.toDateTime()
         val avgBlockTime = SpotlightCacheRecord.getSpotlight().avgBlockTime.multiply(BigDecimal(1000)).toLong()
         val blocksUntilCompletion = (votingEndTime.millis - txInfo.txTimestamp.millis).floorDiv(avgBlockTime).toInt()
 
-        ProposalMonitorRecord.insert(
+        ProposalMonitorRecord.buildInsert(
             proposalId,
             txInfo.blockHeight,
             txInfo.blockHeight + blocksUntilCompletion,
@@ -133,17 +133,17 @@ class GovService(
         GovAddrData(addr, addrId, isValidator)
     }
 
-    fun saveDeposit(proposalId: Long, txInfo: TxData, deposit: Tx.MsgDeposit?, initial: Tx.MsgSubmitProposal?) =
+    fun buildDeposit(proposalId: Long, txInfo: TxData, deposit: Tx.MsgDeposit?, initial: Tx.MsgSubmitProposal?) =
         transaction {
             val addrInfo = getAddressDetails(deposit?.depositor ?: initial!!.proposer)
             val amountList = deposit?.amountList?.toList() ?: initial!!.initialDepositList.toList()
             val depositType = if (deposit != null) DepositType.DEPOSIT else DepositType.INITIAL_DEPOSIT
 
-            GovDepositRecord.insertAndGet(txInfo, proposalId, depositType, amountList, addrInfo)
+            GovDepositRecord.buildInserts(txInfo, proposalId, depositType, amountList, addrInfo)
         }
 
-    fun saveVote(txInfo: TxData, vote: Tx.MsgVote) =
-        transaction { GovVoteRecord.getOrInsert(txInfo, vote, getAddressDetails(vote.voter)) }
+    fun buildVote(txInfo: TxData, vote: Tx.MsgVote) =
+        GovVoteRecord.buildInsert(txInfo, vote, getAddressDetails(vote.voter))
 
     private fun getParams(param: GovParamType) = govClient.getParams(param)
 
