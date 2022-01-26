@@ -36,11 +36,6 @@ class MigrationController(private val migrationService: MigrationService) {
     fun updateTxsByHeight(@RequestBody heights: List<Int>) =
         ResponseEntity.ok(migrationService.reprocessTxsFromHeight(heights))
 
-    @ApiOperation("Updates existing blocks with proposer records")
-    @GetMapping("/update/block/proposers")
-    fun updateBlockProposers(@RequestParam min: Int, @RequestParam max: Int, @RequestParam limit: Int) =
-        ResponseEntity.ok(migrationService.updateProposers(min, max, limit))
-
     @ApiOperation("Updates accounts with data")
     @PutMapping("/update/accounts")
     fun updateAccounts(@RequestBody accounts: List<String>) =

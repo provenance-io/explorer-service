@@ -161,7 +161,7 @@ class AsyncService(
     @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minute
     fun retryBlockTxs() {
         BlockTxRetryRecord.getRecordsToRetry().map { height ->
-            val block = asyncCache.getBlock(height)!!
+            val block = asyncCache.saveBlockEtc(blockService.getBlockAtHeightFromChain(height))!!
             val success = transaction { TxCacheRecord.findByHeight(height).toList() }.size == block.block.data.txsCount
             BlockTxRetryRecord.updateRecord(height, success)
             height

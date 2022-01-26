@@ -51,11 +51,7 @@ class BankGrpcClient(channelUri: URI) {
         distClient.communityPool(DistOuterClass.QueryCommunityPoolRequest.newBuilder().build()).poolList
             .filter { it.denom == denom }[0]?.amount!!.toDecCoin()
 
-    fun getBondedAmount(): String =
-        stakingClient.validators(
-            StakingOuterClass.QueryValidatorsRequest.newBuilder()
-                .build()
-        ).validatorsList.sumOf { it.tokens.toBigDecimal() }.toString()
+    fun getStakingPool() = stakingClient.pool(StakingOuterClass.QueryPoolRequest.getDefaultInstance())
 
     fun getMarkerBalance(address: String, denom: String): String =
         bankClient.balance(

@@ -25,6 +25,7 @@ import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.getStatusString
 import io.provenance.explorer.domain.extensions.isActive
 import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDecCoin
 import io.provenance.explorer.domain.extensions.toOffset
@@ -44,6 +45,7 @@ import io.provenance.explorer.domain.models.explorer.MissedBlockSet
 import io.provenance.explorer.domain.models.explorer.MissedBlocksTimeframe
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.Timeframe
+import io.provenance.explorer.domain.models.explorer.UnpaginatedDelegation
 import io.provenance.explorer.domain.models.explorer.ValidatorCommission
 import io.provenance.explorer.domain.models.explorer.ValidatorDetails
 import io.provenance.explorer.domain.models.explorer.ValidatorMissedBlocks
@@ -331,6 +333,23 @@ class ValidatorService(
         }
     }
 
+    private fun getDelegationTotal(address: String): CoinStr {
+        var offset = 0
+        val limit = 100
+
+        val results = grpcClient.getStakingValidatorDelegations(address, offset, limit)
+        val total = results.pagination?.total ?: results.delegationResponsesCount.toLong()
+        val delegations = results.delegationResponsesList.toMutableList()
+
+        while (delegations.count() < total) {
+            offset += limit
+            grpcClient.getStakingValidatorDelegations(address, offset, limit)
+                .let { delegations.addAll(it.delegationResponsesList) }
+        }
+        return delegations.sumOf { it.balance.amount.toBigDecimal() }
+            .toCoinStr(delegations.firstOrNull()?.balance?.denom ?: NHASH)
+    }
+
     fun getBondedDelegations(address: String, page: Int, limit: Int) =
         grpcClient.getStakingValidatorDelegations(address, page.toOffset(limit), limit).let { res ->
             val list = res.delegationResponsesList.map {
@@ -345,7 +364,8 @@ class ValidatorService(
                     null
                 )
             }
-            PagedResults(res.pagination.total.pageCountOfResults(limit), list, res.pagination.total)
+            val rollup = mapOf("bondedTotal" to getDelegationTotal(address))
+            PagedResults(res.pagination.total.pageCountOfResults(limit), list, res.pagination.total, rollup)
         }
 
     fun getUnbondingDelegations(address: String) =
@@ -364,6 +384,9 @@ class ValidatorService(
                     )
                 }
             }
+        }.let { recs ->
+            val total = recs.sumOf { it.amount.amount.toBigDecimal() }.toCoinStr(NHASH)
+            UnpaginatedDelegation(recs, mapOf(Pair("unbondingTotal", total)))
         }
 
     fun getCommissionInfo(address: String): ValidatorCommission {
@@ -400,17 +423,11 @@ class ValidatorService(
     fun getProposerConsensusAddr(blockMeta: Query.GetBlockByHeightResponse) =
         blockMeta.block.header.proposerAddress.translateByteArray(props).consensusAccountAddr
 
-    fun saveProposerRecord(blockMeta: Query.GetBlockByHeightResponse, timestamp: DateTime, blockHeight: Int) {
-        val consAddr = getProposerConsensusAddr(blockMeta)
-        val proposer = findAddressByConsensus(consAddr)!!.operatorAddress
-        try {
-            BlockProposerRecord.save(blockHeight, null, timestamp, proposer)
-        } catch (e: Exception) {
-            // do nothing
-        }
-    }
-
-    fun buildProposerInsert(blockMeta: Query.GetBlockByHeightResponse, timestamp: DateTime, blockHeight: Int): BlockProposer {
+    fun buildProposerInsert(
+        blockMeta: Query.GetBlockByHeightResponse,
+        timestamp: DateTime,
+        blockHeight: Int
+    ): BlockProposer {
         val consAddr = getProposerConsensusAddr(blockMeta)
         val proposer = findAddressByConsensus(consAddr)!!.operatorAddress
         return BlockProposer(blockHeight, proposer, timestamp)

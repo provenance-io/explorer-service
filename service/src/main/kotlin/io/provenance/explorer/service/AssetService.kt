@@ -148,16 +148,15 @@ class AssetService(
             } ?: throw ResourceNotFoundException("Invalid asset: $denom")
         }
 
-    fun getAssetHolders(denom: String, page: Int, count: Int) =
-        runBlocking {
-            val supply = getCurrentSupply(denom)
-            val res = markerClient.getMarkerHolders(denom, page.toOffset(count), count)
-            val list = res.balancesList.asFlow().map { bal ->
-                val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount
-                AssetHolder(bal.address, CountStrTotal(balance, supply, denom))
-            }.toList().sortedWith(compareBy { it.balance.count.toBigDecimal() }).asReversed()
-            PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
-        }
+    fun getAssetHolders(denom: String, page: Int, count: Int) = runBlocking {
+        val supply = getCurrentSupply(denom)
+        val res = markerClient.getMarkerHolders(denom, page.toOffset(count), count)
+        val list = res.balancesList.asFlow().map { bal ->
+            val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount
+            AssetHolder(bal.address, CountStrTotal(balance, supply, denom))
+        }.toList().sortedWith(compareBy { it.balance.count.toBigDecimal() }).asReversed()
+        PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
+    }
 
     fun getTokenDistributionStats() = transaction { TokenDistributionAmountsRecord.getStats() }
 

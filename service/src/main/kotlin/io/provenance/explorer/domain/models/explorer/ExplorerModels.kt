@@ -34,8 +34,8 @@ data class Spotlight(
 
 data class GasStatistics(
     val time: String,
-    val minGasPrice: Int,
-    val maxGasPrice: Int,
+    val minGasPrice: BigDecimal,
+    val maxGasPrice: BigDecimal,
     val averageGasPrice: BigDecimal
 )
 

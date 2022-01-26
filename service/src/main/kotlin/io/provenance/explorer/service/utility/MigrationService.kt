@@ -4,7 +4,6 @@ import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockCacheTable
-import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheTable
 import io.provenance.explorer.domain.entities.TxMessageTable
@@ -29,13 +28,6 @@ class MigrationService(
 ) {
 
     protected val logger = logger(MigrationService::class)
-
-    fun updateProposers(min: Int, max: Int, limit: Int): Boolean {
-        BlockProposerRecord.findMissingRecords(min, max, limit).forEach { block ->
-            validatorService.saveProposerRecord(block.block, block.blockTimestamp, block.height)
-        }
-        return true
-    }
 
     fun updateAccounts(list: List<String>) = transaction {
         list.forEach { accountService.saveAccount(it) }
