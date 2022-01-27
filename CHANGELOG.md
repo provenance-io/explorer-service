@@ -48,16 +48,22 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * For unknown denom types (NOT IBC), set status to `MARKER_STATUS_UNSPECIFIED` so they don't show up in listviews, but are still saved to the database for reference
 * Updated Migration 1.41 to include exception handling in procedures
 * Updated BlockRetry to use the main block insertion method rather than the intermediary
+* Fixed logic to correctly show validator votes in a block
 
 ### Data
 * Migration 1.40 - Data clean up #274
   * Removed duplicate data for `tx_message`, `tx_msg_event`, `tx_msg_event_attr`
-* Migration 1.41 - Added ingestion procedures #274
+* Migration 1.41 - Update `tx_msg_event_attr` table wth fields #274
+  * Added `attr_idx`, `attr_hash` to `tx_msg_event_attr`
+* Migration 1.42 - Update `tx_msg_event_attr` Part 1 #274
+  * Updated `attr_idx` with data
+* Migration 1.43 - Update `tx_msg_event_attr` Part 2 #274
+  * Updated `attr_hash` with data
+* Migration 1.44 - Added ingestion procedures #274
   * Added unique indices for all tx-related tables
   * Added types `tx_event`, `tx_msg`, `tx_update`, `block_update`
   * Added procedures `add_tx(tx_update, integer, timestamp)`, `add_block(block_update)`
-  * Updated `tx_msg_event_attr` with `attr_idx`, `attr_hash`; updated new columns with data
-* Migration 1.42 - Invalid denom cleanup #289
+* Migration 1.45 - Invalid denom cleanup #289
   * Updated `marker_cache.status` to `MARKER_STATUS_UNSPECIFIED` for all `marker_cache.marker_type = 'DENOM'`
 
 ## [v3.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v3.2.0) - 2022-01-18

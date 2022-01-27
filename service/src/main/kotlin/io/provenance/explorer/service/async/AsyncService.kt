@@ -154,9 +154,7 @@ class AsyncService(
     }
 
     @Scheduled(cron = "0/5 * * * * ?") // Every 5 seconds
-    fun updateSpotlight() = transaction {
-        explorerService.createSpotlight()
-    }
+    fun updateSpotlight() = explorerService.createSpotlight()
 
     @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minute
     fun retryBlockTxs() {

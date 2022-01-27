@@ -120,8 +120,8 @@ class AsyncCachingV2(
     fun getBlock(blockHeight: Int) = transaction {
         BlockCacheRecord.findById(blockHeight)?.also {
             BlockCacheRecord.updateHitCount(blockHeight)
-        }?.block ?: saveBlockEtc(blockService.getBlockAtHeightFromChain(blockHeight))
-    }
+        }?.block
+    } ?: saveBlockEtc(blockService.getBlockAtHeightFromChain(blockHeight))
 
     fun saveBlockEtc(blockRes: Query.GetBlockByHeightResponse?): Query.GetBlockByHeightResponse? {
         if (blockRes == null) return null
@@ -141,7 +141,7 @@ class AsyncCachingV2(
         else listOf()
         val blockUpdate = BlockUpdate(block, proposerRec.buildInsert(), valsAtHeight, txs)
         try {
-            blockService.saveBlock(blockUpdate)
+            BlockCacheRecord.insertToProcedure(blockUpdate)
         } catch (e: Exception) {
             logger.error("Failed to save block: ${blockRes.block.height()}", e.message)
             BlockTxRetryRecord.insert(blockRes.block.height(), e)

@@ -163,14 +163,6 @@ fun BlockProposer.buildInsert() = listOf(
     this.blockLatency
 ).toProcedureObject()
 
-fun BlockProposerRecord.toPojo() = BlockProposer(
-    this.blockHeight,
-    this.proposerOperatorAddress,
-    this.blockTimestamp,
-    this.minGasFee,
-    this.blockLatency
-)
-
 class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<BlockProposerRecord>(BlockProposerTable) {
 
@@ -396,20 +388,20 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
                     TxHeatmap(
                         dow = it.key,
                         day = it.value[0].day,
-                        data = it.value.map {
+                        data = it.value.map { row ->
                             TxHeatmapHour(
-                                it.hour,
-                                it.numberTxs
+                                row.hour,
+                                row.numberTxs
                             )
                         }
                     )
                 }
 
-            val dayTotals = result.map { TxHeatmapDay(it.day, it.data.sumOf { it.numberTxs }) }
+            val dayTotals = result.map { row -> TxHeatmapDay(row.day, row.data.sumOf { it.numberTxs }) }
             val hourTotals = result
                 .flatMap { it.data }
                 .groupBy { it.hour }
-                .map { TxHeatmapHour(it.key, it.value.sumOf { it.numberTxs }) }
+                .map { row -> TxHeatmapHour(row.key, row.value.sumOf { it.numberTxs }) }
 
             TxHeatmapRes(result, dayTotals, hourTotals)
         }
@@ -488,6 +480,8 @@ object BlockTxRetryTable : IdTable<Int>(name = "block_tx_retry") {
     val success = bool("success").default(false)
     val errorBlock = text("error_block").nullable().default(null)
     override val id = height.entityId()
+
+    override val primaryKey = PrimaryKey(height)
 }
 
 class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
