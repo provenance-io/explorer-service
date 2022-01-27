@@ -13,6 +13,9 @@ fun BigDecimal.toCoinStr(denom: String) = CoinStr(this.stringfy(), denom)
 
 fun String.toDecCoin() = BigDecimal(this.toBigInteger(), 18).stripTrailingZeros().toPlainString()
 
+fun String.toPercentage() =
+    BigDecimal(this.toBigInteger(), 18).multiply(BigDecimal(100)).stripTrailingZeros().toPlainString() + "%"
+
 fun List<CoinOuterClass.Coin>.toProtoCoin() =
     this.firstOrNull() ?: CoinOuterClass.Coin.newBuilder().setAmount("0").setDenom("").build()
 

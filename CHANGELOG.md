@@ -37,10 +37,17 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Reworked block/transaction ingestion #274
   * Created procedures to save all block/ tx data at once
     * Should eliminate rogue data insertion
+* Updated token stats to use correct Bonded value
+* Updated params to represent percentage values better
+* Added value rollups to delegation/redelegation/unbonding APIS for both Accounts and Validators #290
+  * Generic map to add different values for different PagedResults responses as needed
+* General cleanup of APIs
 
 ### Bug Fixes
 * Removing bad denoms #289
   * For unknown denom types (NOT IBC), set status to `MARKER_STATUS_UNSPECIFIED` so they don't show up in listviews, but are still saved to the database for reference
+* Updated Migration 1.41 to include exception handling in procedures
+* Updated BlockRetry to use the main block insertion method rather than the intermediary
 
 ### Data
 * Migration 1.40 - Data clean up #274

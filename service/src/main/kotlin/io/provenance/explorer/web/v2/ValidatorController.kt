@@ -26,7 +26,10 @@ import javax.validation.constraints.Min
     consumes = "application/json",
     tags = ["Validators"]
 )
-class ValidatorController(private val validatorService: ValidatorService, private val explorerService: ExplorerService) {
+class ValidatorController(
+    private val validatorService: ValidatorService,
+    private val explorerService: ExplorerService
+) {
 
     @ApiOperation("Returns recent validators")
     @GetMapping("/recent")

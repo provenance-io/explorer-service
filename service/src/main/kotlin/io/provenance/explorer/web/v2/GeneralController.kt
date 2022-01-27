@@ -35,15 +35,7 @@ class GeneralController(
     @GetMapping("/spotlight")
     fun spotlight(): ResponseEntity<Spotlight> = ResponseEntity.ok(explorerService.getSpotlightStatistics())
 
-    @Deprecated("This endpoint is not being utilized. Instead, use '/gas/stats'")
-    @ApiOperation("Returns gas statistics", hidden = true)
-    fun gasStatistics(
-        @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime,
-        @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime,
-        @RequestParam(required = false) granularity: DateTruncGranularity?
-    ) = ResponseEntity.ok(explorerService.getGasStatistics(fromDate, toDate, granularity))
-
-    @ApiOperation("Returns gas statistics")
+    @ApiOperation("Returns gas statistics based on msg type (actual cost) - applies to single msg txs only")
     @GetMapping("/gas/stats")
     fun gasStats(
         @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime,
@@ -51,7 +43,7 @@ class GeneralController(
         @RequestParam(required = false) granularity: DateTruncGranularity?
     ) = ResponseEntity.ok(explorerService.getGasStats(fromDate, toDate, granularity))
 
-    @ApiOperation("Returns gas volume")
+    @ApiOperation("Returns gas volume as processed through the chain")
     @GetMapping("/gas/volume")
     fun gasVolume(
         @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime,
@@ -63,7 +55,7 @@ class GeneralController(
     @GetMapping("/chain/id")
     fun getChainId(): ResponseEntity<String> = ResponseEntity.ok(explorerService.getChainId())
 
-    @ApiOperation("Returns statistics on min gas fees for the chain")
+    @ApiOperation("Returns statistics on min gas fees for the chain - DO NOT USE")
     @GetMapping("/gas/fees/statistics")
     fun getGasFeeStatistics(
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
@@ -71,7 +63,7 @@ class GeneralController(
         @RequestParam(required = false, defaultValue = "14") @Min(1) dayCount: Int
     ) = ResponseEntity.ok(explorerService.getGasFeeStatistics(fromDate, toDate, dayCount))
 
-    @ApiOperation("Returns statistics on min gas fees for the chain")
+    @ApiOperation("Returns token statistics for the chain")
     @GetMapping("/token/stats")
     fun getTokenStats() = ResponseEntity.ok(tokenSupplyService.getTokenStats())
 

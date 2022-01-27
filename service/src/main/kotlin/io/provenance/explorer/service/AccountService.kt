@@ -24,6 +24,7 @@ import io.provenance.explorer.domain.models.explorer.Delegation
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.Reward
 import io.provenance.explorer.domain.models.explorer.TokenCounts
+import io.provenance.explorer.domain.models.explorer.UnpaginatedDelegation
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
 import io.provenance.explorer.grpc.extensions.getModuleAccName
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
@@ -98,6 +99,22 @@ class AccountService(
         }
     }
 
+    private fun getDelegationTotal(address: String) = runBlocking {
+        var offset = 0
+        val limit = 100
+
+        val results = accountClient.getDelegations(address, offset, limit)
+        val total = results.pagination?.total ?: results.delegationResponsesCount.toLong()
+        val delegations = results.delegationResponsesList.toMutableList()
+
+        while (delegations.count() < total) {
+            offset += limit
+            accountClient.getDelegations(address, offset, limit).let { delegations.addAll(it.delegationResponsesList) }
+        }
+        delegations.sumOf { it.balance.amount.toBigDecimal() }
+            .toCoinStr(delegations.firstOrNull()?.balance?.denom ?: NHASH)
+    }
+
     fun getDelegations(address: String, page: Int, limit: Int) = runBlocking {
         accountClient.getDelegations(address, page.toOffset(limit), limit).let { res ->
             val list = res.delegationResponsesList.map {
@@ -112,7 +129,8 @@ class AccountService(
                     null
                 )
             }
-            PagedResults(res.pagination.total.pageCountOfResults(limit), list, res.pagination.total)
+            val rollup = mapOf("bondedTotal" to getDelegationTotal(address))
+            PagedResults(res.pagination.total.pageCountOfResults(limit), list, res.pagination.total, rollup)
         }
     }
 
@@ -132,6 +150,9 @@ class AccountService(
                     )
                 }
             }
+        }.let { recs ->
+            val total = recs.sumOf { it.amount.amount.toBigDecimal() }.toCoinStr(NHASH)
+            UnpaginatedDelegation(recs, mapOf(Pair("unbondingTotal", total)))
         }
     }
 
@@ -151,6 +172,9 @@ class AccountService(
                     )
                 }
             }
+        }.let { recs ->
+            val total = recs.sumOf { it.amount.amount.toBigDecimal() }.toCoinStr(NHASH)
+            UnpaginatedDelegation(recs, mapOf(Pair("redelegationTotal", total)))
         }
     }
 

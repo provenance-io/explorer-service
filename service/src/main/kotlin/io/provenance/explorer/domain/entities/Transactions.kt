@@ -3,7 +3,6 @@ package io.provenance.explorer.domain.entities
 import com.google.protobuf.Any
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
-import io.provenance.explorer.domain.core.sql.DateTrunc
 import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
@@ -18,7 +17,6 @@ import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDbHash
-import io.provenance.explorer.domain.models.explorer.GasStatistics
 import io.provenance.explorer.domain.models.explorer.GasStats
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxFee
@@ -36,12 +34,9 @@ import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
-import org.jetbrains.exposed.sql.Avg
 import org.jetbrains.exposed.sql.ColumnSet
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.IntegerColumnType
-import org.jetbrains.exposed.sql.Max
-import org.jetbrains.exposed.sql.Min
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.SortOrder
@@ -103,26 +98,6 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun getTotalTxCount() = transaction {
             TxCacheTable.selectAll().count().toBigInteger()
-        }
-
-        fun getGasStats(startDate: DateTime, endDate: DateTime, granularity: String) = transaction {
-            val dateTrunc = DateTrunc(granularity, TxCacheTable.txTimestamp)
-            val minGas = Min(TxCacheTable.gasUsed, IntegerColumnType())
-            val maxGas = Max(TxCacheTable.gasUsed, IntegerColumnType())
-            val avgGas = Avg(TxCacheTable.gasUsed, 5)
-
-            TxCacheTable.slice(dateTrunc, minGas, maxGas, avgGas)
-                .select { TxCacheTable.txTimestamp.between(startDate.startOfDay(), endDate.startOfDay().plusDays(1)) }
-                .groupBy(dateTrunc)
-                .orderBy(dateTrunc, SortOrder.DESC)
-                .map {
-                    GasStatistics(
-                        it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
-                        it[minGas]!!,
-                        it[maxGas]!!,
-                        it[avgGas]!!
-                    )
-                }
         }
 
         fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
@@ -445,7 +420,7 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 |FROM $tblName
                 |WHERE $tblName.tx_timestamp >= ? 
                 |  AND $tblName.tx_timestamp < ?
-                |ORDER BY $tblName.tx_timestamp DESC
+                |ORDER BY $tblName.tx_timestamp ASC
                 |""".trimMargin()
 
             val dateTimeType = DateColumnType(true)
@@ -520,7 +495,7 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 |FROM $tblName
                 |WHERE $tblName.tx_timestamp >= ? 
                 |  AND $tblName.tx_timestamp < ?
-                |ORDER BY $tblName.tx_timestamp DESC
+                |ORDER BY $tblName.tx_timestamp ASC
                 |""".trimMargin()
 
             val dateTimeType = DateColumnType(true)

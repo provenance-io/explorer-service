@@ -2,6 +2,8 @@ package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.entities.ChainGasFeeCacheTable.date
+import io.provenance.explorer.domain.models.explorer.GasStatistics
 import io.provenance.explorer.domain.models.explorer.Spotlight
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.EntityClass
@@ -127,8 +129,15 @@ class ChainGasFeeCacheRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) {
             if (toDate != null)
                 query.andWhere { ChainGasFeeCacheTable.date lessEq toDate.plusDays(1) }
 
-            query.orderBy(ChainGasFeeCacheTable.date, SortOrder.DESC).limit(count)
-            ChainGasFeeCacheRecord.wrapRows(query)
+            query.orderBy(ChainGasFeeCacheTable.date, SortOrder.ASC).limit(count)
+            ChainGasFeeCacheRecord.wrapRows(query).map {
+                GasStatistics(
+                    it.date.toString("yyyy-MM-dd"),
+                    it.minGasFee!!,
+                    it.maxGasFee!!,
+                    it.avgGasFee!!
+                )
+            }
         }
     }
 

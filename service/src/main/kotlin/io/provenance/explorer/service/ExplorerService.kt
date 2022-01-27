@@ -1,6 +1,8 @@
 package io.provenance.explorer.service
 
 import com.google.protobuf.Any
+import com.google.protobuf.util.JsonFormat
+import cosmos.bank.v1beta1.params
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.upgrade.v1beta1.Upgrade
 import io.provenance.explorer.config.ExplorerProperties
@@ -10,7 +12,6 @@ import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
-import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.extensions.NHASH
@@ -19,41 +20,27 @@ import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.pageOfResults
 import io.provenance.explorer.domain.extensions.toCoinStr
-import io.provenance.explorer.domain.extensions.toDecCoin
 import io.provenance.explorer.domain.extensions.toHash
+import io.provenance.explorer.domain.extensions.toObjectNodePrint
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.translateByteArray
-import io.provenance.explorer.domain.models.explorer.AttributeParams
-import io.provenance.explorer.domain.models.explorer.AuthParams
-import io.provenance.explorer.domain.models.explorer.BankParams
 import io.provenance.explorer.domain.models.explorer.BlockSummary
 import io.provenance.explorer.domain.models.explorer.ChainPrefix
 import io.provenance.explorer.domain.models.explorer.ChainUpgrade
-import io.provenance.explorer.domain.models.explorer.ClientParams
 import io.provenance.explorer.domain.models.explorer.CosmosParams
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.CountTotal
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
-import io.provenance.explorer.domain.models.explorer.DepositParams
-import io.provenance.explorer.domain.models.explorer.DistParams
 import io.provenance.explorer.domain.models.explorer.GovParamType
 import io.provenance.explorer.domain.models.explorer.GovParams
 import io.provenance.explorer.domain.models.explorer.IBCParams
-import io.provenance.explorer.domain.models.explorer.MarkerParams
-import io.provenance.explorer.domain.models.explorer.MinDeposit
-import io.provenance.explorer.domain.models.explorer.MintParams
-import io.provenance.explorer.domain.models.explorer.NameParams
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.Params
 import io.provenance.explorer.domain.models.explorer.PrefixType
 import io.provenance.explorer.domain.models.explorer.ProvParams
-import io.provenance.explorer.domain.models.explorer.SlashingParams
 import io.provenance.explorer.domain.models.explorer.Spotlight
-import io.provenance.explorer.domain.models.explorer.StakingParams
-import io.provenance.explorer.domain.models.explorer.TallyingParams
-import io.provenance.explorer.domain.models.explorer.TransferParams
 import io.provenance.explorer.domain.models.explorer.ValidatorAtHeight
-import io.provenance.explorer.domain.models.explorer.VotingParams
+import io.provenance.explorer.grpc.extensions.toDto
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.GovGrpcClient
@@ -88,13 +75,14 @@ class ExplorerService(
     private val attrClient: AttributeGrpcClient,
     private val metadataClient: MetadataGrpcClient,
     private val markerClient: MarkerGrpcClient,
-    private val validatorClient: ValidatorGrpcClient
+    private val validatorClient: ValidatorGrpcClient,
+    private val protoPrinter: JsonFormat.Printer
 ) {
 
     protected val logger = logger(ExplorerService::class)
 
     fun getBlockAtHeight(height: Int?) = runBlocking(Dispatchers.IO) {
-        val queryHeight = height ?: (blockService.getLatestBlockHeightIndex() - 2)
+        val queryHeight = height ?: (blockService.getMaxBlockCacheHeight() - 1)
         val blockResponse = asyncV2.getBlock(queryHeight)!!
         val nextBlock = asyncV2.getBlock(queryHeight + 1)
         val validatorsResponse = validatorService.getValidatorsByHeight(queryHeight)
@@ -166,17 +154,6 @@ class ExplorerService(
         Pair<BigDecimal, String>(totalBondedTokens, totalBlockChainTokens)
     }
 
-    @Deprecated(
-        "Use getGasStats(DateTime, DateTime, DateTruncGranularity?)",
-        ReplaceWith(
-            "TxCacheRecord.getGasStats(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)",
-            "io.provenance.explorer.domain.entities.TxCacheRecord",
-            "io.provenance.explorer.domain.models.explorer.DateTruncGranularity"
-        )
-    )
-    fun getGasStatistics(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
-        TxCacheRecord.getGasStats(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
-
     fun getGasStats(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
         TxSingleMessageCacheRecord.getGasStats(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
 
@@ -184,7 +161,7 @@ class ExplorerService(
         TxGasCacheRecord.getGasVolume(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
 
     fun getGasFeeStatistics(fromDate: DateTime?, toDate: DateTime?, count: Int) =
-        ChainGasFeeCacheRecord.findForDates(fromDate, toDate, count).reversed()
+        ChainGasFeeCacheRecord.findForDates(fromDate, toDate, count)
 
     fun getChainId() = asyncV2.getChainIdString()
 
@@ -226,13 +203,13 @@ class ExplorerService(
     )
 
     fun getParams(): Params = runBlocking {
-        val authParams = async { accountClient.getAuthParams().params }.await()
-        val bankParams = async { accountClient.getBankParams().params }.await()
+        val authParams = async { accountClient.getAuthParams().params }
+        val bankParams = async { accountClient.getBankParams().params }
         val distParams = validatorClient.getDistParams().params
         val votingParams = govClient.getParams(GovParamType.voting).votingParams
         val tallyParams = govClient.getParams(GovParamType.tallying).tallyParams
         val depositParams = govClient.getParams(GovParamType.deposit).depositParams
-        val mintParams = async { accountClient.getMintParams().params }.await()
+        val mintParams = async { accountClient.getMintParams().params }
         val slashingParams = validatorClient.getSlashingParams().params
         val stakingParams = validatorClient.getStakingParams().params
         val transferParams = ibcClient.getTransferParams().params
@@ -244,87 +221,28 @@ class ExplorerService(
 
         Params(
             CosmosParams(
-                AuthParams(
-                    authParams.maxMemoCharacters,
-                    authParams.txSigLimit,
-                    authParams.txSigLimit,
-                    authParams.sigVerifyCostEd25519,
-                    authParams.sigVerifyCostSecp256K1,
-                ),
-                BankParams(
-                    bankParams.defaultSendEnabled
-                ),
-                DistParams(
-                    distParams.communityTax.toDecCoin(),
-                    distParams.baseProposerReward.toDecCoin(),
-                    distParams.bonusProposerReward.toDecCoin(),
-                    distParams.withdrawAddrEnabled,
-                ),
+                authParams.await().toObjectNodePrint(protoPrinter),
+                bankParams.await().let { params { this.defaultSendEnabled = it.defaultSendEnabled } }
+                    .toObjectNodePrint(protoPrinter),
+                distParams.toDto(),
                 GovParams(
-                    VotingParams(
-                        votingParams.votingPeriod.seconds,
-                    ),
-                    TallyingParams(
-                        tallyParams.quorum.toString(Charsets.UTF_8).toDecCoin(),
-                        tallyParams.threshold.toString(Charsets.UTF_8).toDecCoin(),
-                        tallyParams.vetoThreshold.toString(Charsets.UTF_8).toDecCoin(),
-                    ),
-                    DepositParams(
-                        MinDeposit(
-                            depositParams.getMinDeposit(0).denom,
-                            depositParams.getMinDeposit(0).amount,
-                        ),
-                        depositParams.maxDepositPeriod.seconds,
-                    ),
+                    votingParams.toObjectNodePrint(protoPrinter),
+                    tallyParams.toDto(),
+                    depositParams.toObjectNodePrint(protoPrinter),
                 ),
-                MintParams(
-                    mintParams.mintDenom,
-                    mintParams.inflationRateChange.toDecCoin(),
-                    mintParams.inflationMax,
-                    mintParams.inflationMin,
-                    mintParams.goalBonded.toDecCoin(),
-                    mintParams.blocksPerYear,
-                ),
-                SlashingParams(
-                    slashingParams.signedBlocksWindow,
-                    slashingParams.minSignedPerWindow.toString(Charsets.UTF_8).toDecCoin(),
-                    slashingParams.downtimeJailDuration.seconds,
-                    slashingParams.slashFractionDoubleSign.toString(Charsets.UTF_8).toDecCoin(),
-                    slashingParams.slashFractionDowntime.toString(Charsets.UTF_8).toDecCoin(),
-                ),
-                StakingParams(
-                    stakingParams.unbondingTime.seconds,
-                    stakingParams.maxValidators,
-                    stakingParams.maxEntries,
-                    stakingParams.historicalEntries,
-                    stakingParams.bondDenom,
-                ),
+                mintParams.await().toDto(),
+                slashingParams.toDto(),
+                stakingParams.toObjectNodePrint(protoPrinter),
                 IBCParams(
-                    TransferParams(
-                        transferParams.sendEnabled,
-                        transferParams.receiveEnabled,
-                    ),
-                    ClientParams(
-                        clientParams.allowedClientsList,
-                    ),
+                    transferParams.toObjectNodePrint(protoPrinter),
+                    clientParams.toObjectNodePrint(protoPrinter),
                 ),
             ),
             ProvParams(
-                AttributeParams(
-                    attrParams.maxValueLength,
-                ),
-                MarkerParams(
-                    markerParams.maxTotalSupply,
-                    markerParams.enableGovernance,
-                    markerParams.unrestrictedDenomRegex,
-                ),
-                metadataParams.toString(),
-                NameParams(
-                    nameParams.maxSegmentLength,
-                    nameParams.minSegmentLength,
-                    nameParams.maxNameLevels,
-                    nameParams.allowUnrestrictedNames,
-                ),
+                attrParams.toObjectNodePrint(protoPrinter),
+                markerParams.toObjectNodePrint(protoPrinter),
+                metadataParams.toObjectNodePrint(protoPrinter),
+                nameParams.toObjectNodePrint(protoPrinter),
             ),
         )
     }

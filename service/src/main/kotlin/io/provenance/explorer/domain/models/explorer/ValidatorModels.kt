@@ -61,6 +61,11 @@ data class Delegation(
     val endTime: DateTime?
 )
 
+data class UnpaginatedDelegation(
+    val records: List<Delegation>,
+    val rollupTotals: Map<String, CoinStr>
+)
+
 data class ValidatorCommission(
     val bondedTokens: CountStrTotal,
     val selfBonded: CountStrTotal,

@@ -5,13 +5,22 @@ import cosmos.auth.v1beta1.Auth
 import cosmos.base.query.v1beta1.Pagination
 import cosmos.base.query.v1beta1.pageRequest
 import cosmos.crypto.multisig.Keys
+import cosmos.distribution.v1beta1.Distribution
+import cosmos.gov.v1beta1.Gov
+import cosmos.mint.v1beta1.Mint
+import cosmos.slashing.v1beta1.Slashing
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toBech32Data
 import io.provenance.explorer.domain.extensions.edPubKeyToBech32
 import io.provenance.explorer.domain.extensions.secp256k1PubKeyToBech32
 import io.provenance.explorer.domain.extensions.secp256r1PubKeyToBech32
+import io.provenance.explorer.domain.extensions.toPercentage
 import io.provenance.explorer.domain.extensions.toSha256
+import io.provenance.explorer.domain.models.explorer.DistParams
+import io.provenance.explorer.domain.models.explorer.MintParams
+import io.provenance.explorer.domain.models.explorer.SlashingParams
+import io.provenance.explorer.domain.models.explorer.TallyingParams
 import io.provenance.explorer.service.prettyRole
 import io.provenance.marker.v1.Access
 import io.provenance.marker.v1.MarkerAccount
@@ -97,3 +106,33 @@ fun getPaginationNoCount(offset: Int, limit: Int) =
         this.offset = offset.toLong()
         this.limit = limit.toLong()
     }
+
+fun Distribution.Params.toDto() = DistParams(
+    this.communityTax.toPercentage(),
+    this.baseProposerReward.toPercentage(),
+    this.bonusProposerReward.toPercentage(),
+    this.withdrawAddrEnabled,
+)
+
+fun Gov.TallyParams.toDto() = TallyingParams(
+    this.quorum.toString(Charsets.UTF_8).toPercentage(),
+    this.threshold.toString(Charsets.UTF_8).toPercentage(),
+    this.vetoThreshold.toString(Charsets.UTF_8).toPercentage(),
+)
+
+fun Mint.Params.toDto() = MintParams(
+    this.mintDenom,
+    this.inflationRateChange.toPercentage(),
+    this.inflationMax.toPercentage(),
+    this.inflationMin.toPercentage(),
+    this.goalBonded.toPercentage(),
+    this.blocksPerYear,
+)
+
+fun Slashing.Params.toDto() = SlashingParams(
+    this.signedBlocksWindow,
+    this.minSignedPerWindow.toString(Charsets.UTF_8).toPercentage(),
+    "${this.downtimeJailDuration.seconds}s",
+    this.slashFractionDoubleSign.toString(Charsets.UTF_8).toPercentage(),
+    this.slashFractionDowntime.toString(Charsets.UTF_8).toPercentage(),
+)

@@ -3,7 +3,6 @@ package io.provenance.explorer.grpc.v1
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.getPagination
-import io.provenance.explorer.grpc.extensions.getPaginationNoCount
 import io.provenance.explorer.grpc.extensions.toMarker
 import io.provenance.marker.v1.MarkerAccount
 import io.provenance.marker.v1.QueryGrpcKt
@@ -57,7 +56,7 @@ class MarkerGrpcClient(channelUri: URI, private val semaphore: Semaphore) {
             markerClient.holding(
                 queryHoldingRequest {
                     this.id = denom
-                    this.pagination = getPaginationNoCount(offset, count)
+                    this.pagination = getPagination(offset, count)
                 }
             )
         }
