@@ -249,10 +249,12 @@ class AssetService(
         }
 
     fun getTotalAum() = runBlocking {
-        val baseMap = MarkerCacheRecord.find {
-            (MarkerCacheTable.status eq MarkerStatus.MARKER_STATUS_ACTIVE.name) and
-                (MarkerCacheTable.supply greater BigDecimal.ZERO)
-        }.associate { it.denom to it.supply }
+        val baseMap = transaction {
+            MarkerCacheRecord.find {
+                (MarkerCacheTable.status eq MarkerStatus.MARKER_STATUS_ACTIVE.name) and
+                    (MarkerCacheTable.supply greater BigDecimal.ZERO)
+            }.associate { it.denom to it.supply }
+        }
         val pricing = baseMap.keys.toList().chunked(50) { getPricingInfo(it) }.flatMap { it.toList() }.toMap()
             .toMutableMap().also { it.putAll(getPricingForNhash()) }
         baseMap.map { (k, v) -> (pricing[k] ?: BigDecimal.ZERO).multiply(v.toHashSupply(k)) }.sumOf { it }

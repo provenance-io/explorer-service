@@ -1,25 +1,67 @@
-SELECT 'Adding attr_hash to tx_msg_event_attr' AS comment;
-ALTER TABLE tx_msg_event_attr
-    ADD COLUMN IF NOT EXISTS attr_idx  INT  DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS attr_hash TEXT DEFAULT NULL;
-
-UPDATE tx_msg_event_attr
-SET attr_idx = t.rn - 1
-FROM (
-         SELECT id,
-                tx_msg_event_id,
-                row_number() OVER (PARTITION BY tx_msg_event_id ORDER BY id) AS rn
-         FROM tx_msg_event_attr
-     ) t
-WHERE t.id = tx_msg_event_attr.id;
-
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
-UPDATE tx_msg_event_attr
-SET attr_hash = encode(digest(concat(attr_idx,attr_key,attr_value)::text, 'sha512'::TEXT), 'base64'::TEXT)
-WHERE attr_hash IS NULL;
-
 SELECT 'Adding unique indices' AS comment;
+DELETE
+FROM tx_address_join
+WHERE id IN
+      (SELECT id
+       FROM (SELECT id,
+                    ROW_NUMBER() OVER ( PARTITION BY tx_hash, address ORDER BY id ) AS row_num
+             FROM tx_address_join) t
+       WHERE t.row_num > 1);
+
+DELETE
+FROM tx_marker_join
+WHERE id IN
+      (SELECT id
+       FROM (SELECT id,
+                    ROW_NUMBER() OVER ( PARTITION BY tx_hash, marker_id ORDER BY id ) AS row_num
+             FROM tx_marker_join) t
+       WHERE t.row_num > 1);
+
+DELETE
+FROM tx_nft_join
+WHERE id IN
+      (SELECT id
+       FROM (SELECT id,
+                    ROW_NUMBER() OVER ( PARTITION BY tx_hash, metadata_type, metadata_id ORDER BY id ) AS row_num
+             FROM tx_nft_join) t
+       WHERE t.row_num > 1);
+
+DELETE
+FROM tx_sm_code
+WHERE id IN
+      (SELECT id
+       FROM (SELECT id,
+                    ROW_NUMBER() OVER ( PARTITION BY tx_hash, sm_code ORDER BY id ) AS row_num
+             FROM tx_sm_code) t
+       WHERE t.row_num > 1);
+
+DELETE
+FROM tx_sm_contract
+WHERE id IN
+      (SELECT id
+       FROM (SELECT id,
+                    ROW_NUMBER() OVER ( PARTITION BY tx_hash, sm_contract_id ORDER BY id ) AS row_num
+             FROM tx_sm_contract) t
+       WHERE t.row_num > 1);
+
+DELETE
+FROM signature_join
+WHERE id IN
+      (SELECT id
+       FROM (SELECT id,
+                    ROW_NUMBER() OVER ( PARTITION BY join_type, join_key, signature_id ORDER BY id ) AS row_num
+             FROM signature_join) t
+       WHERE t.row_num > 1);
+
+DELETE
+FROM tx_feepayer
+WHERE id IN
+      (SELECT id
+       FROM (SELECT id,
+                    ROW_NUMBER() OVER ( PARTITION BY tx_hash, payer_type, address_id ORDER BY id ) AS row_num
+             FROM tx_feepayer) t
+       WHERE t.row_num > 1);
+
 CREATE UNIQUE INDEX IF NOT EXISTS ibc_ledger_unique_idx ON ibc_ledger (channel_id, from_address, to_address,
                                                                        denom_trace, balance_in, balance_out,
                                                                        tx_hash_id);
@@ -169,8 +211,8 @@ BEGIN
                     -- insert attributes
                     FOREACH attr IN ARRAY (event).txAttrs
                         LOOP
-                            INSERT INTO tx_msg_event_attr(tx_msg_event_id, attr_key, attr_value)
-                            VALUES (eventId, attr.attr_key, attr.attr_value)
+                            INSERT INTO tx_msg_event_attr(tx_msg_event_id, attr_key, attr_value, attr_idx, attr_hash)
+                            VALUES (eventId, attr.attr_key, attr.attr_value, attr.attr_idx, attr.attr_hash)
                             ON CONFLICT (tx_msg_event_id, attr_hash) DO NOTHING;
                         END LOOP;
                 END LOOP;

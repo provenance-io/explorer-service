@@ -261,7 +261,8 @@ class ExplorerService(
         val status = "all"
         val valFilter = validatorSet.map { it.address }
         val stakingValidators = validatorService.getStakingValidators(status, valFilter, page.toOffset(count), count)
-        val votingSet = asyncV2.getBlock(height + 1)!!.getVotingSet(props)
+        val votingSet = asyncV2.getBlock(height + 1)!!
+            .getVotingSet(props, Types.BlockIDFlag.BLOCK_ID_FLAG_ABSENT_VALUE).keys
         val proposer = transaction { BlockProposerRecord.findById(height)!! }
         val results = validatorService.hydrateValidators(validatorSet, stakingValidators).map {
             ValidatorAtHeight(
@@ -272,7 +273,7 @@ class ExplorerService(
                 it.votingPower,
                 it.imgUrl,
                 it.addressId == proposer.proposerOperatorAddress,
-                votingSet[it.consensusAddress] != Types.BlockIDFlag.BLOCK_ID_FLAG_ABSENT
+                votingSet.contains(it.consensusAddress)
             )
         }
         return PagedResults(
