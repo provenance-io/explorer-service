@@ -264,7 +264,7 @@ class ExplorerService(
         val votingSet = asyncV2.getBlock(height + 1)!!
             .getVotingSet(props, Types.BlockIDFlag.BLOCK_ID_FLAG_ABSENT_VALUE).keys
         val proposer = transaction { BlockProposerRecord.findById(height)!! }
-        val results = validatorService.hydrateValidators(validatorSet, stakingValidators).map {
+        val results = validatorService.hydrateValidators(validatorSet, listOf(), stakingValidators).map {
             ValidatorAtHeight(
                 it.moniker,
                 it.addressId,

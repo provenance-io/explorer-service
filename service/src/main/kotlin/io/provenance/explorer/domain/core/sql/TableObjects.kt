@@ -1,5 +1,6 @@
 package io.provenance.explorer.domain.core.sql
 
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.google.protobuf.GeneratedMessageV3
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.extensions.execAndMap
@@ -23,9 +24,10 @@ fun List<Any?>.toProcedureObject() =
             when (value) {
                 is DateTime -> "'${value.toProcedureObject()}'"
                 is GeneratedMessageV3 -> "'${value.toProcedureObject()}'"
-                is Int, is Double, is BigDecimal -> value.toString()
+                is Int, is Double, is BigDecimal, is Long -> value.toString()
                 is String -> "'$value'"
                 is Boolean -> value.toString()
+                is ObjectNode -> "'$value'"
                 else -> "not a thing"
             }
     }

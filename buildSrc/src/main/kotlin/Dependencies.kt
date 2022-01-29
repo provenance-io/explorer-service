@@ -95,7 +95,7 @@ object Libraries {
     const val ApacheCommonsText = "org.apache.commons:commons-text:${Versions.ApacheCommonsText}"
     const val ApacheHttpClient = "org.apache.httpcomponents:httpclient:${Versions.ApacheHttpClient}"
     const val KtorClientCore = "io.ktor:ktor-client-core:${Versions.Ktor}"
-    const val KtorClientEngine = "io.ktor:ktor-client-cio:${Versions.Ktor}"
+    const val KtorClientEngineJava = "io.ktor:ktor-client-java:${Versions.Ktor}"
     const val KaseChange = "net.pearx.kasechange:kasechange:${Versions.KaseChange}"
     const val Json = "org.json:json:${Versions.Json}"
 

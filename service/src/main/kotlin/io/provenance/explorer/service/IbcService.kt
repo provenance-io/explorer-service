@@ -135,6 +135,7 @@ class IbcService(
         IbcLedgerRecord.getByDenom().map {
             Balance(
                 it.denom,
+                it.denomTrace,
                 it.balanceIn?.toCoinStr(it.denom),
                 it.balanceOut?.toCoinStr(it.denom),
                 it.lastTx.toString()
@@ -148,6 +149,7 @@ class IbcService(
                 val balances = v.map { ledger ->
                     Balance(
                         ledger.denom,
+                        ledger.denomTrace,
                         ledger.balanceIn?.toCoinStr(ledger.denom),
                         ledger.balanceOut?.toCoinStr(ledger.denom),
                         ledger.lastTx.toString()
@@ -167,6 +169,7 @@ class IbcService(
                     val balances = list.map { ledger ->
                         Balance(
                             ledger.denom,
+                            ledger.denomTrace,
                             ledger.balanceIn?.toCoinStr(ledger.denom),
                             ledger.balanceOut?.toCoinStr(ledger.denom),
                             ledger.lastTx.toString()

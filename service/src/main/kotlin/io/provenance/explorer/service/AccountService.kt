@@ -75,7 +75,10 @@ class AccountService(
                     metadataClient.getScopesByOwner(it.accountAddress).pagination.total.toInt()
                 ),
                 it.isContract,
-                assetService.getAumForList(balances.await().balancesList.associate { bal -> bal.denom to bal.amount })
+                assetService.getAumForList(
+                    balances.await().balancesList.associate { bal -> bal.denom to bal.amount },
+                    "accountAUM"
+                )
                     .toCoinStr("USD")
             )
         }
@@ -93,7 +96,7 @@ class AccountService(
 
     fun getAccountBalances(address: String, page: Int, limit: Int) = runBlocking {
         getBalances(address, page, limit).let { res ->
-            val pricing = assetService.getPricingInfoIn(res.balancesList.map { it.denom })
+            val pricing = assetService.getPricingInfoIn(res.balancesList.map { it.denom }, "accountBalances")
             val bals = res.balancesList.map { it.toCoinStrWithPrice(pricing[it.denom]) }
             PagedResults(res.pagination.total.pageCountOfResults(limit), bals, res.pagination.total)
         }
@@ -181,7 +184,10 @@ class AccountService(
     fun getRewards(address: String) = runBlocking {
         accountClient.getRewards(address).let { res ->
             val pricing =
-                assetService.getPricingInfoIn(res.rewardsList.flatMap { list -> list.rewardList.map { it.denom } })
+                assetService.getPricingInfoIn(
+                    res.rewardsList.flatMap { list -> list.rewardList.map { it.denom } },
+                    "rewards"
+                )
 
             AccountRewards(
                 res.rewardsList.map { list ->

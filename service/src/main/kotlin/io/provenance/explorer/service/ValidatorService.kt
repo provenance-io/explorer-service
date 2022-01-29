@@ -8,7 +8,7 @@ import io.ktor.client.features.ResponseException
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.HttpResponse
-import io.provenance.explorer.KTOR_CLIENT
+import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
@@ -22,6 +22,7 @@ import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.average
+import io.provenance.explorer.domain.extensions.get24HrBlockHeight
 import io.provenance.explorer.domain.extensions.getStatusString
 import io.provenance.explorer.domain.extensions.isActive
 import io.provenance.explorer.domain.extensions.pageCountOfResults
@@ -66,7 +67,8 @@ import java.math.BigInteger
 class ValidatorService(
     private val props: ExplorerProperties,
     private val blockService: BlockService,
-    private val grpcClient: ValidatorGrpcClient
+    private val grpcClient: ValidatorGrpcClient,
+    private val cacheService: CacheService
 ) {
 
     protected val logger = logger(ValidatorService::class)
@@ -112,7 +114,7 @@ class ValidatorService(
         getValidatorOperatorAddress(address)?.let { addr ->
             val currentHeight = blockService.getLatestBlockHeight().toBigInteger()
             val signingInfo = getSigningInfos().firstOrNull { it.address == addr.consensusAddr }
-            val validatorSet = grpcClient.getLatestValidators()
+            val validatorSet = grpcClient.getLatestValidators().validatorsList
             val latestValidator = validatorSet.firstOrNull { it.address == addr.consensusAddr }
             val votingPowerTotal = validatorSet.sumOf { it.votingPower.toBigInteger() }
             validateStatus(
@@ -230,7 +232,7 @@ class ValidatorService(
 
     // Abbreviated data used for specific cases
     fun getAllValidatorsAbbrev() = transaction {
-        val validatorSet = grpcClient.getLatestValidators()
+        val validatorSet = grpcClient.getLatestValidators().validatorsList
         val totalVotingPower = validatorSet.sumOf { it.votingPower.toBigInteger() }
         val recs = getStakingValidators("all", null, null, null).map { currVal ->
             val validator = validatorSet.firstOrNull { it.address == currVal.consensusAddr }
@@ -247,30 +249,37 @@ class ValidatorService(
 
     // In point to get most recent validators
     fun getRecentValidators(count: Int, page: Int, status: String) =
-        aggregateValidatorsRecent(grpcClient.getLatestValidators(), count, page, status)
+        aggregateValidatorsRecent(
+            count,
+            page,
+            status
+        )
 
     private fun aggregateValidatorsRecent(
-        validatorSet: List<Query.Validator>,
         count: Int,
         page: Int,
         status: String
-    ) =
-        let {
-            getStakingValidators(status).map { v ->
-                validateStatus(
-                    v.json,
-                    validatorSet.firstOrNull { it.address == v.consensusAddr },
-                    v.operatorAddrId
-                )
-            }.also { map -> if (map.contains(true)) ValidatorStateRecord.refreshCurrentStateView() }
-            val stakingValidators = getStakingValidators(status, null, page.toOffset(count), count)
-            val results = hydrateValidators(validatorSet, stakingValidators)
-            val totalCount = getStakingValidatorsCount(status, null)
-            PagedResults(totalCount.pageCountOfResults(count), results, totalCount)
-        }
+    ): PagedResults<ValidatorSummary> {
+        val (height, validatorSet) = grpcClient.getLatestValidators().let { it.blockHeight to it.validatorsList }
+        val hr24ChangeSet = grpcClient.getValidatorsAtHeight(
+            height.get24HrBlockHeight(cacheService.getSpotlight().avgBlockTime).toInt()
+        ).validatorsList
+        getStakingValidators(status).map { v ->
+            validateStatus(
+                v.json,
+                validatorSet.firstOrNull { it.address == v.consensusAddr },
+                v.operatorAddrId
+            )
+        }.also { map -> if (map.contains(true)) ValidatorStateRecord.refreshCurrentStateView() }
+        val stakingValidators = getStakingValidators(status, null, page.toOffset(count), count)
+        val results = hydrateValidators(validatorSet, hr24ChangeSet, stakingValidators)
+        val totalCount = getStakingValidatorsCount(status, null)
+        return PagedResults(totalCount.pageCountOfResults(count), results, totalCount)
+    }
 
     fun hydrateValidators(
         validatorSet: List<Query.Validator>,
+        hr24ChangeSet: List<Query.Validator>,
         stakingVals: List<CurrentValidatorState>
     ) = let {
         val signingInfos = getSigningInfos()
@@ -279,14 +288,16 @@ class ValidatorService(
         stakingVals
             .map { stakingVal ->
                 val validator = validatorSet.firstOrNull { it.address == stakingVal.consensusAddr }
+                val hr24Validator = hr24ChangeSet.firstOrNull { it.address == stakingVal.consensusAddr }
                 val signingInfo = signingInfos.find { it.address == stakingVal.consensusAddr }
                     ?: Slashing.ValidatorSigningInfo.getDefaultInstance()
-                hydrateValidator(validator, stakingVal, signingInfo, height.toBigInteger(), totalVotingPower)
+                hydrateValidator(validator, hr24Validator, stakingVal, signingInfo, height.toBigInteger(), totalVotingPower)
             }
     }
 
     private fun hydrateValidator(
         validator: Query.Validator?,
+        hr24Validator: Query.Validator?,
         stakingVal: CurrentValidatorState,
         signingInfo: Slashing.ValidatorSigningInfo,
         height: BigInteger,
@@ -318,9 +329,13 @@ class ValidatorService(
             status = stakingVal.json.getStatusString(),
             currentGasFee = BlockProposerRecord.findCurrentFeeForAddress(stakingVal.operatorAddress)?.minGasFee,
             unbondingHeight = if (!stakingVal.json.isActive()) stakingVal.json.unbondingHeight else null,
-            imgUrl = getImgUrl(stakingVal.json.description.identity)
+            imgUrl = getImgUrl(stakingVal.json.description.identity),
+            hr24Change = get24HrBondedChange(validator, hr24Validator)
         )
     }
+
+    private fun get24HrBondedChange(latestVal: Query.Validator?, hr24Val: Query.Validator?) =
+        ((latestVal?.votingPower ?: 0L) - (hr24Val?.votingPower ?: 0L)).let { if (it == 0L) null else it.toString() }
 
     private fun getValSelfBonded(stakingVal: Staking.Validator) = transaction {
         try {
@@ -451,7 +466,7 @@ class ValidatorService(
     fun getImgUrl(identityStr: String) = runBlocking {
         if (identityStr.isNotBlank()) {
             val res = try {
-                KTOR_CLIENT.get<HttpResponse>("https://keybase.io/_/api/1.0/user/lookup.json") {
+                KTOR_CLIENT_JAVA.get<HttpResponse>("https://keybase.io/_/api/1.0/user/lookup.json") {
                     parameter("key_suffix", identityStr)
                     parameter("fields", "pictures")
                 }

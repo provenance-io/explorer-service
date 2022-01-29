@@ -37,7 +37,7 @@ dependencies {
     implementation(Libraries.KaseChange)
     api(Libraries.ApacheHttpClient)
     implementation(Libraries.KtorClientCore)
-    implementation(Libraries.KtorClientEngine)
+    implementation(Libraries.KtorClientEngineJava)
     implementation(Libraries.Json)
 
     implementation(Libraries.GrpcNetty)
