@@ -118,6 +118,8 @@ fun DateTime.startOfDay() = this.withZone(DateTimeZone.UTC).withTimeAtStartOfDay
 fun String.toDateTime() = DateTime.parse(this)
 
 fun BlockOuterClass.Block.height() = this.header.height.toInt()
+fun Long.get24HrBlockHeight(avgBlockTime: BigDecimal) =
+    BigDecimal(24 * 60 * 60).divide(avgBlockTime, 0, RoundingMode.HALF_UP).let { this - it.toInt() }
 
 fun String.toObjectNode() = OBJECT_MAPPER.readValue(StringEscapeUtils.unescapeJson(this), ObjectNode::class.java)
 

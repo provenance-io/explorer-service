@@ -19,7 +19,8 @@ data class ValidatorSummary(
     val status: String,
     val currentGasFee: Double?,
     val unbondingHeight: Long?,
-    val imgUrl: String?
+    val imgUrl: String?,
+    val hr24Change: String?
 )
 
 data class ValidatorSummaryAbbrev(

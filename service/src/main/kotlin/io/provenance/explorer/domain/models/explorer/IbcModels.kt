@@ -73,6 +73,7 @@ data class BalanceByChannel(
 
 data class Balance(
     val denom: String,
+    val denomTrace: String,
     val balanceIn: CoinStr?,
     val balanceOut: CoinStr?,
     val lastTx: String
@@ -86,6 +87,7 @@ data class LedgerBySliceRes(
     val dstPort: String?,
     val dstChannel: String?,
     val denom: String,
+    val denomTrace: String,
     val balanceIn: BigDecimal?,
     val balanceOut: BigDecimal?,
     val lastTx: DateTime

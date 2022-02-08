@@ -217,13 +217,13 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
             IbcLedgerTable.innerJoin(IbcChannelTable, { IbcLedgerTable.channelId }, { IbcChannelTable.id })
                 .slice(
                     IbcLedgerTable.dstChainName, IbcChannelTable.srcPort, IbcChannelTable.srcChannel,
-                    IbcChannelTable.dstPort, IbcChannelTable.dstChannel, IbcLedgerTable.denom, balanceInSum,
-                    balanceOutSum, lastTxTime
+                    IbcChannelTable.dstPort, IbcChannelTable.dstChannel, IbcLedgerTable.denom,
+                    IbcLedgerTable.denomTrace, balanceInSum, balanceOutSum, lastTxTime
                 )
                 .select { IbcLedgerTable.acknowledged and IbcLedgerTable.ackSuccess }
                 .groupBy(
                     IbcLedgerTable.dstChainName, IbcChannelTable.srcPort, IbcChannelTable.srcChannel,
-                    IbcChannelTable.dstPort, IbcChannelTable.dstChannel, IbcLedgerTable.denom
+                    IbcChannelTable.dstPort, IbcChannelTable.dstChannel, IbcLedgerTable.denom, IbcLedgerTable.denomTrace
                 )
                 .orderBy(
                     Pair(IbcLedgerTable.dstChainName, SortOrder.ASC),
@@ -238,6 +238,7 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
                         it[IbcChannelTable.dstPort],
                         it[IbcChannelTable.dstChannel],
                         it[IbcLedgerTable.denom],
+                        it[IbcLedgerTable.denomTrace],
                         it[balanceInSum],
                         it[balanceOutSum],
                         it[lastTxTime]!!
@@ -247,9 +248,12 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun getByChain() = transaction {
             IbcLedgerTable
-                .slice(IbcLedgerTable.dstChainName, IbcLedgerTable.denom, balanceInSum, balanceOutSum, lastTxTime)
+                .slice(
+                    IbcLedgerTable.dstChainName, IbcLedgerTable.denom, IbcLedgerTable.denomTrace, balanceInSum,
+                    balanceOutSum, lastTxTime
+                )
                 .select { IbcLedgerTable.acknowledged and IbcLedgerTable.ackSuccess }
-                .groupBy(IbcLedgerTable.dstChainName, IbcLedgerTable.denom)
+                .groupBy(IbcLedgerTable.dstChainName, IbcLedgerTable.denom, IbcLedgerTable.denomTrace)
                 .orderBy(
                     Pair(IbcLedgerTable.dstChainName, SortOrder.ASC),
                     Pair(IbcLedgerTable.denom, SortOrder.ASC)
@@ -262,6 +266,7 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
                         null,
                         null,
                         it[IbcLedgerTable.denom],
+                        it[IbcLedgerTable.denomTrace],
                         it[balanceInSum],
                         it[balanceOutSum],
                         it[lastTxTime]!!
@@ -271,9 +276,9 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun getByDenom() = transaction {
             IbcLedgerTable
-                .slice(IbcLedgerTable.denom, balanceInSum, balanceOutSum, lastTxTime)
+                .slice(IbcLedgerTable.denom, IbcLedgerTable.denomTrace, balanceInSum, balanceOutSum, lastTxTime)
                 .select { IbcLedgerTable.acknowledged and IbcLedgerTable.ackSuccess }
-                .groupBy(IbcLedgerTable.denom)
+                .groupBy(IbcLedgerTable.denom, IbcLedgerTable.denomTrace)
                 .orderBy(Pair(IbcLedgerTable.denom, SortOrder.ASC))
                 .map {
                     LedgerBySliceRes(
@@ -283,6 +288,7 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
                         null,
                         null,
                         it[IbcLedgerTable.denom],
+                        it[IbcLedgerTable.denomTrace],
                         it[balanceInSum],
                         it[balanceOutSum],
                         it[lastTxTime]!!

@@ -3,7 +3,6 @@ package io.provenance.explorer.domain.entities
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.nullsLast
-import io.provenance.explorer.domain.entities.TokenDistributionPaginatedResultsRecord.Companion.batchUpsert
 import io.provenance.explorer.domain.extensions.map
 import io.provenance.explorer.domain.models.explorer.AssetHolder
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
