@@ -20,6 +20,7 @@ import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.BlockService
+import io.provenance.explorer.service.CacheService
 import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.service.GovService
 import io.provenance.explorer.service.getBlock
@@ -30,6 +31,8 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import tendermint.types.BlockOuterClass
 import java.math.BigDecimal
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 @Service
 class AsyncService(
@@ -38,7 +41,8 @@ class AsyncService(
     private val assetService: AssetService,
     private val govService: GovService,
     private val asyncCache: AsyncCachingV2,
-    private val explorerService: ExplorerService
+    private val explorerService: ExplorerService,
+    private val cacheService: CacheService
 ) {
 
     protected val logger = logger(AsyncService::class)
@@ -100,6 +104,7 @@ class AsyncService(
 
     @Scheduled(cron = "0 0 1 * * ?") // Everyday at 1 am
     fun updateGasFeeCaches() = transaction {
+        logger.info("Updating gas cache fees")
         val date = DateTime.now().startOfDay().minusDays(1)
         val records = BlockProposerRecord.findForDates(date, date, null)
         records.groupBy { it.proposerOperatorAddress }.forEach { (k, v) -> calcAndInsert(v, k, date) }
@@ -126,6 +131,7 @@ class AsyncService(
 
     @Scheduled(cron = "0 30 0/1 * * ?") // Every hour at the 30 minute mark
     fun performProposalUpdates() = transaction {
+        logger.info("Performing proposal updates")
         GovProposalRecord.getNonFinalProposals().forEach { govService.updateProposal(it) }
         val currentBlock = blockService.getMaxBlockCacheHeight().getBlock()
         ProposalMonitorRecord.getUnprocessed().forEach {
@@ -158,6 +164,7 @@ class AsyncService(
 
     @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minute
     fun retryBlockTxs() {
+        logger.info("Retrying block/tx records")
         BlockTxRetryRecord.getRecordsToRetry().map { height ->
             val block = try {
                 asyncCache.saveBlockEtc(blockService.getBlockAtHeightFromChain(height))!!
@@ -166,5 +173,17 @@ class AsyncService(
             BlockTxRetryRecord.updateRecord(height, success)
             height
         }.let { if (it.isNotEmpty()) BlockTxRetryRecord.deleteRecords(it) }
+    }
+
+    @Scheduled(cron = "0 0/30 * * * ?") // Every 30 minutes
+    fun updateAssetPricing() {
+        logger.info("Updating asset pricing")
+        val key = "pricing_update"
+        val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC).toString()
+        cacheService.getCacheValue(key)!!.let { cache ->
+            assetService.getPricingAsync(cache.cacheValue, "async pricing update").forEach { price ->
+                assetService.insertAssetPricing(price)
+            }
+        }.let { cacheService.updateCacheValue(key, now) }
     }
 }

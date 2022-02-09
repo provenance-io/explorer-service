@@ -4,7 +4,9 @@ import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.nullsLast
 import io.provenance.explorer.domain.extensions.map
+import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.explorer.AssetHolder
+import io.provenance.explorer.domain.models.explorer.AssetPricing
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.TokenDistribution
 import io.provenance.explorer.domain.models.explorer.TokenDistributionPaginatedResults
@@ -13,6 +15,7 @@ import io.provenance.marker.v1.MarkerStatus
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
@@ -22,6 +25,7 @@ import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
@@ -255,4 +259,56 @@ class TokenDistributionPaginatedResultsRecord(id: EntityID<Int>) : IntEntity(id)
 
     var ownerAddress by TokenDistributionPaginatedResultsTable.ownerAddress
     var data by TokenDistributionPaginatedResultsTable.data
+}
+
+object AssetPricingTable : IdTable<Int>(name = "asset_pricing") {
+    val markerId = integer("marker_id")
+    override val id = markerId.entityId()
+    val markerAddress = varchar("marker_address", 128)
+    val denom = varchar("denom", 256)
+    val pricing = double("pricing")
+    val pricingDenom = varchar("pricing_denom", 256)
+    val lastUpdated = datetime("last_updated")
+    val data = jsonb<AssetPricingTable, AssetPricing>("data", OBJECT_MAPPER)
+}
+
+class AssetPricingRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<AssetPricingRecord>(AssetPricingTable) {
+
+        private fun findUnique(data: AssetPricing) = transaction {
+            AssetPricingRecord.find {
+                (AssetPricingTable.denom eq data.markerDenom) and
+                    (AssetPricingTable.pricingDenom eq data.priceDenomination)
+            }
+                .firstOrNull()
+        }
+
+        fun upsert(markerId: Int, data: AssetPricing) = transaction {
+            findUnique(data)?.apply {
+                this.pricing = data.usdPrice ?: data.price!!
+                this.lastUpdated = data.priceTimestamp.toDateTime()
+                this.data = data
+            } ?: AssetPricingTable.insert {
+                it[this.markerId] = markerId
+                it[this.markerAddress] = data.markerAddress
+                it[this.denom] = data.markerDenom
+                it[this.pricing] = data.usdPrice ?: data.price!!
+                it[this.pricingDenom] = data.priceDenomination
+                it[this.lastUpdated] = data.priceTimestamp.toDateTime()
+                it[this.data] = data
+            }
+        }
+
+        fun findByDenomList(denoms: List<String>) = transaction {
+            AssetPricingRecord.find { AssetPricingTable.denom inList denoms }.toList()
+        }
+    }
+
+    var markerId by AssetPricingTable.markerId
+    var markerAddress by AssetPricingTable.markerAddress
+    var denom by AssetPricingTable.denom
+    var pricing by AssetPricingTable.pricing
+    var pricingDenom by AssetPricingTable.pricingDenom
+    var lastUpdated by AssetPricingTable.lastUpdated
+    var data by AssetPricingTable.data
 }
