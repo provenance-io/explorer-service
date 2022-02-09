@@ -146,3 +146,30 @@ class ChainGasFeeCacheRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) {
     var maxGasFee by ChainGasFeeCacheTable.maxGasFee
     var avgGasFee by ChainGasFeeCacheTable.avgGasFee
 }
+
+object CacheUpdateTable : IntIdTable(name = "cache_update") {
+    val cacheKey = varchar("cache_key", 256)
+    val description = text("description")
+    val cacheValue = text("cache_value")
+    val lastUpdated = datetime("last_updated")
+}
+
+class CacheUpdateRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<CacheUpdateRecord>(CacheUpdateTable) {
+        fun fetchCacheByKey(key: String) = transaction {
+            CacheUpdateRecord.find { CacheUpdateTable.cacheKey eq key }.firstOrNull()
+        }
+
+        fun updateCacheByKey(key: String, value: String) = transaction {
+            fetchCacheByKey(key)?.apply {
+                this.cacheValue = value
+                this.lastUpdated = DateTime.now()
+            } ?: throw IllegalArgumentException("CacheUpdateTable: Key $key was not found as a cached value")
+        }
+    }
+
+    var cacheKey by CacheUpdateTable.cacheKey
+    var description by CacheUpdateTable.description
+    var cacheValue by CacheUpdateTable.cacheValue
+    var lastUpdated by CacheUpdateTable.lastUpdated
+}

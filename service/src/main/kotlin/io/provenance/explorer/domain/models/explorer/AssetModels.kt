@@ -2,6 +2,8 @@ package io.provenance.explorer.domain.models.explorer
 
 import com.fasterxml.jackson.databind.node.ObjectNode
 import java.math.BigInteger
+import java.time.OffsetDateTime
+import java.util.UUID
 
 data class AssetListed(
     val marker: String,
@@ -69,4 +71,14 @@ data class Reward(
 data class AttributeObj(
     val attribute: String,
     val data: String
+)
+
+data class AssetPricing(
+    val id: UUID,
+    val markerAddress: String,
+    val markerDenom: String,
+    val price: Double?,
+    val priceDenomination: String = "usd",
+    val priceTimestamp: OffsetDateTime,
+    val usdPrice: Double?
 )

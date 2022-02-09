@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.java.Java
+import io.ktor.client.features.json.JacksonSerializer
+import io.ktor.client.features.json.JsonFeature
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.extensions.configureProvenance
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
@@ -36,7 +38,13 @@ val OBJECT_MAPPER = ObjectMapper()
     .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE)
     .configureProvenance()
 
+val VANILLA_MAPPER = ObjectMapper().configureProvenance()
+
 /* Singleton instance that can safely be shared globally */
 val JSON_NODE_FACTORY: JsonNodeFactory = JsonNodeFactory.instance
 
-val KTOR_CLIENT_JAVA = HttpClient(Java)
+val KTOR_CLIENT_JAVA = HttpClient(Java) {
+    install(JsonFeature) {
+        serializer = JacksonSerializer(VANILLA_MAPPER)
+    }
+}

@@ -38,6 +38,7 @@ dependencies {
     api(Libraries.ApacheHttpClient)
     implementation(Libraries.KtorClientCore)
     implementation(Libraries.KtorClientEngineJava)
+    implementation(Libraries.KtorClientSerialization)
     implementation(Libraries.Json)
 
     implementation(Libraries.GrpcNetty)

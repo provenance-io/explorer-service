@@ -11,6 +11,7 @@ import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.entities.AssetPricingRecord
 import io.provenance.explorer.domain.entities.BaseDenomType
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.MarkerCacheTable
@@ -26,6 +27,7 @@ import io.provenance.explorer.domain.models.explorer.AssetDetail
 import io.provenance.explorer.domain.models.explorer.AssetHolder
 import io.provenance.explorer.domain.models.explorer.AssetListed
 import io.provenance.explorer.domain.models.explorer.AssetManagement
+import io.provenance.explorer.domain.models.explorer.AssetPricing
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.TokenCounts
@@ -255,7 +257,7 @@ class AssetService(
                     (MarkerCacheTable.supply greater BigDecimal.ZERO)
             }.associate { it.denom to it.supply }
         }
-        val pricing = baseMap.keys.toList().chunked(10) { getPricingInfo(it, "totalAUM") }.flatMap { it.toList() }
+        val pricing = baseMap.keys.toList().chunked(100) { getPricingInfo(it, "totalAUM") }.flatMap { it.toList() }
             .toMap()
             .toMutableMap().also { it.putAll(getPricingForNhash()) }
         baseMap.map { (k, v) -> (pricing[k] ?: BigDecimal.ZERO).multiply(v.toHashSupply(k)) }.sumOf { it }
@@ -263,7 +265,7 @@ class AssetService(
 
     fun getAumForList(denoms: Map<String, String>, comingFrom: String): BigDecimal {
         val pricing =
-            denoms.keys.toList().chunked(10) { getPricingInfo(it, comingFrom) }.flatMap { it.toList() }.toMap()
+            denoms.keys.toList().chunked(100) { getPricingInfo(it, comingFrom) }.flatMap { it.toList() }.toMap()
                 .toMutableMap()
                 .also { it.putAll(getPricingForNhash()) }
         return denoms
@@ -276,39 +278,26 @@ class AssetService(
 
     fun getPricingInfo(denoms: List<String>, comingFrom: String): MutableMap<String, BigDecimal?> = runBlocking {
         if (denoms.isEmpty()) return@runBlocking mutableMapOf<String, BigDecimal?>()
+        AssetPricingRecord.findByDenomList(denoms).associate { it.denom to it.pricing.toBigDecimal() }.toMutableMap()
+    }
 
-        fun JSONObject.getDecimalOrNull(key: String) = try {
-            this.getBigDecimal(key)
-        } catch (e: Exception) {
-            null
-        }
+    fun insertAssetPricing(data: AssetPricing) = transaction {
+        getAssetRaw(data.markerDenom).first.value.let { AssetPricingRecord.upsert(it, data) }
+    }
 
-        val res = try {
-            KTOR_CLIENT_JAVA.get<HttpResponse>("${props.pricingUrl}/api/v1/pricing/marker/denom/list") {
-                parameter("denom[]", denoms.joinToString(","))
+    fun getPricingAsync(time: String, comingFrom: String) = runBlocking {
+        try {
+            KTOR_CLIENT_JAVA.get("${props.pricingUrl}/api/v1/pricing/marker/new") {
+                parameter("time", time)
             }
         } catch (e: ResponseException) {
-            return@runBlocking mutableMapOf<String, BigDecimal?>()
+            return@runBlocking listOf<AssetPricing>()
                 .also { logger.error("Error coming from $comingFrom: ${e.response}") }
         }
-
-        if (res.status.value in 200..299) {
-            try {
-                JSONArray(res.receive<String>()).mapNotNull { ele ->
-                    if (ele is JSONObject) {
-                        ele.getString("markerDenom") to ele.getDecimalOrNull("usdPrice")
-                    } else null
-                }.toMap().toMutableMap()
-            } catch (e: Exception) {
-                mutableMapOf<String, BigDecimal?>().also { logger.error("Error coming from $comingFrom: $e") }
-            }
-        } else mutableMapOf<String, BigDecimal?>()
-            .also { logger.error("Error reaching Pricing Engine coming from $comingFrom: ${res.status.value}") }
     }
 
     fun getPricingForNhash(): Map<String, BigDecimal> = runBlocking {
-        val url =
-            "https://www.dlob.io/aggregator/external/api/v1/order-books/pb18vd8fpwxzck93qlwghaj6arh4p7c5n894vnu5g/daily-price"
+        val url = "https://www.dlob.io:443/gecko/external/api/v1/exchange/tickers"
         val res = try {
             KTOR_CLIENT_JAVA.get<HttpResponse>(url)
         } catch (e: ResponseException) {
@@ -317,9 +306,9 @@ class AssetService(
 
         if (res.status.value == 200) {
             try {
-                JSONObject(res.receive<String>()).let {
-                    mapOf("nhash" to it.getString("latestDisplayPricePerDisplayUnit").toBigDecimal())
-                }
+                JSONArray(res.receive<String>())
+                    .first { (it as JSONObject).getString("ticker_id") == "HASH_USD" }
+                    .let { mapOf("nhash" to (it as JSONObject).getBigDecimal("last_price")) }
             } catch (e: Exception) {
                 mapOf<String, BigDecimal>().also { logger.error("Error: $e") }
             }
