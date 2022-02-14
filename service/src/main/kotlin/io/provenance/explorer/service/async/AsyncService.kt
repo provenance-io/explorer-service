@@ -6,6 +6,7 @@ import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.BlockTxCountsCacheRecord
 import io.provenance.explorer.domain.entities.BlockTxRetryRecord
+import io.provenance.explorer.domain.entities.CacheKeys
 import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.ProposalMonitorRecord
@@ -178,12 +179,15 @@ class AsyncService(
     @Scheduled(cron = "0 0/30 * * * ?") // Every 30 minutes
     fun updateAssetPricing() {
         logger.info("Updating asset pricing")
-        val key = "pricing_update"
+        val key = CacheKeys.PRICING_UPDATE.key
         val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC).toString()
         cacheService.getCacheValue(key)!!.let { cache ->
-            assetService.getPricingAsync(cache.cacheValue, "async pricing update").forEach { price ->
+            assetService.getPricingAsync(cache.cacheValue!!, "async pricing update").forEach { price ->
                 assetService.insertAssetPricing(price)
             }
         }.let { cacheService.updateCacheValue(key, now) }
     }
+
+    @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
+    fun updateReleaseVersions() = explorerService.getChainReleases()
 }

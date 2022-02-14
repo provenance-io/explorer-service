@@ -9,13 +9,10 @@ data class ValidatorSummary(
     val addressId: String,
     val consensusAddress: String,
     val proposerPriority: Int?,
-    val uptime: BigDecimal?,
     val votingPower: CountTotal?,
     val commission: String,
     val bondedTokens: CountStrTotal,
-    val selfBonded: CountStrTotal,
     val delegators: Long?,
-    val bondHeight: Long?,
     val status: String,
     val currentGasFee: Double?,
     val unbondingHeight: Long?,
@@ -26,7 +23,6 @@ data class ValidatorSummary(
 data class ValidatorSummaryAbbrev(
     val moniker: String,
     val addressId: String,
-    val votingPower: CountTotal?,
     val commission: String,
     val imgUrl: String?
 )

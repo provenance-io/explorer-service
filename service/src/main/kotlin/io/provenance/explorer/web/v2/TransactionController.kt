@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import javax.validation.constraints.Max
 import javax.validation.constraints.Min
 
 @Validated
@@ -33,7 +34,7 @@ class TransactionController(private val transactionService: TransactionService) 
     @GetMapping("/recent")
     fun txsRecent(
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int,
         @RequestParam(required = false) msgType: String?,
         @RequestParam(required = false) txStatus: TxStatus?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
@@ -56,7 +57,7 @@ class TransactionController(private val transactionService: TransactionService) 
         @PathVariable hash: String,
         @RequestParam(required = false) msgType: String?,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
+        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int
     ) = ResponseEntity.ok(transactionService.getTxMsgsPaginated(hash, msgType, page, count))
 
     @ApiOperation("Returns transaction json by hash value")
@@ -68,7 +69,7 @@ class TransactionController(private val transactionService: TransactionService) 
     fun txByBlockHeight(
         @PathVariable height: Int,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
+        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int
     ) = ResponseEntity.ok(
         transactionService.getTxsByQuery(
             null, null, null, null, height, null, count, page, null, null, null
@@ -106,7 +107,7 @@ class TransactionController(private val transactionService: TransactionService) 
     fun txsByModule(
         @PathVariable module: MsgTypeSet,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int,
         @RequestParam(required = false) msgType: String?,
         @RequestParam(required = false) txStatus: TxStatus?,
         @RequestParam(required = false) address: String?,
@@ -126,7 +127,7 @@ class TransactionController(private val transactionService: TransactionService) 
     fun txsByAddress(
         @PathVariable address: String,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int,
         @RequestParam(required = false) msgType: String?,
         @RequestParam(required = false) txStatus: TxStatus?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
@@ -143,7 +144,7 @@ class TransactionController(private val transactionService: TransactionService) 
     fun txsByNftAddress(
         @PathVariable nftAddr: String,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int,
         @RequestParam(required = false) msgType: String?,
         @RequestParam(required = false) txStatus: TxStatus?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
@@ -159,7 +160,7 @@ class TransactionController(private val transactionService: TransactionService) 
     @GetMapping("/module/gov")
     fun txsForGovernance(
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int,
         @RequestParam(required = false) address: String?,
         @RequestParam(required = false) msgType: String?,
         @RequestParam(required = false) txStatus: TxStatus?,
@@ -172,7 +173,7 @@ class TransactionController(private val transactionService: TransactionService) 
     @GetMapping("/module/smart_contract")
     fun txsForSmartContracts(
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int,
         @RequestParam(required = false) code: Int?,
         @RequestParam(required = false) contract: String?,
         @RequestParam(required = false) msgType: String?,

@@ -54,7 +54,8 @@ data class ChainUpgrade(
     val initialVersion: String,
     val currentVersion: String,
     val skipped: Boolean,
-    var scheduled: Boolean = false
+    var scheduled: Boolean = false,
+    var releaseUrl: String
 )
 
 enum class PrefixType { VALIDATOR, ACCOUNT, SCOPE }
@@ -62,4 +63,10 @@ enum class PrefixType { VALIDATOR, ACCOUNT, SCOPE }
 data class ChainPrefix(
     val type: PrefixType,
     val prefix: String
+)
+
+data class GithubReleaseData(
+    val releaseVersion: String,
+    val createdAt: String,
+    val releaseUrl: String
 )

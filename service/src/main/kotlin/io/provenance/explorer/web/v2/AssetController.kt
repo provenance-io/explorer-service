@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import javax.validation.constraints.Max
 import javax.validation.constraints.Min
 
 @Validated
@@ -26,7 +27,7 @@ class AssetController(private val assetService: AssetService, private val ibcSer
     fun getMarkers(
         @RequestParam(required = false, defaultValue = "MARKER_STATUS_ACTIVE") statuses: List<MarkerStatus>,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
+        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int
     ) = ResponseEntity.ok(assetService.getAssets(statuses, page, count))
 
     @ApiOperation("Returns asset detail for denom or address")
@@ -42,7 +43,7 @@ class AssetController(private val assetService: AssetService, private val ibcSer
     fun getMarkerHolders(
         @RequestParam id: String,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
+        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int
     ) =
         ResponseEntity.ok(assetService.getAssetHolders(id, page, count))
 

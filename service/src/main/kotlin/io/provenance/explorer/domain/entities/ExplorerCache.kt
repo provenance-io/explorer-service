@@ -150,8 +150,13 @@ class ChainGasFeeCacheRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) {
 object CacheUpdateTable : IntIdTable(name = "cache_update") {
     val cacheKey = varchar("cache_key", 256)
     val description = text("description")
-    val cacheValue = text("cache_value")
+    val cacheValue = text("cache_value").nullable()
     val lastUpdated = datetime("last_updated")
+}
+
+enum class CacheKeys(val key: String) {
+    PRICING_UPDATE("pricing_update"),
+    CHAIN_RELEASES("chain_releases")
 }
 
 class CacheUpdateRecord(id: EntityID<Int>) : IntEntity(id) {

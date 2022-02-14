@@ -47,7 +47,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added `denom_trace` to IBC balance objects
 * Added error logging to pricing engine calls
 * Updated pricing engine calls to be async, pulling new values and saving #296
-* Updated NHASH pricing to pull from gecko api
+* Updated NHASH pricing to pull from gecko API
+* Updated Version Upgrade data to pull from GitHub API
+* Removed unused fields from Validator listviews
+* Updated param fields to use the correct param names
+* Added caps to paginated APIs - set to 200 max count
 
 ### Bug Fixes
 * Updated token stats to use correct Bonded value
@@ -78,6 +82,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Migration 1.47 - Add asset pricing tables #296
   * Added tables `asset_pricing` and `cache_update`
   * Inserted initial record for `pricing_update` cache record
+* Migration 1.48 - Add cache update for chain versions
+  * Inserted initial record for `chain_releases` cache record
 
 ## [v3.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v3.2.0) - 2022-01-18
 ### Release Name: John Carpini

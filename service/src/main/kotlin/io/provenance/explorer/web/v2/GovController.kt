@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import javax.validation.constraints.Max
 import javax.validation.constraints.Min
 
 @Validated
@@ -47,6 +48,6 @@ class GovController(private val govService: GovService) {
     fun getValidatorVotes(
         @PathVariable address: String,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
+        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int
     ) = ResponseEntity.ok(govService.getAddressVotes(address, page, count))
 }
