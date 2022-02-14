@@ -1,5 +1,6 @@
 package io.provenance.explorer.config
 
+import io.provenance.explorer.domain.annotation.HiddenApi
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -44,7 +45,8 @@ class SwaggerConfig(val props: ExplorerProperties) {
             .apis(RequestHandlerSelectors.basePackage("io.provenance.explorer.web.v2"))
 
         if (props.hiddenApis())
-            docket.apis(Predicate.not(RequestHandlerSelectors.basePackage("io.provenance.explorer.web.v2.utility")))
+            docket.apis(Predicate.not(RequestHandlerSelectors.withClassAnnotation(HiddenApi::class.java)))
+                .apis(Predicate.not(RequestHandlerSelectors.withMethodAnnotation(HiddenApi::class.java)))
 
         return docket.build()
     }

@@ -2,12 +2,8 @@ plugins {
     id(PluginIds.Flyway) version PluginVersions.Flyway
 }
 
-apply {
-    plugin(PluginIds.Flyway)
-}
-
 dependencies {
-    api(Libraries.FlywayCore)
+    implementation(Libraries.FlywayCore)
 }
 
 flyway {

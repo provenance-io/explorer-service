@@ -5,6 +5,7 @@ import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.ErrorFinding
+import io.provenance.explorer.domain.entities.TxFeeRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.UnknownTxType
@@ -87,6 +88,8 @@ class UtilityService(
     fun decodeToString(str: String) = str.fromBase64()
 
     fun addMarker(denom: String) = assetService.getAssetRaw(denom)
+
+    fun updateTxFeesFromHeight(height: Int) = TxFeeRecord.updateTxFees(height)
 
     fun getMsgTypeToProto() = transaction {
         TxMessageTypeRecord.all().map {

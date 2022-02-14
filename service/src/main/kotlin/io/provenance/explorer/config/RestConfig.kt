@@ -104,6 +104,9 @@ import io.provenance.metadata.v1.MsgWriteRecordSpecificationRequest
 import io.provenance.metadata.v1.MsgWriteScopeRequest
 import io.provenance.metadata.v1.MsgWriteScopeSpecificationRequest
 import io.provenance.metadata.v1.MsgWriteSessionRequest
+import io.provenance.msgfees.v1.AddMsgFeeProposal
+import io.provenance.msgfees.v1.RemoveMsgFeeProposal
+import io.provenance.msgfees.v1.UpdateMsgFeeProposal
 import io.provenance.name.v1.CreateRootNameProposal
 import io.provenance.name.v1.EventNameBound
 import io.provenance.name.v1.EventNameUnbound
@@ -291,7 +294,7 @@ fun msgDescriptors() =
         cosmos.feegrant.v1beta1.Tx.MsgGrantAllowance.getDescriptor(),
         cosmos.feegrant.v1beta1.Tx.MsgRevokeAllowance.getDescriptor(),
         Ibc.MsgIBCSend.getDescriptor(),
-        Ibc.MsgIBCCloseChannel.getDescriptor()
+        Ibc.MsgIBCCloseChannel.getDescriptor(),
     )
 
 fun contentDescriptors() =
@@ -325,7 +328,10 @@ fun contentDescriptors() =
         cosmwasm.wasm.v1beta1.Proposal.PinCodesProposal.getDescriptor(),
         cosmwasm.wasm.v1beta1.Proposal.UnpinCodesProposal.getDescriptor(),
         Client.ClientUpdateProposal.getDescriptor(),
-        SetDenomMetadataProposal.getDescriptor()
+        SetDenomMetadataProposal.getDescriptor(),
+        AddMsgFeeProposal.getDescriptor(),
+        UpdateMsgFeeProposal.getDescriptor(),
+        RemoveMsgFeeProposal.getDescriptor()
     )
 
 fun events() = listOf(

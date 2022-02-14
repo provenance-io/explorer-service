@@ -64,4 +64,5 @@ data class ProvParams(
     val marker: JsonNode,
     val metadata: JsonNode,
     val name: JsonNode,
+    val msgFees: JsonNode
 )

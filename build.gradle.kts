@@ -5,10 +5,7 @@ plugins {
     java
     id(PluginIds.Idea)
     id(PluginIds.TaskTree) version PluginVersions.TaskTree
-    id(PluginIds.TestLogger) version PluginVersions.TestLogger apply false
     id(PluginIds.DependencyAnalysis) version PluginVersions.DependencyAnalysis
-    id(PluginIds.Protobuf) version PluginVersions.Protobuf
-    id(PluginIds.ProvenanceDownloadProtos)
 }
 
 allprojects {
@@ -31,8 +28,6 @@ subprojects {
     apply {
         plugin(PluginIds.Kotlin)
         plugin(PluginIds.Idea)
-        plugin(PluginIds.TestLogger)
-        plugin(PluginIds.Protobuf)
     }
 
     repositories {
@@ -58,43 +53,11 @@ subprojects {
         }
     }
 
-    plugins.withType<com.adarshr.gradle.testlogger.TestLoggerPlugin> {
-        configure<com.adarshr.gradle.testlogger.TestLoggerExtension> {
-            theme = com.adarshr.gradle.testlogger.theme.ThemeType.STANDARD
-            showCauses = true
-            slowThreshold = 1000
-            showSummary = true
-        }
-    }
-
-    tasks.withType<Test> {
-        useJUnitPlatform {
-            excludeTags("intTest")
-            includeTags("junit-jupiter", "junit-vintage")
-        }
-
-        failFast = true
-    }
-
-    dependencies {
-        implementation(Libraries.KotlinReflect)
-        implementation(Libraries.KotlinStdlib)
-
-        testImplementation(Libraries.SpringBootStarterTest) {
-            exclude(module = "junit")
-            exclude(module = "mockito-core")
-            exclude(module = "assertj-core")
-        }
-        testImplementation(Libraries.JunitJupiterApi)
-        testRuntimeOnly(Libraries.JunitJupiterEngine)
-        testImplementation(Libraries.SpringMockk)
-        testImplementation(Libraries.KotestAssert)
-    }
-
     configurations.all {
         resolutionStrategy.eachDependency {
-            if (requested.group == "org.apache.logging.log4j") {
+            if (requested.group == "org.apache.logging.log4j" && (requested.version == "2.14.1") || (requested.version == "2.15.0")) {
                 useVersion("2.15.0")
+                because("CVE-2021-44228")
             }
         }
     }

@@ -3,7 +3,7 @@ RUN gradle --version && java -version
 WORKDIR /app
 
 # Only copy dependency-related files
-COPY build.gradle.kts gradle.properties settings.gradle.kts proto/build.gradle.kts buildSrc/build.gradle.kts /app/
+COPY build.gradle.kts gradle.properties settings.gradle.kts buildSrc/build.gradle.kts /app/
 
 # Only download dependencies
 # Eat the expected build failure since no source code has been copied yet
@@ -13,8 +13,6 @@ RUN gradle clean build --no-daemon > /dev/null 2>&1 || true
 COPY service /app/service/
 COPY database /app/database/
 COPY buildSrc /app/buildSrc/
-COPY proto /app/proto/
-COPY third_party /app/third_party/
 COPY .git /app/.git/
 COPY build.gradle.kts gradle.properties settings.gradle.kts /app/
 COPY CHANGELOG.md CODE_OF_CONDUCT.md CONTRIBUTING.md LICENSE README.md /app/

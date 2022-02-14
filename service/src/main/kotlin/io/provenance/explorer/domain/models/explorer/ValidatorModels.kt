@@ -14,7 +14,6 @@ data class ValidatorSummary(
     val bondedTokens: CountStrTotal,
     val delegators: Long?,
     val status: String,
-    val currentGasFee: Double?,
     val unbondingHeight: Long?,
     val imgUrl: String?,
     val hr24Change: String?
@@ -41,7 +40,6 @@ data class ValidatorDetails(
     val description: String?,
     val siteUrl: String?,
     val identity: String?,
-    val currentGasFee: Double?,
     val status: String,
     val unbondingHeight: Long?,
     val jailedUntil: DateTime?

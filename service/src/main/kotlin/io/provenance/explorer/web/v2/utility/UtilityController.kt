@@ -1,5 +1,6 @@
 package io.provenance.explorer.web.v2.utility
 
+import io.provenance.explorer.domain.annotation.HiddenApi
 import io.provenance.explorer.domain.entities.UnknownTxType
 import io.provenance.explorer.service.utility.UtilityService
 import io.swagger.annotations.Api
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController
     value = "Utility controller", produces = "application/json", consumes = "application/json", tags = ["Utilities"],
     description = "This should not be used by the UI"
 )
+@HiddenApi
 class UtilityController(private val us: UtilityService) {
 
     @ApiOperation("Adds a new marker record for the given denom. SHOULD ONLY BE USED IN EXTREME CASES")
@@ -58,4 +60,8 @@ class UtilityController(private val us: UtilityService) {
     @ApiOperation("For Fetching tx types from DB and formatting data from proto")
     @GetMapping("/txTypes")
     fun getTxTypes() = ResponseEntity.ok(us.getMsgTypeToProto())
+
+    @ApiOperation("Updates tx fees from a given height - uses procedure to recalc fees")
+    @PostMapping("/update/tx_fees")
+    fun updateTxFeesFromHeight(@RequestParam height: Int) = ResponseEntity.ok(us.updateTxFeesFromHeight(height))
 }

@@ -55,10 +55,10 @@ data class MarketRateAvg(
 
 data class GasStats(
     val date: String,
-    val minGasPrice: Int,
-    val maxGasPrice: Int,
-    val avgGasPrice: Int,
-    val stdDevGasPrice: Int,
+    val minGasUsed: Int,
+    val maxGasUsed: Int,
+    val avgGasUsed: Int,
+    val stdDevGasUsed: Int,
     val messageType: String
 )
 
@@ -83,4 +83,9 @@ data class GithubReleaseData(
     val releaseVersion: String,
     val createdAt: String,
     val releaseUrl: String
+)
+
+data class MsgBasedFee(
+    val msgTypeUrl: String,
+    val additionalFee: CoinStr
 )

@@ -6,6 +6,7 @@ import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.service.TransactionService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
+import io.swagger.annotations.ApiParam
 import org.joda.time.DateTime
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
@@ -23,9 +24,9 @@ import javax.validation.constraints.Min
 @RestController
 @RequestMapping(path = ["/api/v2/txs"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Api(
-    value = "Transaction controller",
-    produces = "application/json",
-    consumes = "application/json",
+    description = "Transaction endpoints",
+    produces = MediaType.APPLICATION_JSON_VALUE,
+    consumes = MediaType.APPLICATION_JSON_VALUE,
     tags = ["Transactions"]
 )
 class TransactionController(private val transactionService: TransactionService) {
@@ -33,12 +34,21 @@ class TransactionController(private val transactionService: TransactionService) 
     @ApiOperation("Return the latest transactions with query params")
     @GetMapping("/recent")
     fun txsRecent(
-        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int,
-        @RequestParam(required = false) msgType: String?,
-        @RequestParam(required = false) txStatus: TxStatus?,
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
+        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
+        @ApiParam(value = "Record count between 1 and 200", defaultValue = "10", required = false)
+        @RequestParam(defaultValue = "10") @Min(1) @Max(200) count: Int,
+        @ApiParam(required = false) @RequestParam(required = false) msgType: String?,
+        @ApiParam(required = false) @RequestParam(required = false) txStatus: TxStatus?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
     ) =
         ResponseEntity.ok(
             transactionService.getTxsByQuery(
@@ -47,44 +57,55 @@ class TransactionController(private val transactionService: TransactionService) 
             )
         )
 
-    @ApiOperation("Return transaction by hash value")
+    @ApiOperation("Return transaction detail by hash value")
     @GetMapping("/{hash}")
     fun txByHash(@PathVariable hash: String) = ResponseEntity.ok(transactionService.getTransactionByHash(hash))
 
-    @ApiOperation("Return transaction msgs by hash value")
+    @ApiOperation("Return a transaction's messages by tx hash value")
     @GetMapping("/{hash}/msgs")
     fun txMsgsByHash(
         @PathVariable hash: String,
-        @RequestParam(required = false) msgType: String?,
-        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int
+        @ApiParam(required = false) @RequestParam(required = false) msgType: String?,
+        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
+        @ApiParam(value = "Record count between 1 and 200", defaultValue = "10", required = false)
+        @RequestParam(defaultValue = "10") @Min(1) @Max(200) count: Int
     ) = ResponseEntity.ok(transactionService.getTxMsgsPaginated(hash, msgType, page, count))
 
-    @ApiOperation("Returns transaction json by hash value")
+    @ApiOperation("Returns a transaction object as JSON by tx hash value")
     @GetMapping("/{hash}/json")
     fun transactionJson(@PathVariable hash: String) = ResponseEntity.ok(transactionService.getTransactionJson(hash))
 
-    @ApiOperation("Return transaction by block height")
+    @ApiOperation("Returns transactions by block height")
     @GetMapping("/height/{height}")
     fun txByBlockHeight(
         @PathVariable height: Int,
-        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int
+        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
+        @ApiParam(value = "Record count between 1 and 200", defaultValue = "10", required = false)
+        @RequestParam(defaultValue = "10") @Min(1) @Max(200) count: Int
     ) = ResponseEntity.ok(
         transactionService.getTxsByQuery(
             null, null, null, null, height, null, count, page, null, null, null
         )
     )
 
-    @ApiOperation("Get Transactions Heatmap")
+    @ApiOperation("Returns a heatmap of transaction activity on chain")
     @GetMapping("/heatmap")
     fun txHeatmap() = ResponseEntity.ok(transactionService.getTxHeatmap())
 
     @ApiOperation("Get X-Day Transaction History")
     @GetMapping("/history")
     fun txHistory(
-        @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime,
-        @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = true
+        ) @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = true
+        ) @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime,
+        @ApiParam(value = "The granularity of data, either DAY or HOUR", defaultValue = "DAY", required = false)
         @RequestParam(required = false) granularity: DateTruncGranularity?
     ) = ResponseEntity.ok(transactionService.getTxHistoryByQuery(fromDate, toDate, granularity))
 
@@ -106,15 +127,27 @@ class TransactionController(private val transactionService: TransactionService) 
     @GetMapping("/module/{module}")
     fun txsByModule(
         @PathVariable module: MsgTypeSet,
-        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int,
-        @RequestParam(required = false) msgType: String?,
-        @RequestParam(required = false) txStatus: TxStatus?,
+        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
+        @ApiParam(value = "Record count between 1 and 200", defaultValue = "10", required = false)
+        @RequestParam(defaultValue = "10") @Min(1) @Max(200) count: Int,
+        @ApiParam(required = false) @RequestParam(required = false) msgType: String?,
+        @ApiParam(required = false) @RequestParam(required = false) txStatus: TxStatus?,
+        @ApiParam(value = "Use either the standard address or a validator operator address", required = false)
         @RequestParam(required = false) address: String?,
+        @ApiParam(value = "Use the base denom name, ie `nhash` instead of `hash`", required = false)
         @RequestParam(required = false) denom: String?,
+        @ApiParam(value = "Use the nft address type, ie. scope, scopespec, or the scope UUID", required = false)
         @RequestParam(required = false) nftAddr: String?,
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
     ) =
         ResponseEntity.ok(
             transactionService.getTxsByQuery(
@@ -125,13 +158,23 @@ class TransactionController(private val transactionService: TransactionService) 
     @ApiOperation("Returns transactions by query params for a specific address")
     @GetMapping("/address/{address}")
     fun txsByAddress(
+        @ApiParam(value = "Use either the standard address or a validator operator address")
         @PathVariable address: String,
-        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int,
-        @RequestParam(required = false) msgType: String?,
-        @RequestParam(required = false) txStatus: TxStatus?,
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
+        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
+        @ApiParam(value = "Record count between 1 and 200", defaultValue = "10", required = false)
+        @RequestParam(defaultValue = "10") @Min(1) @Max(200) count: Int,
+        @ApiParam(required = false) @RequestParam(required = false) msgType: String?,
+        @ApiParam(required = false) @RequestParam(required = false) txStatus: TxStatus?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
     ) =
         ResponseEntity.ok(
             transactionService.getTxsByQuery(
@@ -142,13 +185,23 @@ class TransactionController(private val transactionService: TransactionService) 
     @ApiOperation("Returns transactions by query params for a specific nft address")
     @GetMapping("/nft/{nftAddr}")
     fun txsByNftAddress(
+        @ApiParam(value = "Use the nft address type, ie. scope, scopespec, or the scope UUID")
         @PathVariable nftAddr: String,
-        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int,
-        @RequestParam(required = false) msgType: String?,
-        @RequestParam(required = false) txStatus: TxStatus?,
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
+        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
+        @ApiParam(value = "Record count between 1 and 200", defaultValue = "10", required = false)
+        @RequestParam(defaultValue = "10") @Min(1) @Max(200) count: Int,
+        @ApiParam(required = false) @RequestParam(required = false) msgType: String?,
+        @ApiParam(required = false) @RequestParam(required = false) txStatus: TxStatus?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
     ) =
         ResponseEntity.ok(
             transactionService.getTxsByQuery(
@@ -159,27 +212,56 @@ class TransactionController(private val transactionService: TransactionService) 
     @ApiOperation("Returns transactions for governance module with unique response type")
     @GetMapping("/module/gov")
     fun txsForGovernance(
-        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int,
+        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
+        @ApiParam(value = "Record count between 1 and 200", defaultValue = "10", required = false)
+        @RequestParam(defaultValue = "10") @Min(1) @Max(200) count: Int,
+        @ApiParam(value = "Use either the standard address or a validator operator address", required = false)
         @RequestParam(required = false) address: String?,
-        @RequestParam(required = false) msgType: String?,
-        @RequestParam(required = false) txStatus: TxStatus?,
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
+        @ApiParam(required = false) @RequestParam(required = false) msgType: String?,
+        @ApiParam(required = false) @RequestParam(required = false) txStatus: TxStatus?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
     ) =
-        ResponseEntity.ok(transactionService.getGovernanceTxs(address, msgType, txStatus, page, count, fromDate, toDate))
+        ResponseEntity.ok(
+            transactionService.getGovernanceTxs(
+                address,
+                msgType,
+                txStatus,
+                page,
+                count,
+                fromDate,
+                toDate
+            )
+        )
 
     @ApiOperation("Returns transactions for smart contract module with unique response type")
     @GetMapping("/module/smart_contract")
     fun txsForSmartContracts(
-        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int,
-        @RequestParam(required = false) code: Int?,
-        @RequestParam(required = false) contract: String?,
-        @RequestParam(required = false) msgType: String?,
-        @RequestParam(required = false) txStatus: TxStatus?,
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
+        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
+        @ApiParam(value = "Record count between 1 and 200", defaultValue = "10", required = false)
+        @RequestParam(defaultValue = "10") @Min(1) @Max(200) count: Int,
+        @ApiParam(value = "The base code ID", required = false) @RequestParam(required = false) code: Int?,
+        @ApiParam(value = "The contract address", required = false) @RequestParam(required = false) contract: String?,
+        @ApiParam(required = false) @RequestParam(required = false) msgType: String?,
+        @ApiParam(required = false) @RequestParam(required = false) txStatus: TxStatus?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
     ) = ResponseEntity.ok(
         transactionService.getSmartContractTxs(
             code,

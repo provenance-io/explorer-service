@@ -30,9 +30,9 @@ class ExplorerController {
     @ApiOperation(value = "Return the latest block transactions")
     @GetMapping(value = ["/recent/txs"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun txsRecent(
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
-        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "desc") sort: String = "desc"
+        @RequestParam(defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(defaultValue = "1") @Min(1) page: Int,
+        @RequestParam(defaultValue = "desc") sort: String = "desc"
     ):
         ResponseEntity<Any> = ResponseEntity.status(301).body("Deprecated for /api/v2/txs/recent")
 
@@ -51,7 +51,7 @@ class ExplorerController {
     fun txHistory(
         @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime,
         @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime,
-        @RequestParam(required = false, defaultValue = "day") granularity: String
+        @RequestParam(defaultValue = "day") granularity: String
     ): ResponseEntity<Any> =
         ResponseEntity.status(301).body("Deprecated for /api/v2/txs/history")
 
@@ -65,17 +65,17 @@ class ExplorerController {
     fun recentBlocks(
         @RequestParam(required = true, defaultValue = "10") @Min(1) count: Int,
         @RequestParam(required = true, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "desc") sort: String
+        @RequestParam(defaultValue = "desc") sort: String
     ):
         ResponseEntity<Any> = ResponseEntity.status(301).body("Deprecated for /api/v2/blocks/recent")
 
     @ApiOperation(value = "Returns recent validators")
     @GetMapping(value = ["/recent/validators"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun validatorsV2(
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
-        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "desc") sort: String,
-        @RequestParam(required = false, defaultValue = "BOND_STATUS_BONDED") status: String
+        @RequestParam(defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(defaultValue = "1") @Min(1) page: Int,
+        @RequestParam(defaultValue = "desc") sort: String,
+        @RequestParam(defaultValue = "BOND_STATUS_BONDED") status: String
     ):
         ResponseEntity<Any> = ResponseEntity.status(301).body("Deprecated for /api/v2/validators/recent")
 

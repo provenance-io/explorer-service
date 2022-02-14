@@ -1,5 +1,6 @@
 package io.provenance.explorer.web.v2.utility
 
+import io.provenance.explorer.domain.annotation.HiddenApi
 import io.provenance.explorer.service.utility.MigrationService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController
     value = "Migration controller", produces = "application/json", consumes = "application/json", tags = ["Migrations"],
     description = "This should NEVER be used by the UI"
 )
+@HiddenApi
 class MigrationController(private val migrationService: MigrationService) {
 
     @ApiOperation("Updates accounts with data")
@@ -31,4 +33,9 @@ class MigrationController(private val migrationService: MigrationService) {
     @GetMapping("/update/blocks/missed")
     fun updateMissedBlocks(@RequestParam start: Int, @RequestParam end: Int, @RequestParam inc: Int) =
         ResponseEntity.ok(migrationService.updateMissedBlocks(start, end, inc))
+
+    @ApiOperation("Updates blocks")
+    @GetMapping("/update/blocks")
+    fun updateBlocks(@RequestParam start: Int, @RequestParam end: Int, @RequestParam inc: Int) =
+        ResponseEntity.ok(migrationService.updateBlocks(start, end, inc))
 }
