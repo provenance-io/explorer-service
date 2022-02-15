@@ -78,7 +78,7 @@ fun Message.toObjectNodeNonTxMsg(protoPrinter: JsonFormat.Printer, fieldNames: L
         }
 
 fun Message.toObjectNodePrint(protoPrinter: JsonFormat.Printer) =
-    OBJECT_MAPPER.readTree(protoPrinter.print(this))
+    OBJECT_MAPPER.readTree(protoPrinter.preservingProtoFieldNames().print(this))
 
 fun Message.toObjectNodeMAddressValues(protoPrinter: JsonFormat.Printer, fieldNames: List<String>) =
     OBJECT_MAPPER.readTree(protoPrinter.print(this))

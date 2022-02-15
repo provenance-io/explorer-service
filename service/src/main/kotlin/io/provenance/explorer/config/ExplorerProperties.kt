@@ -34,6 +34,9 @@ class ExplorerProperties {
     lateinit var upgradeVersionRegex: String
 
     @NotNull
+    lateinit var upgradeGithubRepo: String
+
+    @NotNull
     lateinit var hiddenApis: String
 
     @NotNull

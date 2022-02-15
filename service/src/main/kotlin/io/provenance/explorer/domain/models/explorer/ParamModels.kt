@@ -19,10 +19,10 @@ data class CosmosParams(
 )
 
 data class DistParams(
-    val communityTax: String,
-    val baseProposerReward: String,
-    val bonusProposerReward: String,
-    val withdrawAddrEnabled: Boolean,
+    val community_tax: String,
+    val base_proposer_reward: String,
+    val bonus_proposer_reward: String,
+    val withdraw_addr_enabled: Boolean,
 )
 
 data class GovParams(
@@ -34,24 +34,24 @@ data class GovParams(
 data class TallyingParams(
     val quorum: String,
     val threshold: String,
-    val vetoThreshold: String
+    val veto_threshold: String
 )
 
 data class MintParams(
-    val mintDenom: String,
-    val inflationRateChange: String,
-    val inflationMax: String,
-    val inflationMin: String,
-    val goalBonded: String,
-    val blocksPerYear: Long,
+    val mint_denom: String,
+    val inflation_rate_change: String,
+    val inflation_max: String,
+    val inflation_min: String,
+    val goal_bonded: String,
+    val blocks_per_year: Long,
 )
 
 data class SlashingParams(
-    val signedBlocksWindow: Long,
-    val minSignedPerWindow: String,
-    val downtimeJailDuration: String,
-    val slashFractionDoubleSign: String,
-    val slashFractionDowntime: String,
+    val signed_blocks_window: Long,
+    val min_signed_per_window: String,
+    val downtime_jail_duration: String,
+    val slash_fraction_double_sign: String,
+    val slash_fraction_downtime: String,
 )
 
 data class IBCParams(

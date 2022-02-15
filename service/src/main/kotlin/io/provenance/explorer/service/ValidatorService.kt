@@ -1,7 +1,6 @@
 package io.provenance.explorer.service
 
 import cosmos.base.tendermint.v1beta1.Query
-import cosmos.slashing.v1beta1.Slashing
 import cosmos.staking.v1beta1.Staking
 import io.ktor.client.call.receive
 import io.ktor.client.features.ResponseException
@@ -232,14 +231,10 @@ class ValidatorService(
 
     // Abbreviated data used for specific cases
     fun getAllValidatorsAbbrev() = transaction {
-        val validatorSet = grpcClient.getLatestValidators().validatorsList
-        val totalVotingPower = validatorSet.sumOf { it.votingPower.toBigInteger() }
         val recs = getStakingValidators("all", null, null, null).map { currVal ->
-            val validator = validatorSet.firstOrNull { it.address == currVal.consensusAddr }
             ValidatorSummaryAbbrev(
                 currVal.json.description.moniker,
                 currVal.operatorAddress,
-                validator?.let { CountTotal(validator.votingPower.toBigInteger(), totalVotingPower) },
                 currVal.json.commission.commissionRates.rate.toDecCoin(),
                 getImgUrl(currVal.json.description.identity)
             )
@@ -248,12 +243,7 @@ class ValidatorService(
     }
 
     // In point to get most recent validators
-    fun getRecentValidators(count: Int, page: Int, status: String) =
-        aggregateValidatorsRecent(
-            count,
-            page,
-            status
-        )
+    fun getRecentValidators(count: Int, page: Int, status: String) = aggregateValidatorsRecent(count, page, status)
 
     private fun aggregateValidatorsRecent(
         count: Int,
@@ -282,16 +272,12 @@ class ValidatorService(
         hr24ChangeSet: List<Query.Validator>,
         stakingVals: List<CurrentValidatorState>
     ) = let {
-        val signingInfos = getSigningInfos()
-        val height = blockService.getLatestBlockHeight()
         val totalVotingPower = validatorSet.sumOf { it.votingPower.toBigInteger() }
         stakingVals
             .map { stakingVal ->
                 val validator = validatorSet.firstOrNull { it.address == stakingVal.consensusAddr }
                 val hr24Validator = hr24ChangeSet.firstOrNull { it.address == stakingVal.consensusAddr }
-                val signingInfo = signingInfos.find { it.address == stakingVal.consensusAddr }
-                    ?: Slashing.ValidatorSigningInfo.getDefaultInstance()
-                hydrateValidator(validator, hr24Validator, stakingVal, signingInfo, height.toBigInteger(), totalVotingPower)
+                hydrateValidator(validator, hr24Validator, stakingVal, totalVotingPower)
             }
     }
 
@@ -299,11 +285,8 @@ class ValidatorService(
         validator: Query.Validator?,
         hr24Validator: Query.Validator?,
         stakingVal: CurrentValidatorState,
-        signingInfo: Slashing.ValidatorSigningInfo,
-        height: BigInteger,
         totalVotingPower: BigInteger
     ) = let {
-        val selfBonded = getValSelfBonded(stakingVal.json)
         val delegatorCount =
             grpcClient.getStakingValidatorDelegations(stakingVal.operatorAddress, 0, 1).pagination.total
         ValidatorSummary(
@@ -311,21 +294,13 @@ class ValidatorService(
             addressId = stakingVal.operatorAddress,
             consensusAddress = stakingVal.consensusAddr,
             proposerPriority = validator?.proposerPriority?.toInt(),
-            votingPower = (
-                if (validator != null) CountTotal(
-                    validator.votingPower.toBigInteger(),
-                    totalVotingPower
-                ) else null
-                ),
-            uptime = if (stakingVal.json.isActive()) signingInfo.address.validatorUptime(
-                signingInfo.startHeight.toBigInteger(),
-                height
+            votingPower = if (validator != null) CountTotal(
+                validator.votingPower.toBigInteger(),
+                totalVotingPower
             ) else null,
             commission = stakingVal.json.commission.commissionRates.rate.toDecCoin(),
             bondedTokens = CountStrTotal(stakingVal.json.tokens, null, NHASH),
-            selfBonded = CountStrTotal(selfBonded.first, null, selfBonded.second),
             delegators = delegatorCount,
-            bondHeight = if (stakingVal.json.isActive()) signingInfo.startHeight else null,
             status = stakingVal.json.getStatusString(),
             currentGasFee = BlockProposerRecord.findCurrentFeeForAddress(stakingVal.operatorAddress)?.minGasFee,
             unbondingHeight = if (!stakingVal.json.isActive()) stakingVal.json.unbondingHeight else null,

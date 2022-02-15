@@ -7,6 +7,7 @@ import cosmos.base.abci.v1beta1.Abci
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.tx.v1beta1.ServiceOuterClass
 import cosmos.tx.v1beta1.TxOuterClass
+import io.ktor.client.request.get
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.toArray
@@ -406,9 +407,8 @@ class AsyncCachingV2(
 
     private fun saveGovData(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, txUpdate: TxUpdate) = transaction {
         if (tx.txResponse.code == 0) {
-            tx.tx.body.messagesList.map { it.getAssociatedGovMsgs() }
-                .forEachIndexed fe@{ idx, pair ->
-                    if (pair == null) return@fe
+            tx.tx.body.messagesList.mapNotNull { it.getAssociatedGovMsgs() }
+                .forEachIndexed { idx, pair ->
                     when (pair.first) {
                         GovMsgType.PROPOSAL ->
                             // Have to find the proposalId in the log events
@@ -462,9 +462,8 @@ class AsyncCachingV2(
                             )
                         }
                     }
-                tx.tx.body.messagesList.map { it.getIbcChannelEvents() }
-                    .forEachIndexed fe@{ idx, pair ->
-                        if (pair == null) return@fe
+                tx.tx.body.messagesList.mapNotNull { it.getIbcChannelEvents() }
+                    .forEachIndexed { idx, pair ->
                         val portAttr = pair.second.first
                         val channelAttr = pair.second.second
                         val (port, channel) = tx.txResponse.logsList[idx]
@@ -476,9 +475,8 @@ class AsyncCachingV2(
                     }
 
                 tx.tx.body.messagesList
-                    .map { msg -> msg.getIbcLedgerMsgs() }
+                    .mapNotNull { msg -> msg.getIbcLedgerMsgs() }
                     .forEachIndexed fe@{ idx, any ->
-                        if (any == null) return@fe
                         val ledger = when {
                             any.typeUrl.endsWith("MsgTransfer") -> {
                                 val msg = any.toMsgTransfer()
@@ -534,7 +532,7 @@ class AsyncCachingV2(
             val codesToBeSaved = mutableListOf<Long>()
             val contractsToBeSaved = mutableListOf<String>()
             tx.tx.body.messagesList.mapNotNull { it.getAssociatedSmContractMsgs() }
-                .forEach fe@{ data ->
+                .forEach { data ->
                     data.forEach { pair ->
                         when (pair.first) {
                             SmContractValue.CODE -> codesToBeSaved.add(pair.second as Long)

@@ -1,15 +1,24 @@
 package io.provenance.explorer.service
 
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.google.protobuf.Any
 import com.google.protobuf.util.JsonFormat
 import cosmos.bank.v1beta1.params
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.upgrade.v1beta1.Upgrade
+import io.ktor.client.call.receive
+import io.ktor.client.features.ResponseException
+import io.ktor.client.request.get
+import io.ktor.client.statement.HttpResponse
+import io.provenance.explorer.KTOR_CLIENT_JAVA
+import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.PREFIX_SCOPE
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
+import io.provenance.explorer.domain.entities.CacheKeys
+import io.provenance.explorer.domain.entities.CacheUpdateRecord
 import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
@@ -20,6 +29,7 @@ import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.pageOfResults
 import io.provenance.explorer.domain.extensions.toCoinStr
+import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toHash
 import io.provenance.explorer.domain.extensions.toObjectNodePrint
 import io.provenance.explorer.domain.extensions.toOffset
@@ -31,6 +41,7 @@ import io.provenance.explorer.domain.models.explorer.CosmosParams
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.CountTotal
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
+import io.provenance.explorer.domain.models.explorer.GithubReleaseData
 import io.provenance.explorer.domain.models.explorer.GovParamType
 import io.provenance.explorer.domain.models.explorer.GovParams
 import io.provenance.explorer.domain.models.explorer.IBCParams
@@ -52,11 +63,10 @@ import io.provenance.explorer.service.async.AsyncCachingV2
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
-import org.apache.http.client.methods.HttpGet
-import org.apache.http.impl.client.HttpClients
-import org.apache.http.impl.client.LaxRedirectStrategy
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
+import org.json.JSONArray
+import org.json.JSONObject
 import org.springframework.stereotype.Service
 import tendermint.types.Types
 import java.math.BigDecimal
@@ -168,32 +178,91 @@ class ExplorerService(
     fun getChainUpgrades(): List<ChainUpgrade> {
         val typeUrl = Any.pack(Upgrade.SoftwareUpgradeProposal.getDefaultInstance()).typeUrl
         val scheduledName = govClient.getIfUpgradeScheduled()?.plan?.name
-        val genesis = ChainUpgrade(
-            0,
-            "Genesis",
-            props.genesisVersionUrl.getChainVersionFromUrl(props.upgradeVersionRegex),
-            props.genesisVersionUrl.getLatestPatchVersion(props.upgradeVersionRegex, null),
-            false,
-            false
-        )
-        val upgrades = GovProposalRecord.findByProposalType(typeUrl)
-            .windowed(2, 1, true) { chunk ->
-                (chunk.first() to chunk.getOrNull(1)).let { (one, two) ->
-                    val nextUpgrade = two?.content?.get("plan")?.get("info")?.asText()
-                    ChainUpgrade(
-                        one.content.get("plan").get("height").asInt(),
-                        one.content.get("plan").get("name").asText(),
-                        one.content.get("plan").get("info").asText().getChainVersionFromUrl(props.upgradeVersionRegex),
-                        one.content.get("plan").get("info").asText()
-                            .getLatestPatchVersion(props.upgradeVersionRegex, nextUpgrade),
-                        govClient.getIfUpgradeApplied(one.content.get("plan").get("name").asText())
-                            ?.let { it.height.toInt() != one.content.get("plan").get("height").asInt() }
-                            ?: true,
-                        scheduledName?.let { name -> name == one.content.get("plan").get("name").asText() } ?: false
-                    )
-                }
+        val proposals = GovProposalRecord.findByProposalType(typeUrl)
+        val knownReleases =
+            CacheUpdateRecord.fetchCacheByKey(CacheKeys.CHAIN_RELEASES.key)?.cacheValue?.let {
+                VANILLA_MAPPER.readValue<List<GithubReleaseData>>(it)
+            } ?: getChainReleases()
+        val genesis = props.genesisVersionUrl.getLatestPatchVersion(
+            knownReleases,
+            props.upgradeVersionRegex,
+            proposals.firstOrNull()?.content?.get("plan")?.get("info")?.asText()
+        ).let { (version, url) ->
+            ChainUpgrade(
+                0,
+                "Genesis",
+                props.genesisVersionUrl.getChainVersionFromUrl(props.upgradeVersionRegex),
+                version,
+                false,
+                false,
+                url
+            )
+        }
+        val upgrades = proposals.windowed(2, 1, true) { chunk ->
+            (chunk.first() to chunk.getOrNull(1)).let { (one, two) ->
+                val nextUpgrade = two?.content?.get("plan")?.get("info")?.asText()
+                val (version, url) = one.content.get("plan").get("info").asText()
+                    .getLatestPatchVersion(knownReleases, props.upgradeVersionRegex, nextUpgrade)
+                ChainUpgrade(
+                    one.content.get("plan").get("height").asInt(),
+                    one.content.get("plan").get("name").asText(),
+                    one.content.get("plan").get("info").asText().getChainVersionFromUrl(props.upgradeVersionRegex),
+                    version,
+                    govClient.getIfUpgradeApplied(one.content.get("plan").get("name").asText())
+                        ?.let { it.height.toInt() != one.content.get("plan").get("height").asInt() }
+                        ?: true,
+                    scheduledName?.let { name -> name == one.content.get("plan").get("name").asText() } ?: false,
+                    url
+                )
             }
+        }
         return (listOf(genesis) + upgrades).sortedBy { it.upgradeHeight }
+    }
+
+    // Fetches and saves the ordered list of releases
+    fun getChainReleases(): MutableList<GithubReleaseData> = runBlocking {
+        val url = "https://api.github.com/repos/${props.upgradeGithubRepo}/releases"
+        val res = try {
+            KTOR_CLIENT_JAVA.get<HttpResponse>(url)
+        } catch (e: ResponseException) {
+            return@runBlocking mutableListOf<GithubReleaseData>().also { logger.error("Error: ${e.response}") }
+        }
+
+        if (res.status.value == 200) {
+            try {
+                JSONArray(res.receive<String>()).mapNotNull { ele ->
+                    if (ele is JSONObject) {
+                        GithubReleaseData(
+                            ele.getString("tag_name"),
+                            ele.getString("created_at"),
+                            ele.getString("html_url")
+                        )
+                    } else null
+                }.sortedBy { it.createdAt.toDateTime() }.toMutableList()
+            } catch (e: Exception) {
+                mutableListOf<GithubReleaseData>().also { logger.error("Error: $e") }
+            }
+        } else mutableListOf<GithubReleaseData>().also { logger.error("Error reaching Pricing Engine: ${res.status.value}") }
+    }.also {
+        if (it.isNotEmpty())
+            CacheUpdateRecord.updateCacheByKey(CacheKeys.CHAIN_RELEASES.key, VANILLA_MAPPER.writeValueAsString(it))
+    }
+
+    fun String.getLatestPatchVersion(
+        knownReleases: List<GithubReleaseData>,
+        regex: String,
+        nextUpgradeUrl: String?
+    ): Pair<String, String> {
+        val currVersion = this.getChainVersionFromUrl(regex)
+        val nextVersion = nextUpgradeUrl?.getChainVersionFromUrl(regex)
+        return if (nextVersion == null)
+            knownReleases.last().let { it.releaseVersion to it.releaseUrl }
+        else {
+            val currMinor = currVersion.split(".").subList(0, 2).joinToString(".")
+            val next = knownReleases.first { it.releaseVersion == nextVersion }
+            knownReleases.last { it.releaseVersion.startsWith(currMinor) && it.createdAt.toDateTime() < next.createdAt.toDateTime() }
+                .let { it.releaseVersion to it.releaseUrl }
+        }
     }
 
     fun getChainPrefixes() = listOf(
@@ -290,33 +359,3 @@ fun Query.GetBlockByHeightResponse.getVotingSet(props: ExplorerProperties, filte
         .associate { it.validatorAddress.translateByteArray(props).consensusAccountAddr to it.blockIdFlag }
 
 fun String.getChainVersionFromUrl(regex: String) = Regex(regex).find(this)?.value!!
-
-fun String.getLatestPatchVersion(regex: String, nextUpgradeUrl: String?): String {
-    val currVersion = this.getChainVersionFromUrl(regex)
-    val nextVersion = nextUpgradeUrl?.getChainVersionFromUrl(regex)
-    val versionList = currVersion.split(".").toTypedArray()
-    var noMore = false
-    var latestPatch = versionList.last().toInt()
-    while (!noMore) {
-        versionList[versionList.size - 1] = (latestPatch + 1).toString()
-        Regex(regex).replace(this, versionList.joinToString("."))
-            .checkForResponse().let {
-                if (it && versionList.joinToString(".") != nextVersion)
-                    latestPatch += 1
-                else noMore = true
-            }
-    }
-
-    versionList[versionList.size - 1] = latestPatch.toString()
-    return versionList.joinToString(".")
-}
-
-// this == the URL to check for a response
-fun String.checkForResponse(): Boolean {
-    return HttpClients.custom().setRedirectStrategy(LaxRedirectStrategy()).build()
-        .use { client ->
-            client.execute(HttpGet(this)) { response ->
-                !(response == null || response.statusLine.statusCode != 200)
-            }
-        }
-}

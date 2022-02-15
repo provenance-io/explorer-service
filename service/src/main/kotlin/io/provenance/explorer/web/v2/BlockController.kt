@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import javax.validation.constraints.Max
 import javax.validation.constraints.Min
 
 @Validated
@@ -30,7 +31,7 @@ class BlockController(private val explorerService: ExplorerService) {
     @ApiOperation("Returns most recent blocks")
     @GetMapping("/recent")
     fun recentBlocks(
-        @RequestParam(required = true, defaultValue = "10") @Min(1) count: Int,
+        @RequestParam(required = true, defaultValue = "10") @Min(1) @Max(200) count: Int,
         @RequestParam(required = true, defaultValue = "1") @Min(1) page: Int
     ) = ResponseEntity.ok(explorerService.getRecentBlocks(count, page - 1))
 }
