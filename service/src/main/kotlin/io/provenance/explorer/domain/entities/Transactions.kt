@@ -252,7 +252,7 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
                 (TxMessageTable.txHashId eq hashId) and
                     (if (msgTypes.isNotEmpty()) (TxMessageTable.txMessageType inList msgTypes) else (Op.TRUE))
             }
-                .orderBy(Pair(TxMessageTable.id, SortOrder.ASC))
+                .orderBy(Pair(TxMessageTable.msgIdx, SortOrder.ASC))
                 .limit(limit, offset.toLong())
                 .toMutableList()
         }

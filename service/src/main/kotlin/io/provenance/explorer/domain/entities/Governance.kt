@@ -19,8 +19,6 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.innerJoin
-import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -91,41 +89,6 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
                 )
             }.toList()
         }
-
-        fun getOrInsert(
-            proposal: Gov.Proposal,
-            protoPrinter: JsonFormat.Printer,
-            txInfo: TxData,
-            addrInfo: GovAddrData,
-            isSubmit: Boolean
-        ) =
-            transaction {
-                findByProposalId(proposal.proposalId)?.apply {
-                    this.status = proposal.status.name
-                    this.data = proposal
-                    if (isSubmit) {
-                        this.txHash = txInfo.txHash
-                        this.txTimestamp = txInfo.txTimestamp
-                        this.blockHeight = txInfo.blockHeight
-                    }
-                } ?: GovProposalTable.insertAndGetId {
-                    it[this.proposalId] = proposal.proposalId
-                    it[this.proposalType] = proposal.content.typeUrl.getProposalType()
-                    it[this.address] = addrInfo.addr
-                    it[this.addressId] = addrInfo.addrId
-                    it[this.isValidator] = addrInfo.isValidator
-                    proposal.content.toProposalTitleAndDescription(protoPrinter).let { pair ->
-                        it[this.title] = pair.first
-                        it[this.description] = pair.second
-                    }
-                    it[this.status] = proposal.status.name
-                    it[this.data] = proposal
-                    it[this.content] = proposal.content.toProposalContent(protoPrinter)
-                    it[this.blockHeight] = txInfo.blockHeight
-                    it[this.txHash] = txInfo.txHash
-                    it[this.txTimestamp] = txInfo.txTimestamp
-                }.let { GovProposalRecord.findById(it)!! }
-            }
 
         fun buildInsert(
             proposal: Gov.Proposal,
@@ -236,31 +199,6 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
                 .firstOrNull()
         }
 
-        fun getOrInsert(
-            txInfo: TxData,
-            vote: Tx.MsgVote,
-            addrInfo: GovAddrData
-        ) = transaction {
-            findByProposalIdAndAddrId(vote.proposalId, addrInfo.addrId)
-                ?.apply {
-                    if (txInfo.blockHeight > this.blockHeight) {
-                        this.vote = vote.option.name
-                        this.blockHeight = blockHeight
-                        this.txHash = txHash
-                        this.txTimestamp = txTimestamp
-                    }
-                } ?: GovVoteTable.insertAndGetId {
-                it[this.proposalId] = vote.proposalId
-                it[this.addressId] = addrInfo.addrId
-                it[this.address] = vote.voter
-                it[this.isValidator] = addrInfo.isValidator
-                it[this.vote] = vote.option.name
-                it[this.blockHeight] = txInfo.blockHeight
-                it[this.txHash] = txInfo.txHash
-                it[this.txTimestamp] = txInfo.txTimestamp
-            }.let { GovVoteRecord.findById(it)!! }
-        }
-
         fun buildInsert(
             txInfo: TxData,
             vote: Tx.MsgVote,
@@ -337,29 +275,6 @@ class GovDepositRecord(id: EntityID<Int>) : IntEntity(id) {
             GovDepositRecord.find { GovDepositTable.proposalId eq proposalId }.count()
         }
 
-        fun insertAndGet(
-            txInfo: TxData,
-            proposalId: Long,
-            depositType: DepositType,
-            amountList: List<CoinOuterClass.Coin>,
-            addrInfo: GovAddrData
-        ) = transaction {
-            amountList.forEach { amount ->
-                GovDepositTable.insertAndGetId {
-                    it[this.proposalId] = proposalId
-                    it[this.addressId] = addrInfo.addrId
-                    it[this.address] = addrInfo.addr
-                    it[this.isValidator] = addrInfo.isValidator
-                    it[this.depositType] = depositType.name
-                    it[this.amount] = amount.amount.toBigDecimal()
-                    it[this.denom] = amount.denom
-                    it[this.blockHeight] = txInfo.blockHeight
-                    it[this.txHash] = txInfo.txHash
-                    it[this.txTimestamp] = txInfo.txTimestamp
-                }.let { GovDepositRecord.findById(it)!! }
-            }
-        }
-
         fun buildInserts(
             txInfo: TxData,
             proposalId: Long,
@@ -415,24 +330,6 @@ object ProposalMonitorTable : IntIdTable(name = "proposal_monitor") {
 class ProposalMonitorRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<ProposalMonitorRecord>(ProposalMonitorTable) {
 
-        fun insert(
-            proposalId: Long,
-            submittedHeight: Int,
-            proposedCompletionHeight: Int,
-            votingEndTime: DateTime,
-            proposalType: ProposalType,
-            dataHash: String
-        ) = transaction {
-            ProposalMonitorTable.insertIgnore {
-                it[this.proposalId] = proposalId
-                it[this.submittedHeight] = submittedHeight
-                it[this.proposedCompletionHeight] = proposedCompletionHeight
-                it[this.votingEndTime] = votingEndTime
-                it[this.proposalType] = proposalType.toString()
-                it[this.dataHash] = dataHash
-            }
-        }
-
         fun buildInsert(
             proposalId: Long,
             submittedHeight: Int,
@@ -446,7 +343,7 @@ class ProposalMonitorRecord(id: EntityID<Int>) : IntEntity(id) {
             submittedHeight,
             proposedCompletionHeight,
             votingEndTime,
-            proposalType,
+            proposalType.name,
             dataHash,
             false,
             false

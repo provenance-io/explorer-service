@@ -145,41 +145,6 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
             } else null
         }
 
-        fun getOrInsert(
-            ledger: LedgerInfo,
-            txData: TxData
-        ) = transaction {
-            findMatchingRecord(ledger)?.apply {
-                this.acknowledged = true
-                this.ackSuccess = ledger.ack
-                this.ackLogs = ledger.logs
-                this.ackBlockHeight = txData.blockHeight
-                this.ackTxHashId = txData.txHashId
-                this.ackTxHash = txData.txHash
-                this.ackTxTimestamp = txData.txTimestamp
-            } ?: IbcLedgerTable.insertAndGetId {
-                it[this.channelId] = ledger.channel.id.value
-                it[this.dstChainName] = ledger.channel.dstChainName
-                it[this.denom] = ledger.denom
-                it[this.denomTrace] = ledger.denomTrace
-                it[this.balanceIn] = ledger.balanceIn?.toBigDecimal()
-                it[this.balanceOut] = ledger.balanceOut?.toBigDecimal()
-                it[this.fromAddress] = ledger.fromAddress
-                it[this.toAddress] = ledger.toAddress
-                it[this.passThroughAddrId] = ledger.passThroughAddress!!.id.value
-                it[this.passThroughAddr] = ledger.passThroughAddress!!.accountAddress
-                it[this.logs] = ledger.logs
-                it[this.blockHeight] = txData.blockHeight
-                it[this.txHashId] = txData.txHashId!!
-                it[this.txHash] = txData.txHash
-                it[this.txTimestamp] = txData.txTimestamp
-                if (ledger.balanceIn != null) {
-                    it[this.acknowledged] = true
-                    it[this.ackSuccess] = true
-                }
-            }.let { IbcLedgerRecord.findById(it)!! }
-        }
-
         fun buildInsert(ledger: LedgerInfo, txData: TxData) = transaction {
             findMatchingRecord(ledger).let { ledg ->
                 listOf(
