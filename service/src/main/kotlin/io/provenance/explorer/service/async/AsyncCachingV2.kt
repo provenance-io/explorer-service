@@ -7,7 +7,6 @@ import cosmos.base.abci.v1beta1.Abci
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.tx.v1beta1.ServiceOuterClass
 import cosmos.tx.v1beta1.TxOuterClass
-import io.ktor.client.request.get
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.toArray

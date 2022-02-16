@@ -33,6 +33,12 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+* Added sort to TxMessage response to order by msg idx as seen in the Tx object
+
+### Bug Fixes
+* Fixed `proposal_monitor` buildInsert() to use correct value
+
 ## [v3.3.0](https://github.com/provenance-io/explorer-service/releases/tag/v3.3.0) - 2022-02-15
 ### Release Name: Chang Chun
 

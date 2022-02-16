@@ -500,7 +500,7 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.retried] = true
                 it[this.success] = false
                 it[this.errorBlock] =
-                    "NON BLOCKING ERROR: Logged to know what happened, but didnt stop processing.\\n " +
+                    "NON BLOCKING ERROR: Logged to know what happened, but didnt stop processing.\n " +
                     e.stackTraceToString()
             }
         }
