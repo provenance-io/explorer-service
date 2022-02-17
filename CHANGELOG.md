@@ -33,6 +33,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Bug Fixes
+* Updated Migration 1.42 and 1.43 to work on a new database
+
 ## [v3.3.1](https://github.com/provenance-io/explorer-service/releases/tag/v3.3.1) - 2022-02-16
 ### Release Name: Rabban Bar Sauma
 
