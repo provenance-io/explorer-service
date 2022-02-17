@@ -253,12 +253,11 @@ class ExplorerService(
         regex: String,
         nextUpgradeUrl: String?
     ): Pair<String, String> {
-        val currVersion = this.getChainVersionFromUrl(regex)
+        val currMinor = this.getChainVersionFromUrl(regex).split(".").subList(0, 2).joinToString(".")
         val nextVersion = nextUpgradeUrl?.getChainVersionFromUrl(regex)
         return if (nextVersion == null)
-            knownReleases.last().let { it.releaseVersion to it.releaseUrl }
+            knownReleases.last { it.releaseVersion.startsWith(currMinor) }.let { it.releaseVersion to it.releaseUrl }
         else {
-            val currMinor = currVersion.split(".").subList(0, 2).joinToString(".")
             val next = knownReleases.first { it.releaseVersion == nextVersion }
             knownReleases.last { it.releaseVersion.startsWith(currMinor) && it.createdAt.toDateTime() < next.createdAt.toDateTime() }
                 .let { it.releaseVersion to it.releaseUrl }
