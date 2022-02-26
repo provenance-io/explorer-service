@@ -2,6 +2,7 @@ package io.provenance.explorer.domain.entities
 
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.staking.v1beta1.Staking
+import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.ArrayColumnType
@@ -10,16 +11,22 @@ import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.mapper
 import io.provenance.explorer.domain.models.explorer.CurrentValidatorState
+import io.provenance.explorer.domain.models.explorer.TxData
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.IntegerColumnType
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.VarCharColumnType
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.avg
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
+import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -261,3 +268,61 @@ fun ResultSet.toCurrentValidatorState() = CurrentValidatorState(
 )
 
 fun ResultSet.toCount() = this.getLong("count")
+
+object ValidatorMarketRateTable : IntIdTable(name = "validator_market_rate") {
+    val blockHeight = integer("block_height")
+    val blockTimestamp = datetime("block_timestamp")
+    val proposerAddress = varchar("proposer_address", 128)
+    val txHashId = integer("tx_hash_id")
+    val txHash = varchar("tx_hash", 64)
+    val marketRate = decimal("market_rate", 100, 0)
+    val success = bool("success")
+}
+
+class ValidatorMarketRateRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<ValidatorMarketRateRecord>(ValidatorMarketRateTable) {
+        fun buildInsert(txInfo: TxData, proposer: String, tx: ServiceOuterClass.GetTxResponse, success: Boolean) =
+            listOf(
+                0,
+                txInfo.blockHeight,
+                txInfo.txTimestamp,
+                proposer,
+                0,
+                txInfo.txHash,
+                TxFeeRecord.calcMarketRate(tx),
+                success
+            ).toProcedureObject()
+
+        fun getRateByTxId(txId: Int) = transaction {
+            ValidatorMarketRateRecord.find { ValidatorMarketRateTable.txHashId eq txId }.first().marketRate
+        }
+
+        fun getCurrentRateByValidator(operAddr: String) = transaction {
+            val avg = ValidatorMarketRateTable.marketRate.avg(2)
+            ValidatorMarketRateTable
+                .slice(ValidatorMarketRateTable.blockHeight, avg)
+                .select { (ValidatorMarketRateTable.proposerAddress eq operAddr) and (ValidatorMarketRateTable.success) }
+                .groupBy(ValidatorMarketRateTable.blockHeight)
+                .orderBy(Pair(ValidatorMarketRateTable.blockHeight, SortOrder.DESC))
+                .limit(1)
+                .first()
+                .let { it[avg]!! }
+        }
+
+        fun findForDates(fromDate: DateTime, toDate: DateTime, address: String?) = transaction {
+            val query = ValidatorMarketRateTable
+                .select { ValidatorMarketRateTable.blockTimestamp.between(fromDate, toDate.plusDays(1)) }
+            if (address != null)
+                query.andWhere { ValidatorMarketRateTable.proposerAddress eq address }
+            ValidatorMarketRateRecord.wrapRows(query)
+        }
+    }
+
+    var blockHeight by ValidatorMarketRateTable.blockHeight
+    var blockTimestamp by ValidatorMarketRateTable.blockTimestamp
+    var proposerAddress by ValidatorMarketRateTable.proposerAddress
+    var txHashId by ValidatorMarketRateTable.txHashId
+    var txHash by ValidatorMarketRateTable.txHash
+    var marketRate by ValidatorMarketRateTable.marketRate
+    var success by ValidatorMarketRateTable.success
+}

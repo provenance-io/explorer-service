@@ -13,7 +13,7 @@ import com.google.protobuf.Timestamp
 import com.hubspot.jackson.datatype.protobuf.ProtobufModule
 import cosmos.base.abci.v1beta1.Abci
 import cosmos.staking.v1beta1.Staking
-import cosmos.tx.v1beta1.TxOuterClass
+import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.Bech32
@@ -119,15 +119,13 @@ fun DateTime.startOfDay() = this.withZone(DateTimeZone.UTC).withTimeAtStartOfDay
 fun String.toDateTime() = DateTime.parse(this)
 fun OffsetDateTime.toDateTime() = DateTime(this.toInstant().toEpochMilli(), DateTimeZone.UTC)
 
+fun ServiceOuterClass.GetTxResponse.getFeeTotalPaid() =
+    this.tx.authInfo.fee.amountList.first { it.denom == NHASH }.amount.toLong()
 fun BlockOuterClass.Block.height() = this.header.height.toInt()
 fun Long.get24HrBlockHeight(avgBlockTime: BigDecimal) =
     BigDecimal(24 * 60 * 60).divide(avgBlockTime, 0, RoundingMode.HALF_UP).let { this - it.toInt() }
 
 fun String.toObjectNode() = OBJECT_MAPPER.readValue(StringEscapeUtils.unescapeJson(this), ObjectNode::class.java)
-
-// this == gas_limit
-fun TxOuterClass.Fee.getMinGasFee() =
-    (this.amountList.firstOrNull()?.amount?.toBigInteger() ?: 0).toDouble().div(this.gasLimit.toDouble())
 
 fun List<BigDecimal>.average() = this.fold(BigDecimal.ZERO, BigDecimal::add)
     .divide(this.size.toBigDecimal(), 3, RoundingMode.CEILING)

@@ -20,7 +20,6 @@ data class BlockProposer(
     var blockHeight: Int,
     var proposerOperatorAddress: String,
     var blockTimestamp: DateTime,
-    var minGasFee: Double? = null,
     var blockLatency: BigDecimal? = null
 )
 

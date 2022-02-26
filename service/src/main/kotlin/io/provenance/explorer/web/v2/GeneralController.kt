@@ -55,13 +55,13 @@ class GeneralController(
     @GetMapping("/chain/id")
     fun getChainId(): ResponseEntity<String> = ResponseEntity.ok(explorerService.getChainId())
 
-    @ApiOperation("Returns statistics on min gas fees for the chain - DO NOT USE")
-    @GetMapping("/gas/fees/statistics")
-    fun getGasFeeStatistics(
+    @ApiOperation("Returns statistics on market rate for the chain")
+    @GetMapping("/chain/market_rate")
+    fun getChainMarketRateStats(
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?,
         @RequestParam(required = false, defaultValue = "14") @Min(1) dayCount: Int
-    ) = ResponseEntity.ok(explorerService.getGasFeeStatistics(fromDate, toDate, dayCount))
+    ) = ResponseEntity.ok(explorerService.getChainMarketRateStats(fromDate, toDate, dayCount))
 
     @ApiOperation("Returns token statistics for the chain")
     @GetMapping("/token/stats")

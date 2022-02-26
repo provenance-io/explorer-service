@@ -19,7 +19,7 @@ import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.CacheKeys
 import io.provenance.explorer.domain.entities.CacheUpdateRecord
-import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
+import io.provenance.explorer.domain.entities.ChainMarketRateStatsRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
@@ -170,8 +170,8 @@ class ExplorerService(
     fun getGasVolume(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
         TxGasCacheRecord.getGasVolume(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
 
-    fun getGasFeeStatistics(fromDate: DateTime?, toDate: DateTime?, count: Int) =
-        ChainGasFeeCacheRecord.findForDates(fromDate, toDate, count)
+    fun getChainMarketRateStats(fromDate: DateTime?, toDate: DateTime?, count: Int) =
+        ChainMarketRateStatsRecord.findForDates(fromDate, toDate, count)
 
     fun getChainId() = asyncV2.getChainIdString()
 

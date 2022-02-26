@@ -309,6 +309,7 @@ data class TxUpdate(
     var smContracts: MutableList<String> = mutableListOf(),
     var sigs: MutableList<String> = mutableListOf(),
     var feePayers: MutableList<String> = mutableListOf(),
+    var validatorMarketRate: String? = null,
 )
 
 fun TxUpdate.toProcedureObject() =
@@ -320,7 +321,8 @@ fun TxUpdate.toProcedureObject() =
         this.proposalMonitors.toArray(ProposalMonitorTable.tableName), this.deposits.toArray(GovDepositTable.tableName),
         this.votes.toArray(GovVoteTable.tableName), this.ibcLedgers.toArray(IbcLedgerTable.tableName),
         this.smCodes.toArray(TxSmCodeTable.tableName), this.smContracts.toArray(TxSmContractTable.tableName),
-        this.sigs.toArray(SignatureJoinTable.tableName), this.feePayers.toArray(TxFeepayerTable.tableName)
+        this.sigs.toArray(SignatureJoinTable.tableName), this.feePayers.toArray(TxFeepayerTable.tableName),
+        this.validatorMarketRate!!
     ).toObject()
 
 data class BlockUpdate(

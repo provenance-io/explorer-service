@@ -197,36 +197,25 @@ class AssetService(
     }
 
     private fun calculateTokenDistributionStats() {
-        val ranges = listOf(
-            Pair(0, "1-5"),
-            Pair(5, "6-10"),
-            Pair(10, "11-50"),
-            Pair(50, "51-100"),
-            Pair(100, "101-500"),
-            Pair(500, "501-1000"),
-            Pair(1000, "1001-"),
-        )
         val tokenDistributions = listOf(
-            Pair(5, 0),
-            Pair(5, 5),
-            Pair(50, 10),
-            Pair(50, 50),
-            Pair(500, 100),
-            Pair(500, 500),
-            Pair("ALL", 1000)
-        ).map { limitOffset ->
-            val results =
-                TokenDistributionPaginatedResultsRecord.findByLimitOffset(limitOffset.first, limitOffset.second)
+            Triple(1, 0, "1"),
+            Triple(1, 1, "2"),
+            Triple(1, 2, "3"),
+            Triple(1, 3, "4"),
+            Triple(1, 4, "5"),
+            Triple(5, 5, "6-10"),
+            Triple(50, 10, "11-50"),
+            Triple(50, 50, "51-100"),
+            Triple(500, 100, "101-500"),
+            Triple(500, 500, "501-1000"),
+            Triple("ALL", 1000, "1001-")
+        ).map { (limit, offset, range) ->
+            val results = TokenDistributionPaginatedResultsRecord.findByLimitOffset(limit, offset)
             val denom = results?.get(0)?.denom!!
             val totalSupply = results[0].total?.toBigDecimal()!!
             val rangeBalance = results.sumOf { it.count.toBigDecimal() }
             val percentOfTotal = rangeBalance.asPercentOf(totalSupply).toPlainString()
-
-            TokenDistribution(
-                ranges.find { it.first == limitOffset.second }!!.second,
-                TokenDistributionAmount(denom, rangeBalance.toString()),
-                percentOfTotal
-            )
+            TokenDistribution(range, TokenDistributionAmount(denom, rangeBalance.toString()), percentOfTotal)
         }
 
         TokenDistributionAmountsRecord.batchUpsert(tokenDistributions)

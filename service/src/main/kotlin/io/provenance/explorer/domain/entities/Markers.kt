@@ -1,6 +1,7 @@
 package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.domain.core.sql.batchUpsert
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.nullsLast
 import io.provenance.explorer.domain.extensions.map
@@ -17,19 +18,15 @@ import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
-import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
-import org.jetbrains.exposed.sql.Table
-import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
-import org.jetbrains.exposed.sql.statements.BatchInsertStatement
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -132,7 +129,7 @@ class TokenDistributionAmountsRecord(id: EntityID<Int>) : IntEntity(id) {
             val range = TokenDistributionAmountsTable.range
             val data = TokenDistributionAmountsTable.data
             TokenDistributionAmountsTable
-                .batchUpsert(tokenDistributions, listOf(range, data)) { batch, tokenDistribution ->
+                .batchUpsert(tokenDistributions, listOf(range), listOf(data)) { batch, tokenDistribution ->
                     batch[range] = tokenDistribution.range
                     batch[data] = tokenDistribution
                 }
@@ -143,39 +140,7 @@ class TokenDistributionAmountsRecord(id: EntityID<Int>) : IntEntity(id) {
             TokenDistributionAmountsTable
                 .slice(data)
                 .select { data.isNotNull() }
-                .map {
-                    it[data]
-                }
-        }
-
-        private class BatchUpsert(
-            table: Table,
-            private val onUpdate: List<Column<*>>
-        ) : BatchInsertStatement(table, false) {
-
-            override fun prepareSQL(transaction: Transaction): String {
-                val onUpdateSQL = if (onUpdate.isNotEmpty()) {
-                    " ON CONFLICT (range) " +
-                        "DO UPDATE " +
-                        "SET data = excluded.data"
-                } else ""
-                return super.prepareSQL(transaction) + onUpdateSQL
-            }
-        }
-
-        private fun <T : Table, E> T.batchUpsert(
-            data: List<E>,
-            onUpdateColumns: List<Column<*>>,
-            body: T.(BatchUpsert, E) -> Unit
-        ) {
-            data.takeIf { it.isNotEmpty() }?.let {
-                val insert = BatchUpsert(this, onUpdateColumns)
-                data.forEach {
-                    insert.addBatch()
-                    body(insert, it)
-                }
-                TransactionManager.current().exec(insert)
-            }
+                .map { it[data] }
         }
     }
 
@@ -218,42 +183,10 @@ class TokenDistributionPaginatedResultsRecord(id: EntityID<Int>) : IntEntity(id)
             val ownerAddress = TokenDistributionPaginatedResultsTable.ownerAddress
             val data = TokenDistributionPaginatedResultsTable.data
             TokenDistributionPaginatedResultsTable
-                .batchUpsert(paginatedResults, listOf(ownerAddress, data)) { batch, paginatedResult ->
+                .batchUpsert(paginatedResults, listOf(ownerAddress), listOf(data)) { batch, paginatedResult ->
                     batch[ownerAddress] = paginatedResult.ownerAddress
                     batch[data] = paginatedResult.data
                 }
-        }
-
-        // With some tinkering from https://github.com/JetBrains/Exposed/issues/167
-        // and, https://ohadshai.medium.com/first-steps-with-kotlin-exposed-cb361a9bf5ac
-        private class BatchUpsert(
-            table: Table,
-            private val onUpdate: List<Column<*>>
-        ) : BatchInsertStatement(table, false) {
-
-            override fun prepareSQL(transaction: Transaction): String {
-                val onUpdateSQL = if (onUpdate.isNotEmpty()) {
-                    " ON CONFLICT (owner_address) " +
-                        "DO UPDATE " +
-                        "SET data = excluded.data"
-                } else ""
-                return super.prepareSQL(transaction) + onUpdateSQL
-            }
-        }
-
-        private fun <T : Table, E> T.batchUpsert(
-            data: List<E>,
-            onUpdateColumns: List<Column<*>>,
-            body: T.(BatchUpsert, E) -> Unit
-        ) {
-            data.takeIf { it.isNotEmpty() }?.let {
-                val insert = BatchUpsert(this, onUpdateColumns)
-                data.forEach {
-                    insert.addBatch()
-                    body(insert, it)
-                }
-                TransactionManager.current().exec(insert)
-            }
         }
     }
 

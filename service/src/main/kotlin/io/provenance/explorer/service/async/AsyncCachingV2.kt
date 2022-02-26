@@ -3,10 +3,8 @@ package io.provenance.explorer.service.async
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.google.protobuf.Any
 import com.google.protobuf.Timestamp
-import cosmos.base.abci.v1beta1.Abci
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.tx.v1beta1.ServiceOuterClass
-import cosmos.tx.v1beta1.TxOuterClass
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.toArray
@@ -34,6 +32,7 @@ import io.provenance.explorer.domain.entities.TxNftJoinRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.entities.TxSmCodeRecord
 import io.provenance.explorer.domain.entities.TxSmContractRecord
+import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.buildInsert
 import io.provenance.explorer.domain.entities.updateHitCount
@@ -91,7 +90,6 @@ import net.pearx.kasechange.universalWordSplitter
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
-import java.math.BigInteger
 
 @Service
 class AsyncCachingV2(
@@ -198,39 +196,30 @@ class AsyncCachingV2(
         proposerRec: BlockProposer
     ): List<TxUpdatedItems> = try {
         txClient.getTxsByHeight(blockHeight, txCount)
-            .also { calculateBlockTxFee(it, proposerRec) }
-            .map { addTxToCacheWithTimestamp(txClient.getTxByHash(it.txhash), blockTime) }
+            .map { addTxToCacheWithTimestamp(txClient.getTxByHash(it.txhash), blockTime, proposerRec) }
     } catch (e: Exception) {
         logger.error("Failed to retrieve transactions at block: $blockHeight", e.message)
         BlockTxRetryRecord.insert(blockHeight, e)
         listOf()
     }
 
-    private fun calculateBlockTxFee(result: List<Abci.TxResponse>, proposerRec: BlockProposer) =
-        transaction {
-            result.map { it.tx.unpack(TxOuterClass.Tx::class.java) }
-                .let { list ->
-                    val numerator =
-                        list.sumOf {
-                            it.authInfo.fee.amountList.firstOrNull()?.amount?.toBigInteger() ?: BigInteger.ZERO
-                        }
-                    val denominator = list.sumOf { it.authInfo.fee.gasLimit.toBigInteger() }
-                    numerator.toDouble().div(denominator.toDouble())
-                }.let { proposerRec.apply { this.minGasFee = it } }
-        }
-
-    fun addTxToCacheWithTimestamp(res: ServiceOuterClass.GetTxResponse, blockTime: Timestamp) =
-        addTxToCache(res, blockTime.toDateTime())
+    fun addTxToCacheWithTimestamp(
+        res: ServiceOuterClass.GetTxResponse,
+        blockTime: Timestamp,
+        proposerRec: BlockProposer
+    ) =
+        addTxToCache(res, blockTime.toDateTime(), proposerRec)
 
     // Function that saves all the things under a transaction
     fun addTxToCache(
         res: ServiceOuterClass.GetTxResponse,
-        blockTime: DateTime
+        blockTime: DateTime,
+        proposerRec: BlockProposer
     ): TxUpdatedItems {
         val tx = TxCacheRecord.buildInsert(res, blockTime)
         val txUpdate = TxUpdate(tx)
         val txInfo = TxData(res.txResponse.height.toInt(), null, res.txResponse.txhash, blockTime)
-        saveTxGasFees(res, txInfo, txUpdate)
+        saveTxFees(res, txInfo, txUpdate, proposerRec)
         saveMessages(txInfo, res, txUpdate)
         val addrs = saveAddresses(txInfo, res, txUpdate)
         val markers = saveMarkers(txInfo, res, txUpdate)
@@ -265,10 +254,18 @@ class AsyncCachingV2(
         }
     }
 
-    private fun saveTxGasFees(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, txUpdate: TxUpdate) =
+    private fun saveTxFees(
+        tx: ServiceOuterClass.GetTxResponse,
+        txInfo: TxData,
+        txUpdate: TxUpdate,
+        proposerRec: BlockProposer
+    ) =
         txUpdate.apply {
             this.txGasFee = TxGasCacheRecord.buildInsert(tx, txInfo.txTimestamp)
             this.txFees.addAll(TxFeeRecord.buildInserts(txInfo, tx, assetService))
+            this.validatorMarketRate = ValidatorMarketRateRecord.buildInsert(
+                txInfo, proposerRec.proposerOperatorAddress, tx, tx.txResponse.code == 0
+            )
         }
 
     fun saveMessages(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse, txUpdate: TxUpdate) = transaction {

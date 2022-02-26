@@ -22,20 +22,6 @@ import org.springframework.web.bind.annotation.RestController
 )
 class MigrationController(private val migrationService: MigrationService) {
 
-    @ApiOperation("Updates existing transactions with given type ids with new data points")
-    @GetMapping("/update/txs/type")
-    fun updateTxsByType(
-        @RequestParam typeIds: List<Int>,
-        @RequestParam min: Int,
-        @RequestParam max: Int,
-        @RequestParam inc: Int
-    ) = ResponseEntity.ok(migrationService.reprocessTxsFromTypeId(typeIds, min, max, inc))
-
-    @ApiOperation("Updates existing transactions with given heights with new data points")
-    @PutMapping("/update/txs/height")
-    fun updateTxsByHeight(@RequestBody heights: List<Int>) =
-        ResponseEntity.ok(migrationService.reprocessTxsFromHeight(heights))
-
     @ApiOperation("Updates accounts with data")
     @PutMapping("/update/accounts")
     fun updateAccounts(@RequestBody accounts: List<String>) =
