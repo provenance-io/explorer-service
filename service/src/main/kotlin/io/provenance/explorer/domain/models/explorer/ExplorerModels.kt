@@ -31,11 +31,26 @@ data class Spotlight(
     val totalAum: CoinStr
 )
 
-data class GasStatistics(
+data class ValidatorMarketRate(
+    val operatorAddress: String,
     val time: String,
-    val minGasPrice: BigDecimal,
-    val maxGasPrice: BigDecimal,
-    val averageGasPrice: BigDecimal
+    val minMarketRate: BigDecimal?,
+    val maxMarketRate: BigDecimal?,
+    val averageMarketRate: BigDecimal?
+)
+
+data class ChainMarketRate(
+    val time: String,
+    val minMarketRate: BigDecimal?,
+    val maxMarketRate: BigDecimal?,
+    val averageMarketRate: BigDecimal?
+)
+
+data class MarketRateAvg(
+    val dataCount: Int,
+    val minMarketRate: BigDecimal,
+    val maxMarketRate: BigDecimal,
+    val averageMarketRate: BigDecimal
 )
 
 data class GasStats(

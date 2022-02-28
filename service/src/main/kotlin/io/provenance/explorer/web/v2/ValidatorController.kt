@@ -73,8 +73,8 @@ class ValidatorController(
     fun validatorCommissionInfo(@PathVariable address: String) =
         ResponseEntity.ok(validatorService.getCommissionInfo(address))
 
-    @ApiOperation("Returns statistics on market rate for the address")
-    @GetMapping("/{address}/market_rate")
+    @ApiOperation("Returns statistics on market rate for the address for the given period")
+    @GetMapping("/{address}/market_rate/period")
     fun validatorMarketRateStats(
         @PathVariable address: String,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,

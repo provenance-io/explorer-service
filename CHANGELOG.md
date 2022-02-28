@@ -33,6 +33,12 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Added Market Rate APIs #309
+  * `/api/v2/validators/{address}/market_rate/period` - time period of rates per validator
+  * `/api/v2/chain/market_rate/period` - time period of rates for chain
+  * `api/v2/chain/market_rate` - avg values for chain for block count
+
 ### Improvements
 * Added generic batch upsert functionality
 * Expanded top 5 accounts on token distribution list
