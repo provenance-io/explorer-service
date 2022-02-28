@@ -2,8 +2,9 @@ package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
-import io.provenance.explorer.domain.models.explorer.GasStatistics
+import io.provenance.explorer.domain.models.explorer.ChainMarketRate
 import io.provenance.explorer.domain.models.explorer.Spotlight
+import io.provenance.explorer.domain.models.explorer.ValidatorMarketRate
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.EntityClass
 import org.jetbrains.exposed.dao.IntEntity
@@ -88,8 +89,16 @@ class ValidatorMarketRateStatsRecord(id: EntityID<Int>) : IntEntity(id) {
             if (toDate != null)
                 query.andWhere { ValidatorMarketRateStatsTable.date lessEq toDate.plusDays(1) }
 
-            query.orderBy(ValidatorMarketRateStatsTable.date, SortOrder.DESC).limit(count)
-            ValidatorMarketRateStatsRecord.wrapRows(query)
+            query.orderBy(ValidatorMarketRateStatsTable.date, SortOrder.ASC).limit(count)
+            ValidatorMarketRateStatsRecord.wrapRows(query).map {
+                ValidatorMarketRate(
+                    it.operatorAddress,
+                    it.date.toString("yyyy-MM-dd"),
+                    it.minMarketRate,
+                    it.maxMarketRate,
+                    it.avgMarketRate
+                )
+            }
         }
     }
 
@@ -130,11 +139,11 @@ class ChainMarketRateStatsRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) 
 
             query.orderBy(ChainMarketRateStatsTable.date, SortOrder.ASC).limit(count)
             ChainMarketRateStatsRecord.wrapRows(query).map {
-                GasStatistics(
+                ChainMarketRate(
                     it.date.toString("yyyy-MM-dd"),
-                    it.minMarketRate!!,
-                    it.maxMarketRate!!,
-                    it.avgMarketRate!!
+                    it.minMarketRate,
+                    it.maxMarketRate,
+                    it.avgMarketRate
                 )
             }
         }

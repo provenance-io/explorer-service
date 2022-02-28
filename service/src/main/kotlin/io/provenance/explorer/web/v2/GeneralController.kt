@@ -55,13 +55,19 @@ class GeneralController(
     @GetMapping("/chain/id")
     fun getChainId(): ResponseEntity<String> = ResponseEntity.ok(explorerService.getChainId())
 
-    @ApiOperation("Returns statistics on market rate for the chain")
-    @GetMapping("/chain/market_rate")
+    @ApiOperation("Returns statistics on market rate for the chain for the given period")
+    @GetMapping("/chain/market_rate/period")
     fun getChainMarketRateStats(
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?,
         @RequestParam(required = false, defaultValue = "14") @Min(1) dayCount: Int
     ) = ResponseEntity.ok(explorerService.getChainMarketRateStats(fromDate, toDate, dayCount))
+
+    @ApiOperation("Returns min/max/avg on market rate for the chain for given count of blocks with txs")
+    @GetMapping("/chain/market_rate")
+    fun getChainMarketRateAvg(
+        @RequestParam(required = false, defaultValue = "500") @Min(1) blockCount: Int
+    ) = ResponseEntity.ok(explorerService.getChainMarketRateAvg(blockCount))
 
     @ApiOperation("Returns token statistics for the chain")
     @GetMapping("/token/stats")

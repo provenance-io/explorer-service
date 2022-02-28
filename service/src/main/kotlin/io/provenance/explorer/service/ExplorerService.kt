@@ -23,7 +23,9 @@ import io.provenance.explorer.domain.entities.ChainMarketRateStatsRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
+import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
 import io.provenance.explorer.domain.extensions.NHASH
+import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.pageCountOfResults
@@ -45,6 +47,7 @@ import io.provenance.explorer.domain.models.explorer.GithubReleaseData
 import io.provenance.explorer.domain.models.explorer.GovParamType
 import io.provenance.explorer.domain.models.explorer.GovParams
 import io.provenance.explorer.domain.models.explorer.IBCParams
+import io.provenance.explorer.domain.models.explorer.MarketRateAvg
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.Params
 import io.provenance.explorer.domain.models.explorer.PrefixType
@@ -172,6 +175,11 @@ class ExplorerService(
 
     fun getChainMarketRateStats(fromDate: DateTime?, toDate: DateTime?, count: Int) =
         ChainMarketRateStatsRecord.findForDates(fromDate, toDate, count)
+
+    fun getChainMarketRateAvg(blockCount: Int) =
+        ValidatorMarketRateRecord.getChainRateForBlockCount(blockCount)
+            .map { it.marketRate }
+            .let { list -> MarketRateAvg(list.size, list.minOrNull()!!, list.maxOrNull()!!, list.average()) }
 
     fun getChainId() = asyncV2.getChainIdString()
 

@@ -316,6 +316,13 @@ class ValidatorMarketRateRecord(id: EntityID<Int>) : IntEntity(id) {
                 query.andWhere { ValidatorMarketRateTable.proposerAddress eq address }
             ValidatorMarketRateRecord.wrapRows(query)
         }
+
+        fun getChainRateForBlockCount(blockCount: Int) = transaction {
+            ValidatorMarketRateRecord.find { ValidatorMarketRateTable.success eq true }
+                .orderBy(Pair(ValidatorMarketRateTable.blockHeight, SortOrder.DESC))
+                .limit(blockCount)
+                .toList()
+        }
     }
 
     var blockHeight by ValidatorMarketRateTable.blockHeight

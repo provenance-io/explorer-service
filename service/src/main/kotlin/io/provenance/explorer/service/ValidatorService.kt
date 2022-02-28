@@ -408,7 +408,7 @@ class ValidatorService(
     }
 
     fun getValidatorMarketRateStats(address: String, fromDate: DateTime?, toDate: DateTime?, count: Int) = transaction {
-        ValidatorMarketRateStatsRecord.findByAddress(address, fromDate, toDate, count).reversed()
+        ValidatorMarketRateStatsRecord.findByAddress(address, fromDate, toDate, count)
     }
 
     fun getProposerConsensusAddr(blockMeta: Query.GetBlockByHeightResponse) =
