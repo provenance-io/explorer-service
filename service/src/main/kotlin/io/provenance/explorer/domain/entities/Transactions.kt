@@ -8,10 +8,9 @@ import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_OVERAGE
 import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_USED
-import io.provenance.explorer.domain.entities.FeeType.MSG_BASED_FEE
-import io.provenance.explorer.domain.entities.FeeType.PRIORITY_FEE
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.exec
+import io.provenance.explorer.domain.extensions.getFeeTotalPaid
 import io.provenance.explorer.domain.extensions.map
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toCoinStr
@@ -472,17 +471,15 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxGasCacheRecord>(TxGasCacheTable) {
 
         fun buildInsert(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime) =
-            TxFeeRecord.calcBaseGasFee(tx.txResponse.gasWanted).toDouble().let {
-                listOf(
-                    0,
-                    tx.txResponse.txhash,
-                    txTime,
-                    tx.txResponse.gasWanted.toInt(),
-                    tx.txResponse.gasUsed.toInt(),
-                    it,
-                    false
-                ).toProcedureObject()
-            }
+            listOf(
+                0,
+                tx.txResponse.txhash,
+                txTime,
+                tx.txResponse.gasWanted.toInt(),
+                tx.txResponse.gasUsed.toInt(),
+                tx.getFeeTotalPaid(),
+                false
+            ).toProcedureObject()
 
         fun getGasVolume(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
             val tblName = "tx_gas_fee_volume_${granularity.lowercase()}"
@@ -582,55 +579,43 @@ fun List<TxFeeRecord>.toFeePaid() = this.sumOf { it.amount }.toCoinStr(this.firs
 class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxFeeRecord>(TxFeeTable) {
 
-        // TODO: Replace 1905 with value from chain when 1.8.0 gets released
-        fun calcBaseGasFee(gasWanted: Long) = gasWanted * 1905
+        fun calcMarketRate(tx: ServiceOuterClass.GetTxResponse) = tx.getFeeTotalPaid() / tx.txResponse.gasWanted
 
         fun buildInserts(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse, assetService: AssetService) =
             transaction {
                 val success = tx.txResponse.code == 0
                 val feeList = mutableListOf<String>()
-                // calc baseFeeUsed, baseFeeOverage in nhash, and remaining as priority in nhash
-                tx.tx.authInfo.fee.amountList.first { it.denom == NHASH }.let {
-                    val baseFee = calcBaseGasFee(tx.txResponse.gasWanted)
-                    val baseFeeUsed = calcBaseGasFee(tx.txResponse.gasUsed)
-                    Triple(it.amount.toLong() - baseFee, baseFee - baseFeeUsed, baseFeeUsed)
-                }.let { (priority, baseFeeOverage, baseFeeUsed) ->
+                // calc baseFeeUsed, baseFeeOverage in nhash
+                tx.getFeeTotalPaid().let { totalFeeAmount ->
+                    val marketRate = calcMarketRate(tx)
+                    var baseFeeUsed = tx.txResponse.gasUsed * marketRate
+                    var overage = totalFeeAmount - baseFeeUsed
+                    // if totalFeeAmount is less than baseFeeUsed (ie, fails on gas),
+                    // baseFeeUsed = totalFeeAmount, and overage = 0
+                    // Else save the used and overage as normal, regardless of tx success
+                    if (baseFeeUsed > totalFeeAmount) {
+                        baseFeeUsed = totalFeeAmount
+                        overage = 0
+                    }
+                    Pair(overage, baseFeeUsed)
+                }.let { (baseFeeOverage, baseFeeUsed) ->
                     val nhash = assetService.getAssetRaw(NHASH).second
                     // insert used fee
                     feeList.add(
                         buildInsert(txInfo, BASE_FEE_USED.name, nhash.id.value, nhash.denom, baseFeeUsed.toBigDecimal())
                     )
-                    // insert paid too much fee
-                    feeList.add(
-                        buildInsert(
-                            txInfo,
-                            BASE_FEE_OVERAGE.name,
-                            nhash.id.value,
-                            nhash.denom,
-                            baseFeeOverage.toBigDecimal()
-                        )
-                    )
-                    // insert any overage as priority for now
-                    if (priority > 0)
-                        feeList.add(
-                            buildInsert(txInfo, PRIORITY_FEE.name, nhash.id.value, nhash.denom, priority.toBigDecimal())
-                        )
-                }
-
-                // Save remaining denoms as MSG_BASED_FEE, only if tx is successful
-                if (success)
-                    tx.tx.authInfo.fee.amountList.filter { it.denom != NHASH }.forEach {
-                        val denom = assetService.getAssetRaw(it.denom).second
+                    // insert paid too much fee if > 0
+                    if (baseFeeOverage > 0)
                         feeList.add(
                             buildInsert(
                                 txInfo,
-                                MSG_BASED_FEE.name,
-                                denom.id.value,
-                                denom.denom,
-                                it.amount.toBigDecimal()
+                                BASE_FEE_OVERAGE.name,
+                                nhash.id.value,
+                                nhash.denom,
+                                baseFeeOverage.toBigDecimal()
                             )
                         )
-                    }
+                }
                 feeList
             }
 

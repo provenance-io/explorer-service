@@ -15,7 +15,8 @@ import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.MissedBlocksRecord
 import io.provenance.explorer.domain.entities.SpotlightCacheRecord
 import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
-import io.provenance.explorer.domain.entities.ValidatorGasFeeCacheRecord
+import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
+import io.provenance.explorer.domain.entities.ValidatorMarketRateStatsRecord
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
 import io.provenance.explorer.domain.entities.updateHitCount
@@ -143,7 +144,7 @@ class ValidatorService(
                 stakingValidator.description.details,
                 stakingValidator.description.website,
                 stakingValidator.description.identity,
-                BlockProposerRecord.findCurrentFeeForAddress(address)?.minGasFee,
+                ValidatorMarketRateRecord.getCurrentRateByValidator(address).toDouble(),
                 stakingValidator.getStatusString(),
                 if (!stakingValidator.isActive()) stakingValidator.unbondingHeight else null,
                 if (stakingValidator.jailed) signingInfo?.jailedUntil?.toDateTime() else null
@@ -302,7 +303,7 @@ class ValidatorService(
             bondedTokens = CountStrTotal(stakingVal.json.tokens, null, NHASH),
             delegators = delegatorCount,
             status = stakingVal.json.getStatusString(),
-            currentGasFee = BlockProposerRecord.findCurrentFeeForAddress(stakingVal.operatorAddress)?.minGasFee,
+            currentGasFee = ValidatorMarketRateRecord.getCurrentRateByValidator(stakingVal.operatorAddress).toDouble(),
             unbondingHeight = if (!stakingVal.json.isActive()) stakingVal.json.unbondingHeight else null,
             imgUrl = getImgUrl(stakingVal.json.description.identity),
             hr24Change = get24HrBondedChange(validator, hr24Validator)
@@ -406,8 +407,8 @@ class ValidatorService(
         )
     }
 
-    fun getGasFeeStatistics(address: String, fromDate: DateTime?, toDate: DateTime?, count: Int) = transaction {
-        ValidatorGasFeeCacheRecord.findByAddress(address, fromDate, toDate, count).reversed()
+    fun getValidatorMarketRateStats(address: String, fromDate: DateTime?, toDate: DateTime?, count: Int) = transaction {
+        ValidatorMarketRateStatsRecord.findByAddress(address, fromDate, toDate, count).reversed()
     }
 
     fun getProposerConsensusAddr(blockMeta: Query.GetBlockByHeightResponse) =

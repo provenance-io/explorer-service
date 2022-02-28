@@ -7,14 +7,15 @@ import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.BlockTxCountsCacheRecord
 import io.provenance.explorer.domain.entities.BlockTxRetryRecord
 import io.provenance.explorer.domain.entities.CacheKeys
-import io.provenance.explorer.domain.entities.ChainGasFeeCacheRecord
+import io.provenance.explorer.domain.entities.ChainMarketRateStatsRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.ProposalMonitorRecord
 import io.provenance.explorer.domain.entities.ProposalMonitorRecord.Companion.checkIfProposalReadyForProcessing
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
-import io.provenance.explorer.domain.entities.ValidatorGasFeeCacheRecord
+import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
+import io.provenance.explorer.domain.entities.ValidatorMarketRateStatsRecord
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.startOfDay
@@ -54,7 +55,9 @@ class AsyncService(
         val index = getBlockIndex()
         val startHeight = blockService.getLatestBlockHeight()
         var indexHeight = startHeight
-        if (startCollectingHistoricalBlocks(index) || continueCollectingHistoricalBlocks(index!!.first!!, index.second!!)) {
+        if (startCollectingHistoricalBlocks(index) ||
+            continueCollectingHistoricalBlocks(index!!.first!!, index.second!!)
+        ) {
             val endDate = getEndDate()
             var shouldContinue = true
             blockService.updateBlockMaxHeightIndex(startHeight)
@@ -104,29 +107,25 @@ class AsyncService(
     fun BlockOuterClass.Block.day() = this.header.time.toDateTime()
 
     @Scheduled(cron = "0 0 1 * * ?") // Everyday at 1 am
-    fun updateGasFeeCaches() = transaction {
-        logger.info("Updating gas cache fees")
+    fun updateMarketRateStats() = transaction {
+        logger.info("Updating market rate stats")
         val date = DateTime.now().startOfDay().minusDays(1)
-        val records = BlockProposerRecord.findForDates(date, date, null)
-        records.groupBy { it.proposerOperatorAddress }.forEach { (k, v) -> calcAndInsert(v, k, date) }
+        val records = ValidatorMarketRateRecord.findForDates(date, date, null)
+        records.groupBy { it.proposerAddress }.forEach { (k, v) -> calcAndInsert(v, k, date) }
         calcAndInsert(records.toList(), null, date)
     }
 
-    private fun calcAndInsert(orig: List<BlockProposerRecord>, addr: String?, date: DateTime) = transaction {
-        val list = orig.filter { it.minGasFee != null }.map { it.minGasFee!!.toBigDecimal() }
+    private fun calcAndInsert(orig: List<ValidatorMarketRateRecord>, addr: String?, date: DateTime) = transaction {
+        val list = orig.map { it.marketRate }
         if (list.isNotEmpty()) {
             val max = list.maxWithOrNull(Comparator.naturalOrder())
             val min = list.minWithOrNull(Comparator.naturalOrder())
             val avg = list.fold(BigDecimal.ZERO, BigDecimal::add).div(list.count().toBigDecimal())
-            if (addr != null)
-                ValidatorGasFeeCacheRecord.save(addr, min, max, avg, date)
-            else
-                ChainGasFeeCacheRecord.save(min, max, avg, date)
+            if (addr != null) ValidatorMarketRateStatsRecord.save(addr, min, max, avg, date)
+            else ChainMarketRateStatsRecord.save(min, max, avg, date)
         } else {
-            if (addr != null)
-                ValidatorGasFeeCacheRecord.save(addr, null, null, null, date)
-            else
-                ChainGasFeeCacheRecord.save(null, null, null, date)
+            if (addr != null) ValidatorMarketRateStatsRecord.save(addr, null, null, null, date)
+            else ChainMarketRateStatsRecord.save(null, null, null, date)
         }
     }
 
@@ -144,7 +143,7 @@ class AsyncService(
 
     @Scheduled(cron = "0 0 0/1 * * ?") // At the start of every hour
     fun updateGasStats() = transaction {
-        logger.info("Updating Gas stats")
+        logger.info("Updating Single Msg Gas stats")
         TxSingleMessageCacheRecord.updateGasStats()
     }
 
@@ -169,8 +168,11 @@ class AsyncService(
         BlockTxRetryRecord.getRecordsToRetry().map { height ->
             val block = try {
                 asyncCache.saveBlockEtc(blockService.getBlockAtHeightFromChain(height))!!
-            } catch (e: Exception) { null }
-            val success = transaction { TxCacheRecord.findByHeight(height).toList() }.size == (block?.block?.data?.txsCount ?: -1)
+            } catch (e: Exception) {
+                null
+            }
+            val success =
+                transaction { TxCacheRecord.findByHeight(height).toList() }.size == (block?.block?.data?.txsCount ?: -1)
             BlockTxRetryRecord.updateRecord(height, success)
             height
         }.let { if (it.isNotEmpty()) BlockTxRetryRecord.deleteRecords(it) }

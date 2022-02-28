@@ -39,7 +39,6 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.Sum
 import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertIgnore
@@ -150,7 +149,6 @@ object BlockProposerTable : IdTable<Int>(name = "block_proposer") {
     val blockHeight = integer("block_height")
     override val id = blockHeight.entityId()
     val proposerOperatorAddress = varchar("proposer_operator_address", 96)
-    val minGasFee = double("min_gas_fee").nullable()
     val blockTimestamp = datetime("block_timestamp")
     val blockLatency = decimal("block_latency", 50, 25).nullable()
 }
@@ -158,7 +156,6 @@ object BlockProposerTable : IdTable<Int>(name = "block_proposer") {
 fun BlockProposer.buildInsert() = listOf(
     this.blockHeight,
     this.proposerOperatorAddress,
-    this.minGasFee,
     this.blockTimestamp,
     this.blockLatency
 ).toProcedureObject()
@@ -193,25 +190,6 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
                 .let { BlockCacheRecord.wrapRows(it).toSet() }
         }
 
-        fun findCurrentFeeForAddress(address: String) = transaction {
-            BlockProposerRecord
-                .find {
-                    (BlockProposerTable.proposerOperatorAddress eq address) and
-                        (BlockProposerTable.minGasFee.isNotNull())
-                }
-                .orderBy(Pair(BlockProposerTable.blockHeight, SortOrder.DESC))
-                .limit(1)
-                .firstOrNull()
-        }
-
-        fun findForDates(fromDate: DateTime, toDate: DateTime, address: String?) = transaction {
-            val query = BlockProposerTable
-                .select { BlockProposerTable.blockTimestamp.between(fromDate, toDate.plusDays(1)) }
-            if (address != null)
-                query.andWhere { BlockProposerTable.proposerOperatorAddress eq address }
-            BlockProposerRecord.wrapRows(query)
-        }
-
         fun getRecordsForProposer(address: String, limit: Int) = transaction {
             BlockProposerRecord.find {
                 (BlockProposerTable.proposerOperatorAddress eq address) and
@@ -224,7 +202,6 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
 
     var blockHeight by BlockProposerTable.blockHeight
     var proposerOperatorAddress by BlockProposerTable.proposerOperatorAddress
-    var minGasFee by BlockProposerTable.minGasFee
     var blockTimestamp by BlockProposerTable.blockTimestamp
     var blockLatency by BlockProposerTable.blockLatency
 }

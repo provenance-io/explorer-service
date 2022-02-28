@@ -52,42 +52,42 @@ class ValidatorController(
     fun validatorsAllAbbrev() = ResponseEntity.ok(validatorService.getAllValidatorsAbbrev())
 
     @ApiOperation("Returns validator by address id")
-    @GetMapping("/{id}")
-    fun validator(@PathVariable id: String) = ResponseEntity.ok(validatorService.getValidator(id))
+    @GetMapping("/{address}")
+    fun validator(@PathVariable address: String) = ResponseEntity.ok(validatorService.getValidator(address))
 
     @ApiOperation("Returns delegations for validator by address id")
-    @GetMapping("/{id}/delegations/bonded")
+    @GetMapping("/{address}/delegations/bonded")
     fun validatorDelegationsBonded(
-        @PathVariable id: String,
+        @PathVariable address: String,
         @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int,
         @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int
-    ) = ResponseEntity.ok(validatorService.getBondedDelegations(id, page, count))
+    ) = ResponseEntity.ok(validatorService.getBondedDelegations(address, page, count))
 
     @ApiOperation("Returns unbonding delegations for validator by address id")
-    @GetMapping("/{id}/delegations/unbonding")
-    fun validatorDelegationsUnbonding(@PathVariable id: String) =
-        ResponseEntity.ok(validatorService.getUnbondingDelegations(id))
+    @GetMapping("/{address}/delegations/unbonding")
+    fun validatorDelegationsUnbonding(@PathVariable address: String) =
+        ResponseEntity.ok(validatorService.getUnbondingDelegations(address))
 
     @ApiOperation("Returns commission info for validator by address id")
-    @GetMapping("/{id}/commission")
-    fun validatorCommissionInfo(@PathVariable id: String) =
-        ResponseEntity.ok(validatorService.getCommissionInfo(id))
+    @GetMapping("/{address}/commission")
+    fun validatorCommissionInfo(@PathVariable address: String) =
+        ResponseEntity.ok(validatorService.getCommissionInfo(address))
 
-    @ApiOperation("Returns statistics on min gas fees for the address")
-    @GetMapping("/{id}/gas_fees")
-    fun validatorGasFees(
-        @PathVariable id: String,
+    @ApiOperation("Returns statistics on market rate for the address")
+    @GetMapping("/{address}/market_rate")
+    fun validatorMarketRateStats(
+        @PathVariable address: String,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?,
         @RequestParam(required = false, defaultValue = "14") @Min(1) dayCount: Int
-    ) = ResponseEntity.ok(validatorService.getGasFeeStatistics(id, fromDate, toDate, dayCount))
+    ) = ResponseEntity.ok(validatorService.getValidatorMarketRateStats(address, fromDate, toDate, dayCount))
 
     @ApiOperation("Returns block latency data for the validator")
-    @GetMapping("/{id}/latency")
+    @GetMapping("/{address}/latency")
     fun blockLatency(
-        @PathVariable id: String,
+        @PathVariable address: String,
         @RequestParam(required = false, defaultValue = "100") blockCount: Int
-    ) = ResponseEntity.ok(validatorService.getBlockLatencyData(id, blockCount))
+    ) = ResponseEntity.ok(validatorService.getBlockLatencyData(address, blockCount))
 
     @ApiOperation("Returns distinct validators with missed blocks for the timeframe")
     @GetMapping("/missed_blocks/distinct")

@@ -17,13 +17,13 @@ import io.provenance.explorer.domain.entities.TxAddressJoinType
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
+import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.getFeepayer
 import io.provenance.explorer.domain.entities.toFeePaid
 import io.provenance.explorer.domain.entities.toFees
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.formattedString
-import io.provenance.explorer.domain.extensions.getMinGasFee
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
@@ -142,7 +142,7 @@ class TransactionService(
                 tx.txV2.txResponse.gasUsed.toInt(),
                 tx.txV2.txResponse.gasWanted.toInt(),
                 tx.txV2.tx.authInfo.fee.gasLimit.toBigInteger(),
-                tx.txV2.tx.authInfo.fee.getMinGasFee()
+                ValidatorMarketRateRecord.getRateByTxId(tx.id.value).toDouble()
             ),
             time = asyncV2.getBlock(tx.txV2.txResponse.height.toInt())!!.block.header.time.formattedString(),
             status = if (tx.txV2.txResponse.code > 0) "failed" else "success",

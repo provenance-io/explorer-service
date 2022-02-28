@@ -30,15 +30,15 @@ class AssetController(private val assetService: AssetService, private val ibcSer
         @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int
     ) = ResponseEntity.ok(assetService.getAssets(statuses, page, count))
 
-    @ApiOperation("Returns asset detail for denom or address")
-    @GetMapping("/detail/{id}")
-    fun getMarkerDetail(@PathVariable id: String) = ResponseEntity.ok(assetService.getAssetDetail(id))
+    @ApiOperation("Returns asset detail for denom")
+    @GetMapping("/detail/{denom}")
+    fun getMarkerDetail(@PathVariable denom: String) = ResponseEntity.ok(assetService.getAssetDetail(denom))
 
-    @ApiOperation("Returns asset detail for denom or address")
-    @GetMapping("/detail/ibc/{id}")
-    fun getIbcDetail(@PathVariable id: String) = ResponseEntity.ok(ibcService.getIbcDenomDetail(id))
+    @ApiOperation("Returns asset detail for ibc denom")
+    @GetMapping("/detail/ibc/{hash}")
+    fun getIbcDetail(@PathVariable hash: String) = ResponseEntity.ok(ibcService.getIbcDenomDetail(hash))
 
-    @ApiOperation("Returns asset holders for denom or address")
+    @ApiOperation("Returns asset holders for denom")
     @GetMapping("/holders")
     fun getMarkerHolders(
         @RequestParam id: String,

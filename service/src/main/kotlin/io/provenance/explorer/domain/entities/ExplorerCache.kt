@@ -2,7 +2,6 @@ package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
-import io.provenance.explorer.domain.entities.ChainGasFeeCacheTable.date
 import io.provenance.explorer.domain.models.explorer.GasStatistics
 import io.provenance.explorer.domain.models.explorer.Spotlight
 import org.jetbrains.exposed.dao.Entity
@@ -50,101 +49,101 @@ class SpotlightCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var lastHit by SpotlightCacheTable.lastHit
 }
 
-object ValidatorGasFeeCacheTable : IntIdTable(name = "validator_gas_fee_cache") {
+object ValidatorMarketRateStatsTable : IntIdTable(name = "validator_market_rate_stats") {
     val date = date("date")
     val operatorAddress = varchar("operator_address", 96)
-    val minGasFee = decimal("min_gas_fee", 30, 10).nullable()
-    val maxGasFee = decimal("max_gas_fee", 30, 10).nullable()
-    val avgGasFee = decimal("avg_gas_fee", 30, 10).nullable()
+    val minMarketRate = decimal("min_market_rate", 30, 10).nullable()
+    val maxMarketRate = decimal("max_market_rate", 30, 10).nullable()
+    val avgMarketRate = decimal("avg_market_rate", 30, 10).nullable()
 
     init {
         index(true, date, operatorAddress)
     }
 }
 
-class ValidatorGasFeeCacheRecord(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<ValidatorGasFeeCacheRecord>(ValidatorGasFeeCacheTable) {
+class ValidatorMarketRateStatsRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<ValidatorMarketRateStatsRecord>(ValidatorMarketRateStatsTable) {
 
         fun save(
             address: String,
-            minGasFee: BigDecimal?,
-            maxGasFee: BigDecimal?,
-            avgGasFee: BigDecimal?,
+            minMarketRate: BigDecimal?,
+            maxMarketRate: BigDecimal?,
+            avgMarketRate: BigDecimal?,
             date: DateTime
         ) =
             transaction {
-                ValidatorGasFeeCacheTable.insertIgnore {
+                ValidatorMarketRateStatsTable.insertIgnore {
                     it[this.operatorAddress] = address
-                    it[this.minGasFee] = minGasFee
-                    it[this.maxGasFee] = maxGasFee
-                    it[this.avgGasFee] = avgGasFee
+                    it[this.minMarketRate] = minMarketRate
+                    it[this.maxMarketRate] = maxMarketRate
+                    it[this.avgMarketRate] = avgMarketRate
                     it[this.date] = date
                 }
             }
 
         fun findByAddress(address: String, fromDate: DateTime?, toDate: DateTime?, count: Int) = transaction {
-            val query = ValidatorGasFeeCacheTable.select { ValidatorGasFeeCacheTable.operatorAddress eq address }
+            val query = ValidatorMarketRateStatsTable.select { ValidatorMarketRateStatsTable.operatorAddress eq address }
             if (fromDate != null)
-                query.andWhere { ValidatorGasFeeCacheTable.date greaterEq fromDate }
+                query.andWhere { ValidatorMarketRateStatsTable.date greaterEq fromDate }
             if (toDate != null)
-                query.andWhere { ValidatorGasFeeCacheTable.date lessEq toDate.plusDays(1) }
+                query.andWhere { ValidatorMarketRateStatsTable.date lessEq toDate.plusDays(1) }
 
-            query.orderBy(ValidatorGasFeeCacheTable.date, SortOrder.DESC).limit(count)
-            ValidatorGasFeeCacheRecord.wrapRows(query)
+            query.orderBy(ValidatorMarketRateStatsTable.date, SortOrder.DESC).limit(count)
+            ValidatorMarketRateStatsRecord.wrapRows(query)
         }
     }
 
-    var operatorAddress by ValidatorGasFeeCacheTable.operatorAddress
-    var minGasFee by ValidatorGasFeeCacheTable.minGasFee
-    var maxGasFee by ValidatorGasFeeCacheTable.maxGasFee
-    var avgGasFee by ValidatorGasFeeCacheTable.avgGasFee
-    var date by ValidatorGasFeeCacheTable.date
+    var operatorAddress by ValidatorMarketRateStatsTable.operatorAddress
+    var minMarketRate by ValidatorMarketRateStatsTable.minMarketRate
+    var maxMarketRate by ValidatorMarketRateStatsTable.maxMarketRate
+    var avgMarketRate by ValidatorMarketRateStatsTable.avgMarketRate
+    var date by ValidatorMarketRateStatsTable.date
 }
 
-object ChainGasFeeCacheTable : IdTable<DateTime>(name = "chain_gas_fee_cache") {
+object ChainMarketRateStatsTable : IdTable<DateTime>(name = "chain_market_rate_stats") {
     val date = date("date")
     override val id = date.entityId()
-    val minGasFee = decimal("min_gas_fee", 30, 10).nullable()
-    val maxGasFee = decimal("max_gas_fee", 30, 10).nullable()
-    val avgGasFee = decimal("avg_gas_fee", 30, 10).nullable()
+    val minMarketRate = decimal("min_market_rate", 30, 10).nullable()
+    val maxMarketRate = decimal("max_market_rate", 30, 10).nullable()
+    val avgMarketRate = decimal("avg_market_rate", 30, 10).nullable()
 }
 
-class ChainGasFeeCacheRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) {
-    companion object : EntityClass<DateTime, ChainGasFeeCacheRecord>(ChainGasFeeCacheTable) {
+class ChainMarketRateStatsRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) {
+    companion object : EntityClass<DateTime, ChainMarketRateStatsRecord>(ChainMarketRateStatsTable) {
 
-        fun save(minGasFee: BigDecimal?, maxGasFee: BigDecimal?, avgGasFee: BigDecimal?, date: DateTime) =
+        fun save(minMarketRate: BigDecimal?, maxMarketRate: BigDecimal?, avgMarketRate: BigDecimal?, date: DateTime) =
             transaction {
-                ChainGasFeeCacheTable.insertIgnore {
+                ChainMarketRateStatsTable.insertIgnore {
                     it[this.date] = date
-                    it[this.minGasFee] = minGasFee
-                    it[this.maxGasFee] = maxGasFee
-                    it[this.avgGasFee] = avgGasFee
+                    it[this.minMarketRate] = minMarketRate
+                    it[this.maxMarketRate] = maxMarketRate
+                    it[this.avgMarketRate] = avgMarketRate
                 }
             }
 
         fun findForDates(fromDate: DateTime?, toDate: DateTime?, count: Int) = transaction {
-            val query = ChainGasFeeCacheTable.selectAll()
+            val query = ChainMarketRateStatsTable.selectAll()
             if (fromDate != null)
-                query.andWhere { ChainGasFeeCacheTable.date greaterEq fromDate }
+                query.andWhere { ChainMarketRateStatsTable.date greaterEq fromDate }
             if (toDate != null)
-                query.andWhere { ChainGasFeeCacheTable.date lessEq toDate.plusDays(1) }
+                query.andWhere { ChainMarketRateStatsTable.date lessEq toDate.plusDays(1) }
 
-            query.orderBy(ChainGasFeeCacheTable.date, SortOrder.ASC).limit(count)
-            ChainGasFeeCacheRecord.wrapRows(query).map {
+            query.orderBy(ChainMarketRateStatsTable.date, SortOrder.ASC).limit(count)
+            ChainMarketRateStatsRecord.wrapRows(query).map {
                 GasStatistics(
                     it.date.toString("yyyy-MM-dd"),
-                    it.minGasFee!!,
-                    it.maxGasFee!!,
-                    it.avgGasFee!!
+                    it.minMarketRate!!,
+                    it.maxMarketRate!!,
+                    it.avgMarketRate!!
                 )
             }
         }
     }
 
-    var date by ChainGasFeeCacheTable.date
-    var minGasFee by ChainGasFeeCacheTable.minGasFee
-    var maxGasFee by ChainGasFeeCacheTable.maxGasFee
-    var avgGasFee by ChainGasFeeCacheTable.avgGasFee
+    var date by ChainMarketRateStatsTable.date
+    var minMarketRate by ChainMarketRateStatsTable.minMarketRate
+    var maxMarketRate by ChainMarketRateStatsTable.maxMarketRate
+    var avgMarketRate by ChainMarketRateStatsTable.avgMarketRate
 }
 
 object CacheUpdateTable : IntIdTable(name = "cache_update") {
