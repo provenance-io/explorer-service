@@ -305,8 +305,8 @@ class ValidatorMarketRateRecord(id: EntityID<Int>) : IntEntity(id) {
                 .groupBy(ValidatorMarketRateTable.blockHeight)
                 .orderBy(Pair(ValidatorMarketRateTable.blockHeight, SortOrder.DESC))
                 .limit(1)
-                .first()
-                .let { it[avg]!! }
+                .firstOrNull()
+                ?.let { it[avg]!! }
         }
 
         fun findForDates(fromDate: DateTime, toDate: DateTime, address: String?) = transaction {

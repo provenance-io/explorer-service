@@ -144,7 +144,7 @@ class ValidatorService(
                 stakingValidator.description.details,
                 stakingValidator.description.website,
                 stakingValidator.description.identity,
-                ValidatorMarketRateRecord.getCurrentRateByValidator(address).toDouble(),
+                ValidatorMarketRateRecord.getCurrentRateByValidator(address)?.toDouble(),
                 stakingValidator.getStatusString(),
                 if (!stakingValidator.isActive()) stakingValidator.unbondingHeight else null,
                 if (stakingValidator.jailed) signingInfo?.jailedUntil?.toDateTime() else null
@@ -303,7 +303,7 @@ class ValidatorService(
             bondedTokens = CountStrTotal(stakingVal.json.tokens, null, NHASH),
             delegators = delegatorCount,
             status = stakingVal.json.getStatusString(),
-            currentGasFee = ValidatorMarketRateRecord.getCurrentRateByValidator(stakingVal.operatorAddress).toDouble(),
+            currentGasFee = ValidatorMarketRateRecord.getCurrentRateByValidator(stakingVal.operatorAddress)?.toDouble(),
             unbondingHeight = if (!stakingVal.json.isActive()) stakingVal.json.unbondingHeight else null,
             imgUrl = getImgUrl(stakingVal.json.description.identity),
             hr24Change = get24HrBondedChange(validator, hr24Validator)
