@@ -33,8 +33,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+## [v3.4.0](https://github.com/provenance-io/explorer-service/releases/tag/v3.4.0) - 2022-02-28
+### Release Name: William of Rubruck
+
 ### Features
-* Added Market Rate APIs #309
+* Added Market Rate APIs [#309](https://github.com/provenance-io/explorer-service/issues/309)
   * `/api/v2/validators/{address}/market_rate/period` - time period of rates per validator
   * `/api/v2/chain/market_rate/period` - time period of rates for chain
   * `api/v2/chain/market_rate` - avg values for chain for block count
