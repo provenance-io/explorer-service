@@ -574,7 +574,7 @@ enum class FeeType { BASE_FEE_USED, BASE_FEE_OVERAGE, PRIORITY_FEE, MSG_BASED_FE
 fun List<TxFeeRecord>.toFees() = this.groupBy { it.feeType }
     .map { (k, v) -> TxFee(k.toTitleCase(), v.map { it.amount.toCoinStr(it.marker) }) }
 
-fun List<TxFeeRecord>.toFeePaid() = this.sumOf { it.amount }.toCoinStr(this.first().marker)
+fun List<TxFeeRecord>.toFeePaid() = this.sumOf { it.amount }.toCoinStr(this.firstOrNull()?.marker ?: NHASH)
 
 class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxFeeRecord>(TxFeeTable) {

@@ -33,6 +33,15 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Bug Fixes
+* Fixed procedure stuff
+* Fixed empty list null pointer exeptions
+
+### Data
+* Migration 1.51 - Updated Ingestion Procedures
+  * Dropped and rebuilt `tx_update` and `block_update` object types
+  * Rebuilt the `add_block()` and `add_tx()` procedures
+
 ## [v3.4.0](https://github.com/provenance-io/explorer-service/releases/tag/v3.4.0) - 2022-02-28
 ### Release Name: William of Rubruck
 
