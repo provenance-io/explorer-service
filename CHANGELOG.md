@@ -33,6 +33,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+## [v3.4.1](https://github.com/provenance-io/explorer-service/releases/tag/v3.4.1) - 2022-02-28
+### Release Name: Vandino and Ugolino Vivaldi
+
 ### Bug Fixes
 * Fixed procedure stuff
 * Fixed empty list null pointer exeptions
