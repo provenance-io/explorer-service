@@ -143,4 +143,8 @@ class ValidatorController(
         @ApiParam(value = "The Validator's operator address", required = false)
         @RequestParam(required = false) validatorAddr: String?,
     ) = ResponseEntity.ok(validatorService.getMissedBlocksForValidatorInTimeframe(timeframe, validatorAddr))
+
+    @ApiOperation("Return uptime data for all active validators")
+    @GetMapping("/uptime")
+    fun uptimeData() = ResponseEntity.ok(validatorService.activeValidatorUptimeStats())
 }

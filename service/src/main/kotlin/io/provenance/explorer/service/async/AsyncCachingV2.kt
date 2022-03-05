@@ -340,13 +340,14 @@ class AsyncCachingV2(
     }
 
     private fun saveAddr(addr: String, txInfo: TxData, txUpdate: TxUpdate): Pair<String, Int?>? {
-        val addrPair = addr.getAddressType(props) ?: return null
+        val addrPair = addr.getAddressType(validatorService.getActiveSet(), props) ?: return null
         var pairCopy = addrPair.copy()
         if (addrPair.second == null) {
             try {
                 when (addrPair.first) {
                     TxAddressJoinType.OPERATOR.name ->
-                        validatorService.saveValidator(addr).let { pairCopy = addrPair.copy(second = it.first.value) }
+                        validatorService.saveValidator(addr)
+                            .let { pairCopy = addrPair.copy(second = it.operatorAddrId) }
                     TxAddressJoinType.ACCOUNT.name -> accountService.saveAccount(addr)
                         .let { pairCopy = addrPair.copy(second = it.id.value) }
                 }
@@ -620,9 +621,9 @@ class AsyncCachingV2(
     }
 }
 
-fun String.getAddressType(props: ExplorerProperties) = when {
+fun String.getAddressType(activeSet: Int, props: ExplorerProperties) = when {
     this.startsWith(props.provValOperPrefix()) ->
-        Pair(TxAddressJoinType.OPERATOR.name, ValidatorStateRecord.findByOperator(this)?.operatorAddrId)
+        Pair(TxAddressJoinType.OPERATOR.name, ValidatorStateRecord.findByOperator(activeSet, this)?.operatorAddrId)
     this.startsWith(props.provAccPrefix()) ->
         Pair(TxAddressJoinType.ACCOUNT.name, AccountRecord.findByAddress(this)?.id?.value)
     else -> logger().debug("Address type is not supported: Addr $this").let { null }

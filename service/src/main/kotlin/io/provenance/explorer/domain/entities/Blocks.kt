@@ -227,7 +227,7 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
                 query.exec(arguments).map {
                     if (it.getString("val_cons_address") != null)
                         MissedBlockPeriod(
-                            ValidatorMoniker(it.getString("val_cons_address"), null, null),
+                            ValidatorMoniker(it.getString("val_cons_address"), null, null, null),
                             (it.getArray("blocks").array as Array<out Int>).toList()
                         )
                     else null

@@ -28,7 +28,7 @@ object TxAddressJoinTable : IntIdTable(name = "tx_address_join") {
 class TxAddressJoinRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxAddressJoinRecord>(TxAddressJoinTable) {
 
-        fun findValidatorsByTxHash(txHashId: EntityID<Int>) = transaction {
+        fun findValidatorsByTxHash(activeSet: Int, txHashId: EntityID<Int>) = transaction {
             val records = StakingValidatorCacheRecord.wrapRows(
                 TxAddressJoinTable
                     .innerJoin(
@@ -42,7 +42,7 @@ class TxAddressJoinRecord(id: EntityID<Int>) : IntEntity(id) {
                     }
             ).toList().map { it.id.value }
 
-            ValidatorStateRecord.findByListValId(records)
+            ValidatorStateRecord.findByListValId(activeSet, records)
         }
 
         fun findAccountsByTxHash(txHashId: EntityID<Int>) = transaction {

@@ -22,10 +22,10 @@ class ArrayColumnType(private val type: ColumnType) : ColumnType() {
         append(" ARRAY")
     }
     override fun valueToDB(value: Any?): Any? {
-        if (value is Array<*>) {
+        if (value is ArrayList<*>) {
             val columnType = type.sqlType().split("(")[0]
             val jdbcConnection = (TransactionManager.current().connection as JdbcConnectionImpl).connection
-            return jdbcConnection.createArrayOf(columnType, value)
+            return jdbcConnection.createArrayOf(columnType, value.toArray())
         } else {
             return super.valueToDB(value)
         }
@@ -41,13 +41,14 @@ class ArrayColumnType(private val type: ColumnType) : ColumnType() {
     }
 
     override fun notNullValueToDB(value: Any): Any {
-        if (value is Array<*>) {
+        if (value is ArrayList<*>) {
             if (value.isEmpty())
                 return "'{}'"
 
             val columnType = type.sqlType().split("(")[0]
             val jdbcConnection = (TransactionManager.current().connection as JdbcConnectionImpl).connection
-            return jdbcConnection.createArrayOf(columnType, value) ?: error("Can't create non null array for $value")
+            return jdbcConnection.createArrayOf(columnType, value.toArray())
+                ?: error("Can't create non null array for $value")
         } else {
             return super.notNullValueToDB(value)
         }

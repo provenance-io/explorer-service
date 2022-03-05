@@ -24,6 +24,8 @@ import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
+import io.provenance.explorer.domain.entities.ValidatorState
+import io.provenance.explorer.domain.entities.ValidatorState.ACTIVE
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.formattedString
@@ -125,7 +127,7 @@ class ExplorerService(
         validatorsResponse: Query.GetValidatorSetByHeightResponse
     ) = let {
         val proposer = transaction { BlockProposerRecord.findById(blockResponse.block.height())!! }
-        val stakingValidator = validatorService.getStakingValidator(proposer.proposerOperatorAddress)
+        val stakingValidator = validatorService.getStakingValidator(proposer.proposerOperatorAddress).json
         val votingVals = nextBlock?.getVotingSet(props, Types.BlockIDFlag.BLOCK_ID_FLAG_ABSENT_VALUE)?.keys
         BlockSummary(
             height = blockResponse.block.height(),
@@ -165,7 +167,7 @@ class ExplorerService(
 
     fun getBondedTokenRatio() = let {
         val totalBlockChainTokens = assetService.getCurrentSupply(NHASH)
-        val totalBondedTokens = validatorService.getStakingValidators("active").sumOf { it.tokenCount }
+        val totalBondedTokens = validatorService.getStakingValidators(ACTIVE).sumOf { it.tokenCount }
         Pair<BigDecimal, String>(totalBondedTokens, totalBlockChainTokens)
     }
 
@@ -339,24 +341,25 @@ class ExplorerService(
         page: Int,
         height: Int
     ): PagedResults<ValidatorAtHeight> {
-        val status = "all"
+        val status = ValidatorState.ALL
         val valFilter = validatorSet.map { it.address }
         val stakingValidators = validatorService.getStakingValidators(status, valFilter, page.toOffset(count), count)
         val votingSet = asyncV2.getBlock(height + 1)!!
             .getVotingSet(props, Types.BlockIDFlag.BLOCK_ID_FLAG_ABSENT_VALUE).keys
         val proposer = transaction { BlockProposerRecord.findById(height)!! }
-        val results = validatorService.hydrateValidators(validatorSet, listOf(), stakingValidators).map {
-            ValidatorAtHeight(
-                it.moniker,
-                it.addressId,
-                it.consensusAddress,
-                it.proposerPriority,
-                it.votingPower,
-                it.imgUrl,
-                it.addressId == proposer.proposerOperatorAddress,
-                votingSet.contains(it.consensusAddress)
-            )
-        }
+        val results =
+            validatorService.hydrateValidators(validatorSet, listOf(), stakingValidators, height.toLong()).map {
+                ValidatorAtHeight(
+                    it.moniker,
+                    it.addressId,
+                    it.consensusAddress,
+                    it.proposerPriority,
+                    it.votingPower,
+                    it.imgUrl,
+                    it.addressId == proposer.proposerOperatorAddress,
+                    votingSet.contains(it.consensusAddress)
+                )
+            }
         return PagedResults(
             results.size.toLong().pageCountOfResults(count),
             results.pageOfResults(page, count),

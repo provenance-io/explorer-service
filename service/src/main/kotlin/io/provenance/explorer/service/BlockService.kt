@@ -4,7 +4,6 @@ import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockIndexRecord
 import io.provenance.explorer.domain.extensions.height
-import io.provenance.explorer.domain.models.explorer.BlockUpdate
 import io.provenance.explorer.grpc.v1.BlockGrpcClient
 import org.springframework.stereotype.Service
 
@@ -26,8 +25,6 @@ class BlockService(private val blockClient: BlockGrpcClient) {
     }
 
     fun getLatestBlockHeight(): Int = blockClient.getLatestBlock().block.height()
-
-    fun saveBlock(blockUpdate: BlockUpdate) = BlockCacheRecord.insertToProcedure(blockUpdate)
 
     fun updateBlockMaxHeightIndex(maxHeightRead: Int) = BlockIndexRecord.save(maxHeightRead, null)
 

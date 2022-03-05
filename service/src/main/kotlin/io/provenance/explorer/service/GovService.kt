@@ -17,6 +17,7 @@ import io.provenance.explorer.domain.entities.ProposalMonitorRecord
 import io.provenance.explorer.domain.entities.ProposalType
 import io.provenance.explorer.domain.entities.SmCodeRecord
 import io.provenance.explorer.domain.entities.SpotlightCacheRecord
+import io.provenance.explorer.domain.entities.ValidatorState.ACTIVE
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.formattedString
@@ -129,7 +130,7 @@ class GovService(
 
     private fun getAddressDetails(addr: String) = transaction {
         val addrId = AccountRecord.findByAddress(addr)!!.id.value
-        val isValidator = ValidatorStateRecord.findByAccount(addr) != null
+        val isValidator = ValidatorStateRecord.findByAccount(valService.getActiveSet(), addr) != null
         GovAddrData(addr, addrId, isValidator)
     }
 
@@ -161,7 +162,9 @@ class GovService(
 
     private fun getAddressObj(addr: String, isValidator: Boolean) = transaction {
         val (operatorAddress, moniker) =
-            if (isValidator) ValidatorStateRecord.findByAccount(addr)!!.let { it.operatorAddress to it.moniker }
+            if (isValidator)
+                ValidatorStateRecord.findByAccount(valService.getActiveSet(), addr)!!
+                    .let { it.operatorAddress to it.moniker }
             else null to null
         GovAddress(addr, operatorAddress, moniker)
     }
@@ -200,7 +203,7 @@ class GovService(
     fun getProposalVotes(proposalId: Long) = transaction {
         val params = getParams(GovParamType.tallying).tallyParams.let { param ->
             TallyParams(
-                CoinStr(valService.getStakingValidators("active").sumOf { it.tokenCount }.stringfy(), NHASH),
+                CoinStr(valService.getStakingValidators(ACTIVE).sumOf { it.tokenCount }.stringfy(), NHASH),
                 param.quorum.toStringUtf8().toDecCoin(),
                 param.threshold.toStringUtf8().toDecCoin(),
                 param.vetoThreshold.toStringUtf8().toDecCoin()

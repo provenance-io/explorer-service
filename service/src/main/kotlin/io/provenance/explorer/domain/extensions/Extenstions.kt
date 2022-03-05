@@ -51,10 +51,10 @@ fun Abci.TxResponse.type() = this.logsList?.flatMap { it.eventsList }
     ?.firstOrNull { it.key == "action" }
     ?.value
 
-fun String.validatorUptime(bondingHeight: BigInteger, currentHeight: BigInteger) =
+fun String.validatorUptime(blockWindow: BigInteger, currentHeight: BigInteger) =
     (MissedBlocksRecord.findLatestForVal(this)?.totalCount ?: 0).let {
-        BigDecimal(currentHeight - bondingHeight - it.toBigInteger())
-            .divide(BigDecimal(currentHeight - bondingHeight), 2, RoundingMode.CEILING)
+        BigDecimal(currentHeight - blockWindow - it.toBigInteger())
+            .divide(BigDecimal(currentHeight - blockWindow), 2, RoundingMode.CEILING)
             .multiply(BigDecimal(100.00))
     }
 
@@ -110,8 +110,6 @@ fun Staking.Validator.getStatusString() =
         this.status == Staking.BondStatus.BOND_STATUS_BONDED -> "active"
         else -> "candidate"
     }
-
-fun Staking.Validator.isActive() = this.status == Staking.BondStatus.BOND_STATUS_BONDED && !this.jailed
 
 fun Timestamp.toDateTime() = DateTime(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()).toEpochMilli())
 fun Timestamp.formattedString() = DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()))
