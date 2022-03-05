@@ -92,7 +92,7 @@ class TransactionController(private val transactionService: TransactionService) 
     @GetMapping("/heatmap")
     fun txHeatmap() = ResponseEntity.ok(transactionService.getTxHeatmap())
 
-    @ApiOperation("Get X-Day Transaction History")
+    @ApiOperation("Get X-Day Transaction Count History")
     @GetMapping("/history")
     fun txHistory(
         @ApiParam(
@@ -106,7 +106,7 @@ class TransactionController(private val transactionService: TransactionService) 
             required = true
         ) @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime,
         @ApiParam(value = "The granularity of data, either DAY or HOUR", defaultValue = "DAY", required = false)
-        @RequestParam(required = false) granularity: DateTruncGranularity?
+        @RequestParam(defaultValue = "DAY") granularity: DateTruncGranularity
     ) = ResponseEntity.ok(transactionService.getTxHistoryByQuery(fromDate, toDate, granularity))
 
     @ApiOperation("Return list of transaction types")

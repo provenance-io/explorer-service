@@ -16,6 +16,8 @@ import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.BlockUpdate
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
+import io.provenance.explorer.domain.models.explorer.DateTruncGranularity.DAY
+import io.provenance.explorer.domain.models.explorer.DateTruncGranularity.HOUR
 import io.provenance.explorer.domain.models.explorer.MissedBlockPeriod
 import io.provenance.explorer.domain.models.explorer.TxHeatmap
 import io.provenance.explorer.domain.models.explorer.TxHeatmapDay
@@ -330,11 +332,10 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
             BlockCacheHourlyTxCountsTable.slice(txSum).selectAll().map { it[txSum] }.first()!!
         }
 
-        fun getTxCountsForParams(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
-            if ("HOUR" == granularity) {
-                getHourlyCounts(fromDate, toDate)
-            } else {
-                getDailyCounts(fromDate, toDate)
+        fun getTxCountsForParams(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity) = transaction {
+            when (granularity) {
+                HOUR -> getHourlyCounts(fromDate, toDate)
+                DAY -> getDailyCounts(fromDate, toDate)
             }
         }
 

@@ -13,8 +13,8 @@ This document breaks down what each of the statistic measurements does.
   * [API Accessibility](#api-accessibility-1)
 - [Market Rate - `validator_market_rate`](#market-rate----validator-market-rate-)
   + [Processing](#processing-2)
-  * [Validator Rollup - `validator_gas_fee_cache`](#validator-rollup----validator-gas-fee-cache-)
-  * [Chain Rollup - `chain_gas_fee_cache`](#chain-rollup----chain-gas-fee-cache-)
+  * [Validator Rollup - `validator_market_rate_stats`](#validator-rollup----validator-market-rate-stats-)
+  * [Chain Rollup - `chain_market_rate_stats`](#chain-rollup----chain-market-rate-stats-)
   * [API Accessibility](#api-accessibility-2)
 - [Token Statistics](#token-statistics)
   + [Processing](#processing-3)
@@ -22,6 +22,12 @@ This document breaks down what each of the statistic measurements does.
 - [Token Distribution - `token_distribution_amounts`](#token-distribution----token-distribution-amounts-)
   + [Processing](#processing-4)
   * [API Accessibility](#api-accessibility-4)
+- [Tx Heatmap](#tx-heatmap)
+  + [Processing](#processing-5)
+  * [API Accessibility](#api-accessibility-5)
+- [Chain AUM - `chain_aum_hourly`](#chain-aum----chain-aum-hourly-)
+  + [Processing](#processing-6)
+  * [API Accessibility](#api-accessibility-6)
 
 ## Gas Volume - `tx_gas_cache`
 This table records the gas and fee stats per transaction.
@@ -161,3 +167,35 @@ This table holds the distribution of hash across ranges of accounts sorted on nh
 
 ### API Accessibility
 * `/api/v2/assets/distribution`
+
+----
+
+## Tx Heatmap
+Not held in a table, these are returned on the fly.
+* `heatmap`
+  * The actual data for the entire heatmap. Holds the day of week and hourly counts for that day.
+* `dailyTotal`
+  * Tx count totals for the day of week.
+* `hourlyTotal`
+  * Tx count totals for hour of day.
+
+#### Processing
+* Calc of the heatmap through function
+  * `io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord#getTxHeatmap()`
+
+### API Accessibility
+* `/api/v2/txs/heatmap`
+
+----
+
+## Chain AUM - `chain_aum_hourly`
+This table holds the chain AUM calculated each hour.
+
+#### Processing
+* Processing of the table occurs through an async task
+  * `io.provenance.explorer.service.async.AsyncService#saveChainAum()`
+* This occurs every hour at server time.
+  * `@Scheduled(cron = "0 0 0/1 * * ?")`
+
+### API Accessibility
+* `/api/v2/chain/aum/list`

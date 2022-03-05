@@ -2,6 +2,7 @@ package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.models.explorer.ChainAum
 import io.provenance.explorer.domain.models.explorer.ChainMarketRate
 import io.provenance.explorer.domain.models.explorer.Spotlight
 import io.provenance.explorer.domain.models.explorer.ValidatorMarketRate
@@ -13,6 +14,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.jodatime.date
@@ -186,3 +188,37 @@ class CacheUpdateRecord(id: EntityID<Int>) : IntEntity(id) {
     var cacheValue by CacheUpdateTable.cacheValue
     var lastUpdated by CacheUpdateTable.lastUpdated
 }
+
+object ChainAumHourlyTable : IntIdTable(name = "chain_aum_hourly") {
+    val datetime = datetime("datetime")
+    val amount = decimal("amount", 100, 0)
+    val denom = varchar("denom", 256)
+}
+
+class ChainAumHourlyRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<ChainAumHourlyRecord>(ChainAumHourlyTable) {
+        fun getAumForPeriod(fromDate: DateTime, toDate: DateTime) = transaction {
+            ChainAumHourlyRecord.find {
+                (ChainAumHourlyTable.datetime greaterEq fromDate) and
+                    (ChainAumHourlyTable.datetime lessEq toDate.plusDays(1))
+            }
+                .orderBy(Pair(ChainAumHourlyTable.datetime, SortOrder.ASC))
+                .toList()
+        }
+
+        fun insertIgnore(date: DateTime, amount: BigDecimal, denom: String) = transaction {
+            ChainAumHourlyTable.insertIgnore {
+                it[this.datetime] = date
+                it[this.amount] = amount
+                it[this.denom] = denom
+            }
+        }
+    }
+
+    var datetime by ChainAumHourlyTable.datetime
+    var amount by ChainAumHourlyTable.amount
+    var denom by ChainAumHourlyTable.denom
+}
+
+fun ChainAumHourlyRecord.toDto() =
+    ChainAum(this.datetime.toString("yyyy-MM-dd HH:mm:SS"), this.denom, this.amount)

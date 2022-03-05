@@ -36,6 +36,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Features
 * API for validator uptime statistics #260
   * `/api/v2/validators/uptime`
+* API for chain AUM time series #291
+  * `/api/v2/chain/aum/list`
 
 ### Improvements
 * Added uptime back to ValidatorSummary object #260
@@ -49,6 +51,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Migration 1.52 - Creating procedure `get_all_validator_state()` #260
   * Used to fetch all validators with their current actual state
     * replaces using an inaccurate extension 
+* Migration 1.53 - Add Chain AUM table #291
+  * Added `chain_aum_hourly` table
+  * Inserted data
 
 ## [v4.0.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.0.0) - 2022-03-08
 ### Release Name: Marco Polo

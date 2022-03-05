@@ -6,6 +6,8 @@ import io.provenance.explorer.domain.models.explorer.CoinStr
 import java.math.BigDecimal
 
 const val NHASH = "nhash"
+const val USD_UPPER = "USD"
+const val USD_LOWER = "usd"
 
 fun BigDecimal.stringfy() = this.stripTrailingZeros().toPlainString()
 

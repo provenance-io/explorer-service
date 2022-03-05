@@ -19,6 +19,7 @@ import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.CacheKeys
 import io.provenance.explorer.domain.entities.CacheUpdateRecord
+import io.provenance.explorer.domain.entities.ChainAumHourlyRecord
 import io.provenance.explorer.domain.entities.ChainMarketRateStatsRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
@@ -26,12 +27,15 @@ import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
 import io.provenance.explorer.domain.entities.ValidatorState
 import io.provenance.explorer.domain.entities.ValidatorState.ACTIVE
+import io.provenance.explorer.domain.entities.toDto
 import io.provenance.explorer.domain.extensions.NHASH
+import io.provenance.explorer.domain.extensions.USD_UPPER
 import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.pageOfResults
+import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toHash
@@ -161,7 +165,7 @@ class ExplorerService(
             avgBlockTime = BlockProposerRecord.findAvgBlockCreation(100),
             bondedTokens = CountStrTotal(it.first.toString(), it.second, NHASH),
             totalTxCount = BlockCacheHourlyTxCountsRecord.getTotalTxCount().toBigInteger(),
-            totalAum = assetService.getTotalAum().toCoinStr("USD")
+            totalAum = assetService.getTotalAum().toCoinStr(USD_UPPER)
         )
     }.let { cacheService.addSpotlightToCache(it) }
 
@@ -368,6 +372,19 @@ class ExplorerService(
     }
 
     fun getMsgBasedFeeList() = msgFeeClient.getMsgFees().msgFeesList.map { it.toDto() }
+
+    fun saveChainAum() = transaction {
+        val date = DateTime.now().hourOfDay().roundFloorCopy()
+        val amount = assetService.getTotalAum()
+        ChainAumHourlyRecord.insertIgnore(date, amount, USD_UPPER)
+    }
+
+    fun getChainAumRecords(from: DateTime?, to: DateTime?, dayCount: Int) = transaction {
+        val fromDate = from ?: DateTime.now().startOfDay().minusDays(dayCount)
+        val toDate = to ?: DateTime.now().startOfDay()
+
+        ChainAumHourlyRecord.getAumForPeriod(fromDate, toDate).map { it.toDto() }
+    }
 }
 
 fun Query.GetBlockByHeightResponse.getVotingSet(props: ExplorerProperties, filter: Int? = null) =

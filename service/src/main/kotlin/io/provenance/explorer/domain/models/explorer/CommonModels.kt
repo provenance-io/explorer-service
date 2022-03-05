@@ -2,6 +2,7 @@ package io.provenance.explorer.domain.models.explorer
 
 import cosmos.base.v1beta1.CoinOuterClass
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
+import io.provenance.explorer.domain.extensions.USD_UPPER
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDecCoin
 import io.provenance.explorer.service.toHashSupply
@@ -46,8 +47,8 @@ fun BigDecimal.toCoinStrWithPrice(price: BigDecimal?, denom: String) =
     CoinStrWithPrice(
         this.toBigInteger().toString(),
         denom,
-        price?.toCoinStr("USD"),
-        price?.multiply(this.toHashSupply(denom))?.toCoinStr("USD")
+        price?.toCoinStr(USD_UPPER),
+        price?.multiply(this.toHashSupply(denom))?.toCoinStr(USD_UPPER)
     )
 
 fun CoinOuterClass.Coin.toCoinStrWithPrice(price: BigDecimal?) =

@@ -123,4 +123,21 @@ class GeneralController(
     @ApiOperation("Returns a list of msg-based fees for the chain")
     @GetMapping("/chain/msg_based_fees")
     fun getChainMsgBasedFees() = ResponseEntity.ok(explorerService.getMsgBasedFeeList())
+
+    @ApiOperation("Returns the hourly AUM for the chain for the given time period")
+    @GetMapping("/chain/aum/list")
+    fun getChainAumSeries(
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?,
+        @ApiParam(value = "The number of days of data returned", defaultValue = "14", required = false)
+        @RequestParam(defaultValue = "14") @Min(1) dayCount: Int
+    ) = ResponseEntity.ok(explorerService.getChainAumRecords(fromDate, toDate, dayCount))
 }
