@@ -28,6 +28,7 @@ import io.provenance.explorer.domain.extensions.avg
 import io.provenance.explorer.domain.extensions.get24HrBlockHeight
 import io.provenance.explorer.domain.extensions.getStatusString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.stringfy
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDecCoin
@@ -41,6 +42,7 @@ import io.provenance.explorer.domain.extensions.validatorUptime
 import io.provenance.explorer.domain.models.explorer.BlockLatencyData
 import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.CoinStr
+import io.provenance.explorer.domain.models.explorer.CommissionList
 import io.provenance.explorer.domain.models.explorer.CommissionRate
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.CountTotal
@@ -54,6 +56,7 @@ import io.provenance.explorer.domain.models.explorer.Timeframe
 import io.provenance.explorer.domain.models.explorer.UnpaginatedDelegation
 import io.provenance.explorer.domain.models.explorer.UptimeDataSet
 import io.provenance.explorer.domain.models.explorer.ValidatorCommission
+import io.provenance.explorer.domain.models.explorer.ValidatorCommissionHistory
 import io.provenance.explorer.domain.models.explorer.ValidatorDetails
 import io.provenance.explorer.domain.models.explorer.ValidatorMissedBlocks
 import io.provenance.explorer.domain.models.explorer.ValidatorMoniker
@@ -413,6 +416,11 @@ class ValidatorService(
             )
         )
     }
+
+    fun getCommissionRateHistory(address: String) =
+        ValidatorStateRecord.getCommissionHistory(address)
+            .map { CommissionList(it.commissionRate.stringfy(), it.blockHeight) }
+            .let { ValidatorCommissionHistory(address, it) }
 
     fun getValidatorMarketRateAvg(address: String, txCount: Int) =
         ValidatorMarketRateRecord.getValidatorRateForBlockCount(address, txCount)

@@ -38,6 +38,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * `/api/v2/validators/uptime`
 * API for chain AUM time series #291
   * `/api/v2/chain/aum/list`
+* API for validator commission history #300
+  * `/api/v2/validators/{address}/commission/history`
 
 ### Improvements
 * Added uptime back to ValidatorSummary object #260
@@ -46,6 +48,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Bug Fixes
 * Fixed how the Array exposed set works #260
+* Added single quote replacer function for transcribing objects for DB insertion #300
 
 ### Data
 * Migration 1.52 - Creating procedure `get_all_validator_state()` #260
@@ -54,6 +57,12 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Migration 1.53 - Add Chain AUM table #291
   * Added `chain_aum_hourly` table
   * Inserted data
+* Migration 1.54 - Modify `validator_state` #300
+  * Updated `validator_state` to include `commission_rate` column, updated with current data
+  * Updated `current_validator_state` materialized view
+  * Updated `get_validator_list()`, `get_all_validator_state()` functions
+* Migration 1.55 - Add debug procedures #300
+  * Used to debug why a block/tx doesnt get saved correctly; needed for prod
 
 ## [v4.0.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.0.0) - 2022-03-08
 ### Release Name: Marco Polo

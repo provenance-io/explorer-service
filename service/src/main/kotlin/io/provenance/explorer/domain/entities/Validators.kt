@@ -14,6 +14,7 @@ import io.provenance.explorer.domain.entities.ValidatorState.CANDIDATE
 import io.provenance.explorer.domain.entities.ValidatorState.JAILED
 import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.mapper
+import io.provenance.explorer.domain.extensions.toDecimal
 import io.provenance.explorer.domain.models.explorer.CurrentValidatorState
 import io.provenance.explorer.domain.models.explorer.TxData
 import org.jetbrains.exposed.dao.IntEntity
@@ -111,6 +112,7 @@ object ValidatorStateTable : IntIdTable(name = "validator_state") {
     val jailed = bool("jailed")
     val tokenCount = decimal("token_count", 100, 0)
     val json = jsonb<ValidatorStateTable, Staking.Validator>("json", OBJECT_MAPPER)
+    val commissionRate = decimal("commission_rate", 19, 18)
 }
 
 class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -128,7 +130,14 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.jailed] = json.jailed
                 it[this.tokenCount] = json.tokens.toBigDecimal()
                 it[this.json] = json
+                it[this.commissionRate] = json.commission.commissionRates.rate.toDecimal()
             }
+        }
+
+        fun getCommissionHistory(operator: String) = transaction {
+            ValidatorStateRecord.find { ValidatorStateTable.operatorAddress eq operator }
+                .orderBy(Pair(ValidatorStateTable.blockHeight, SortOrder.ASC))
+                .toList()
         }
 
         fun refreshCurrentStateView() = transaction {
@@ -286,6 +295,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
     var jailed by ValidatorStateTable.jailed
     var tokenCount by ValidatorStateTable.tokenCount
     var json by ValidatorStateTable.json
+    var commissionRate by ValidatorStateTable.commissionRate
 }
 
 fun ResultSet.toCurrentValidatorState() = CurrentValidatorState(
@@ -300,7 +310,8 @@ fun ResultSet.toCurrentValidatorState() = CurrentValidatorState(
     this.getString("account_address"),
     this.getString("consensus_address"),
     this.getString("consensus_pubkey"),
-    ValidatorState.valueOf(this.getString("validator_state").uppercase())
+    ValidatorState.valueOf(this.getString("validator_state").uppercase()),
+    this.getBigDecimal("commission_rate")
 )
 
 fun ResultSet.toCount() = this.getLong("count")
