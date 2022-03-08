@@ -23,6 +23,22 @@ class MigrationService(
         list.forEach { accountService.saveAccount(it) }
     }
 
+    fun updateBlocks(startHeight: Int, endHeight: Int, inc: Int) {
+        logger.info("Start height: $startHeight")
+        var start = startHeight
+        while (start <= endHeight) {
+            transaction {
+                logger.info("Fetching $start to ${start + inc - 1}")
+                BlockCacheRecord.find { BlockCacheTable.id.between(start, start + inc - 1) }
+                    .orderBy(Pair(BlockCacheTable.id, SortOrder.ASC)).forEach {
+                        asyncCaching.saveBlockEtc(it.block, true)
+                    }
+            }
+            start += inc
+        }
+        logger.info("End height: $endHeight")
+    }
+
     fun updateMissedBlocks(startHeight: Int, endHeight: Int, inc: Int) {
         logger.info("Start height: $startHeight")
         var start = startHeight

@@ -29,7 +29,9 @@ import io.provenance.explorer.domain.models.explorer.ScopeRecord
 import io.provenance.explorer.domain.models.explorer.toDataObject
 import io.provenance.explorer.domain.models.explorer.toOwnerRoles
 import io.provenance.explorer.domain.models.explorer.toSpecDescrip
+import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.MetadataGrpcClient
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.map
@@ -41,6 +43,7 @@ import org.springframework.stereotype.Service
 @Service
 class NftService(
     private val metadataClient: MetadataGrpcClient,
+    private val attrClient: AttributeGrpcClient,
     private val protoPrinter: JsonFormat.Printer
 ) {
 
@@ -59,6 +62,7 @@ class NftService(
         metadataClient.getScopeById(addr).let {
             val lastTx = TxNftJoinRecord.findTxByUuid(it.scope.scopeIdInfo.scopeUuid, 0, 1).firstOrNull()
             ScopeListview(
+                it.scope.scopeIdInfo.scopeUuid,
                 it.scope.scopeIdInfo.scopeAddr,
                 getScopeDescrip(it.scope.scopeSpecIdInfo.scopeSpecAddr)?.name,
                 it.scope.scopeSpecIdInfo.scopeSpecAddr,
@@ -73,14 +77,17 @@ class NftService(
     fun getScopeDetail(addr: String) = runBlocking {
         metadataClient.getScopeById(addr).let {
             val spec = getScopeDescrip(it.scope.scopeSpecIdInfo.scopeSpecAddr)
+            val attributes = async { attrClient.getAllAttributesForAddress(it.scope.scopeIdInfo.scopeAddr) }
             ScopeDetail(
+                it.scope.scopeIdInfo.scopeUuid,
                 it.scope.scopeIdInfo.scopeAddr,
                 spec?.name,
                 it.scope.scopeSpecIdInfo.scopeSpecAddr,
                 spec?.toSpecDescrip(),
                 it.scope.scope.ownersList.toOwnerRoles(),
                 it.scope.scope.dataAccessList,
-                it.scope.scope.valueOwnerAddress
+                it.scope.scope.valueOwnerAddress,
+                attributes.await().map { attr -> attr.toResponse() }
             )
         }
     }
@@ -90,7 +97,7 @@ class NftService(
         val scope = metadataClient.getScopeById(addr, true, true)
         // get scope spec -> contract specs
         val scopeSpec = metadataClient.getScopeSpecById(scope.scope.scopeSpecIdInfo.scopeSpecAddr)
-        val contractSpecs = scopeSpec.scopeSpecification.specification.contractSpecIdsList.map { it.toMAddress() }
+        val contractSpecs = scopeSpec.scopeSpecification.specification.contractSpecIdsList.map { it.toMAddress() }.toSet()
         // get record specs for each contract spec
         val recordSpecs = contractSpecs.asFlow()
             .flatMapMerge { cs -> metadataClient.getRecordSpecsForContractSpec(cs.toString()).recordSpecificationsList.asFlow() }

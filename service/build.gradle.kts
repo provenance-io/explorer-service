@@ -8,6 +8,7 @@ plugins {
     id(PluginIds.GoryLenkoGitProps) version PluginVersions.GoryLenkoGitProps
     id(PluginIds.SpringDependency) version PluginVersions.SpringDependency
     id(PluginIds.SpringBoot) version PluginVersions.SpringBoot
+    id(PluginIds.TestLogger) version PluginVersions.TestLogger apply false
 }
 
 sourceSets {
@@ -20,22 +21,23 @@ sourceSets {
 }
 
 dependencies {
-    api(project(":database"))
-    api(project(":proto"))
+    implementation(project(":database"))
+    implementation(Libraries.ProvenanceProto)
+    implementation(Libraries.KotlinReflect)
+    implementation(Libraries.KotlinStdlib)
 
-    api(Libraries.SpringBootStarterWeb)
-    api(Libraries.SpringBootDevTools)
-    api(Libraries.SpringBootStarterJdbc)
-    api(Libraries.SpringBootStarterActuator)
-    api(Libraries.SpringBootStarterValidation)
+    implementation(Libraries.SpringBootStarterWeb)
+    implementation(Libraries.SpringBootStarterJdbc)
+    implementation(Libraries.SpringBootStarterActuator)
+    implementation(Libraries.SpringBootStarterValidation)
     kapt(Libraries.SpringBootConfigProcessor)
 
-    api(Libraries.BouncyCastle)
-    api(Libraries.KotlinXCoRoutinesCore)
-    api(Libraries.KotlinXCoRoutinesGuava)
-    api(Libraries.ApacheCommonsText)
+    implementation(Libraries.BouncyCastle)
+    implementation(Libraries.KotlinXCoRoutinesCore)
+    implementation(Libraries.KotlinXCoRoutinesGuava)
+    implementation(Libraries.ApacheCommonsText)
     implementation(Libraries.KaseChange)
-    api(Libraries.ApacheHttpClient)
+    implementation(Libraries.ApacheHttpClient)
     implementation(Libraries.KtorClientCore)
     implementation(Libraries.KtorClientEngineJava)
     implementation(Libraries.KtorClientSerialization)
@@ -43,22 +45,30 @@ dependencies {
 
     implementation(Libraries.GrpcNetty)
 
-    api(Libraries.LogbackCore)
-    api(Libraries.LogbackClassic)
-    api(Libraries.LogbackJackson)
-
-    api(Libraries.JacksonModuleKotlin)
-    api(Libraries.JacksonDatatype)
-    api(Libraries.JacksonProtobuf)
+    implementation(Libraries.JacksonModuleKotlin)
+    implementation(Libraries.JacksonDatatype)
+    implementation(Libraries.JacksonJoda)
+    implementation(Libraries.JacksonProtobuf)
     implementation(Libraries.Postgres)
 
-    api(Libraries.Swagger)
-    api(Libraries.Exposed)
-    api(Libraries.ExposedJavaTime)
-    api(Libraries.ExposedDao)
-    api(Libraries.ExposedJdbc)
+    implementation(Libraries.Swagger)
+    implementation(Libraries.Exposed)
+    implementation(Libraries.ExposedJavaTime)
+    implementation(Libraries.ExposedDao)
+    implementation(Libraries.ExposedJdbc)
+    implementation(Libraries.FlywayCore)
 
     developmentOnly(Libraries.SpringBootDevTools)
+
+    testImplementation(Libraries.SpringBootStarterTest) {
+        exclude(module = "junit")
+        exclude(module = "mockito-core")
+        exclude(module = "assertj-core")
+    }
+    testImplementation(Libraries.JunitJupiterApi)
+    testRuntimeOnly(Libraries.JunitJupiterEngine)
+    testImplementation(Libraries.SpringMockk)
+    testImplementation(Libraries.KotestAssert)
 }
 
 dependencyManagement {
@@ -69,8 +79,9 @@ dependencyManagement {
 
 configurations.all {
     resolutionStrategy.eachDependency {
-        if (requested.group == "org.apache.logging.log4j") {
+        if (requested.group == "org.apache.logging.log4j" && (requested.version == "2.14.1") || (requested.version == "2.15.0")) {
             useVersion("2.15.0")
+            because("CVE-2021-44228")
         }
     }
 }
@@ -88,4 +99,22 @@ tasks.getByName<BootJar>("bootJar") {
     if (!project.version.toString().contains("main"))
         classpath += configurations.developmentOnly
     enabled = true
+}
+
+plugins.withType<com.adarshr.gradle.testlogger.TestLoggerPlugin> {
+    configure<com.adarshr.gradle.testlogger.TestLoggerExtension> {
+        theme = com.adarshr.gradle.testlogger.theme.ThemeType.STANDARD
+        showCauses = true
+        slowThreshold = 1000
+        showSummary = true
+    }
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform {
+        excludeTags("intTest")
+        includeTags("junit-jupiter", "junit-vintage")
+    }
+
+    failFast = true
 }

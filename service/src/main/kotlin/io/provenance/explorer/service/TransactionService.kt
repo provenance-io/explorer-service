@@ -25,6 +25,7 @@ import io.provenance.explorer.domain.entities.toFees
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toSigObj
@@ -115,7 +116,7 @@ class TransactionService(
                 MsgInfo(transaction { rec.txMessages.count() }, displayMsgType),
                 getMonikers(rec.id),
                 rec.txTimestamp.toString(),
-                transaction { rec.txFees.filter { fee -> fee.marker == NHASH }.toFeePaid() },
+                transaction { rec.txFees.filter { fee -> fee.marker == NHASH }.toFeePaid(NHASH) },
                 TxCacheRecord.findSigsByHash(rec.hash).toSigObj(props.provAccPrefix()),
                 if (rec.errorCode == null) "success" else "failed",
                 transaction { rec.txFeepayer.getFeepayer() }
@@ -139,10 +140,9 @@ class TransactionService(
             txHash = tx.txV2.txResponse.txhash,
             height = tx.txV2.txResponse.height.toInt(),
             gas = Gas(
-                tx.txV2.txResponse.gasUsed.toInt(),
-                tx.txV2.txResponse.gasWanted.toInt(),
-                tx.txV2.tx.authInfo.fee.gasLimit.toBigInteger(),
-                ValidatorMarketRateRecord.getRateByTxId(tx.id.value).toDouble()
+                tx.txV2.txResponse.gasUsed,
+                tx.txV2.txResponse.gasWanted,
+                ValidatorMarketRateRecord.getRateByTxId(tx.id.value).toCoinStr(NHASH)
             ),
             time = asyncV2.getBlock(tx.txV2.txResponse.height.toInt())!!.block.header.time.formattedString(),
             status = if (tx.txV2.txResponse.code > 0) "failed" else "success",
@@ -229,7 +229,7 @@ class TransactionService(
                     govDetail.proposalTitle,
                     msg.blockHeight,
                     msg.txHashId.txTimestamp.toString(),
-                    transaction { msg.txHashId.txFees.filter { fee -> fee.marker == NHASH }.toFeePaid() },
+                    transaction { msg.txHashId.txFees.filter { fee -> fee.marker == NHASH }.toFeePaid(NHASH) },
                     TxCacheRecord.findSigsByHash(msg.txHash).toSigObj(props.provAccPrefix()),
                     if (msg.txHashId.errorCode == null) "success" else "failed",
                     transaction { msg.txHashId.txFeepayer.getFeepayer() }
@@ -267,7 +267,7 @@ class TransactionService(
                 scDetail.second,
                 msg.blockHeight,
                 msg.txHashId.txTimestamp.toString(),
-                transaction { msg.txHashId.txFees.filter { fee -> fee.marker == NHASH }.toFeePaid() },
+                transaction { msg.txHashId.txFees.filter { fee -> fee.marker == NHASH }.toFeePaid(NHASH) },
                 TxCacheRecord.findSigsByHash(msg.txHash).toSigObj(props.provAccPrefix()),
                 if (msg.txHashId.errorCode == null) "success" else "failed",
                 transaction { msg.txHashId.txFeepayer.getFeepayer() }

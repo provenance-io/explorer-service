@@ -3,6 +3,7 @@ package io.provenance.explorer.web.v2
 import io.provenance.explorer.service.GovService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
+import io.swagger.annotations.ApiParam
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
@@ -17,37 +18,52 @@ import javax.validation.constraints.Min
 @Validated
 @RestController
 @RequestMapping(path = ["/api/v2/gov"], produces = [MediaType.APPLICATION_JSON_VALUE])
-@Api(value = "Governance controller", produces = "application/json", consumes = "application/json", tags = ["Governance"])
+@Api(
+    description = "Governance-related endpoints",
+    produces = MediaType.APPLICATION_JSON_VALUE,
+    consumes = MediaType.APPLICATION_JSON_VALUE,
+    tags = ["Governance"]
+)
 class GovController(private val govService: GovService) {
 
     @ApiOperation("Returns paginated list of proposals, proposal ID descending")
     @GetMapping("/proposals/all")
     fun getProposalsList(
-        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
+        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
+        @ApiParam(value = "Record count between 1 and 100", defaultValue = "10", required = false)
+        @RequestParam(defaultValue = "10") @Min(1) @Max(100) count: Int
     ) = ResponseEntity.ok(govService.getProposalsList(page, count))
 
     @ApiOperation("Returns header and timing detail of a proposal")
     @GetMapping("/proposals/{id}")
-    fun getProposal(@PathVariable id: Long) = ResponseEntity.ok(govService.getProposalDetail(id))
+    fun getProposal(
+        @ApiParam(value = "The ID of the proposal") @PathVariable id: Long
+    ) = ResponseEntity.ok(govService.getProposalDetail(id))
 
     @ApiOperation("Returns vote tallies and vote records of a proposal")
     @GetMapping("/proposals/{id}/votes")
-    fun getProposalVotes(@PathVariable id: Long) = ResponseEntity.ok(govService.getProposalVotes(id))
+    fun getProposalVotes(
+        @ApiParam(value = "The ID of the proposal") @PathVariable id: Long
+    ) = ResponseEntity.ok(govService.getProposalVotes(id))
 
     @ApiOperation("Returns paginated list of deposit records of a proposal, block height descending")
     @GetMapping("/proposals/{id}/deposits")
     fun getProposalDeposits(
-        @PathVariable id: Long,
-        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) count: Int
+        @ApiParam(value = "The ID of the proposal") @PathVariable id: Long,
+        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
+        @ApiParam(value = "Record count between 1 and 50", defaultValue = "10", required = false)
+        @RequestParam(defaultValue = "10") @Min(1) @Max(50) count: Int
     ) = ResponseEntity.ok(govService.getProposalDeposits(id, page, count))
 
     @ApiOperation("Returns paginated list of vote records for an address, proposal ID descending")
     @GetMapping("/address/{address}/votes")
     fun getValidatorVotes(
-        @PathVariable address: String,
-        @RequestParam(required = false, defaultValue = "1") @Min(1) page: Int,
-        @RequestParam(required = false, defaultValue = "10") @Min(1) @Max(200) count: Int
+        @ApiParam(
+            value = "The standard address for the chain. If searching for votes for a validator, use the Owner " +
+                "Address of the validator"
+        ) @PathVariable address: String,
+        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
+        @ApiParam(value = "Record count between 1 and 200", defaultValue = "10", required = false)
+        @RequestParam(defaultValue = "10") @Min(1) @Max(200) count: Int
     ) = ResponseEntity.ok(govService.getAddressVotes(address, page, count))
 }

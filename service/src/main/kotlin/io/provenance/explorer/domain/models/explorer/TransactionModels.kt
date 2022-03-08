@@ -68,13 +68,14 @@ data class TxDetails(
 
 data class TxFeepayer(val type: String, val address: String)
 
-data class TxFee(val type: String, val fees: List<CoinStr>)
+data class TxFee(val type: String, val fees: List<FeeCoinStr>)
+
+data class FeeCoinStr(val amount: String, val denom: String, val msgType: String?)
 
 data class Gas(
-    val gasUsed: Int,
-    val gasWanted: Int,
-    val gasLimit: BigInteger,
-    val gasPrice: Double
+    val gasUsed: Long,
+    val gasWanted: Long,
+    val gasPrice: CoinStr
 )
 
 data class TxHistory(val date: String, val numberTxs: Int)

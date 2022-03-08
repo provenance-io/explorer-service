@@ -14,9 +14,6 @@ object PluginIds { // please keep this sorted in sections
 
     const val SpringDependency = "io.spring.dependency-management"
     const val SpringBoot = "org.springframework.boot"
-    const val Protobuf = "com.google.protobuf"
-    const val Grpc = "grpc"
-    const val GrpcKt = "grpckt"
 
     // Provenance
     const val ProvenanceDownloadProtos = "io.provenance.download-protos"
@@ -24,7 +21,7 @@ object PluginIds { // please keep this sorted in sections
 
 object PluginVersions { // please keep this sorted in sections
     // Kotlin
-    const val Kotlin = "1.5.30"
+    const val Kotlin = "1.5.31"
 
     // 3rd Party
     const val Flyway = "7.15.0"
@@ -34,8 +31,7 @@ object PluginVersions { // please keep this sorted in sections
     const val GoryLenkoGitProps = "1.5.2"
 
     const val SpringDependency = "1.0.11.RELEASE"
-    const val SpringBoot = "2.4.3"
-    const val Protobuf = "0.8.17"
+    const val SpringBoot = "2.5.6"
 }
 
 object Versions {
@@ -49,29 +45,21 @@ object Versions {
     const val BouncyCastle = "1.69"
     const val Exposed = "0.34.1"
     const val Flyway = PluginVersions.Flyway
-    const val Jackson = "2.11.2"
+    const val Jackson = "2.12.5"
     const val JacksonProtobuf = "0.9.12"
     const val Json = "20211205"
     const val KaseChange = "1.3.0"
     const val Ktor = "1.6.7"
-    const val Logback = "0.1.5"
     const val SpringBoot = PluginVersions.SpringBoot
     const val Swagger = "3.0.0"
-    const val Protobuf = "3.19.1"
     const val Grpc = "1.40.1"
-    const val KotlinGrpc = "1.2.0"
+    const val ProvProto = "v1.8.0-rc6"
     const val Postgres = "42.2.23"
 
     // Testing
     const val Jupiter = "5.7.1"
     const val SpringMockk = "3.0.1"
     const val Kotest = "4.4.3"
-
-    // external protos
-    const val Provenance = "v1.7.5"
-    const val Cosmos = "v0.44.3"
-    const val Wasmd = "v0.19.0"
-    const val Ibc = "v1.1.0"
 }
 
 object Libraries {
@@ -89,6 +77,7 @@ object Libraries {
     const val FlywayCore = "org.flywaydb:flyway-core:${Versions.Flyway}"
     const val JacksonModuleKotlin = "com.fasterxml.jackson.module:jackson-module-kotlin:${Versions.Jackson}"
     const val JacksonDatatype = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${Versions.Jackson}"
+    const val JacksonJoda = "com.fasterxml.jackson.datatype:jackson-datatype-joda:${Versions.Jackson}"
     const val JacksonProtobuf = "com.hubspot.jackson:jackson-datatype-protobuf:${Versions.JacksonProtobuf}"
     const val Postgres = "org.postgresql:postgresql:${Versions.Postgres}"
     const val BouncyCastle = "org.bouncycastle:bcprov-jdk15on:${Versions.BouncyCastle}"
@@ -100,21 +89,9 @@ object Libraries {
     const val KaseChange = "net.pearx.kasechange:kasechange:${Versions.KaseChange}"
     const val Json = "org.json:json:${Versions.Json}"
 
-    // Logging
-    const val LogbackCore = "ch.qos.logback.contrib:logback-json-core:${Versions.Logback}"
-    const val LogbackClassic = "ch.qos.logback.contrib:logback-json-classic:${Versions.Logback}"
-    const val LogbackJackson = "ch.qos.logback.contrib:logback-jackson:${Versions.Logback}"
-
     // Protobuf
-    const val ProtobufJavaUtil = "com.google.protobuf:protobuf-java-util:${Versions.Protobuf}"
-    const val ProtobufKotlin = "com.google.protobuf:protobuf-kotlin:${Versions.Protobuf}"
-    const val GrpcProtobuf = "io.grpc:grpc-protobuf:${Versions.Grpc}"
-    const val GrpcStub = "io.grpc:grpc-stub:${Versions.Grpc}"
-    const val GrpcKotlinStub = "io.grpc:grpc-kotlin-stub:${Versions.KotlinGrpc}"
-    const val ProtocArtifact = "com.google.protobuf:protoc:${Versions.Protobuf}"
-    const val GrpcArtifact = "io.grpc:protoc-gen-grpc-java:${Versions.Grpc}"
-    const val GrpcKotlinArtifact = "io.grpc:protoc-gen-grpc-kotlin:${Versions.KotlinGrpc}:jdk7@jar"
     const val GrpcNetty = "io.grpc:grpc-netty:${Versions.Grpc}"
+    const val ProvenanceProto = "io.provenance:proto-kotlin:${Versions.ProvProto}"
 
     // Spring
     const val SpringBootDevTools = "org.springframework.boot:spring-boot-devtools:${Versions.SpringBoot}"
@@ -133,12 +110,3 @@ object Libraries {
     const val SpringMockk = "com.ninja-squad:springmockk:${Versions.SpringMockk}"
     const val KotestAssert = "io.kotest:kotest-assertions-core:${Versions.Kotest}"
 }
-
-// gradle configurations
-const val kapt = "kapt"
-const val api = "api"
-const val implementation = "implementation"
-const val testCompileOnly = "testCompileOnly"
-const val testImplementation = "testImplementation"
-const val testRuntimeOnly = "testRuntimeOnly"
-const val developmentOnly = "developmentOnly"

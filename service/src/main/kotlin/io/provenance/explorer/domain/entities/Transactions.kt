@@ -8,14 +8,18 @@ import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_OVERAGE
 import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_USED
+import io.provenance.explorer.domain.entities.FeeType.MSG_BASED_FEE
+import io.provenance.explorer.domain.entities.TxFeeRecord.Companion.calcFeesPaid
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.exec
 import io.provenance.explorer.domain.extensions.getFeeTotalPaid
 import io.provenance.explorer.domain.extensions.map
 import io.provenance.explorer.domain.extensions.startOfDay
+import io.provenance.explorer.domain.extensions.stringfy
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDbHash
+import io.provenance.explorer.domain.models.explorer.FeeCoinStr
 import io.provenance.explorer.domain.models.explorer.GasStats
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxFee
@@ -27,6 +31,9 @@ import io.provenance.explorer.domain.models.explorer.TxUpdate
 import io.provenance.explorer.domain.models.explorer.getCategoryForType
 import io.provenance.explorer.domain.models.explorer.onlyTxQuery
 import io.provenance.explorer.domain.models.explorer.toProcedureObject
+import io.provenance.explorer.grpc.extensions.getByDefinedEvent
+import io.provenance.explorer.grpc.extensions.getExecuteContractTypeUrl
+import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
 import io.provenance.explorer.service.AssetService
 import net.pearx.kasechange.toTitleCase
 import org.jetbrains.exposed.dao.IntEntity
@@ -34,11 +41,13 @@ import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ColumnSet
+import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
@@ -83,7 +92,7 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 tx.txResponse.gasUsed.toInt(),
                 txTime,
                 if (tx.txResponse.code > 0) tx.txResponse.code else null,
-                if (tx.txResponse.codespace.isNotBlank()) tx.txResponse.codespace else null,
+                tx.txResponse.codespace.ifBlank { null },
                 tx,
                 0
             ).toProcedureObject()
@@ -406,27 +415,32 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         fun buildInsert(txTime: DateTime, txHash: String, gasUsed: Int, type: String) =
             listOf(0, txTime, txHash, gasUsed, type, false).toProcedureObject()
 
-        fun getGasStats(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
+        fun getGasStats(fromDate: DateTime, toDate: DateTime, granularity: String, msgType: String?) = transaction {
             val tblName = "tx_single_message_gas_stats_${granularity.lowercase()}"
-            val query = """
+            var query = """
                 |SELECT
-                |   $tblName.tx_timestamp,
-                |   $tblName.min_gas_used,
-                |   $tblName.max_gas_used,
-                |   $tblName.avg_gas_used,
-                |   $tblName.stddev_gas_used,
-                |   $tblName.tx_message_type
+                |   tx_timestamp,
+                |   min_gas_used,
+                |   max_gas_used,
+                |   avg_gas_used,
+                |   stddev_gas_used,
+                |   tx_message_type
                 |FROM $tblName
-                |WHERE $tblName.tx_timestamp >= ? 
-                |  AND $tblName.tx_timestamp < ?
-                |ORDER BY $tblName.tx_timestamp ASC
-                |""".trimMargin()
+                |WHERE tx_timestamp >= ? 
+                |  AND tx_timestamp < ? """.trimMargin()
+
+            if (msgType != null)
+                query += " AND tx_message_type = ? "
+
+            query += " ORDER BY tx_timestamp ASC;"
 
             val dateTimeType = DateColumnType(true)
-            val arguments = listOf<Pair<DateColumnType, DateTime>>(
+            val arguments = mutableListOf<Pair<ColumnType, *>>(
                 Pair(dateTimeType, fromDate.startOfDay()),
                 Pair(dateTimeType, toDate.startOfDay().plusDays(1))
             )
+            if (msgType != null)
+                arguments.add(Pair(VarCharColumnType(), msgType))
 
             val tz = DateTimeZone.UTC
             val pattern = "yyyy-MM-dd HH:mm:ss"
@@ -470,14 +484,14 @@ object TxGasCacheTable : IntIdTable(name = "tx_gas_cache") {
 class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxGasCacheRecord>(TxGasCacheTable) {
 
-        fun buildInsert(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime) =
+        fun buildInsert(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime, msgBasedFees: Long) =
             listOf(
                 0,
                 tx.txResponse.txhash,
                 txTime,
                 tx.txResponse.gasWanted.toInt(),
                 tx.txResponse.gasUsed.toInt(),
-                tx.getFeeTotalPaid(),
+                tx.calcFeesPaid(msgBasedFees),
                 false
             ).toProcedureObject()
 
@@ -567,29 +581,47 @@ object TxFeeTable : IntIdTable(name = "tx_fee") {
     val markerId = integer("marker_id")
     val marker = varchar("marker", 256)
     val amount = decimal("amount", 100, 10)
+    val msgType = varchar("msg_type", 256).nullable()
 }
 
 enum class FeeType { BASE_FEE_USED, BASE_FEE_OVERAGE, PRIORITY_FEE, MSG_BASED_FEE }
 
 fun List<TxFeeRecord>.toFees() = this.groupBy { it.feeType }
-    .map { (k, v) -> TxFee(k.toTitleCase(), v.map { it.amount.toCoinStr(it.marker) }) }
+    .map { (k, v) -> TxFee(k.toTitleCase(), v.map { it.toFeeCoinStr() }) }
 
-fun List<TxFeeRecord>.toFeePaid() = this.sumOf { it.amount }.toCoinStr(this.firstOrNull()?.marker ?: NHASH)
+fun TxFeeRecord.toFeeCoinStr() = FeeCoinStr(this.amount.stringfy(), this.marker, this.msgType)
+
+fun List<TxFeeRecord>.toFeePaid(altDenom: String) =
+    this.sumOf { it.amount }.toCoinStr(this.firstOrNull()?.marker ?: altDenom)
 
 class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxFeeRecord>(TxFeeTable) {
 
-        fun calcMarketRate(tx: ServiceOuterClass.GetTxResponse) = tx.getFeeTotalPaid() / tx.txResponse.gasWanted
+        fun updateTxFees(updateFromHeight: Int) = transaction {
+            val query = "CALL update_tx_fees($updateFromHeight)"
+            this.exec(query)
+        }
 
-        fun buildInserts(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse, assetService: AssetService) =
+        fun ServiceOuterClass.GetTxResponse.calcFeesPaid(msgBasedFees: Long) =
+            if (this.txResponse.code == 0) this.getFeeTotalPaid() else this.getFeeTotalPaid() - msgBasedFees
+
+        fun calcMarketRate(tx: ServiceOuterClass.GetTxResponse, msgBasedFees: Long) =
+            (tx.getFeeTotalPaid() - msgBasedFees) / tx.txResponse.gasWanted
+
+        fun buildInserts(
+            txInfo: TxData,
+            tx: ServiceOuterClass.GetTxResponse,
+            assetService: AssetService,
+            msgBasedFeeMap: MutableMap<String, MutableList<Long>>
+        ) =
             transaction {
                 val success = tx.txResponse.code == 0
                 val feeList = mutableListOf<String>()
                 // calc baseFeeUsed, baseFeeOverage in nhash
                 tx.getFeeTotalPaid().let { totalFeeAmount ->
-                    val marketRate = calcMarketRate(tx)
+                    val marketRate = calcMarketRate(tx, msgBasedFeeMap.totalMsgBasedFees())
                     var baseFeeUsed = tx.txResponse.gasUsed * marketRate
-                    var overage = totalFeeAmount - baseFeeUsed
+                    var overage = totalFeeAmount - msgBasedFeeMap.totalMsgBasedFees() - baseFeeUsed
                     // if totalFeeAmount is less than baseFeeUsed (ie, fails on gas),
                     // baseFeeUsed = totalFeeAmount, and overage = 0
                     // Else save the used and overage as normal, regardless of tx success
@@ -615,12 +647,78 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                                 baseFeeOverage.toBigDecimal()
                             )
                         )
+                    // insert additional fees grouped by msg type
+                    if (success)
+                        msgBasedFeeMap.forEach { (k, v) ->
+                            feeList.add(
+                                buildInsert(
+                                    txInfo,
+                                    MSG_BASED_FEE.name,
+                                    nhash.id.value,
+                                    nhash.denom,
+                                    v.sum().toBigDecimal(),
+                                    k
+                                )
+                            )
+                        }
                 }
                 feeList
             }
 
-        private fun buildInsert(txInfo: TxData, type: String, markerId: Int, marker: String, amount: BigDecimal) =
-            listOf(0, txInfo.blockHeight, 0, txInfo.txHash, type, markerId, marker, amount).toProcedureObject()
+        fun MutableMap<String, MutableList<Long>>.totalMsgBasedFees() = this.map { it.value.sum() }.sum()
+
+        fun identifyMsgBasedFees(tx: ServiceOuterClass.GetTxResponse, msgFeeClient: MsgFeeGrpcClient): MutableMap<String, MutableList<Long>> {
+            // find any msgs that have additional fees
+            val msgToFee = mutableMapOf<String, MutableList<Long>>()
+            val msgTypes = tx.tx.body.messagesList.groupingBy { it.typeUrl }.eachCount()
+            val msgFees =
+                msgFeeClient.getMsgFees().msgFeesList.associate { it.msgTypeUrl to it.additionalFee }
+            msgFees.filter { msgTypes.keys.contains(it.key) }
+                .forEach {
+                    val amount = it.value.amount.toLong() * msgTypes[it.key]!!
+                    msgToFee[TxMessageTypeRecord.findByProtoType(it.key)!!.type]?.add(amount)
+                        ?: msgToFee.put(
+                            TxMessageTypeRecord.findByProtoType(it.key)!!.type,
+                            mutableListOf(amount)
+                        )
+                }
+
+            // find any events for contract executes that have additional fees
+            if (msgTypes.keys.contains(getExecuteContractTypeUrl())) {
+                val indices = tx.tx.body.messagesList.mapIndexed { idx, msg -> idx to msg.typeUrl }
+                    .filter { it.second == getExecuteContractTypeUrl() }
+                    .map { it.first }
+                val definedEvents = getByDefinedEvent()
+                tx.txResponse.logsList.filterIndexed { idx, _ -> indices.contains(idx) }
+                    .forEach { log ->
+                        log.eventsList.filter { definedEvents.keys.contains(it.type) }
+                            .forEach { event ->
+                                val defined = definedEvents[event.type]!!
+                                val fee = msgFees[defined.msg]!!
+                                val count =
+                                    event.attributesList.filter { it.key == defined.uniqueField }.count()
+                                val amount = fee.amount.toLong() * count
+                                msgToFee[TxMessageTypeRecord.findByProtoType(defined.msg)!!.type]
+                                    ?.add(amount)
+                                    ?: msgToFee.put(
+                                        TxMessageTypeRecord.findByProtoType(defined.msg)!!.type,
+                                        mutableListOf(amount)
+                                    )
+                            }
+                    }
+            }
+
+            return msgToFee
+        }
+
+        private fun buildInsert(
+            txInfo: TxData,
+            type: String,
+            markerId: Int,
+            marker: String,
+            amount: BigDecimal,
+            msgType: String? = null
+        ) = listOf(0, txInfo.blockHeight, 0, txInfo.txHash, type, markerId, marker, amount, msgType).toProcedureObject()
     }
 
     var blockHeight by TxFeeTable.blockHeight
@@ -630,4 +728,5 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
     var markerId by TxFeeTable.markerId
     var marker by TxFeeTable.marker
     var amount by TxFeeTable.amount
+    var msgType by TxFeeTable.msgType
 }

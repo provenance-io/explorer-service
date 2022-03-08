@@ -19,12 +19,15 @@ import io.provenance.explorer.domain.extensions.toPercentage
 import io.provenance.explorer.domain.extensions.toSha256
 import io.provenance.explorer.domain.models.explorer.DistParams
 import io.provenance.explorer.domain.models.explorer.MintParams
+import io.provenance.explorer.domain.models.explorer.MsgBasedFee
 import io.provenance.explorer.domain.models.explorer.SlashingParams
 import io.provenance.explorer.domain.models.explorer.TallyingParams
+import io.provenance.explorer.domain.models.explorer.toData
 import io.provenance.explorer.service.prettyRole
 import io.provenance.marker.v1.Access
 import io.provenance.marker.v1.MarkerAccount
 import io.provenance.marker.v1.MarkerStatus
+import io.provenance.msgfees.v1.MsgFee
 
 // Marker Extensions
 fun String.getTypeShortName() = this.split(".").last()
@@ -136,3 +139,5 @@ fun Slashing.Params.toDto() = SlashingParams(
     this.slashFractionDoubleSign.toString(Charsets.UTF_8).toPercentage(),
     this.slashFractionDowntime.toString(Charsets.UTF_8).toPercentage(),
 )
+
+fun MsgFee.toDto() = MsgBasedFee(this.msgTypeUrl, this.additionalFee.toData())

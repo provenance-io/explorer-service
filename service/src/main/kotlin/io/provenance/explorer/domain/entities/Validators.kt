@@ -23,7 +23,6 @@ import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.avg
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
 import org.jetbrains.exposed.sql.jodatime.datetime
@@ -87,7 +86,7 @@ class StakingValidatorCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.consensusPubkey] = consensusPubkey
                     it[this.accountAddress] = account
                     it[this.consensusAddress] = consensusAddr
-                }.let { it!! }
+                }.let { findById(it!!)!!.id }
             }
     }
 
@@ -281,7 +280,7 @@ object ValidatorMarketRateTable : IntIdTable(name = "validator_market_rate") {
 
 class ValidatorMarketRateRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<ValidatorMarketRateRecord>(ValidatorMarketRateTable) {
-        fun buildInsert(txInfo: TxData, proposer: String, tx: ServiceOuterClass.GetTxResponse, success: Boolean) =
+        fun buildInsert(txInfo: TxData, proposer: String, tx: ServiceOuterClass.GetTxResponse, msgBasedFees: Long) =
             listOf(
                 0,
                 txInfo.blockHeight,
@@ -289,24 +288,20 @@ class ValidatorMarketRateRecord(id: EntityID<Int>) : IntEntity(id) {
                 proposer,
                 0,
                 txInfo.txHash,
-                TxFeeRecord.calcMarketRate(tx),
-                success
+                TxFeeRecord.calcMarketRate(tx, msgBasedFees),
+                tx.txResponse.code == 0
             ).toProcedureObject()
 
         fun getRateByTxId(txId: Int) = transaction {
             ValidatorMarketRateRecord.find { ValidatorMarketRateTable.txHashId eq txId }.first().marketRate
         }
 
-        fun getCurrentRateByValidator(operAddr: String) = transaction {
-            val avg = ValidatorMarketRateTable.marketRate.avg(2)
-            ValidatorMarketRateTable
-                .slice(ValidatorMarketRateTable.blockHeight, avg)
-                .select { (ValidatorMarketRateTable.proposerAddress eq operAddr) and (ValidatorMarketRateTable.success) }
-                .groupBy(ValidatorMarketRateTable.blockHeight)
+        fun getValidatorRateForBlockCount(operAddr: String, txCount: Int) = transaction {
+            ValidatorMarketRateRecord
+                .find { (ValidatorMarketRateTable.proposerAddress eq operAddr) and (ValidatorMarketRateTable.success) }
                 .orderBy(Pair(ValidatorMarketRateTable.blockHeight, SortOrder.DESC))
-                .limit(1)
-                .firstOrNull()
-                ?.let { it[avg]!! }
+                .limit(txCount)
+                .toList()
         }
 
         fun findForDates(fromDate: DateTime, toDate: DateTime, address: String?) = transaction {

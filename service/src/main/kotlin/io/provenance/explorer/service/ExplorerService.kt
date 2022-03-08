@@ -61,6 +61,7 @@ import io.provenance.explorer.grpc.v1.GovGrpcClient
 import io.provenance.explorer.grpc.v1.IbcGrpcClient
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
 import io.provenance.explorer.grpc.v1.MetadataGrpcClient
+import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import io.provenance.explorer.service.async.AsyncCachingV2
 import kotlinx.coroutines.Dispatchers
@@ -88,6 +89,7 @@ class ExplorerService(
     private val attrClient: AttributeGrpcClient,
     private val metadataClient: MetadataGrpcClient,
     private val markerClient: MarkerGrpcClient,
+    private val msgFeeClient: MsgFeeGrpcClient,
     private val validatorClient: ValidatorGrpcClient,
     private val protoPrinter: JsonFormat.Printer
 ) {
@@ -167,8 +169,9 @@ class ExplorerService(
         Pair<BigDecimal, String>(totalBondedTokens, totalBlockChainTokens)
     }
 
-    fun getGasStats(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
-        TxSingleMessageCacheRecord.getGasStats(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
+    fun getGasStats(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?, msgType: String?) =
+        TxSingleMessageCacheRecord
+            .getGasStats(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name, msgType)
 
     fun getGasVolume(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
         TxGasCacheRecord.getGasVolume(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
@@ -294,6 +297,7 @@ class ExplorerService(
         val markerParams = markerClient.getMarkerParams().params
         val metadataParams = metadataClient.getMetadataParams().params
         val nameParams = attrClient.getNameParams().params
+        val msgParams = async { msgFeeClient.getMsgFeeParams().params }
 
         Params(
             CosmosParams(
@@ -319,6 +323,7 @@ class ExplorerService(
                 markerParams.toObjectNodePrint(protoPrinter),
                 metadataParams.toObjectNodePrint(protoPrinter),
                 nameParams.toObjectNodePrint(protoPrinter),
+                msgParams.await().toObjectNodePrint(protoPrinter)
             ),
         )
     }
@@ -358,6 +363,8 @@ class ExplorerService(
             results.size.toLong()
         )
     }
+
+    fun getMsgBasedFeeList() = msgFeeClient.getMsgFees().msgFeesList.map { it.toDto() }
 }
 
 fun Query.GetBlockByHeightResponse.getVotingSet(props: ExplorerProperties, filter: Int? = null) =

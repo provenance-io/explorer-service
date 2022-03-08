@@ -6,6 +6,7 @@ import com.google.protobuf.Timestamp
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.domain.core.isMAddress
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.toArray
 import io.provenance.explorer.domain.core.sql.toObject
@@ -24,6 +25,7 @@ import io.provenance.explorer.domain.entities.TxEventAttrRecord
 import io.provenance.explorer.domain.entities.TxEventAttrTable
 import io.provenance.explorer.domain.entities.TxEventRecord
 import io.provenance.explorer.domain.entities.TxFeeRecord
+import io.provenance.explorer.domain.entities.TxFeeRecord.Companion.totalMsgBasedFees
 import io.provenance.explorer.domain.entities.TxFeepayerRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
@@ -76,6 +78,7 @@ import io.provenance.explorer.grpc.extensions.toMsgSubmitProposal
 import io.provenance.explorer.grpc.extensions.toMsgTimeoutOnClose
 import io.provenance.explorer.grpc.extensions.toMsgTransfer
 import io.provenance.explorer.grpc.extensions.toMsgVote
+import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
 import io.provenance.explorer.grpc.v1.TransactionGrpcClient
 import io.provenance.explorer.service.AccountService
 import io.provenance.explorer.service.AssetService
@@ -94,6 +97,7 @@ import org.springframework.stereotype.Service
 @Service
 class AsyncCachingV2(
     private val txClient: TransactionGrpcClient,
+    private val msgFeeClient: MsgFeeGrpcClient,
     private val blockService: BlockService,
     private val validatorService: ValidatorService,
     private val accountService: AccountService,
@@ -110,18 +114,18 @@ class AsyncCachingV2(
     protected var chainId: String = ""
 
     fun getChainIdString() =
-        if (chainId.isEmpty()) getBlock(blockService.getLatestBlockHeightIndex())!!.block.header.chainId.also {
-            this.chainId = it
-        }
+        if (chainId.isEmpty())
+            getBlock(blockService.getLatestBlockHeightIndex())!!.block.header.chainId.also { this.chainId = it }
         else this.chainId
 
     fun getBlock(blockHeight: Int) = transaction {
-        BlockCacheRecord.findById(blockHeight)?.also {
-            BlockCacheRecord.updateHitCount(blockHeight)
-        }?.block
+        BlockCacheRecord.findById(blockHeight)?.also { BlockCacheRecord.updateHitCount(blockHeight) }?.block
     } ?: saveBlockEtc(blockService.getBlockAtHeightFromChain(blockHeight))
 
-    fun saveBlockEtc(blockRes: Query.GetBlockByHeightResponse?): Query.GetBlockByHeightResponse? {
+    fun saveBlockEtc(
+        blockRes: Query.GetBlockByHeightResponse?,
+        rerunTxs: Boolean = false
+    ): Query.GetBlockByHeightResponse? {
         if (blockRes == null) return null
         logger.info("saving block ${blockRes.block.height()}")
         val blockTimestamp = blockRes.block.header.time.toDateTime()
@@ -135,8 +139,13 @@ class AsyncCachingV2(
         val proposerRec = validatorService.buildProposerInsert(blockRes, blockTimestamp, blockRes.block.height())
         val valsAtHeight = validatorService.buildValidatorsAtHeight(blockRes.block.height())
         validatorService.saveMissedBlocks(blockRes)
-        val txs = if (blockRes.block.data.txsCount > 0) saveTxs(blockRes, proposerRec).map { it.toProcedureObject() }
-        else listOf()
+        val txs =
+            if (blockRes.block.data.txsCount > 0) saveTxs(
+                blockRes,
+                proposerRec,
+                rerunTxs
+            ).map { it.toProcedureObject() }
+            else listOf()
         val blockUpdate = BlockUpdate(block, proposerRec.buildInsert(), valsAtHeight, txs)
         try {
             BlockCacheRecord.insertToProcedure(blockUpdate)
@@ -153,13 +162,18 @@ class AsyncCachingV2(
         val txUpdate: TxUpdate
     )
 
-    fun saveTxs(blockRes: Query.GetBlockByHeightResponse, proposerRec: BlockProposer): List<TxUpdate> {
+    fun saveTxs(
+        blockRes: Query.GetBlockByHeightResponse,
+        proposerRec: BlockProposer,
+        rerunTxs: Boolean = false
+    ): List<TxUpdate> {
         val toBeUpdated =
             addTxsToCache(
                 blockRes.block.height(),
                 blockRes.block.data.txsCount,
                 blockRes.block.header.time,
-                proposerRec
+                proposerRec,
+                rerunTxs
             )
         toBeUpdated.flatMap { it.markers }.toSet().let { assetService.updateAssets(it, blockRes.block.header.time) }
         toBeUpdated.flatMap { it.addresses.entries }
@@ -180,8 +194,14 @@ class AsyncCachingV2(
 
     private fun txCountForHeight(blockHeight: Int) = transaction { TxCacheRecord.findByHeight(blockHeight).count() }
 
-    fun addTxsToCache(blockHeight: Int, expectedNumTxs: Int, blockTime: Timestamp, proposerRec: BlockProposer) =
-        if (txCountForHeight(blockHeight).toInt() == expectedNumTxs)
+    fun addTxsToCache(
+        blockHeight: Int,
+        expectedNumTxs: Int,
+        blockTime: Timestamp,
+        proposerRec: BlockProposer,
+        rerunTxs: Boolean = false
+    ) =
+        if (txCountForHeight(blockHeight).toInt() == expectedNumTxs && !rerunTxs)
             logger.info("Cache hit for transaction at height $blockHeight with $expectedNumTxs transactions")
                 .let { listOf() }
         else {
@@ -219,8 +239,8 @@ class AsyncCachingV2(
         val tx = TxCacheRecord.buildInsert(res, blockTime)
         val txUpdate = TxUpdate(tx)
         val txInfo = TxData(res.txResponse.height.toInt(), null, res.txResponse.txhash, blockTime)
-        saveTxFees(res, txInfo, txUpdate, proposerRec)
         saveMessages(txInfo, res, txUpdate)
+        saveTxFees(res, txInfo, txUpdate, proposerRec)
         val addrs = saveAddresses(txInfo, res, txUpdate)
         val markers = saveMarkers(txInfo, res, txUpdate)
         saveNftData(txInfo, res, txUpdate)
@@ -261,10 +281,11 @@ class AsyncCachingV2(
         proposerRec: BlockProposer
     ) =
         txUpdate.apply {
-            this.txGasFee = TxGasCacheRecord.buildInsert(tx, txInfo.txTimestamp)
-            this.txFees.addAll(TxFeeRecord.buildInserts(txInfo, tx, assetService))
+            val msgBasedFeeMap = TxFeeRecord.identifyMsgBasedFees(tx, msgFeeClient)
+            this.txFees.addAll(TxFeeRecord.buildInserts(txInfo, tx, assetService, msgBasedFeeMap))
+            this.txGasFee = TxGasCacheRecord.buildInsert(tx, txInfo.txTimestamp, msgBasedFeeMap.totalMsgBasedFees())
             this.validatorMarketRate = ValidatorMarketRateRecord.buildInsert(
-                txInfo, proposerRec.proposerOperatorAddress, tx, tx.txResponse.code == 0
+                txInfo, proposerRec.proposerOperatorAddress, tx, msgBasedFeeMap.totalMsgBasedFees()
             )
         }
 
@@ -314,13 +335,13 @@ class AsyncCachingV2(
 
         (msgAddrs + eventAddrs).toSet()
             .filter { it.isNotEmpty() }
-            .map { saveAddr(it, txInfo, txUpdate) }
+            .mapNotNull { saveAddr(it, txInfo, txUpdate) }
             .filter { it.second != null }.groupBy({ it.first }) { it.second!! }
     }
 
-    private fun saveAddr(addr: String, txInfo: TxData, txUpdate: TxUpdate): Pair<String, Int?> {
-        val addrPair = addr.getAddressType(props)
-        var pairCopy = addrPair!!.copy()
+    private fun saveAddr(addr: String, txInfo: TxData, txUpdate: TxUpdate): Pair<String, Int?>? {
+        val addrPair = addr.getAddressType(props) ?: return null
+        var pairCopy = addrPair.copy()
         if (addrPair.second == null) {
             try {
                 when (addrPair.first) {
@@ -352,8 +373,8 @@ class AsyncCachingV2(
                             .filter { attr -> attr.key == it.idField }
                             .mapNotNull { found ->
                                 if (it.parse) found.value.scrubQuotes().denomEventRegexParse()
-                                else found.value.scrubQuotes()
-                            }
+                                else listOf(found.value.scrubQuotes())
+                            }.flatten()
                     }
                 }
 
@@ -386,6 +407,7 @@ class AsyncCachingV2(
                     .filter { a -> a.key in me.map { m -> m.idField } }
                     .map { jacksonObjectMapper().readValue(it.value, String::class.java) }
             }
+            .filter { it.isMAddress() }
             .map { addr -> addr.toMAddress() }
 
         // Save the nft addresses

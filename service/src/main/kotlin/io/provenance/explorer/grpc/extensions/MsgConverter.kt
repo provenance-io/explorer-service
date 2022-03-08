@@ -30,6 +30,7 @@ import io.provenance.attribute.v1.MsgDeleteDistinctAttributeRequest
 import io.provenance.attribute.v1.MsgUpdateAttributeRequest
 import io.provenance.explorer.domain.core.MetadataAddress
 import io.provenance.explorer.domain.core.blankToNull
+import io.provenance.explorer.domain.core.isMAddress
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.core.toMAddressContractSpec
@@ -37,8 +38,28 @@ import io.provenance.explorer.domain.core.toMAddressScope
 import io.provenance.explorer.domain.core.toMAddressScopeSpec
 import io.provenance.explorer.domain.core.toMAddressSession
 import io.provenance.explorer.domain.core.toUuidOrNull
+import io.provenance.explorer.grpc.extensions.MdEvents.AA
+import io.provenance.explorer.grpc.extensions.MdEvents.AD
+import io.provenance.explorer.grpc.extensions.MdEvents.ADD
+import io.provenance.explorer.grpc.extensions.MdEvents.AU
+import io.provenance.explorer.grpc.extensions.MdEvents.CRSC
+import io.provenance.explorer.grpc.extensions.MdEvents.CRSD
+import io.provenance.explorer.grpc.extensions.MdEvents.CRSU
 import io.provenance.explorer.grpc.extensions.MdEvents.CSPC
+import io.provenance.explorer.grpc.extensions.MdEvents.CSPD
 import io.provenance.explorer.grpc.extensions.MdEvents.CSPU
+import io.provenance.explorer.grpc.extensions.MdEvents.RC
+import io.provenance.explorer.grpc.extensions.MdEvents.RD
+import io.provenance.explorer.grpc.extensions.MdEvents.RU
+import io.provenance.explorer.grpc.extensions.MdEvents.SC
+import io.provenance.explorer.grpc.extensions.MdEvents.SD
+import io.provenance.explorer.grpc.extensions.MdEvents.SEC
+import io.provenance.explorer.grpc.extensions.MdEvents.SED
+import io.provenance.explorer.grpc.extensions.MdEvents.SEU
+import io.provenance.explorer.grpc.extensions.MdEvents.SSC
+import io.provenance.explorer.grpc.extensions.MdEvents.SSD
+import io.provenance.explorer.grpc.extensions.MdEvents.SSU
+import io.provenance.explorer.grpc.extensions.MdEvents.SU
 import io.provenance.explorer.service.getDenomByAddress
 import io.provenance.marker.v1.MsgActivateRequest
 import io.provenance.marker.v1.MsgAddAccessRequest
@@ -89,8 +110,12 @@ fun Any.toMsgVote() = this.unpack(cosmos.gov.v1beta1.Tx.MsgVote::class.java)
 fun Any.toMsgVoteWeighted() = this.unpack(cosmos.gov.v1beta1.Tx.MsgVoteWeighted::class.java)
 fun Any.toMsgDeposit() = this.unpack(cosmos.gov.v1beta1.Tx.MsgDeposit::class.java)
 fun Any.toMsgSetWithdrawAddress() = this.unpack(cosmos.distribution.v1beta1.Tx.MsgSetWithdrawAddress::class.java)
-fun Any.toMsgWithdrawDelegatorReward() = this.unpack(cosmos.distribution.v1beta1.Tx.MsgWithdrawDelegatorReward::class.java)
-fun Any.toMsgWithdrawValidatorCommission() = this.unpack(cosmos.distribution.v1beta1.Tx.MsgWithdrawValidatorCommission::class.java)
+fun Any.toMsgWithdrawDelegatorReward() =
+    this.unpack(cosmos.distribution.v1beta1.Tx.MsgWithdrawDelegatorReward::class.java)
+
+fun Any.toMsgWithdrawValidatorCommission() =
+    this.unpack(cosmos.distribution.v1beta1.Tx.MsgWithdrawValidatorCommission::class.java)
+
 fun Any.toMsgFundCommunityPool() = this.unpack(cosmos.distribution.v1beta1.Tx.MsgFundCommunityPool::class.java)
 fun Any.toMsgSubmitEvidence() = this.unpack(cosmos.evidence.v1beta1.Tx.MsgSubmitEvidence::class.java)
 fun Any.toMsgUnjail() = this.unpack(cosmos.slashing.v1beta1.Tx.MsgUnjail::class.java)
@@ -151,7 +176,9 @@ fun Any.toMsgDeleteScopeOwnerRequest() = this.unpack(MsgDeleteScopeOwnerRequest:
 fun Any.toMsgUpdateAttributeRequest() = this.unpack(MsgUpdateAttributeRequest::class.java)
 fun Any.toMsgDeleteDistinctAttributeRequest() = this.unpack(MsgDeleteDistinctAttributeRequest::class.java)
 fun Any.toMsgAddContractSpecToScopeSpecRequest() = this.unpack(MsgAddContractSpecToScopeSpecRequest::class.java)
-fun Any.toMsgDeleteContractSpecFromScopeSpecRequest() = this.unpack(MsgDeleteContractSpecFromScopeSpecRequest::class.java)
+fun Any.toMsgDeleteContractSpecFromScopeSpecRequest() =
+    this.unpack(MsgDeleteContractSpecFromScopeSpecRequest::class.java)
+
 fun Any.toMsgTransfer() = this.unpack(MsgTransfer::class.java)
 fun Any.toMsgChannelOpenInit() = this.unpack(MsgChannelOpenInit::class.java)
 fun Any.toMsgChannelOpenTry() = this.unpack(MsgChannelOpenTry::class.java)
@@ -225,12 +252,17 @@ fun Any.getAssociatedAddresses(): List<String> =
         typeUrl.endsWith("MsgBurnRequest") -> this.toMsgBurnRequest().let { listOf(it.administrator) }
         typeUrl.endsWith("MsgTransferRequest") -> this.toMsgTransferRequest()
             .let { listOf(it.administrator, it.toAddress, it.fromAddress) }
-        typeUrl.endsWith("MsgSetDenomMetadataRequest") -> this.toMsgSetDenomMetadataRequest().let { listOf(it.administrator) }
-        typeUrl.endsWith("MsgBindNameRequest") -> this.toMsgBindNameRequest().let { listOf(it.parent.address, it.record.address) }
+        typeUrl.endsWith("MsgSetDenomMetadataRequest") -> this.toMsgSetDenomMetadataRequest()
+            .let { listOf(it.administrator) }
+        typeUrl.endsWith("MsgBindNameRequest") -> this.toMsgBindNameRequest()
+            .let { listOf(it.parent.address, it.record.address) }
         typeUrl.endsWith("MsgDeleteNameRequest") -> this.toMsgDeleteNameRequest().let { listOf(it.record.address) }
-        typeUrl.endsWith("MsgAddAttributeRequest") -> this.toMsgAddAttributeRequest().let { listOf(it.account, it.owner) }
-        typeUrl.endsWith("MsgDeleteAttributeRequest") -> this.toMsgDeleteAttributeRequest().let { listOf(it.account, it.owner) }
-        typeUrl.endsWith("MsgP8eMemorializeContractRequest") -> this.toMsgP8eMemorializeContractRequest().let { listOf(it.invoker) }
+        typeUrl.endsWith("MsgAddAttributeRequest") -> this.toMsgAddAttributeRequest()
+            .let { listOf(it.account, it.owner) }
+        typeUrl.endsWith("MsgDeleteAttributeRequest") -> this.toMsgDeleteAttributeRequest()
+            .let { listOf(it.account, it.owner) }
+        typeUrl.endsWith("MsgP8eMemorializeContractRequest") -> this.toMsgP8eMemorializeContractRequest()
+            .let { listOf(it.invoker) }
         typeUrl.endsWith("MsgWriteP8eContractSpecRequest") -> this.toMsgWriteP8eContractSpecRequest().signersList
         typeUrl.endsWith("MsgWriteScopeRequest") -> this.toMsgWriteScopeRequest()
             .let { it.signersList + it.scope.ownersList.map { o -> o.address } + listOf(it.scope.valueOwnerAddress) }
@@ -249,10 +281,13 @@ fun Any.getAssociatedAddresses(): List<String> =
         typeUrl.endsWith("MsgWriteRecordSpecificationRequest") -> this.toMsgWriteRecordSpecificationRequest().signersList
         typeUrl.endsWith("MsgDeleteRecordSpecificationRequest") -> this.toMsgDeleteRecordSpecificationRequest().signersList
         typeUrl.endsWith("MsgBindOSLocatorRequest") -> this.toMsgBindOSLocatorRequest().let { listOf(it.locator.owner) }
-        typeUrl.endsWith("MsgDeleteOSLocatorRequest") -> this.toMsgDeleteOSLocatorRequest().let { listOf(it.locator.owner) }
-        typeUrl.endsWith("MsgModifyOSLocatorRequest") -> this.toMsgModifyOSLocatorRequest().let { listOf(it.locator.owner) }
+        typeUrl.endsWith("MsgDeleteOSLocatorRequest") -> this.toMsgDeleteOSLocatorRequest()
+            .let { listOf(it.locator.owner) }
+        typeUrl.endsWith("MsgModifyOSLocatorRequest") -> this.toMsgModifyOSLocatorRequest()
+            .let { listOf(it.locator.owner) }
         typeUrl.endsWith("v1.MsgStoreCode") -> this.toMsgStoreCode().let { listOf(it.sender) }
-        typeUrl.endsWith("v1.MsgInstantiateContract") -> this.toMsgInstantiateContract().let { listOf(it.sender, it.admin) }
+        typeUrl.endsWith("v1.MsgInstantiateContract") -> this.toMsgInstantiateContract()
+            .let { listOf(it.sender, it.admin) }
         typeUrl.endsWith("v1.MsgExecuteContract") -> this.toMsgExecuteContract().let { listOf(it.sender) }
         typeUrl.endsWith("v1.MsgMigrateContract") -> this.toMsgMigrateContract().let { listOf(it.sender) }
         typeUrl.endsWith("v1.MsgUpdateAdmin") -> this.toMsgUpdateAdmin().let { listOf(it.sender, it.newAdmin) }
@@ -332,8 +367,10 @@ fun Any.getAssociatedDenoms(): List<String> =
             .let { it.account.getDenomByAddress()?.let { denom -> listOf(denom) } ?: listOf() }
         typeUrl.endsWith("MsgDeleteAttributeRequest") -> this.toMsgDeleteAttributeRequest()
             .let { it.account.getDenomByAddress()?.let { denom -> listOf(denom) } ?: listOf() }
-        typeUrl.endsWith("v1.MsgInstantiateContract") -> this.toMsgInstantiateContract().let { it.fundsList.map { c -> c.denom } }
-        typeUrl.endsWith("v1.MsgExecuteContract") -> this.toMsgExecuteContract().let { it.fundsList.map { c -> c.denom } }
+        typeUrl.endsWith("v1.MsgInstantiateContract") -> this.toMsgInstantiateContract()
+            .let { it.fundsList.map { c -> c.denom } }
+        typeUrl.endsWith("v1.MsgExecuteContract") -> this.toMsgExecuteContract()
+            .let { it.fundsList.map { c -> c.denom } }
         typeUrl.endsWith("v1beta1.MsgInstantiateContract") -> this.toMsgInstantiateContractOld()
             .let { it.fundsList.map { c -> c.denom } }
         typeUrl.endsWith("v1beta1.MsgExecuteContract") -> this.toMsgExecuteContractOld()
@@ -379,7 +416,31 @@ fun Any.getIbcLedgerMsgs() =
 enum class MdEvents(val event: String, val idField: String) {
     // Contract Spec
     CSPC("provenance.metadata.v1.EventContractSpecificationCreated", "contract_specification_addr"),
-    CSPU("provenance.metadata.v1.EventContractSpecificationUpdated", "contract_specification_addr")
+    CSPU("provenance.metadata.v1.EventContractSpecificationUpdated", "contract_specification_addr"),
+    CSPD("provenance.metadata.v1.EventContractSpecificationDeleted", "contract_specification_addr"),
+    CRSC("provenance.metadata.v1.EventRecordSpecificationCreated", "contract_specification_addr"),
+    CRSU("provenance.metadata.v1.EventRecordSpecificationUpdated", "contract_specification_addr"),
+    CRSD("provenance.metadata.v1.EventRecordSpecificationDeleted", "contract_specification_addr"),
+
+    // Scope
+    SC("provenance.metadata.v1.EventScopeCreated", "scope_addr"),
+    SU("provenance.metadata.v1.EventScopeUpdated", "scope_addr"),
+    SD("provenance.metadata.v1.EventScopeDeleted", "scope_addr"),
+    AA("provenance.attribute.v1.EventAttributeAdd", "account"),
+    AU("provenance.attribute.v1.EventAttributeUpdate", "account"),
+    AD("provenance.attribute.v1.EventAttributeDelete", "account"),
+    ADD("provenance.attribute.v1.EventAttributeDistinctDelete", "account"),
+    SEC("provenance.metadata.v1.EventSessionCreated", "scope_addr"),
+    SEU("provenance.metadata.v1.EventSessionUpdated", "scope_addr"),
+    SED("provenance.metadata.v1.EventSessionDeleted", "scope_addr"),
+    RC("provenance.metadata.v1.EventRecordCreated", "scope_addr"),
+    RU("provenance.metadata.v1.EventRecordUpdated", "scope_addr"),
+    RD("provenance.metadata.v1.EventRecordDeleted", "scope_addr"),
+
+    // Scope Spec
+    SSC("provenance.metadata.v1.EventScopeSpecificationCreated", "scope_specification_addr"),
+    SSU("provenance.metadata.v1.EventScopeSpecificationUpdated", "scope_specification_addr"),
+    SSD("provenance.metadata.v1.EventScopeSpecificationDeleted", "scope_specification_addr"),
 }
 
 fun Any.isMetadataDeletionMsg() =
@@ -393,6 +454,11 @@ fun Any.isMetadataDeletionMsg() =
 fun Any.getAssociatedMetadataEvents() =
     when {
         typeUrl.endsWith("MsgWriteP8eContractSpecRequest") -> listOf(CSPC, CSPU)
+        typeUrl.endsWith("v1beta1.MsgExecuteContract")
+            || typeUrl.endsWith("v1.MsgExecuteContract") -> listOf(
+            AA, AU, AD, ADD, SC, SU, SD, SEC, SEU, SED, RC,
+            RU, RD, CSPC, CSPU, CSPD, CRSC, CRSU, CRSD, SSC, SSU, SSD
+        )
         else -> listOf<MdEvents>()
             .also { logger().debug("This typeUrl is not yet supported in as an metadata-event-based msg: $typeUrl") }
     }
@@ -402,34 +468,67 @@ fun MetadataAddress.toList() = listOf(this)
 fun Any.getAssociatedMetadata() =
     when {
         typeUrl.endsWith("MsgWriteScopeRequest") -> this.toMsgWriteScopeRequest()
-            .let { (it.scopeUuid?.blankToNull()?.toMAddressScope() ?: it.scope.scopeId?.toMAddress())?.toList() ?: listOf(null) }
+            .let {
+                (it.scopeUuid?.blankToNull()?.toMAddressScope() ?: it.scope.scopeId?.toMAddress())?.toList() ?: listOf(
+                    null
+                )
+            }
         typeUrl.endsWith("MsgDeleteScopeRequest") -> this.toMsgDeleteScopeRequest().scopeId.toMAddress().toList()
-        typeUrl.endsWith("MsgAddScopeDataAccessRequest") -> this.toMsgAddScopeDataAccessRequest().scopeId.toMAddress().toList()
-        typeUrl.endsWith("MsgDeleteScopeDataAccessRequest") -> this.toMsgDeleteScopeDataAccessRequest().scopeId.toMAddress().toList()
+        typeUrl.endsWith("MsgAddScopeDataAccessRequest") -> this.toMsgAddScopeDataAccessRequest().scopeId.toMAddress()
+            .toList()
+        typeUrl.endsWith("MsgDeleteScopeDataAccessRequest") -> this.toMsgDeleteScopeDataAccessRequest().scopeId.toMAddress()
+            .toList()
         typeUrl.endsWith("MsgAddScopeOwnerRequest") -> this.toMsgAddScopeOwnerRequest().scopeId.toMAddress().toList()
-        typeUrl.endsWith("MsgDeleteScopeOwnerRequest") -> this.toMsgDeleteScopeOwnerRequest().scopeId.toMAddress().toList()
+        typeUrl.endsWith("MsgDeleteScopeOwnerRequest") -> this.toMsgDeleteScopeOwnerRequest().scopeId.toMAddress()
+            .toList()
         typeUrl.endsWith("MsgWriteSessionRequest") -> this.toMsgWriteSessionRequest()
             .let { it.sessionIdComponents.toMAddress() ?: it.session.sessionId.toMAddress() }.toList()
         typeUrl.endsWith("MsgWriteRecordRequest") -> this.toMsgWriteRecordRequest()
             .let { it.sessionIdComponents.toMAddress() ?: it.record.sessionId.toMAddress() }.toList()
         typeUrl.endsWith("MsgDeleteRecordRequest") -> this.toMsgDeleteRecordRequest().recordId.toMAddress().toList()
         typeUrl.endsWith("MsgWriteScopeSpecificationRequest") -> this.toMsgWriteScopeSpecificationRequest()
-            .let { (it.specUuid?.blankToNull()?.toMAddressScopeSpec() ?: it.specification.specificationId?.toMAddress())?.toList() ?: listOf(null) }
+            .let {
+                (
+                    it.specUuid?.blankToNull()?.toMAddressScopeSpec()
+                        ?: it.specification.specificationId?.toMAddress()
+                    )?.toList() ?: listOf(null)
+            }
         typeUrl.endsWith("MsgDeleteScopeSpecificationRequest") ->
             this.toMsgDeleteScopeSpecificationRequest().specificationId.toMAddress().toList()
         typeUrl.endsWith("MsgWriteContractSpecificationRequest") -> this.toMsgWriteContractSpecificationRequest()
-            .let { (it.specUuid?.blankToNull()?.toMAddressContractSpec() ?: it.specification.specificationId?.toMAddress())?.toList() ?: listOf(null) }
+            .let {
+                (
+                    it.specUuid?.blankToNull()?.toMAddressContractSpec()
+                        ?: it.specification.specificationId?.toMAddress()
+                    )?.toList() ?: listOf(null)
+            }
         typeUrl.endsWith("MsgDeleteContractSpecificationRequest") ->
             this.toMsgDeleteContractSpecificationRequest().specificationId.toMAddress().toList()
         typeUrl.endsWith("MsgWriteRecordSpecificationRequest") -> this.toMsgWriteRecordSpecificationRequest()
-            .let { (it.contractSpecUuid?.blankToNull()?.toMAddressContractSpec() ?: it.specification.specificationId?.toMAddress())?.toList() ?: listOf(null) }
+            .let {
+                (
+                    it.contractSpecUuid?.blankToNull()?.toMAddressContractSpec()
+                        ?: it.specification.specificationId?.toMAddress()
+                    )?.toList() ?: listOf(null)
+            }
         typeUrl.endsWith("MsgDeleteRecordSpecificationRequest") ->
             this.toMsgDeleteRecordSpecificationRequest().specificationId.toMAddress().toList()
-        typeUrl.endsWith("MsgP8eMemorializeContractRequest") -> this.toMsgP8eMemorializeContractRequest().scopeId.toMAddressScope().toList()
+        typeUrl.endsWith("MsgP8eMemorializeContractRequest") -> this.toMsgP8eMemorializeContractRequest().scopeId.toMAddressScope()
+            .toList()
         typeUrl.endsWith("MsgAddContractSpecToScopeSpecRequest") ->
-            this.toMsgAddContractSpecToScopeSpecRequest().let { listOf(it.contractSpecificationId.toMAddress(), it.scopeSpecificationId.toMAddress()) }
+            this.toMsgAddContractSpecToScopeSpecRequest()
+                .let { listOf(it.contractSpecificationId.toMAddress(), it.scopeSpecificationId.toMAddress()) }
         typeUrl.endsWith("MsgDeleteContractSpecFromScopeSpecRequest") ->
-            this.toMsgDeleteContractSpecFromScopeSpecRequest().let { listOf(it.contractSpecificationId.toMAddress(), it.scopeSpecificationId.toMAddress()) }
+            this.toMsgDeleteContractSpecFromScopeSpecRequest()
+                .let { listOf(it.contractSpecificationId.toMAddress(), it.scopeSpecificationId.toMAddress()) }
+        typeUrl.endsWith("MsgAddAttributeRequest") -> this.toMsgAddAttributeRequest()
+            .let { if (it.account.isMAddress()) it.account.toMAddress().toList() else listOf(null) }
+        typeUrl.endsWith("MsgDeleteAttributeRequest") -> this.toMsgDeleteAttributeRequest()
+            .let { if (it.account.isMAddress()) it.account.toMAddress().toList() else listOf(null) }
+        typeUrl.endsWith("MsgUpdateAttributeRequest") -> this.toMsgUpdateAttributeRequest()
+            .let { if (it.account.isMAddress()) it.account.toMAddress().toList() else listOf(null) }
+        typeUrl.endsWith("MsgDeleteDistinctAttributeRequest") -> this.toMsgDeleteDistinctAttributeRequest()
+            .let { if (it.account.isMAddress()) it.account.toMAddress().toList() else listOf(null) }
         else -> listOf(null)
             .also { logger().debug("This typeUrl is not yet supported in as an metadata-based msg: $typeUrl") }
     }
@@ -488,7 +587,10 @@ enum class SmContractValue { CODE, CONTRACT }
 enum class SmContractEventKeys(val eventType: String, val eventKey: Map<String, SmContractValue>) {
     V1BETA1("message", mapOf("code_id" to SmContractValue.CODE, "contract_address" to SmContractValue.CONTRACT)),
     STORE_CODE_V1("store_code", mapOf("code_id" to SmContractValue.CODE)),
-    INSTANTIATE_V1("instantiate", mapOf("_contract_address" to SmContractValue.CONTRACT, "code_id" to SmContractValue.CODE)),
+    INSTANTIATE_V1(
+        "instantiate",
+        mapOf("_contract_address" to SmContractValue.CONTRACT, "code_id" to SmContractValue.CODE)
+    ),
     EXECUTE_V1("execute", mapOf("_contract_address" to SmContractValue.CONTRACT))
 }
 
@@ -503,8 +605,11 @@ enum class DenomEvents(val event: String, val idField: String, val parse: Boolea
     MARKER_WITHDRAW("provenance.marker.v1.EventMarkerWithdraw", "denom"),
     MARKER_ACTIVATE("provenance.marker.v1.EventMarkerActivate", "denom"),
     MARKER_ADD_ACCESS("provenance.marker.v1.EventMarkerAddAccess", "denom"),
+    MARKER_DELETE_ACCESS("provenance.marker.v1.EventMarkerDeleteAccess", "denom"),
     MARKER_FINALIZE("provenance.marker.v1.EventMarkerFinalize", "denom"),
+    MARKER_CANCEL("provenance.marker.v1.EventMarkerCancel", "denom"),
     MARKER_BURN("provenance.marker.v1.EventMarkerBurn", "denom"),
+    MARKER_DELETE("provenance.marker.v1.EventMarkerDelete", "denom"),
     IBC_ACKNOWLEDGE("fungible_token_packet", "denom"),
     IBC_RECV_PACKET("denomination_trace", "denom"),
 }
@@ -512,8 +617,8 @@ enum class DenomEvents(val event: String, val idField: String, val parse: Boolea
 fun getDenomEventByEvent(event: String) = DenomEvents.values().firstOrNull { it.event == event }
 
 fun String.denomEventRegexParse() =
-    if (this.isNotBlank()) Regex("^([0-9]+)(.*)\$").matchEntire(this)!!.groups[2]!!.value
-    else null
+    if (this.isNotBlank()) this.split(",").map { Regex("^([0-9]+)(.*)\$").matchEntire(it)!!.groups[2]!!.value }
+    else emptyList()
 
 // ///////// ADDRESS EVENTS
 enum class AddressEvents(val event: String, vararg val idField: String) {
@@ -524,15 +629,55 @@ enum class AddressEvents(val event: String, vararg val idField: String) {
     MARKER_WITHDRAW("provenance.marker.v1.EventMarkerWithdraw", "administrator", "to_address"),
     MARKER_ACTIVATE("provenance.marker.v1.EventMarkerActivate", "administrator"),
     MARKER_ADD_ACCESS("provenance.marker.v1.EventMarkerAddAccess", "administrator"),
+    MARKER_DELETE_ACCESS("provenance.marker.v1.EventMarkerDeleteAccess", "administrator", "remove_address"),
     MARKER_FINALIZE("provenance.marker.v1.EventMarkerFinalize", "administrator"),
+    MARKER_CANCEL("provenance.marker.v1.EventMarkerCancel", "administrator"),
     MARKER_BURN("provenance.marker.v1.EventMarkerBurn", "administrator"),
+    MARKER_DELETE("provenance.marker.v1.EventMarkerDelete", "administrator"),
     IBC_RECV_PACKET("fungible_token_packet", "receiver"),
     NAME_BOUND("provenance.name.v1.EventNameBound", "address"),
     NAME_BOUND_OLD("name_bound", "address"),
     GRANT("cosmos.authz.v1beta1.EventGrant", "granter", "grantee"),
     REVOKE("cosmos.authz.v1beta1.EventRevoke", "granter", "grantee"),
+    ATTRIBUTE_ADD("provenance.attribute.v1.EventAttributeAdd", "account", "owner"),
+    ATTRIBUTE_UPDATE("provenance.attribute.v1.EventAttributeUpdate", "account", "owner"),
+    ATTRIBUTE_DELETE("provenance.attribute.v1.EventAttributeDelete", "account", "owner"),
+    ATTRIBUTE_DISTINCT_DELETE("provenance.attribute.v1.EventAttributeDistinctDelete", "account", "owner")
 }
 
 fun getAddressEventByEvent(event: String) = AddressEvents.values().firstOrNull { it.event == event }
 
 fun String.scrubQuotes() = this.removeSurrounding("\"")
+
+// ///////// MSG TO DEFINED EVENT
+// This links a msg type to a specific event it always emits. Helps to identify actions within an ExecuteContract msg
+// When this is updated, update update_tx_fees() and update_market_rate() procedures as well
+enum class MsgToDefinedEvent(val msg: String, val definedEvent: String, val uniqueField: String) {
+    ATTRIBUTE_ADD(
+        "/provenance.attribute.v1.MsgAddAttributeRequest",
+        "provenance.attribute.v1.EventAttributeAdd",
+        "account"
+    ),
+    SCOPE_WRITE(
+        "/provenance.metadata.v1.MsgWriteScopeRequest",
+        "provenance.metadata.v1.EventScopeCreated",
+        "scope_addr"
+    ),
+    SCOPE_UPDATED(
+        "/provenance.metadata.v1.MsgWriteScopeRequest",
+        "provenance.metadata.v1.EventScopeUpdated",
+        "scope_addr"
+    ),
+    NAME_BIND("/provenance.name.v1.MsgBindNameRequest", "provenance.name.v1.EventNameBound", "address"),
+    PROPOSAL_SUBMIT("/cosmos.gov.v1beta1.MsgSubmitProposal", "submit_proposal", "proposal_id"),
+    MARKER_ADD("/provenance.marker.v1.MsgAddMarkerRequest", "provenance.marker.v1.EventMarkerAdd", "denom")
+}
+
+fun getDefinedEventsByMsg(msg: String) = MsgToDefinedEvent.values().firstOrNull { it.msg == msg }
+fun getDefinedEventsByEvent(event: String) = MsgToDefinedEvent.values().firstOrNull { it.definedEvent == event }
+fun getByDefinedEvent() = MsgToDefinedEvent.values().associateBy { it.definedEvent }
+
+fun getExecuteContractTypeUrl() =
+    Any.pack(cosmwasm.wasm.v1.Tx.MsgExecuteContract.getDefaultInstance()).typeUrl
+        .split("/")[1]
+        .let { "/$it" }

@@ -7,6 +7,7 @@ import io.provenance.metadata.v1.Party
 import io.provenance.metadata.v1.RecordOutput
 
 data class ScopeListview(
+    val scopeUuid: String,
     val scopeAddr: String,
     val specName: String?,
     val specAddr: String,
@@ -17,13 +18,15 @@ data class ScopeListview(
 )
 
 data class ScopeDetail(
+    val scopeUuid: String,
     val scopeAddr: String,
     val specName: String?,
     val specAddr: String,
     val description: SpecDescrip?,
     val owners: List<PartyAndRole>,
     val dataAccess: List<String>,
-    val valueOwner: String?
+    val valueOwner: String?,
+    val attributes: List<AttributeObj>
 )
 
 data class SpecDescrip(

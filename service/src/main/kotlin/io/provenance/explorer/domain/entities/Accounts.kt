@@ -96,9 +96,10 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
             (
                 findByAddress(address)?.apply {
                     this.baseAccount = baseAccount
-                    this.accountNumber = baseAccount.accountNumber
+                    this.accountNumber = number
                     this.data = data
                     this.isContract = isContract
+                    this.type = type // can change from base to marker with 1.8.0
                 } ?: AccountTable.insertAndGetId {
                     it[this.accountAddress] = address
                     it[this.type] = type

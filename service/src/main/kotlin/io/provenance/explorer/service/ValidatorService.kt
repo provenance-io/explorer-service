@@ -42,6 +42,7 @@ import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.CountTotal
 import io.provenance.explorer.domain.models.explorer.CurrentValidatorState
 import io.provenance.explorer.domain.models.explorer.Delegation
+import io.provenance.explorer.domain.models.explorer.MarketRateAvg
 import io.provenance.explorer.domain.models.explorer.MissedBlockSet
 import io.provenance.explorer.domain.models.explorer.MissedBlocksTimeframe
 import io.provenance.explorer.domain.models.explorer.PagedResults
@@ -144,7 +145,6 @@ class ValidatorService(
                 stakingValidator.description.details,
                 stakingValidator.description.website,
                 stakingValidator.description.identity,
-                ValidatorMarketRateRecord.getCurrentRateByValidator(address)?.toDouble(),
                 stakingValidator.getStatusString(),
                 if (!stakingValidator.isActive()) stakingValidator.unbondingHeight else null,
                 if (stakingValidator.jailed) signingInfo?.jailedUntil?.toDateTime() else null
@@ -303,7 +303,6 @@ class ValidatorService(
             bondedTokens = CountStrTotal(stakingVal.json.tokens, null, NHASH),
             delegators = delegatorCount,
             status = stakingVal.json.getStatusString(),
-            currentGasFee = ValidatorMarketRateRecord.getCurrentRateByValidator(stakingVal.operatorAddress)?.toDouble(),
             unbondingHeight = if (!stakingVal.json.isActive()) stakingVal.json.unbondingHeight else null,
             imgUrl = getImgUrl(stakingVal.json.description.identity),
             hr24Change = get24HrBondedChange(validator, hr24Validator)
@@ -406,6 +405,11 @@ class ValidatorService(
             )
         )
     }
+
+    fun getValidatorMarketRateAvg(address: String, txCount: Int) =
+        ValidatorMarketRateRecord.getValidatorRateForBlockCount(address, txCount)
+            .map { it.marketRate }
+            .let { list -> MarketRateAvg(list.size, list.minOrNull()!!, list.maxOrNull()!!, list.average()) }
 
     fun getValidatorMarketRateStats(address: String, fromDate: DateTime?, toDate: DateTime?, count: Int) = transaction {
         ValidatorMarketRateStatsRecord.findByAddress(address, fromDate, toDate, count)
