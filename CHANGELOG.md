@@ -33,6 +33,23 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* API for validator uptime statistics #260
+  * `/api/v2/validators/uptime`
+
+### Improvements
+* Added uptime back to ValidatorSummary object #260
+* Updated uptime calc for ValidatorDetail #260
+* Removed `.isActive()` extension, which was inaccurate disregarding active set count #260
+
+### Bug Fixes
+* Fixed how the Array exposed set works #260
+
+### Data
+* Migration 1.52 - Creating procedure `get_all_validator_state()` #260
+  * Used to fetch all validators with their current actual state
+    * replaces using an inaccurate extension 
+
 ## [v4.0.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.0.0) - 2022-03-08
 ### Release Name: Marco Polo
 

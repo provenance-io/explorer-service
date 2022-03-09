@@ -8,6 +8,10 @@ import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.ArrayColumnType
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
+import io.provenance.explorer.domain.entities.ValidatorState.ACTIVE
+import io.provenance.explorer.domain.entities.ValidatorState.ALL
+import io.provenance.explorer.domain.entities.ValidatorState.CANDIDATE
+import io.provenance.explorer.domain.entities.ValidatorState.JAILED
 import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.mapper
 import io.provenance.explorer.domain.models.explorer.CurrentValidatorState
@@ -86,7 +90,7 @@ class StakingValidatorCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.consensusPubkey] = consensusPubkey
                     it[this.accountAddress] = account
                     it[this.consensusAddress] = consensusAddr
-                }.let { findById(it!!)!!.id }
+                }.let { findById(it!!)!! }
             }
     }
 
@@ -95,6 +99,8 @@ class StakingValidatorCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var accountAddress by StakingValidatorCacheTable.accountAddress
     var consensusAddress by StakingValidatorCacheTable.consensusAddress
 }
+
+enum class ValidatorState { ACTIVE, CANDIDATE, JAILED, ALL }
 
 object ValidatorStateTable : IntIdTable(name = "validator_state") {
     val operatorAddrId = integer("operator_addr_id")
@@ -130,114 +136,144 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
             this.exec(query)
         }
 
-        fun findAll() = transaction {
-            val query = "SELECT * FROM current_validator_state".trimIndent()
-            query.execAndMap { it.toCurrentValidatorState() }
+        fun findAll(activeSet: Int) = transaction {
+            val query = "SELECT * FROM get_all_validator_state(?, ?, NULL)".trimIndent()
+            val arguments = mutableListOf<Pair<ColumnType, *>>(
+                Pair(IntegerColumnType(), activeSet),
+                Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
+            )
+            query.execAndMap(arguments) { it.toCurrentValidatorState() }
         }
 
-        fun findByValId(id: Int) = transaction {
-            val query = "SELECT * FROM current_validator_state WHERE operator_addr_id = ?".trimIndent()
-            val arguments = listOf(Pair(IntegerColumnType(), id))
+        fun findByValId(activeSet: Int, id: Int) = transaction {
+            val query = "SELECT * FROM get_all_validator_state(?, ?, NULL) WHERE operator_addr_id = ?".trimIndent()
+            val arguments = mutableListOf<Pair<ColumnType, *>>(
+                Pair(IntegerColumnType(), activeSet),
+                Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
+                Pair(IntegerColumnType(), id)
+            )
             query.execAndMap(arguments) { it.toCurrentValidatorState() }.firstOrNull()
         }
 
-        fun findByListValId(ids: List<Int>) = transaction {
+        fun findByListValId(activeSet: Int, ids: List<Int>) = transaction {
             if (ids.isNotEmpty()) {
-                val arguments = ids.joinToString(", ", "(", ")")
-                val query = "SELECT * FROM current_validator_state WHERE operator_addr_id in $arguments".trimIndent()
-                query.execAndMap { it.toCurrentValidatorState() }
+                val idList = ids.joinToString(", ", "(", ")")
+                val query =
+                    "SELECT * FROM get_all_validator_state(?, ?, NULL) WHERE operator_addr_id IN $idList".trimIndent()
+                val arguments = mutableListOf<Pair<ColumnType, *>>(
+                    Pair(IntegerColumnType(), activeSet),
+                    Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
+                )
+                query.execAndMap(arguments) { it.toCurrentValidatorState() }
             } else listOf()
         }
 
-        fun findByAccount(address: String) = transaction {
-            val query = "SELECT * FROM current_validator_state WHERE account_address = ?".trimIndent()
-            val arguments = listOf(Pair(VarCharColumnType(128), address))
+        fun findByAccount(activeSet: Int, address: String) = transaction {
+            val query = "SELECT * FROM get_all_validator_state(?, ?, NULL) WHERE account_address = ?".trimIndent()
+            val arguments = mutableListOf<Pair<ColumnType, *>>(
+                Pair(IntegerColumnType(), activeSet),
+                Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
+                Pair(VarCharColumnType(128), address)
+            )
             query.execAndMap(arguments) { it.toCurrentValidatorState() }.firstOrNull()
         }
 
-        fun findByConsensusAddress(address: String) = transaction {
-            val query = "SELECT * FROM current_validator_state WHERE consensus_address = ?".trimIndent()
-            val arguments = listOf(Pair(VarCharColumnType(128), address))
+        fun findByOperator(activeSet: Int, address: String) = transaction {
+            val query = "SELECT * FROM get_all_validator_state(?, ?, NULL) WHERE operator_address = ?".trimIndent()
+            val arguments = mutableListOf<Pair<ColumnType, *>>(
+                Pair(IntegerColumnType(), activeSet),
+                Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
+                Pair(VarCharColumnType(128), address)
+            )
             query.execAndMap(arguments) { it.toCurrentValidatorState() }.firstOrNull()
         }
 
-        fun findByConsensusAddressIn(addresses: List<String>) = transaction {
-            val arguments = addresses.joinToString("', '", "('", "')")
-            val query = "SELECT * FROM current_validator_state WHERE consensus_address IN $arguments".trimIndent()
-            query.execAndMap { it.toCurrentValidatorState() }
+        fun findByConsensusAddress(activeSet: Int, address: String) = transaction {
+            val query = "SELECT * FROM get_all_validator_state(?, ?, NULL) WHERE consensus_address = ?".trimIndent()
+            val arguments = mutableListOf<Pair<ColumnType, *>>(
+                Pair(IntegerColumnType(), activeSet),
+                Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
+                Pair(VarCharColumnType(128), address)
+            )
+            query.execAndMap(arguments) { it.toCurrentValidatorState() }.firstOrNull()
         }
 
-        fun findByOperator(address: String) = transaction {
-            val query = "SELECT * FROM current_validator_state WHERE operator_address = ?".trimIndent()
-            val arguments = listOf(Pair(VarCharColumnType(128), address))
-            query.execAndMap(arguments) { it.toCurrentValidatorState() }.firstOrNull()
+        fun findByConsensusAddressIn(activeSet: Int, addresses: List<String>) = transaction {
+            val query = "SELECT * FROM get_all_validator_state(?, ?, ?) ".trimIndent()
+            val arguments = mutableListOf<Pair<ColumnType, *>>(
+                Pair(IntegerColumnType(), activeSet),
+                Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
+                Pair(ArrayColumnType(TextColumnType()), addresses.ifEmpty { null })
+            )
+            query.execAndMap(arguments) { it.toCurrentValidatorState() }
         }
 
         fun findByStatus(
             activeSet: Int,
-            searchState: String,
+            searchState: ValidatorState,
             consensusAddrSet: List<String>? = null,
             offset: Int? = null,
             limit: Int? = null
         ) =
             transaction {
                 when (searchState) {
-                    "active", "jailed", "candidate" -> {
+                    ACTIVE, JAILED, CANDIDATE -> {
                         val offsetDefault = offset ?: 0
                         val limitDefault = limit ?: 10000
                         val query = "SELECT * FROM get_validator_list(?, ?, ?, ?, ?, ?) "
                         val arguments = mutableListOf<Pair<ColumnType, *>>(
                             Pair(IntegerColumnType(), activeSet),
                             Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
-                            Pair(TextColumnType(), searchState),
+                            Pair(TextColumnType(), searchState.name.lowercase()),
                             Pair(IntegerColumnType(), limitDefault),
                             Pair(IntegerColumnType(), offsetDefault),
                             Pair(ArrayColumnType(TextColumnType()), consensusAddrSet)
                         )
                         query.execAndMap(arguments) { it.toCurrentValidatorState() }
                     }
-                    "all" -> {
-                        val inSet = consensusAddrSet?.joinToString("', '", "('", "')")
-                        val whereClause = if (inSet != null) "consensus_address in $inSet" else null
+                    ALL -> {
                         val limitOffset = if (offset != null && limit != null) " OFFSET $offset LIMIT $limit" else ""
-                        val where = if (whereClause != null) "WHERE $whereClause " else ""
                         val query =
-                            "SELECT * FROM current_validator_state $where ORDER BY token_count DESC $limitOffset".trimIndent()
-                        query.execAndMap { it.toCurrentValidatorState() }
+                            "SELECT * FROM get_all_validator_state(?, ?, ?) ORDER BY token_count DESC $limitOffset".trimIndent()
+                        val arguments = mutableListOf<Pair<ColumnType, *>>(
+                            Pair(IntegerColumnType(), activeSet),
+                            Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
+                            Pair(ArrayColumnType(TextColumnType()), consensusAddrSet)
+                        )
+                        query.execAndMap(arguments) { it.toCurrentValidatorState() }
                     }
-                    else -> listOf<CurrentValidatorState>()
-                        .also { logger.error("This status is not supported: $searchState") }
                 }
             }
 
         fun findByStatusCount(
             activeSet: Int,
-            searchState: String,
+            searchState: ValidatorState,
             consensusAddrSet: List<String>? = null
         ) = transaction {
             when (searchState) {
-                "active", "jailed", "candidate" -> {
+                ACTIVE, JAILED, CANDIDATE -> {
                     val offsetDefault = 0
                     val limitDefault = 10000
                     val query = "SELECT count(*) AS count FROM get_validator_list(?, ?, ?, ?, ?, ?) "
                     val arguments = mutableListOf<Pair<ColumnType, *>>(
                         Pair(IntegerColumnType(), activeSet),
                         Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
-                        Pair(TextColumnType(), searchState),
+                        Pair(TextColumnType(), searchState.name.lowercase()),
                         Pair(IntegerColumnType(), limitDefault),
                         Pair(IntegerColumnType(), offsetDefault),
                         Pair(ArrayColumnType(TextColumnType()), consensusAddrSet)
                     )
                     query.execAndMap(arguments) { it.toCount() }.first()
                 }
-                "all" -> {
-                    val inSet = consensusAddrSet?.joinToString("', '", "('", "')")
-                    val whereClause = if (inSet != null) "consensus_address in $inSet" else null
-                    val where = if (whereClause != null) "WHERE $whereClause " else ""
-                    val query = "SELECT count(*) AS count FROM current_validator_state $where".trimIndent()
-                    query.execAndMap { it.toCount() }.first()
+                ALL -> {
+                    val query = "SELECT count(*) AS count FROM get_all_validator_state(?, ?, ?)".trimIndent()
+                    val arguments = mutableListOf<Pair<ColumnType, *>>(
+                        Pair(IntegerColumnType(), activeSet),
+                        Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
+                        Pair(ArrayColumnType(TextColumnType()), consensusAddrSet)
+                    )
+                    query.execAndMap(arguments) { it.toCount() }.first()
                 }
-                else -> 0.toLong().also { logger.error("This status is not supported: $searchState") }
             }
         }
     }
@@ -263,7 +299,8 @@ fun ResultSet.toCurrentValidatorState() = CurrentValidatorState(
     this.getString("json").mapper(Staking.Validator::class.java),
     this.getString("account_address"),
     this.getString("consensus_address"),
-    this.getString("consensus_pubkey")
+    this.getString("consensus_pubkey"),
+    ValidatorState.valueOf(this.getString("validator_state").uppercase())
 )
 
 fun ResultSet.toCount() = this.getLong("count")

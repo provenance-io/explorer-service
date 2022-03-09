@@ -1,6 +1,7 @@
 package io.provenance.explorer.domain.models.explorer
 
 import cosmos.staking.v1beta1.Staking
+import io.provenance.explorer.domain.entities.ValidatorState
 import org.joda.time.DateTime
 import java.math.BigDecimal
 
@@ -16,7 +17,8 @@ data class ValidatorSummary(
     val status: String,
     val unbondingHeight: Long?,
     val imgUrl: String?,
-    val hr24Change: String?
+    val hr24Change: String?,
+    val uptime: BigDecimal
 )
 
 data class ValidatorSummaryAbbrev(
@@ -88,7 +90,8 @@ data class CurrentValidatorState(
     val json: Staking.Validator,
     val accountAddr: String,
     val consensusAddr: String,
-    val consensusPubKey: String
+    val consensusPubKey: String,
+    val currentState: ValidatorState
 )
 
 data class BlockLatencyData(
@@ -128,10 +131,30 @@ data class MissedBlockSet(
 data class ValidatorMoniker(
     val valConsAddress: String,
     var operatorAddr: String?,
-    var moniker: String?
+    var moniker: String?,
+    var currentState: ValidatorState?
 )
 
 data class MissedBlockPeriod(
     val validator: ValidatorMoniker,
     val blocks: List<Int>
+)
+
+data class ValidatorUptimeStats(
+    val validator: ValidatorMoniker,
+    val uptimeCount: Int,
+    val uptimeCountPercentage: String,
+    val missedCount: Int,
+    val missedCountPercentage: String,
+)
+
+data class UptimeDataSet(
+    val fromHeight: Long,
+    val toHeight: Long,
+    val blockWindowCount: Long,
+    val slashedBlockCount: Long,
+    val slashedPercentage: String,
+    val avgUptimeCount: Int,
+    val avgUptimeCountPercentage: String,
+    val validatorsAtRisk: List<ValidatorUptimeStats>
 )

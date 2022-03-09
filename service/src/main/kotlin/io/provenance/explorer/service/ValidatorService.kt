@@ -17,19 +17,23 @@ import io.provenance.explorer.domain.entities.SpotlightCacheRecord
 import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
 import io.provenance.explorer.domain.entities.ValidatorMarketRateStatsRecord
+import io.provenance.explorer.domain.entities.ValidatorState
+import io.provenance.explorer.domain.entities.ValidatorState.ACTIVE
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.average
+import io.provenance.explorer.domain.extensions.avg
 import io.provenance.explorer.domain.extensions.get24HrBlockHeight
 import io.provenance.explorer.domain.extensions.getStatusString
-import io.provenance.explorer.domain.extensions.isActive
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDecCoin
+import io.provenance.explorer.domain.extensions.toDecimal
 import io.provenance.explorer.domain.extensions.toOffset
+import io.provenance.explorer.domain.extensions.toPercentage
 import io.provenance.explorer.domain.extensions.toSingleSigKeyValue
 import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.extensions.translateByteArray
@@ -48,12 +52,14 @@ import io.provenance.explorer.domain.models.explorer.MissedBlocksTimeframe
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.Timeframe
 import io.provenance.explorer.domain.models.explorer.UnpaginatedDelegation
+import io.provenance.explorer.domain.models.explorer.UptimeDataSet
 import io.provenance.explorer.domain.models.explorer.ValidatorCommission
 import io.provenance.explorer.domain.models.explorer.ValidatorDetails
 import io.provenance.explorer.domain.models.explorer.ValidatorMissedBlocks
 import io.provenance.explorer.domain.models.explorer.ValidatorMoniker
 import io.provenance.explorer.domain.models.explorer.ValidatorSummary
 import io.provenance.explorer.domain.models.explorer.ValidatorSummaryAbbrev
+import io.provenance.explorer.domain.models.explorer.ValidatorUptimeStats
 import io.provenance.explorer.domain.models.explorer.hourlyBlockCount
 import io.provenance.explorer.grpc.extensions.toAddress
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
@@ -62,6 +68,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.json.JSONObject
 import org.springframework.stereotype.Service
+import java.math.BigDecimal
 import java.math.BigInteger
 
 @Service
@@ -73,6 +80,8 @@ class ValidatorService(
 ) {
 
     protected val logger = logger(ValidatorService::class)
+
+    fun getActiveSet() = grpcClient.getStakingParams().params.maxValidators
 
     // Assumes that the returned validators are active at that height
     fun getValidatorsByHeight(blockHeight: Int) = transaction {
@@ -86,8 +95,8 @@ class ValidatorService(
 
     // Gets a single staking validator from cache
     fun getStakingValidator(operatorAddress: String) =
-        transaction { ValidatorStateRecord.findByOperator(operatorAddress)?.json }
-            ?: saveValidator(operatorAddress).second
+        transaction { ValidatorStateRecord.findByOperator(getActiveSet(), operatorAddress) }
+            ?: saveValidator(operatorAddress)
 
     fun saveValidator(address: String) = transaction {
         grpcClient.getStakingValidator(address)
@@ -97,15 +106,16 @@ class ValidatorService(
                     it.operatorAddress.translateAddress(props).accountAddr,
                     it.consensusPubkey.toSingleSigKeyValue()!!,
                     it.consensusPubkey.toAddress(props.provValConsPrefix())!!
-                ).also { id ->
+                ).also { record ->
                     ValidatorStateRecord.insertIgnore(
                         blockService.getLatestBlockHeightIndex(),
-                        id.value,
+                        record.id.value,
                         it.operatorAddress,
                         it
                     )
-                }.let { id -> Pair(id, it) }
+                }
             }.also { ValidatorStateRecord.refreshCurrentStateView() }
+            .let { ValidatorStateRecord.findByOperator(getActiveSet(), address)!! }
     }
 
     fun getMissedBlocks(valConsAddr: String) = MissedBlocksRecord.findLatestForVal(valConsAddr)
@@ -118,16 +128,13 @@ class ValidatorService(
             val validatorSet = grpcClient.getLatestValidators().validatorsList
             val latestValidator = validatorSet.firstOrNull { it.address == addr.consensusAddr }
             val votingPowerTotal = validatorSet.sumOf { it.votingPower.toBigInteger() }
-            validateStatus(
-                addr.json,
-                latestValidator,
-                addr.operatorAddrId
-            ).also { if (it) ValidatorStateRecord.refreshCurrentStateView() }
+            validateStatus(addr, latestValidator, addr.operatorAddrId)
+                .also { if (it) ValidatorStateRecord.refreshCurrentStateView() }
             val stakingValidator = getStakingValidator(addr.operatorAddress)
             ValidatorDetails(
                 if (latestValidator != null) CountTotal(latestValidator.votingPower.toBigInteger(), votingPowerTotal)
                 else null,
-                stakingValidator.description.moniker,
+                stakingValidator.json.description.moniker,
                 addr.operatorAddress,
                 addr.accountAddr,
                 grpcClient.getDelegatorWithdrawalAddress(addr.accountAddr),
@@ -138,21 +145,21 @@ class ValidatorService(
                 ),
                 signingInfo?.startHeight ?: currentHeight.toLong(),
                 addr.consensusAddr.validatorUptime(
-                    (signingInfo?.startHeight?.toBigInteger() ?: currentHeight.minus(BigInteger.ONE)),
+                    grpcClient.getSlashingParams().params.signedBlocksWindow.toBigInteger(),
                     currentHeight
                 ),
-                getImgUrl(stakingValidator.description.identity),
-                stakingValidator.description.details,
-                stakingValidator.description.website,
-                stakingValidator.description.identity,
-                stakingValidator.getStatusString(),
-                if (!stakingValidator.isActive()) stakingValidator.unbondingHeight else null,
+                getImgUrl(stakingValidator.json.description.identity),
+                stakingValidator.json.description.details,
+                stakingValidator.json.description.website,
+                stakingValidator.json.description.identity,
+                stakingValidator.json.getStatusString(),
+                if (stakingValidator.currentState != ACTIVE) stakingValidator.json.unbondingHeight else null,
                 if (stakingValidator.jailed) signingInfo?.jailedUntil?.toDateTime() else null
             )
         } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
-    fun validateStatus(v: Staking.Validator, valSet: Query.Validator?, valId: Int): Boolean =
-        if ((valSet != null && !v.isActive()) || (valSet == null && v.isActive())) {
+    fun validateStatus(v: CurrentValidatorState, valSet: Query.Validator?, valId: Int): Boolean =
+        if ((valSet != null && v.currentState != ACTIVE) || (valSet == null && v.currentState == ACTIVE)) {
             updateStakingValidators(setOf(valId))
         } else false
 
@@ -164,33 +171,36 @@ class ValidatorService(
         else -> null
     }
 
-    fun getStakingValidators(status: String, valSet: List<String>? = null, offset: Int? = null, limit: Int? = null) =
+    fun getStakingValidators(
+        status: ValidatorState,
+        valSet: List<String>? = null,
+        offset: Int? = null,
+        limit: Int? = null
+    ) =
         transaction {
-            val activeSet = grpcClient.getStakingParams().params.maxValidators
-            ValidatorStateRecord.findByStatus(activeSet, status, valSet, offset, limit)
+            ValidatorStateRecord.findByStatus(getActiveSet(), status, valSet, offset, limit)
         }
 
-    fun getStakingValidatorsCount(status: String, valSet: List<String>? = null) = transaction {
-        val activeSet = grpcClient.getStakingParams().params.maxValidators
-        ValidatorStateRecord.findByStatusCount(activeSet, status, valSet)
+    fun getStakingValidatorsCount(status: ValidatorState, valSet: List<String>? = null) = transaction {
+        ValidatorStateRecord.findByStatusCount(getActiveSet(), status, valSet)
     }
 
     fun getSigningInfos() = grpcClient.getSigningInfos()
 
     fun findAddressByAccount(address: String) =
-        ValidatorStateRecord.findByAccount(address)
-            ?: discoverAddresses().let { ValidatorStateRecord.findByAccount(address) }
+        ValidatorStateRecord.findByAccount(getActiveSet(), address)
+            ?: discoverAddresses().let { ValidatorStateRecord.findByAccount(getActiveSet(), address) }
 
     fun findAddressByConsensus(address: String) =
-        ValidatorStateRecord.findByConsensusAddress(address)
-            ?: discoverAddresses().let { ValidatorStateRecord.findByConsensusAddress(address) }
+        ValidatorStateRecord.findByConsensusAddress(getActiveSet(), address)
+            ?: discoverAddresses().let { ValidatorStateRecord.findByConsensusAddress(getActiveSet(), address) }
 
     fun findAddressByOperator(address: String) =
-        ValidatorStateRecord.findByOperator(address)
-            ?: discoverAddresses().let { ValidatorStateRecord.findByOperator(address) }
+        ValidatorStateRecord.findByOperator(getActiveSet(), address)
+            ?: discoverAddresses().let { ValidatorStateRecord.findByOperator(getActiveSet(), address) }
 
     private fun discoverAddresses() {
-        val stakingVals = transaction { ValidatorStateRecord.findAll().map { it.operatorAddress } }
+        val stakingVals = transaction { ValidatorStateRecord.findAll(getActiveSet()).map { it.operatorAddress } }
         grpcClient.getStakingValidators()
             .map { validator ->
                 if (!stakingVals.contains(validator.operatorAddress))
@@ -202,7 +212,7 @@ class ValidatorService(
                     ).also {
                         ValidatorStateRecord.insertIgnore(
                             blockService.getLatestBlockHeightIndex(),
-                            it.value,
+                            it.id.value,
                             validator.operatorAddress,
                             validator
                         )
@@ -217,22 +227,18 @@ class ValidatorService(
         val height = blockHeight ?: blockService.getLatestBlockHeightIndex()
         var updated = false
         vals.forEach { v ->
-            val record = ValidatorStateRecord.findByValId(v)!!
+            val record = ValidatorStateRecord.findByValId(getActiveSet(), v)!!
             val data = grpcClient.getStakingValidator(record.operatorAddress)
             if (record.blockHeight < height && data != record.json)
-                ValidatorStateRecord.insertIgnore(
-                    height,
-                    v,
-                    record.operatorAddress,
-                    data
-                ).also { if (!updated) updated = true }
+                ValidatorStateRecord.insertIgnore(height, v, record.operatorAddress, data)
+                    .also { if (!updated) updated = true }
         }
         return updated
     }
 
     // Abbreviated data used for specific cases
     fun getAllValidatorsAbbrev() = transaction {
-        val recs = getStakingValidators("all", null, null, null).map { currVal ->
+        val recs = getStakingValidators(ValidatorState.ALL, null, null, null).map { currVal ->
             ValidatorSummaryAbbrev(
                 currVal.json.description.moniker,
                 currVal.operatorAddress,
@@ -251,34 +257,32 @@ class ValidatorService(
         page: Int,
         status: String
     ): PagedResults<ValidatorSummary> {
+        val statusEnum = ValidatorState.valueOf(status.uppercase())
         val (height, validatorSet) = grpcClient.getLatestValidators().let { it.blockHeight to it.validatorsList }
         val hr24ChangeSet = grpcClient.getValidatorsAtHeight(
             height.get24HrBlockHeight(cacheService.getSpotlight().avgBlockTime).toInt()
         ).validatorsList
-        getStakingValidators(status).map { v ->
-            validateStatus(
-                v.json,
-                validatorSet.firstOrNull { it.address == v.consensusAddr },
-                v.operatorAddrId
-            )
+        getStakingValidators(statusEnum).map { v ->
+            validateStatus(v, validatorSet.firstOrNull { it.address == v.consensusAddr }, v.operatorAddrId)
         }.also { map -> if (map.contains(true)) ValidatorStateRecord.refreshCurrentStateView() }
-        val stakingValidators = getStakingValidators(status, null, page.toOffset(count), count)
-        val results = hydrateValidators(validatorSet, hr24ChangeSet, stakingValidators)
-        val totalCount = getStakingValidatorsCount(status, null)
+        val stakingValidators = getStakingValidators(statusEnum, null, page.toOffset(count), count)
+        val results = hydrateValidators(validatorSet, hr24ChangeSet, stakingValidators, height)
+        val totalCount = getStakingValidatorsCount(statusEnum, null)
         return PagedResults(totalCount.pageCountOfResults(count), results, totalCount)
     }
 
     fun hydrateValidators(
         validatorSet: List<Query.Validator>,
         hr24ChangeSet: List<Query.Validator>,
-        stakingVals: List<CurrentValidatorState>
+        stakingVals: List<CurrentValidatorState>,
+        height: Long
     ) = let {
         val totalVotingPower = validatorSet.sumOf { it.votingPower.toBigInteger() }
         stakingVals
             .map { stakingVal ->
                 val validator = validatorSet.firstOrNull { it.address == stakingVal.consensusAddr }
                 val hr24Validator = hr24ChangeSet.firstOrNull { it.address == stakingVal.consensusAddr }
-                hydrateValidator(validator, hr24Validator, stakingVal, totalVotingPower)
+                hydrateValidator(validator, hr24Validator, stakingVal, totalVotingPower, height)
             }
     }
 
@@ -286,7 +290,8 @@ class ValidatorService(
         validator: Query.Validator?,
         hr24Validator: Query.Validator?,
         stakingVal: CurrentValidatorState,
-        totalVotingPower: BigInteger
+        totalVotingPower: BigInteger,
+        height: Long
     ) = let {
         val delegatorCount =
             grpcClient.getStakingValidatorDelegations(stakingVal.operatorAddress, 0, 1).pagination.total
@@ -303,9 +308,12 @@ class ValidatorService(
             bondedTokens = CountStrTotal(stakingVal.json.tokens, null, NHASH),
             delegators = delegatorCount,
             status = stakingVal.json.getStatusString(),
-            unbondingHeight = if (!stakingVal.json.isActive()) stakingVal.json.unbondingHeight else null,
+            unbondingHeight = if (stakingVal.currentState != ACTIVE) stakingVal.json.unbondingHeight else null,
             imgUrl = getImgUrl(stakingVal.json.description.identity),
-            hr24Change = get24HrBondedChange(validator, hr24Validator)
+            hr24Change = get24HrBondedChange(validator, hr24Validator),
+            uptime = stakingVal.consensusAddr.validatorUptime(
+                grpcClient.getSlashingParams().params.signedBlocksWindow.toBigInteger(), height.toBigInteger()
+            )
         )
     }
 
@@ -380,7 +388,7 @@ class ValidatorService(
         }
 
     fun getCommissionInfo(address: String): ValidatorCommission {
-        val validator = ValidatorStateRecord.findByOperator(address)?.json
+        val validator = ValidatorStateRecord.findByOperator(getActiveSet(), address)?.json
             ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
         val selfBonded = getValSelfBonded(validator)
@@ -489,13 +497,22 @@ class ValidatorService(
 
         val validators = MissedBlocksRecord
             .findDistinctValidatorsWithMissedBlocksForPeriod(currentHeight - frame, currentHeight)
-            .let { ValidatorStateRecord.findByConsensusAddressIn(it.toList()) }
-            .map { ValidatorMissedBlocks(ValidatorMoniker(it.consensusAddr, it.operatorAddress, it.moniker)) }
+            .let { ValidatorStateRecord.findByConsensusAddressIn(getActiveSet(), it.toList()) }
+            .map {
+                ValidatorMissedBlocks(
+                    ValidatorMoniker(
+                        it.consensusAddr,
+                        it.operatorAddress,
+                        it.moniker,
+                        it.currentState
+                    )
+                )
+            }
 
         MissedBlocksTimeframe(currentHeight - frame, currentHeight, validators)
     }
 
-    fun getMissedBlocksForValidatorInTimeframe(timeframe: Timeframe, validatorAddr: String?) = transaction {
+    fun getMissedBlocksForValidatorInTimeframe(timeframe: Timeframe, validatorAddr: String?): MissedBlocksTimeframe {
         if (timeframe == Timeframe.FOREVER && validatorAddr == null)
             throw IllegalArgumentException("If timeframe is FOREVER, you must have a validator operator address specified.")
         if (validatorAddr != null && !validatorAddr.startsWith(props.provValOperPrefix()))
@@ -514,25 +531,84 @@ class ValidatorService(
         else
             null
 
+        return getMissedBlocksForInput(currentHeight, frame, valConsAddr)
+    }
+
+    private fun getMissedBlocksForInput(currentHeight: Int, blockCount: Int, valConsAddr: String?) = transaction {
         val results = MissedBlocksRecord
-            .findValidatorsWithMissedBlocksForPeriod(currentHeight - frame, currentHeight, valConsAddr)
-        val vals = ValidatorStateRecord.findByConsensusAddressIn(results.map { it.validator.valConsAddress })
-            .associateBy { it.consensusAddr }
+            .findValidatorsWithMissedBlocksForPeriod(currentHeight - blockCount, currentHeight, valConsAddr)
+        val vals =
+            ValidatorStateRecord.findByConsensusAddressIn(getActiveSet(), results.map { it.validator.valConsAddress })
+                .associateBy { it.consensusAddr }
 
-        val list = results
-            .groupBy(
-                { it.validator },
-                { MissedBlockSet(it.blocks.minOrNull()!!, it.blocks.maxOrNull()!!, it.blocks.size) }
-            )
+        val list = results.groupBy(
+            { it.validator },
+            { MissedBlockSet(it.blocks.minOrNull()!!, it.blocks.maxOrNull()!!, it.blocks.size) }
+        )
             .map { (k, v) -> ValidatorMissedBlocks(k, v) }
-
-        list.forEach { res ->
-            vals[res.validator.valConsAddress].let { match ->
-                res.validator.operatorAddr = match?.operatorAddress
-                res.validator.moniker = match?.moniker
+            .onEach { res ->
+                vals[res.validator.valConsAddress].let { match ->
+                    res.validator.operatorAddr = match?.operatorAddress
+                    res.validator.moniker = match?.moniker
+                    res.validator.currentState = match?.currentState
+                }
             }
-        }
 
-        MissedBlocksTimeframe(currentHeight - frame, currentHeight, list)
+        MissedBlocksTimeframe(currentHeight - blockCount, currentHeight, list)
+    }
+
+    fun activeValidatorUptimeStats() = transaction {
+        // Get Parameters
+        val (blockCount, slashedAtPercent) =
+            grpcClient.getSlashingParams().params.let { it.signedBlocksWindow to it.minSignedPerWindow }
+        val slashedCount =
+            slashedAtPercent.toString(Charsets.UTF_8).toDecimal().multiply(BigDecimal(blockCount)).toLong()
+        // Height to count from
+        val currentHeight = SpotlightCacheRecord.getSpotlight().latestBlock.height
+
+        // validators with missed blocks
+        val withMissed = getMissedBlocksForInput(currentHeight, blockCount.toInt(), null)
+
+        // calcs
+        val missed = withMissed.addresses
+            .filter { it.validator.currentState!! == ACTIVE }
+            .map {
+                val missedBlockCount = it.missedBlocks.sumOf { set -> set.count }
+                val missedBlockPercent = (missedBlockCount / blockCount.toDouble()).toPercentage()
+                val uptimeCount = blockCount.toInt() - missedBlockCount
+                val uptimePercentage = (uptimeCount / blockCount.toDouble()).toPercentage()
+                ValidatorUptimeStats(it.validator, uptimeCount, uptimePercentage, missedBlockCount, missedBlockPercent)
+            }
+
+        // all active validators with calcs
+        val activeVals = ValidatorStateRecord.findByStatus(getActiveSet(), ACTIVE)
+            .filterNot { active ->
+                withMissed.addresses.map { it.validator.valConsAddress }.contains(active.consensusAddr)
+            }.map { active ->
+                ValidatorUptimeStats(
+                    ValidatorMoniker(active.consensusAddr, active.operatorAddress, active.moniker, active.currentState),
+                    blockCount.toInt(),
+                    (blockCount / blockCount.toDouble()).toPercentage(),
+                    0,
+                    (0 / blockCount.toDouble()).toPercentage()
+                )
+            }
+
+        // all records
+        val records = missed + activeVals
+
+        // avg uptime across active validators
+        val avgUptime = records.map { it.uptimeCount }.avg()
+
+        UptimeDataSet(
+            currentHeight - blockCount,
+            currentHeight.toLong(),
+            blockCount,
+            slashedCount,
+            slashedAtPercent.toString(Charsets.UTF_8).toPercentage(),
+            avgUptime,
+            (avgUptime / blockCount.toDouble()).toPercentage(),
+            records
+        )
     }
 }

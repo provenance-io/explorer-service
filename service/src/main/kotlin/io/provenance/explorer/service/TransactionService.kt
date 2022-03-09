@@ -55,7 +55,8 @@ class TransactionService(
     private val protoPrinter: JsonFormat.Printer,
     private val props: ExplorerProperties,
     private val asyncV2: AsyncCachingV2,
-    private val nftService: NftService
+    private val nftService: NftService,
+    private val valService: ValidatorService
 ) {
 
     protected val logger = logger(TransactionService::class)
@@ -91,7 +92,7 @@ class TransactionService(
     ): PagedResults<TxSummary> {
         val msgTypes = if (msgType != null) listOf(msgType) else module?.types ?: listOf()
         val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
-        val addr = transaction { address?.getAddressType(props) }
+        val addr = transaction { address?.getAddressType(valService.getActiveSet(), props) }
         val markerId = if (denom != null) MarkerCacheRecord.findByDenom(denom)?.id?.value else null
         val nftMAddress = if (nftAddr != null && nftAddr.isMAddress()) nftAddr.toMAddress() else nftAddr?.toMAddressScope()
         val nft = nftMAddress?.let { Triple(it.getParentForType()?.name, nftService.getNftDbId(it), it.getPrimaryUuid().toString()) }
@@ -179,8 +180,8 @@ class TransactionService(
         )
 
     private fun getMonikers(txId: EntityID<Int>): Map<String, String> {
-        val monikers =
-            TxAddressJoinRecord.findValidatorsByTxHash(txId).associate { v -> v.operatorAddress to v.moniker }
+        val monikers = TxAddressJoinRecord.findValidatorsByTxHash(valService.getActiveSet(), txId)
+            .associate { v -> v.operatorAddress to v.moniker }
         val moduleNames =
             TxAddressJoinRecord.findAccountsByTxHash(txId)
                 .filter { it.type == "ModuleAccount" }
@@ -202,9 +203,9 @@ class TransactionService(
             val msgTypes = if (msgType != null) listOf(msgType) else MsgTypeSet.GOVERNANCE.types
             val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
             val addr = transaction {
-                var pair = address?.getAddressType(props)
+                var pair = address?.getAddressType(valService.getActiveSet(), props)
                 if (pair?.first == TxAddressJoinType.OPERATOR.name) {
-                    val accAddr = ValidatorStateRecord.findByOperator(address!!)?.accountAddr
+                    val accAddr = ValidatorStateRecord.findByOperator(valService.getActiveSet(), address!!)?.accountAddr
                     val accId = AccountRecord.findByAddress(accAddr!!)?.id?.value
                     pair = Pair(TxAddressJoinType.ACCOUNT.name, accId)
                 }

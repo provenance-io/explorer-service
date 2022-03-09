@@ -60,7 +60,6 @@ class AsyncService(
         ) {
             val endDate = getEndDate()
             var shouldContinue = true
-            blockService.updateBlockMaxHeightIndex(startHeight)
             indexHeight = index?.second?.minus(1) ?: indexHeight
             while (shouldContinue && indexHeight > 0) {
                 blockService.getBlockAtHeightFromChain(indexHeight)?.let {
@@ -73,6 +72,7 @@ class AsyncService(
                 }
                 blockService.updateBlockMinHeightIndex(indexHeight + 1)
             }
+            blockService.updateBlockMaxHeightIndex(startHeight)
         } else {
             while (indexHeight > index.first!!) {
                 blockService.getBlockAtHeightFromChain(indexHeight)?.let {
