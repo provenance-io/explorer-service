@@ -25,7 +25,7 @@ fun List<Any?>.toProcedureObject() =
                 is DateTime -> "'${value.toProcedureObject()}'"
                 is GeneratedMessageV3 -> "'${value.toProcedureObject()}'"
                 is Int, is Double, is BigDecimal, is Long -> value.toString()
-                is String -> "'$value'"
+                is String -> "'${value.replaceSingleQuotes()}'"
                 is Boolean -> value.toString()
                 is ObjectNode -> "'$value'"
                 else -> "not a thing"
@@ -42,3 +42,5 @@ fun toDbText(value: String) = transaction {
     val query = "SELECT ($value)::TEXT AS text".trimIndent()
     query.execAndMap { it.getString("text") }.first()
 }
+
+fun String.replaceSingleQuotes() = this.replace("'", "''")

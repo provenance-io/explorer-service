@@ -86,6 +86,12 @@ class ValidatorController(
     fun validatorCommissionInfo(@ApiParam(value = "The Validator's operator address") @PathVariable address: String) =
         ResponseEntity.ok(validatorService.getCommissionInfo(address))
 
+    @ApiOperation("Returns commission history for validator by operator address")
+    @GetMapping("/{address}/commission/history")
+    fun validatorCommissionHistory(
+        @ApiParam(value = "The Validator's operator address") @PathVariable address: String
+    ) = ResponseEntity.ok(validatorService.getCommissionRateHistory(address))
+
     @ApiOperation("Returns min/max/avg on market rate for the validator for given last X transactions")
     @GetMapping("/{address}/market_rate")
     fun getValidatorMarketRateAvg(

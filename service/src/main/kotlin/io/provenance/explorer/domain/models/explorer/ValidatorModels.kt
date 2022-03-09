@@ -79,6 +79,16 @@ data class CommissionRate(
     val maxChangeRate: String
 )
 
+data class CommissionList(
+    val rate: String,
+    val blockHeight: Int
+)
+
+data class ValidatorCommissionHistory(
+    val operatorAddress: String,
+    val commissionList: List<CommissionList>
+)
+
 data class CurrentValidatorState(
     val operatorAddrId: Int,
     val operatorAddress: String,
@@ -91,7 +101,8 @@ data class CurrentValidatorState(
     val accountAddr: String,
     val consensusAddr: String,
     val consensusPubKey: String,
-    val currentState: ValidatorState
+    val currentState: ValidatorState,
+    val commissionRate: BigDecimal
 )
 
 data class BlockLatencyData(
