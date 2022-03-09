@@ -6,6 +6,7 @@ import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.extensions.NHASH
+import io.provenance.explorer.domain.extensions.USD_UPPER
 import io.provenance.explorer.domain.extensions.fromBase64
 import io.provenance.explorer.domain.extensions.isAddressAsType
 import io.provenance.explorer.domain.extensions.pageCountOfResults
@@ -79,7 +80,7 @@ class AccountService(
                     balances.await().balancesList.associate { bal -> bal.denom to bal.amount },
                     "accountAUM"
                 )
-                    .toCoinStr("USD")
+                    .toCoinStr(USD_UPPER)
             )
         }
     }

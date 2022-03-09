@@ -89,3 +89,9 @@ data class MsgBasedFee(
     val msgTypeUrl: String,
     val additionalFee: CoinStr
 )
+
+data class ChainAum(
+    val dateTime: String,
+    val denom: String,
+    val amount: BigDecimal
+)

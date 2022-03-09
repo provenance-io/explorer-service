@@ -172,12 +172,8 @@ class TransactionService(
 
     fun getTxHeatmap() = BlockCacheHourlyTxCountsRecord.getTxHeatmap()
 
-    fun getTxHistoryByQuery(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
-        BlockCacheHourlyTxCountsRecord.getTxCountsForParams(
-            fromDate,
-            toDate,
-            (granularity ?: DateTruncGranularity.DAY).name
-        )
+    fun getTxHistoryByQuery(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity) =
+        BlockCacheHourlyTxCountsRecord.getTxCountsForParams(fromDate, toDate, granularity)
 
     private fun getMonikers(txId: EntityID<Int>): Map<String, String> {
         val monikers = TxAddressJoinRecord.findValidatorsByTxHash(valService.getActiveSet(), txId)

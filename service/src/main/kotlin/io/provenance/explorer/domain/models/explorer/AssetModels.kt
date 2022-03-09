@@ -1,6 +1,7 @@
 package io.provenance.explorer.domain.models.explorer
 
 import com.fasterxml.jackson.databind.node.ObjectNode
+import io.provenance.explorer.domain.extensions.USD_LOWER
 import java.math.BigInteger
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -78,7 +79,7 @@ data class AssetPricing(
     val markerAddress: String,
     val markerDenom: String,
     val price: Double?,
-    val priceDenomination: String = "usd",
+    val priceDenomination: String = USD_LOWER,
     val priceTimestamp: OffsetDateTime,
     val usdPrice: Double?
 )

@@ -192,4 +192,7 @@ class AsyncService(
 
     @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
     fun updateReleaseVersions() = explorerService.getChainReleases()
+
+    @Scheduled(cron = "0 0 0/1 * * ?") // Every hour
+    fun saveChainAum() = explorerService.saveChainAum()
 }
