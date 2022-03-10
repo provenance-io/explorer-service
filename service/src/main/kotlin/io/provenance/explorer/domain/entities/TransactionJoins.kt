@@ -11,6 +11,7 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.innerJoin
+import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -174,6 +175,15 @@ class TxSmCodeRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun buildInsert(txInfo: TxData, smCode: Int) =
             listOf(0, txInfo.blockHeight, -1, txInfo.txHash, smCode).toProcedureObject()
+
+        fun insertIgnore(txInfo: TxData, smCode: Int) = transaction {
+            TxSmCodeTable.insertIgnore {
+                it[this.blockHeight] = txInfo.blockHeight
+                it[this.txHashId] = txInfo.txHashId!!
+                it[this.txHash] = txInfo.txHash
+                it[this.smCode] = smCode
+            }
+        }
     }
 
     var blockHeight by TxSmCodeTable.blockHeight

@@ -45,6 +45,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added uptime back to ValidatorSummary object #260
 * Updated uptime calc for ValidatorDetail #260
 * Removed `.isActive()` extension, which was inaccurate disregarding active set count #260
+* Now inserting `tx_sm_code` record when a SC code is identified and correlated with a governance proposal #319
 
 ### Bug Fixes
 * Fixed how the Array exposed set works #260
@@ -63,6 +64,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Updated `get_validator_list()`, `get_all_validator_state()` functions
 * Migration 1.55 - Add debug procedures #300
   * Used to debug why a block/tx doesnt get saved correctly; needed for prod
+* Migration 1.56 - Adding `tx_hash_id` to governance tables #319
+  * Updated `gov_proposal`, `gov_vote`, `gov_deposit` to include `tx_hash_id`
+  * Updated `add_tx()`, `add_tx_debug()` procedures to include the new fields
+  * Inserting matching `tx_sm_code` records for SC codes created via governance proposal
 
 ## [v4.0.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.0.0) - 2022-03-08
 ### Release Name: Marco Polo
