@@ -17,6 +17,7 @@ import io.provenance.explorer.domain.entities.ProposalMonitorRecord
 import io.provenance.explorer.domain.entities.ProposalType
 import io.provenance.explorer.domain.entities.SmCodeRecord
 import io.provenance.explorer.domain.entities.SpotlightCacheRecord
+import io.provenance.explorer.domain.entities.TxSmCodeRecord
 import io.provenance.explorer.domain.entities.ValidatorState.ACTIVE
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.extensions.NHASH
@@ -115,12 +116,28 @@ class GovService(
                 val matching = records.firstOrNull { proposal.dataHash == it.dataHash }
                 // find existing record and update, else search for next code id only.
                 matching?.apply { this.creationHeight = creationHeight }
-                    ?.also { proposal.apply { this.processed = true } }
+                    ?.also {
+                        proposal.apply { this.processed = true }
+                        // Insert matching tx join record
+                        GovProposalRecord.findByProposalId(proposal.proposalId)!!.let { prop ->
+                            TxSmCodeRecord.insertIgnore(
+                                TxData(prop.blockHeight, prop.txHashId.id.value, prop.txHash, prop.txTimestamp),
+                                it.id.value
+                            )
+                        }
+                    }
                     ?: records.first().id.value.let { start ->
                         smContractClient.getSmCode(start.toLong() + 1)?.let {
                             if (it.codeInfo.dataHash.toBase64() == proposal.dataHash) {
                                 SmCodeRecord.getOrInsert(start + 1, it, creationHeight)
                                 proposal.apply { this.processed = true }
+                                // Insert matching tx join record
+                                GovProposalRecord.findByProposalId(proposal.proposalId)!!.let { prop ->
+                                    TxSmCodeRecord.insertIgnore(
+                                        TxData(prop.blockHeight, prop.txHashId.id.value, prop.txHash, prop.txTimestamp),
+                                        start + 1
+                                    )
+                                }
                             }
                         }
                     }

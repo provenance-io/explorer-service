@@ -38,6 +38,7 @@ object GovProposalTable : IntIdTable(name = "gov_proposal") {
     val blockHeight = integer("block_height")
     val txHash = varchar("tx_hash", 64)
     val txTimestamp = datetime("tx_timestamp")
+    val txHashId = reference("tx_hash_id", TxCacheTable)
 }
 
 fun String.getProposalType() = this.split(".").last().replace("Proposal", "")
@@ -116,7 +117,8 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
                     proposal.content.toProposalContent(protoPrinter),
                     block,
                     hash,
-                    time
+                    time,
+                    0
                 ).toProcedureObject()
             }
         }
@@ -135,6 +137,7 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
     var blockHeight by GovProposalTable.blockHeight
     var txHash by GovProposalTable.txHash
     var txTimestamp by GovProposalTable.txTimestamp
+    var txHashId by TxCacheRecord referencedOn GovProposalTable.txHashId
 }
 
 object GovVoteTable : IntIdTable(name = "gov_vote") {
@@ -146,6 +149,7 @@ object GovVoteTable : IntIdTable(name = "gov_vote") {
     val blockHeight = integer("block_height")
     val txHash = varchar("tx_hash", 64)
     val txTimestamp = datetime("tx_timestamp")
+    val txHashId = reference("tx_hash_id", TxCacheTable)
 }
 
 class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -222,7 +226,8 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
                         v,
                         b,
                         hash,
-                        time
+                        time,
+                        0
                     ).toProcedureObject()
                 }
         }
@@ -236,6 +241,7 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
     var blockHeight by GovVoteTable.blockHeight
     var txHash by GovVoteTable.txHash
     var txTimestamp by GovVoteTable.txTimestamp
+    var txHashId by TxCacheRecord referencedOn GovVoteTable.txHashId
 }
 
 object GovDepositTable : IntIdTable(name = "gov_deposit") {
@@ -249,6 +255,7 @@ object GovDepositTable : IntIdTable(name = "gov_deposit") {
     val blockHeight = integer("block_height")
     val txHash = varchar("tx_hash", 64)
     val txTimestamp = datetime("tx_timestamp")
+    val txHashId = reference("tx_hash_id", TxCacheTable)
 }
 
 enum class DepositType { DEPOSIT, INITIAL_DEPOSIT }
@@ -300,7 +307,8 @@ class GovDepositRecord(id: EntityID<Int>) : IntEntity(id) {
             amount.denom,
             txInfo.blockHeight,
             txInfo.txHash,
-            txInfo.txTimestamp
+            txInfo.txTimestamp,
+            0
         ).toProcedureObject()
     }
 
@@ -314,6 +322,7 @@ class GovDepositRecord(id: EntityID<Int>) : IntEntity(id) {
     var blockHeight by GovDepositTable.blockHeight
     var txHash by GovDepositTable.txHash
     var txTimestamp by GovDepositTable.txTimestamp
+    var txHashId by TxCacheRecord referencedOn GovDepositTable.txHashId
 }
 
 object ProposalMonitorTable : IntIdTable(name = "proposal_monitor") {
