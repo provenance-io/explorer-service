@@ -5,7 +5,6 @@ import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.extensions.USD_UPPER
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDecCoin
-import io.provenance.explorer.service.toHashSupply
 import java.math.BigDecimal
 import java.math.BigInteger
 
@@ -48,7 +47,7 @@ fun BigDecimal.toCoinStrWithPrice(price: BigDecimal?, denom: String) =
         this.toBigInteger().toString(),
         denom,
         price?.toCoinStr(USD_UPPER),
-        price?.multiply(this.toHashSupply(denom))?.toCoinStr(USD_UPPER)
+        price?.multiply(this)?.toCoinStr(USD_UPPER)
     )
 
 fun CoinOuterClass.Coin.toCoinStrWithPrice(price: BigDecimal?) =

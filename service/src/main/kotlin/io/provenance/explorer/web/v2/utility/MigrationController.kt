@@ -1,6 +1,7 @@
 package io.provenance.explorer.web.v2.utility
 
 import io.provenance.explorer.domain.annotation.HiddenApi
+import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.utility.MigrationService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -22,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController
     description = "This should NEVER be used by the UI"
 )
 @HiddenApi
-class MigrationController(private val migrationService: MigrationService) {
+class MigrationController(private val migrationService: MigrationService, private val assetService: AssetService) {
 
     @ApiOperation("Updates accounts with data")
     @PutMapping("/update/accounts")
@@ -38,4 +39,8 @@ class MigrationController(private val migrationService: MigrationService) {
     @GetMapping("/update/blocks")
     fun updateBlocks(@RequestParam start: Int, @RequestParam end: Int, @RequestParam inc: Int) =
         ResponseEntity.ok(migrationService.updateBlocks(start, end, inc))
+
+    @ApiOperation("Updates denom units")
+    @GetMapping("/update/denom/units")
+    fun updateDenomUnits() = ResponseEntity.ok(assetService.updateMarkerUnit())
 }
