@@ -46,6 +46,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Updated uptime calc for ValidatorDetail #260
 * Removed `.isActive()` extension, which was inaccurate disregarding active set count #260
 * Now inserting `tx_sm_code` record when a SC code is identified and correlated with a governance proposal #319
+* Can now search by any marker's denom unit name #321
+* Using pricing-engine pricing for `nhash`, made calcs uniform for all denoms and prices #321
 
 ### Bug Fixes
 * Fixed how the Array exposed set works #260
@@ -68,6 +70,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Updated `gov_proposal`, `gov_vote`, `gov_deposit` to include `tx_hash_id`
   * Updated `add_tx()`, `add_tx_debug()` procedures to include the new fields
   * Inserting matching `tx_sm_code` records for SC codes created via governance proposal
+* Migration 1.57 - Adding `marker_unit` table #321
 
 ## [v4.0.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.0.0) - 2022-03-08
 ### Release Name: Marco Polo

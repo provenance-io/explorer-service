@@ -2,11 +2,10 @@ package io.provenance.explorer.service
 
 import com.google.protobuf.Timestamp
 import com.google.protobuf.util.JsonFormat
-import io.ktor.client.call.receive
+import cosmos.bank.v1beta1.denomUnit
 import io.ktor.client.features.ResponseException
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
-import io.ktor.client.statement.HttpResponse
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ResourceNotFoundException
@@ -15,10 +14,10 @@ import io.provenance.explorer.domain.entities.AssetPricingRecord
 import io.provenance.explorer.domain.entities.BaseDenomType
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.MarkerCacheTable
+import io.provenance.explorer.domain.entities.MarkerUnitRecord
 import io.provenance.explorer.domain.entities.TokenDistributionAmountsRecord
 import io.provenance.explorer.domain.entities.TokenDistributionPaginatedResultsRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
-import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toObjectNode
@@ -48,8 +47,6 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.json.JSONArray
-import org.json.JSONObject
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -122,40 +119,43 @@ class AssetService(
 
     fun getAssetDetail(denom: String) =
         runBlocking {
-            getAssetFromDB(denom)?.let { (id, record) ->
-                val txCount = TxMarkerJoinRecord.findCountByDenom(id.value)
-                val attributes = async { attrClient.getAllAttributesForAddress(record.markerAddress) }
-                val balances = async { accountClient.getAccountBalances(record.markerAddress!!, 1, 1) }
-                val price = getPricingInfoIn(listOf(denom), "assetDetail")[denom]
-                AssetDetail(
-                    record.denom,
-                    record.markerAddress,
-                    if (record.data != null) AssetManagement(
-                        record.data!!.getManagingAccounts(),
-                        record.data!!.allowGovernanceControl
-                    ) else null,
-                    record.toCoinStrWithPrice(price),
-                    record.data?.isMintable() ?: false,
-                    if (record.markerAddress != null) markerClient.getMarkerHoldersCount(denom).pagination.total.toInt() else 0,
-                    txCount,
-                    attributes.await().map { attr -> attr.toResponse() },
-                    getDenomMetadataSingle(denom).toObjectNode(protoPrinter),
-                    TokenCounts(
-                        if (record.markerAddress != null) balances.await().pagination.total else 0,
-                        if (record.markerAddress != null) metadataClient.getScopesByOwner(record.markerAddress!!).pagination.total.toInt() else 0
-                    ),
-                    record.status.prettyStatus(),
-                    record.markerType.prettyMarkerType()
-                )
+            MarkerUnitRecord.findByUnit(denom)?.let { unit ->
+                getAssetFromDB(unit.marker)?.let { (id, record) ->
+                    val txCount = TxMarkerJoinRecord.findCountByDenom(id.value)
+                    val attributes = async { attrClient.getAllAttributesForAddress(record.markerAddress) }
+                    val balances = async { accountClient.getAccountBalances(record.markerAddress!!, 1, 1) }
+                    val price = getPricingInfoIn(listOf(unit.marker), "assetDetail")[unit.marker]
+                    AssetDetail(
+                        record.denom,
+                        record.markerAddress,
+                        if (record.data != null) AssetManagement(
+                            record.data!!.getManagingAccounts(),
+                            record.data!!.allowGovernanceControl
+                        ) else null,
+                        record.toCoinStrWithPrice(price),
+                        record.data?.isMintable() ?: false,
+                        if (record.markerAddress != null) markerClient.getMarkerHoldersCount(unit.marker).pagination.total.toInt() else 0,
+                        txCount,
+                        attributes.await().map { attr -> attr.toResponse() },
+                        getDenomMetadataSingle(unit.marker).toObjectNode(protoPrinter),
+                        TokenCounts(
+                            if (record.markerAddress != null) balances.await().pagination.total else 0,
+                            if (record.markerAddress != null) metadataClient.getScopesByOwner(record.markerAddress!!).pagination.total.toInt() else 0
+                        ),
+                        record.status.prettyStatus(),
+                        record.markerType.prettyMarkerType()
+                    )
+                } ?: throw ResourceNotFoundException("Invalid asset: $denom")
             } ?: throw ResourceNotFoundException("Invalid asset: $denom")
         }
 
     fun getAssetHolders(denom: String, page: Int, count: Int) = runBlocking {
-        val supply = getCurrentSupply(denom)
-        val res = markerClient.getMarkerHolders(denom, page.toOffset(count), count)
+        val unit = MarkerUnitRecord.findByUnit(denom)?.marker ?: denom
+        val supply = getCurrentSupply(unit)
+        val res = markerClient.getMarkerHolders(unit, page.toOffset(count), count)
         val list = res.balancesList.asFlow().map { bal ->
-            val balance = bal.coinsList.first { coin -> coin.denom == denom }.amount
-            AssetHolder(bal.address, CountStrTotal(balance, supply, denom))
+            val balance = bal.coinsList.first { coin -> coin.denom == unit }.amount
+            AssetHolder(bal.address, CountStrTotal(balance, supply, unit))
         }.toList().sortedWith(compareBy { it.balance.count.toBigDecimal() }).asReversed()
         PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
     }
@@ -230,10 +230,25 @@ class AssetService(
                 runBlocking {
                     val data = markerClient.getMarkerDetail(marker)
                     MarkerCacheRecord.findByDenom(marker)?.apply {
-                        if (data != null) this.status = data.status.toString()
+                        if (data != null) {
+                            this.status = data.status.toString()
+                            this.markerAddress = data.baseAccount.address
+                            this.markerType = data.markerType.name
+                        }
                         this.supply = getCurrentSupply(marker).toBigDecimal()
                         this.lastTx = txTime.toDateTime()
                         this.data = data
+                    }?.also {
+                        accountClient.getDenomMetadata(marker).metadata.denomUnitsList.forEach { unit ->
+                            MarkerUnitRecord.insert(it.id.value, marker, unit)
+                        }
+                        MarkerUnitRecord.insert(
+                            it.id.value, marker,
+                            denomUnit {
+                                denom = marker
+                                exponent = 0
+                            }
+                        )
                     }
                 }
             }
@@ -248,22 +263,19 @@ class AssetService(
         }
         val pricing = baseMap.keys.toList().chunked(100) { getPricingInfo(it, "totalAUM") }.flatMap { it.toList() }
             .toMap()
-            .toMutableMap().also { it.putAll(getPricingForNhash()) }
-        baseMap.map { (k, v) -> (pricing[k] ?: BigDecimal.ZERO).multiply(v.toHashSupply(k)) }.sumOf { it }
+            .toMutableMap()
+        baseMap.map { (k, v) -> (pricing[k] ?: BigDecimal.ZERO).multiply(v) }.sumOf { it }
     }
 
     fun getAumForList(denoms: Map<String, String>, comingFrom: String): BigDecimal {
         val pricing =
             denoms.keys.toList().chunked(100) { getPricingInfo(it, comingFrom) }.flatMap { it.toList() }.toMap()
                 .toMutableMap()
-                .also { it.putAll(getPricingForNhash()) }
-        return denoms
-            .map { (k, v) -> (pricing[k] ?: BigDecimal.ZERO).multiply(v.toBigDecimal().toHashSupply(k)) }
-            .sumOf { it }
+        return denoms.map { (k, v) -> (pricing[k] ?: BigDecimal.ZERO).multiply(v.toBigDecimal()) }.sumOf { it }
     }
 
     fun getPricingInfoIn(denoms: List<String>, comingFrom: String) =
-        getPricingInfo(denoms, comingFrom).also { it.putAll(getPricingForNhash()) }
+        getPricingInfo(denoms, comingFrom)
 
     fun getPricingInfo(denoms: List<String>, comingFrom: String): MutableMap<String, BigDecimal?> = runBlocking {
         if (denoms.isEmpty()) return@runBlocking mutableMapOf<String, BigDecimal?>()
@@ -285,25 +297,6 @@ class AssetService(
         }
     }
 
-    fun getPricingForNhash(): Map<String, BigDecimal> = runBlocking {
-        val url = "https://www.dlob.io:443/gecko/external/api/v1/exchange/tickers"
-        val res = try {
-            KTOR_CLIENT_JAVA.get<HttpResponse>(url)
-        } catch (e: ResponseException) {
-            return@runBlocking mapOf<String, BigDecimal>().also { logger.error("Error: ${e.response}") }
-        }
-
-        if (res.status.value == 200) {
-            try {
-                JSONArray(res.receive<String>())
-                    .first { (it as JSONObject).getString("ticker_id") == "HASH_USD" }
-                    .let { mapOf("nhash" to (it as JSONObject).getBigDecimal("last_price")) }
-            } catch (e: Exception) {
-                mapOf<String, BigDecimal>().also { logger.error("Error: $e") }
-            }
-        } else mapOf<String, BigDecimal>().also { logger.error("Error reaching Pricing Engine: ${res.status.value}") }
-    }
-
     fun getCurrentSupply(denom: String) = runBlocking { accountClient.getCurrentSupply(denom).amount }
 
     fun getDenomMetadataSingle(denom: String) = runBlocking { accountClient.getDenomMetadata(denom).metadata }
@@ -311,6 +304,22 @@ class AssetService(
     fun getDenomMetadata(denom: String?) = runBlocking {
         if (denom != null) listOf(accountClient.getDenomMetadata(denom).metadata)
         else accountClient.getAllDenomMetadata().metadatasList
+    }
+
+    fun updateMarkerUnit() = transaction {
+        getDenomMetadata(null).forEach { meta ->
+            val markerId = getAssetRaw(meta.base).first.value
+            meta.denomUnitsList.forEach { MarkerUnitRecord.insert(markerId, meta.base, it) }
+        }
+        MarkerCacheRecord.all().forEach {
+            MarkerUnitRecord.insert(
+                it.id.value, it.denom,
+                denomUnit {
+                    denom = it.denom
+                    exponent = 0
+                }
+            )
+        }
     }
 }
 
@@ -327,5 +336,3 @@ fun String.getBaseDenomType() =
         this.startsWith("ibc/") -> Pair(BaseDenomType.IBC_DENOM, MarkerStatus.MARKER_STATUS_ACTIVE)
         else -> Pair(BaseDenomType.DENOM, MarkerStatus.MARKER_STATUS_UNSPECIFIED)
     }
-
-fun BigDecimal.toHashSupply(denom: String) = if (denom == NHASH) this.divide(1000000000.toBigDecimal()) else this

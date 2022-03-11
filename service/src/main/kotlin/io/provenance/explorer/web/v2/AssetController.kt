@@ -40,7 +40,7 @@ class AssetController(private val assetService: AssetService, private val ibcSer
     @ApiOperation("Returns asset detail for the denom")
     @GetMapping("/detail/{denom}")
     fun getMarkerDetail(
-        @ApiParam(value = "Use the base denom name, ie `nhash` instead of `hash`") @PathVariable denom: String
+        @ApiParam(value = "Use any of the denom units to search, ie `nhash` or `hash`") @PathVariable denom: String
     ) = ResponseEntity.ok(assetService.getAssetDetail(denom))
 
     @ApiOperation("Returns asset detail for an ibc denom")

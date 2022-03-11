@@ -1,5 +1,6 @@
 package io.provenance.explorer.domain.entities
 
+import cosmos.bank.v1beta1.Bank
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.batchUpsert
 import io.provenance.explorer.domain.core.sql.jsonb
@@ -24,6 +25,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
@@ -244,4 +246,34 @@ class AssetPricingRecord(id: EntityID<Int>) : IntEntity(id) {
     var pricingDenom by AssetPricingTable.pricingDenom
     var lastUpdated by AssetPricingTable.lastUpdated
     var data by AssetPricingTable.data
+}
+
+object MarkerUnitTable : IntIdTable(name = "marker_unit") {
+    val markerId = integer("marker_id")
+    val marker = varchar("marker", 256)
+    val unit = varchar("unit", 256)
+    val exponent = integer("exponent")
+}
+
+class MarkerUnitRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<MarkerUnitRecord>(MarkerUnitTable) {
+
+        fun insert(id: Int, marker: String, unit: Bank.DenomUnit) = transaction {
+            MarkerUnitTable.insertIgnore {
+                it[this.markerId] = id
+                it[this.marker] = marker
+                it[this.unit] = unit.denom
+                it[this.exponent] = unit.exponent
+            }
+        }
+
+        fun findByUnit(unit: String) = transaction {
+            MarkerUnitRecord.find { MarkerUnitTable.unit eq unit }.firstOrNull()
+        }
+    }
+
+    var markerId by MarkerUnitTable.markerId
+    var marker by MarkerUnitTable.marker
+    var unit by MarkerUnitTable.unit
+    var exponent by MarkerUnitTable.exponent
 }
