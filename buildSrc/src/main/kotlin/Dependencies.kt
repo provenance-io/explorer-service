@@ -53,7 +53,7 @@ object Versions {
     const val SpringBoot = PluginVersions.SpringBoot
     const val Swagger = "3.0.0"
     const val Grpc = "1.40.1"
-    const val ProvProto = "v1.8.0-rc6"
+    const val ProvProto = "1.8.0"
     const val Postgres = "42.2.23"
 
     // Testing

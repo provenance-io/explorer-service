@@ -204,6 +204,7 @@ class ValidatorService(
 
     private fun discoverAddresses() {
         val stakingVals = transaction { ValidatorStateRecord.findAll(getActiveSet()).map { it.operatorAddress } }
+        val blockHeight = blockService.getLatestBlockHeightIndexOrFromChain()
         grpcClient.getStakingValidators()
             .map { validator ->
                 if (!stakingVals.contains(validator.operatorAddress))
@@ -214,7 +215,7 @@ class ValidatorService(
                         validator.consensusPubkey.toAddress(props.provValConsPrefix())!!
                     ).also {
                         ValidatorStateRecord.insertIgnore(
-                            blockService.getLatestBlockHeightIndex(),
+                            blockHeight,
                             it.id.value,
                             validator.operatorAddress,
                             validator
@@ -263,7 +264,7 @@ class ValidatorService(
         val statusEnum = ValidatorState.valueOf(status.uppercase())
         val (height, validatorSet) = grpcClient.getLatestValidators().let { it.blockHeight to it.validatorsList }
         val hr24ChangeSet = grpcClient.getValidatorsAtHeight(
-            height.get24HrBlockHeight(cacheService.getSpotlight().avgBlockTime).toInt()
+            height.get24HrBlockHeight(cacheService.getAvgBlockTime()).toInt()
         ).validatorsList
         getStakingValidators(statusEnum).map { v ->
             validateStatus(v, validatorSet.firstOrNull { it.address == v.consensusAddr }, v.operatorAddrId)
@@ -494,8 +495,10 @@ class ValidatorService(
             BlockLatencyData(address, data, average)
         }
 
+    private fun getLatestHeight() = SpotlightCacheRecord.getSpotlight()?.latestBlock?.height ?: blockService.getMaxBlockCacheHeight()
+
     fun getDistinctValidatorsWithMissedBlocksInTimeframe(timeframe: Timeframe) = transaction {
-        val currentHeight = SpotlightCacheRecord.getSpotlight().latestBlock.height
+        val currentHeight = getLatestHeight()
         val frame = when (timeframe) {
             Timeframe.WEEK -> hourlyBlockCount * 24 * 7
             Timeframe.DAY -> hourlyBlockCount * 24
@@ -526,7 +529,7 @@ class ValidatorService(
         if (validatorAddr != null && !validatorAddr.startsWith(props.provValOperPrefix()))
             throw IllegalArgumentException("'validatorAddr' must begin with the validator operator address prefix : ${props.provValOperPrefix()}")
 
-        val currentHeight = SpotlightCacheRecord.getSpotlight().latestBlock.height
+        val currentHeight = getLatestHeight()
         val frame = when (timeframe) {
             Timeframe.WEEK -> hourlyBlockCount * 24 * 7
             Timeframe.DAY -> hourlyBlockCount * 24
@@ -572,7 +575,7 @@ class ValidatorService(
         val slashedCount =
             slashedAtPercent.toString(Charsets.UTF_8).toDecimal().multiply(BigDecimal(blockCount)).toLong()
         // Height to count from
-        val currentHeight = SpotlightCacheRecord.getSpotlight().latestBlock.height
+        val currentHeight = getLatestHeight()
 
         // validators with missed blocks
         val withMissed = getMissedBlocksForInput(currentHeight, blockCount.toInt(), null)

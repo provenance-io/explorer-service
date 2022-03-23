@@ -79,7 +79,7 @@ data class Tally(
 
 data class VoteRecord(
     val voter: GovAddress,
-    val answer: String,
+    val answer: Map<String, Double?>,
     val blockHeight: Int,
     val txHash: String,
     val txTimestamp: String,
@@ -91,7 +91,8 @@ data class VoteRecord(
 data class VoteDbRecord(
     val voter: String,
     val isValidator: Boolean,
-    val answer: String,
+    val vote: String,
+    val weight: Double,
     val blockHeight: Int,
     val txHash: String,
     val txTimestamp: DateTime,

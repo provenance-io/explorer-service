@@ -78,6 +78,8 @@ import io.provenance.explorer.grpc.extensions.toMsgSubmitProposal
 import io.provenance.explorer.grpc.extensions.toMsgTimeoutOnClose
 import io.provenance.explorer.grpc.extensions.toMsgTransfer
 import io.provenance.explorer.grpc.extensions.toMsgVote
+import io.provenance.explorer.grpc.extensions.toMsgVoteWeighted
+import io.provenance.explorer.grpc.extensions.toWeightedVote
 import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
 import io.provenance.explorer.grpc.v1.TransactionGrpcClient
 import io.provenance.explorer.service.AccountService
@@ -460,10 +462,19 @@ class AsyncCachingV2(
                                 this.proposals.add(
                                     govService.buildProposal(it.proposalId, txInfo, it.voter, isSubmit = false)
                                 )
-                                this.votes.add(govService.buildVote(txInfo, it))
+                                this.votes.addAll(
+                                    govService.buildVote(txInfo, listOf(it.toWeightedVote()), it.voter, it.proposalId)
+                                )
                             }
                         }
-                        // TODO: Handle Weighted votes
+                        GovMsgType.WEIGHTED -> pair.second.toMsgVoteWeighted().let {
+                            txUpdate.apply {
+                                this.proposals.add(
+                                    govService.buildProposal(it.proposalId, txInfo, it.voter, isSubmit = false)
+                                )
+                                this.votes.addAll(govService.buildVote(txInfo, it.optionsList, it.voter, it.proposalId))
+                            }
+                        }
                     }
                 }
         }

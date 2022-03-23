@@ -86,12 +86,13 @@ class StakingValidatorCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             consensusAddr: String
         ) =
             transaction {
-                StakingValidatorCacheTable.insertIgnoreAndGetId {
-                    it[this.operatorAddress] = operator
-                    it[this.consensusPubkey] = consensusPubkey
-                    it[this.accountAddress] = account
-                    it[this.consensusAddress] = consensusAddr
-                }.let { findById(it!!)!! }
+                findByOperAddr(operator)
+                    ?: StakingValidatorCacheTable.insertIgnoreAndGetId {
+                        it[this.operatorAddress] = operator
+                        it[this.consensusPubkey] = consensusPubkey
+                        it[this.accountAddress] = account
+                        it[this.consensusAddress] = consensusAddr
+                    }.let { findById(it!!)!! }
             }
     }
 

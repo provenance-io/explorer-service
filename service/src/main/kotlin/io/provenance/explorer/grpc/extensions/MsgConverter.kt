@@ -544,12 +544,13 @@ fun SessionIdComponents?.toMAddress() =
     } else null
 
 // ///////// GOVERNANCE
-enum class GovMsgType { PROPOSAL, VOTE, DEPOSIT }
+enum class GovMsgType { PROPOSAL, VOTE, WEIGHTED, DEPOSIT }
 
 fun Any.getAssociatedGovMsgs() =
     when {
         typeUrl.endsWith("MsgSubmitProposal") -> GovMsgType.PROPOSAL to this
         typeUrl.endsWith("MsgVote") -> GovMsgType.VOTE to this
+        typeUrl.endsWith("MsgVoteWeighted") -> GovMsgType.WEIGHTED to this
         typeUrl.endsWith("MsgDeposit") -> GovMsgType.DEPOSIT to this
         else -> null.also { logger().debug("This typeUrl is not a governance-based msg: $typeUrl") }
     }

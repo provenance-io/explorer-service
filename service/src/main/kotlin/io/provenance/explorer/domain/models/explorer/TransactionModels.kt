@@ -144,7 +144,7 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
     ),
     GOVERNANCE(
         "governance",
-        listOf("submit_proposal", "deposit", "vote")
+        listOf("submit_proposal", "deposit", "vote", "vote_weighted")
     ),
     SMART_CONTRACT(
         "smart_contract",
