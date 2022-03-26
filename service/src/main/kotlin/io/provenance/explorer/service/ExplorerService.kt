@@ -35,7 +35,6 @@ import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.pageCountOfResults
-import io.provenance.explorer.domain.extensions.pageOfResults
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
@@ -372,9 +371,9 @@ class ExplorerService(
                 )
             }
         return PagedResults(
-            results.size.toLong().pageCountOfResults(count),
-            results.pageOfResults(page, count),
-            results.size.toLong()
+            valFilter.size.toLong().pageCountOfResults(count),
+            results,
+            valFilter.size.toLong()
         )
     }
 
