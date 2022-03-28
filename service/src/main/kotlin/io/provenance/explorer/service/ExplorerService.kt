@@ -1,12 +1,10 @@
 package io.provenance.explorer.service
 
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.google.protobuf.Any
 import com.google.protobuf.util.JsonFormat
 import cosmos.bank.v1beta1.params
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.gov.v1beta1.Gov
-import cosmos.upgrade.v1beta1.Upgrade
 import io.ktor.client.call.receive
 import io.ktor.client.features.ResponseException
 import io.ktor.client.request.get
@@ -97,7 +95,8 @@ class ExplorerService(
     private val markerClient: MarkerGrpcClient,
     private val msgFeeClient: MsgFeeGrpcClient,
     private val validatorClient: ValidatorGrpcClient,
-    private val protoPrinter: JsonFormat.Printer
+    private val protoPrinter: JsonFormat.Printer,
+    private val govService: GovService
 ) {
 
     protected val logger = logger(ExplorerService::class)
@@ -198,7 +197,7 @@ class ExplorerService(
     fun getChainId() = asyncV2.getChainIdString()
 
     fun getChainUpgrades(): List<ChainUpgrade> {
-        val typeUrl = Any.pack(Upgrade.SoftwareUpgradeProposal.getDefaultInstance()).typeUrl
+        val typeUrl = govService.getUpgradeProtoType()
         val scheduledName = govClient.getIfUpgradeScheduled()?.plan?.name
         val proposals = GovProposalRecord.findByProposalType(typeUrl)
             .filter { it.status == Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name }

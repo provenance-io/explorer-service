@@ -14,7 +14,7 @@ val DEFAULT_DATE_TIME_STRING_FORMATTER = DateTimeFormat.forPattern("YYYY-MM-dd H
 
 fun DateTime.toProcedureObject() = java.sql.Timestamp(this.millis).toString()
 
-fun GeneratedMessageV3.toProcedureObject() = OBJECT_MAPPER.writeValueAsString(this)
+fun GeneratedMessageV3.toProcedureObject() = OBJECT_MAPPER.writeValueAsString(this).replaceSingleQuotes()
 
 // Creates String from list = value,value
 fun List<Any?>.toProcedureObject() =

@@ -5,6 +5,7 @@ import com.google.protobuf.util.JsonFormat
 import cosmos.gov.v1beta1.Gov
 import cosmos.gov.v1beta1.Gov.VoteOption
 import cosmos.gov.v1beta1.Tx
+import cosmos.upgrade.v1beta1.Upgrade
 import cosmwasm.wasm.v1beta1.Proposal
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
@@ -204,6 +205,8 @@ class GovService(
             GovTimeFrame(record.data.votingStartTime.formattedString(), record.data.votingEndTime.formattedString())
         )
     )
+
+    fun getUpgradeProtoType() = Any.pack(Upgrade.SoftwareUpgradeProposal.getDefaultInstance()).typeUrl
 
     fun getProposalsList(page: Int, count: Int) =
         GovProposalRecord.getAllPaginated(page.toOffset(count), count)
