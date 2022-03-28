@@ -5,7 +5,6 @@ import com.google.protobuf.Message
 import com.google.protobuf.util.JsonFormat
 import cosmos.base.v1beta1.CoinOuterClass
 import cosmos.gov.v1beta1.Gov
-import cosmos.gov.v1beta1.Tx
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
@@ -18,6 +17,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
@@ -146,6 +146,7 @@ object GovVoteTable : IntIdTable(name = "gov_vote") {
     val address = varchar("address", 128)
     val isValidator = bool("is_validator").default(false)
     val vote = varchar("vote", 128)
+    val weight = decimal("weight", 3, 2)
     val blockHeight = integer("block_height")
     val txHash = varchar("tx_hash", 64)
     val txTimestamp = datetime("tx_timestamp")
@@ -163,6 +164,7 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
                         it.address,
                         it.isValidator,
                         it.vote,
+                        it.weight.toDouble(),
                         it.blockHeight,
                         it.txHash,
                         it.txTimestamp,
@@ -174,15 +176,23 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun getByAddrIdPaginated(addrId: Int, limit: Int, offset: Int) = transaction {
-            GovVoteTable.innerJoin(GovProposalTable, { GovVoteTable.proposalId }, { GovProposalTable.proposalId })
+            val proposalIds = GovVoteTable.slice(GovVoteTable.proposalId)
                 .select { GovVoteTable.addressId eq addrId }
+                .groupBy(GovVoteTable.proposalId)
                 .orderBy(Pair(GovVoteTable.proposalId, SortOrder.DESC))
                 .limit(limit, offset.toLong())
+                .map { it[GovVoteTable.proposalId] }
+
+            GovVoteTable.innerJoin(GovProposalTable, { GovVoteTable.proposalId }, { GovProposalTable.proposalId })
+                .select { GovVoteTable.addressId eq addrId }
+                .andWhere { GovVoteTable.proposalId inList proposalIds }
+                .orderBy(Pair(GovVoteTable.proposalId, SortOrder.DESC))
                 .map {
                     VoteDbRecord(
                         it[GovVoteTable.address],
                         it[GovVoteTable.isValidator],
                         it[GovVoteTable.vote],
+                        it[GovVoteTable.weight].toDouble(),
                         it[GovVoteTable.blockHeight],
                         it[GovVoteTable.txHash],
                         it[GovVoteTable.txTimestamp],
@@ -194,42 +204,30 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun getByAddrIdCount(addrId: Int) = transaction {
-            GovVoteRecord.find { GovVoteTable.addressId eq addrId }.count()
-        }
-
-        fun findByProposalIdAndAddrId(proposalId: Long, addrId: Int) = transaction {
-            GovVoteRecord
-                .find { (GovVoteTable.proposalId eq proposalId) and (GovVoteTable.addressId eq addrId) }
-                .firstOrNull()
+            GovVoteRecord.find { GovVoteTable.addressId eq addrId }.groupBy { GovVoteTable.proposalId }.count()
         }
 
         fun buildInsert(
             txInfo: TxData,
-            vote: Tx.MsgVote,
-            addrInfo: GovAddrData
+            votes: List<Gov.WeightedVoteOption>,
+            addrInfo: GovAddrData,
+            proposalId: Long
         ) = transaction {
-            (
-                findByProposalIdAndAddrId(vote.proposalId, addrInfo.addrId)
-                    ?.let {
-                        if (txInfo.blockHeight > it.blockHeight)
-                            listOf(vote.option.name, txInfo.blockHeight, txInfo.txHash, txInfo.txTimestamp)
-                        else listOf(it.vote, it.blockHeight, it.txHash, it.txTimestamp)
-                    } ?: listOf(vote.option.name, txInfo.blockHeight, txInfo.txHash, txInfo.txTimestamp)
-                )
-                .let { (v, b, hash, time) ->
-                    listOf(
-                        -1,
-                        vote.proposalId,
-                        addrInfo.addrId,
-                        vote.voter,
-                        addrInfo.isValidator,
-                        v,
-                        b,
-                        hash,
-                        time,
-                        0
-                    ).toProcedureObject()
-                }
+            votes.map {
+                listOf(
+                    -1,
+                    proposalId,
+                    addrInfo.addrId,
+                    addrInfo.addr,
+                    addrInfo.isValidator,
+                    it.option.name,
+                    txInfo.blockHeight,
+                    txInfo.txHash,
+                    txInfo.txTimestamp,
+                    0,
+                    it.weight.toDouble()
+                ).toProcedureObject()
+            }
         }
     }
 
@@ -238,6 +236,7 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
     var address by GovVoteTable.address
     var isValidator by GovVoteTable.isValidator
     var vote by GovVoteTable.vote
+    var weight by GovVoteTable.weight
     var blockHeight by GovVoteTable.blockHeight
     var txHash by GovVoteTable.txHash
     var txTimestamp by GovVoteTable.txTimestamp

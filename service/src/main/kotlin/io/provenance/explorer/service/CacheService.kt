@@ -1,6 +1,7 @@
 package io.provenance.explorer.service
 
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.entities.CacheKeys
 import io.provenance.explorer.domain.entities.CacheUpdateRecord
 import io.provenance.explorer.domain.entities.SpotlightCacheRecord
 import io.provenance.explorer.domain.models.explorer.Spotlight
@@ -19,4 +20,7 @@ class CacheService {
     fun getCacheValue(key: String) = CacheUpdateRecord.fetchCacheByKey(key)
 
     fun updateCacheValue(key: String, value: String) = CacheUpdateRecord.updateCacheByKey(key, value)
+
+    fun getAvgBlockTime() =
+        getSpotlight()?.avgBlockTime ?: getCacheValue(CacheKeys.STANDARD_BLOCK_TIME.key)!!.cacheValue!!.toBigDecimal()
 }

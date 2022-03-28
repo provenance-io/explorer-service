@@ -36,8 +36,8 @@ class SpotlightCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             SpotlightCacheRecord.all()
                 .orderBy(Pair(SpotlightCacheTable.id, SortOrder.DESC))
                 .limit(1)
-                .first()
-                .spotlight
+                .firstOrNull()
+                ?.spotlight
         }
 
         fun insertIgnore(json: Spotlight) = transaction {
@@ -166,7 +166,9 @@ object CacheUpdateTable : IntIdTable(name = "cache_update") {
 
 enum class CacheKeys(val key: String) {
     PRICING_UPDATE("pricing_update"),
-    CHAIN_RELEASES("chain_releases")
+    CHAIN_RELEASES("chain_releases"),
+    SPOTLIGHT_PROCESSING("spotlight_processing"),
+    STANDARD_BLOCK_TIME("standard_block_time")
 }
 
 class CacheUpdateRecord(id: EntityID<Int>) : IntEntity(id) {

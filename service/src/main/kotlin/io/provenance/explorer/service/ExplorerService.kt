@@ -5,6 +5,7 @@ import com.google.protobuf.Any
 import com.google.protobuf.util.JsonFormat
 import cosmos.bank.v1beta1.params
 import cosmos.base.tendermint.v1beta1.Query
+import cosmos.gov.v1beta1.Gov
 import cosmos.upgrade.v1beta1.Upgrade
 import io.ktor.client.call.receive
 import io.ktor.client.features.ResponseException
@@ -159,15 +160,20 @@ class ExplorerService(
 
     fun getSpotlightStatistics() = cacheService.getSpotlight()
 
-    fun createSpotlight() = getBondedTokenRatio().let {
-        Spotlight(
-            latestBlock = getBlockAtHeight(blockService.getMaxBlockCacheHeight() - 1),
-            avgBlockTime = BlockProposerRecord.findAvgBlockCreation(100),
-            bondedTokens = CountStrTotal(it.first.toString(), it.second, NHASH),
-            totalTxCount = BlockCacheHourlyTxCountsRecord.getTotalTxCount().toBigInteger(),
-            totalAum = assetService.getTotalAum().toCoinStr(USD_UPPER)
-        )
-    }.let { cacheService.addSpotlightToCache(it) }
+    fun createSpotlight() =
+        when {
+            cacheService.getCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key)?.cacheValue.toBoolean() ->
+                getBondedTokenRatio().let {
+                    Spotlight(
+                        latestBlock = getBlockAtHeight(blockService.getMaxBlockCacheHeight() - 1),
+                        avgBlockTime = BlockProposerRecord.findAvgBlockCreation(100),
+                        bondedTokens = CountStrTotal(it.first.toString(), it.second, NHASH),
+                        totalTxCount = BlockCacheHourlyTxCountsRecord.getTotalTxCount().toBigInteger(),
+                        totalAum = assetService.getTotalAum().toCoinStr(USD_UPPER)
+                    )
+                }.let { cacheService.addSpotlightToCache(it) }
+            else -> null
+        }
 
     fun getBondedTokenRatio() = let {
         val totalBlockChainTokens = assetService.getCurrentSupply(NHASH)
@@ -196,6 +202,7 @@ class ExplorerService(
         val typeUrl = Any.pack(Upgrade.SoftwareUpgradeProposal.getDefaultInstance()).typeUrl
         val scheduledName = govClient.getIfUpgradeScheduled()?.plan?.name
         val proposals = GovProposalRecord.findByProposalType(typeUrl)
+            .filter { it.status == Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name }
         val knownReleases =
             CacheUpdateRecord.fetchCacheByKey(CacheKeys.CHAIN_RELEASES.key)?.cacheValue?.let {
                 VANILLA_MAPPER.readValue<List<GithubReleaseData>>(it)

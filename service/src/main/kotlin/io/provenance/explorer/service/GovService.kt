@@ -3,6 +3,7 @@ package io.provenance.explorer.service
 import com.google.protobuf.Any
 import com.google.protobuf.util.JsonFormat
 import cosmos.gov.v1beta1.Gov
+import cosmos.gov.v1beta1.Gov.VoteOption
 import cosmos.gov.v1beta1.Tx
 import cosmwasm.wasm.v1beta1.Proposal
 import io.provenance.explorer.config.ResourceNotFoundException
@@ -16,7 +17,6 @@ import io.provenance.explorer.domain.entities.GovVoteRecord
 import io.provenance.explorer.domain.entities.ProposalMonitorRecord
 import io.provenance.explorer.domain.entities.ProposalType
 import io.provenance.explorer.domain.entities.SmCodeRecord
-import io.provenance.explorer.domain.entities.SpotlightCacheRecord
 import io.provenance.explorer.domain.entities.TxSmCodeRecord
 import io.provenance.explorer.domain.entities.ValidatorState.ACTIVE
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
@@ -63,7 +63,8 @@ class GovService(
     private val govClient: GovGrpcClient,
     private val protoPrinter: JsonFormat.Printer,
     private val valService: ValidatorService,
-    private val smContractClient: SmartContractGrpcClient
+    private val smContractClient: SmartContractGrpcClient,
+    private val cacheService: CacheService
 ) {
     protected val logger = logger(GovService::class)
 
@@ -95,7 +96,7 @@ class GovService(
             else -> return@transaction null
         }
         val votingEndTime = govClient.getProposal(proposalId)!!.proposal.votingEndTime.toDateTime()
-        val avgBlockTime = SpotlightCacheRecord.getSpotlight().avgBlockTime.multiply(BigDecimal(1000)).toLong()
+        val avgBlockTime = cacheService.getAvgBlockTime().multiply(BigDecimal(1000)).toLong()
         val blocksUntilCompletion = (votingEndTime.millis - txInfo.txTimestamp.millis).floorDiv(avgBlockTime).toInt()
 
         ProposalMonitorRecord.buildInsert(
@@ -160,8 +161,8 @@ class GovService(
             GovDepositRecord.buildInserts(txInfo, proposalId, depositType, amountList, addrInfo)
         }
 
-    fun buildVote(txInfo: TxData, vote: Tx.MsgVote) =
-        GovVoteRecord.buildInsert(txInfo, vote, getAddressDetails(vote.voter))
+    fun buildVote(txInfo: TxData, votes: List<Gov.WeightedVoteOption>, voter: String, proposalId: Long) =
+        GovVoteRecord.buildInsert(txInfo, votes, getAddressDetails(voter), proposalId)
 
     private fun getParams(param: GovParamType) = govClient.getParams(param)
 
@@ -227,17 +228,17 @@ class GovService(
             )
         }
         val dbRecords = GovVoteRecord.findByProposalId(proposalId)
-        val voteRecords = dbRecords.map { mapVoteRecord((it)) }
-        val indTallies = dbRecords.groupingBy { it.answer }.eachCount()
+        val voteRecords = dbRecords.groupBy { it.voter }.map { (k, v) -> mapVoteRecord(k, v) }
+        val indTallies = dbRecords.groupingBy { it.vote }.eachCount()
         val tallies = govClient.getTally(proposalId).tally
         val tally = VotesTally(
-            Tally(indTallies.getOrDefault(Gov.VoteOption.VOTE_OPTION_YES.name, 0), CoinStr(tallies.yes, NHASH)),
-            Tally(indTallies.getOrDefault(Gov.VoteOption.VOTE_OPTION_NO.name, 0), CoinStr(tallies.no, NHASH)),
+            Tally(indTallies.getOrDefault(VoteOption.VOTE_OPTION_YES.name, 0), CoinStr(tallies.yes, NHASH)),
+            Tally(indTallies.getOrDefault(VoteOption.VOTE_OPTION_NO.name, 0), CoinStr(tallies.no, NHASH)),
             Tally(
-                indTallies.getOrDefault(Gov.VoteOption.VOTE_OPTION_NO_WITH_VETO.name, 0),
+                indTallies.getOrDefault(VoteOption.VOTE_OPTION_NO_WITH_VETO.name, 0),
                 CoinStr(tallies.noWithVeto, NHASH)
             ),
-            Tally(indTallies.getOrDefault(Gov.VoteOption.VOTE_OPTION_ABSTAIN.name, 0), CoinStr(tallies.abstain, NHASH)),
+            Tally(indTallies.getOrDefault(VoteOption.VOTE_OPTION_ABSTAIN.name, 0), CoinStr(tallies.abstain, NHASH)),
             Tally(dbRecords.count(), CoinStr(tallies.sum().stringfy(), NHASH))
         )
         GovVotesDetail(params, tally, voteRecords)
@@ -247,16 +248,23 @@ class GovService(
         this.yes.toBigDecimal().plus(this.no.toBigDecimal()).plus(this.noWithVeto.toBigDecimal())
             .plus(this.abstain.toBigDecimal())
 
-    private fun mapVoteRecord(record: VoteDbRecord) = VoteRecord(
-        getAddressObj(record.voter, record.isValidator),
-        record.answer,
-        record.blockHeight,
-        record.txHash,
-        record.txTimestamp.toString(),
-        record.proposalId,
-        record.proposalTitle,
-        record.proposalStatus
-    )
+    private fun mapVoteRecord(voter: String, records: List<VoteDbRecord>) =
+        records[0].let { voteData ->
+            VoteRecord(
+                getAddressObj(voter, voteData.isValidator),
+                records.associate { it.vote to it.weight }.fillVoteSet(),
+                voteData.blockHeight,
+                voteData.txHash,
+                voteData.txTimestamp.toString(),
+                voteData.proposalId,
+                voteData.proposalTitle,
+                voteData.proposalStatus
+            )
+        }
+
+    private fun Map<String, Double>.fillVoteSet() =
+        (VoteOption.values().toList() - VoteOption.VOTE_OPTION_UNSPECIFIED - VoteOption.UNRECOGNIZED)
+            .associate { it.name to null } + this
 
     fun getProposalDeposits(proposalId: Long, page: Int, count: Int) = transaction {
         GovDepositRecord.getByProposalIdPaginated(proposalId, count, page.toOffset(count)).map {
@@ -277,12 +285,14 @@ class GovService(
     fun getAddressVotes(address: String, page: Int, count: Int) = transaction {
         val addr = AccountRecord.findByAddress(address)
             ?: throw ResourceNotFoundException("Invalid account address: '$address'")
-        GovVoteRecord.getByAddrIdPaginated(addr.id.value, count, page.toOffset(count)).map {
-            mapVoteRecord(it)
-        }.let {
-            val total = GovVoteRecord.getByAddrIdCount(addr.id.value)
-            PagedResults(total.pageCountOfResults(count), it, total)
-        }
+        GovVoteRecord.getByAddrIdPaginated(addr.id.value, count, page.toOffset(count))
+            .groupBy { it.proposalId }
+            .map { (_, v) ->
+                mapVoteRecord(address, v)
+            }.let {
+                val total = GovVoteRecord.getByAddrIdCount(addr.id.value)
+                PagedResults(total.toLong().pageCountOfResults(count), it, total.toLong())
+            }
     }
 }
 

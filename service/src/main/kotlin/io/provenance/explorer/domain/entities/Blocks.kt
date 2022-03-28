@@ -92,12 +92,9 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
                 .first()[dateTrunc].toInt()
         }
 
-        fun getBlocksWithTxs(count: Int, offset: Int) = transaction {
-            BlockCacheRecord.find { BlockCacheTable.txCount greater 0 }.limit(count, offset.toLong())
-        }
-
-        fun getCountWithTxs() = transaction {
-            BlockCacheRecord.find { BlockCacheTable.txCount greater 0 }.count()
+        fun getMaxBlockHeightOrNull() = transaction {
+            val maxHeight = Max(BlockCacheTable.height, IntegerColumnType())
+            BlockCacheTable.slice(maxHeight).selectAll().firstOrNull()?.let { it[maxHeight] }
         }
 
         fun getMaxBlockHeight() = transaction {

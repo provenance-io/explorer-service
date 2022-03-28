@@ -85,6 +85,7 @@ class AsyncService(
 
         BlockTxCountsCacheRecord.updateTxCounts()
         BlockProposerRecord.calcLatency()
+        cacheService.updateCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key, true.toString())
     }
 
     fun getBlockIndex() = blockService.getBlockIndexFromCache()?.let {

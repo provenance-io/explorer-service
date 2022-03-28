@@ -33,6 +33,20 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+* Update vote ingestion to include Weighted Votes #323
+
+### Bug Fixes
+* Updated how the service runs on an empty DB
+
+### Data
+* Migration 1.58 - Add weight to proposal votes #323
+  * Updated `gov_vote` to add `weight` column
+  * Split out tx ingestion pieces into their own routines for easier updating
+  * Inserting existing weighted votes
+* Migration 1.59 - Add `cache_update` records for spotlight processing, default avg block time
+  * Used to ensure values are present for some initial data processing
+
 ## [v4.1.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.1.0) - 2022-03-24
 ### Release Name: Abu Bakr II
 

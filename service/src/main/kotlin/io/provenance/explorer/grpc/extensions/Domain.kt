@@ -7,6 +7,7 @@ import cosmos.base.query.v1beta1.pageRequest
 import cosmos.crypto.multisig.Keys
 import cosmos.distribution.v1beta1.Distribution
 import cosmos.gov.v1beta1.Gov
+import cosmos.gov.v1beta1.Tx
 import cosmos.mint.v1beta1.Mint
 import cosmos.slashing.v1beta1.Slashing
 import io.provenance.explorer.config.ResourceNotFoundException
@@ -141,3 +142,5 @@ fun Slashing.Params.toDto() = SlashingParams(
 )
 
 fun MsgFee.toDto() = MsgBasedFee(this.msgTypeUrl, this.additionalFee.toData())
+
+fun Tx.MsgVote.toWeightedVote() = Gov.WeightedVoteOption.newBuilder().setOption(this.option).setWeight("1.00").build()
