@@ -38,6 +38,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Bug Fixes
 * Updated how the service runs on an empty DB
+* Fixed pagination on Validators at Height API #326
 
 ### Data
 * Migration 1.58 - Add weight to proposal votes #323
