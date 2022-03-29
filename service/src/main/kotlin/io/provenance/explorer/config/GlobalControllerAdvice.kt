@@ -1,6 +1,7 @@
 package io.provenance.explorer.config
 
 import io.grpc.StatusRuntimeException
+import io.provenance.explorer.domain.exceptions.InvalidArgumentException
 import io.provenance.explorer.domain.exceptions.TendermintApiException
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
@@ -42,6 +43,15 @@ class GlobalControllerAdvice : ResponseEntityExceptionHandler() {
     fun handleIllegalArg(exception: IllegalArgumentException, request: HttpServletRequest): ResponseEntity<Any> {
         logger.info("404 on '${request.requestURI}' with error '${exception.message}'")
         return ResponseEntity.notFound().build()
+    }
+
+    /**
+     * Catch InvalidArgumentException, return 400
+     */
+    @ExceptionHandler(InvalidArgumentException::class)
+    fun handleInvalidArg(exception: InvalidArgumentException, request: HttpServletRequest): ResponseEntity<Any> {
+        logger.info("400 on '${request.requestURI}' with error '${exception.message}'")
+        return ResponseEntity<Any>(exception.message, HttpHeaders(), HttpStatus.BAD_REQUEST)
     }
 }
 

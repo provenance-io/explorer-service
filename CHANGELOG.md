@@ -33,6 +33,14 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Add notification/announcement support #328
+  * `/api/v2/notifications/proposals` - Count of OPEN proposals, subcount of UPGRADE proposals
+  * `/api/v2/notifications/upgrades` - List of expected, scheduled upgrades
+  * `/api/v2/notifications/announcement` - PUT an announcement to be displayed in Explorer
+  * `/api/v2/notifications/announcement/all` - Paginated list of announcements
+  * `/api/v2/notifications/announcement/{id}` - DELETE an existing announcement
+
 ### Improvements
 * Update vote ingestion to include Weighted Votes #323
 
@@ -47,6 +55,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Inserting existing weighted votes
 * Migration 1.59 - Add `cache_update` records for spotlight processing, default avg block time
   * Used to ensure values are present for some initial data processing
+* Migration 1.60 - Add `announcements` table #328
 
 ## [v4.1.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.1.0) - 2022-03-24
 ### Release Name: Abu Bakr II
