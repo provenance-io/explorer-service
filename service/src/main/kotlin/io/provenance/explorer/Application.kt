@@ -7,6 +7,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.java.Java
 import io.ktor.client.features.json.JacksonSerializer
 import io.ktor.client.features.json.JsonFeature
+import io.provenance.explorer.config.EventStreamProperties
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.extensions.configureProvenance
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
@@ -21,7 +22,7 @@ import java.util.TimeZone
 
 @ComponentScan(basePackages = ["io.provenance.explorer" ])
 @EnableAutoConfiguration(exclude = [HibernateJpaAutoConfiguration::class])
-@EnableConfigurationProperties(value = [ExplorerProperties::class])
+@EnableConfigurationProperties(value = [ExplorerProperties::class, EventStreamProperties::class])
 @EnableScheduling
 @EnableWebMvc
 @EnableSwagger2

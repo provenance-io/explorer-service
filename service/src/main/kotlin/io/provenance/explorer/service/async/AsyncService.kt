@@ -50,7 +50,7 @@ class AsyncService(
     protected val logger = logger(AsyncService::class)
     protected var collectHistorical = true
 
-    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
+//    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateLatestBlockHeightJob() {
         val index = getBlockIndex()
         val startHeight = blockService.getLatestBlockHeight()

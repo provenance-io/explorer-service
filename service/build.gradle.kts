@@ -26,6 +26,11 @@ dependencies {
     implementation(Libraries.KotlinReflect)
     implementation(Libraries.KotlinStdlib)
 
+    implementation("io.provenance.eventstream", "es-core", "0.6.0-rc1")
+    implementation("io.provenance.eventstream", "es-api-model", "0.6.0-rc1")
+    implementation("io.provenance.eventstream", "es-api", "0.6.0-rc1")
+    implementation("com.squareup.okhttp3", "okhttp", "4.9.3")
+
     implementation(Libraries.SpringBootStarterWeb)
     implementation(Libraries.SpringBootStarterJdbc)
     implementation(Libraries.SpringBootStarterActuator)
