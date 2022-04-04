@@ -55,6 +55,11 @@ fun Message.toProposalContent(protoPrinter: JsonFormat.Printer) =
             node
         }
 
+val passStatuses = listOf(Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name)
+val failStatuses =
+    listOf(Gov.ProposalStatus.PROPOSAL_STATUS_FAILED.name, Gov.ProposalStatus.PROPOSAL_STATUS_REJECTED.name)
+val completeStatuses = passStatuses + failStatuses
+
 class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<GovProposalRecord>(GovProposalTable) {
 
@@ -82,13 +87,7 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun getNonFinalProposals() = transaction {
-            GovProposalRecord.find {
-                GovProposalTable.status notInList listOf(
-                    Gov.ProposalStatus.PROPOSAL_STATUS_FAILED.name,
-                    Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name,
-                    Gov.ProposalStatus.PROPOSAL_STATUS_REJECTED.name
-                )
-            }.toList()
+            GovProposalRecord.find { GovProposalTable.status notInList completeStatuses }.toList()
         }
 
         fun buildInsert(
@@ -361,10 +360,13 @@ class ProposalMonitorRecord(id: EntityID<Int>) : IntEntity(id) {
             proposalStatus: String,
             currentBlockTime: DateTime
         ) =
-            if (proposalStatus == Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name &&
-                this.votingEndTime.isBefore(currentBlockTime)
-            )
+            if (passStatuses.contains(proposalStatus) && this.votingEndTime.isBefore(currentBlockTime))
                 this.apply { this.readyForProcessing = true }
+            else if (failStatuses.contains(proposalStatus))
+                this.apply {
+                    this.readyForProcessing = true
+                    this.processed = true
+                }
             else null
 
         fun getUnprocessed() = transaction {
