@@ -2,6 +2,7 @@ package io.provenance.explorer.service.utility
 
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.google.protobuf.util.JsonFormat
+import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.ErrorFinding
@@ -11,20 +12,25 @@ import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.UnknownTxType
 import io.provenance.explorer.domain.extensions.fromBase64
 import io.provenance.explorer.domain.extensions.toObjectNode
+import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.getCategoryForType
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
 import io.provenance.explorer.service.AssetService
+import io.provenance.explorer.service.async.AsyncCachingV2
 import kotlinx.coroutines.runBlocking
 import net.pearx.kasechange.toSnakeCase
 import net.pearx.kasechange.universalWordSplitter
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 
 @Service
 class UtilityService(
     private val protoPrinter: JsonFormat.Printer,
+    private val protoParser: JsonFormat.Parser,
     private val markerClient: MarkerGrpcClient,
-    private val assetService: AssetService
+    private val assetService: AssetService,
+    private val async: AsyncCachingV2
 ) {
 
     protected val logger = logger(UtilityService::class)
@@ -82,6 +88,12 @@ class UtilityService(
                 )
             }
         }
+
+    fun parseRawTxJson(rawJson: String) = transaction {
+        val builder = ServiceOuterClass.GetTxResponse.newBuilder()
+        protoParser.ignoringUnknownFields().merge(rawJson, builder)
+        async.addTxToCache(builder.build(), DateTime.now(), BlockProposer(1, "", DateTime.now()))
+    }
 
     fun stringToJson(str: String) = str.toObjectNode()
 
