@@ -43,10 +43,15 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Improvements
 * Update vote ingestion to include Weighted Votes #323
+* Updated the Dockerfile to include support for Vault secrets
 
 ### Bug Fixes
 * Updated how the service runs on an empty DB
 * Fixed pagination on Validators at Height API #326
+* Fixed how gov proposals were being processed if they hadn't gotten out of the deposit period #330
+* Fixed processing of IBC msgs #331
+  * Related to incorrect value mapping
+  * Added sort to block retry so they process in height order
 
 ### Data
 * Migration 1.58 - Add weight to proposal votes #323

@@ -490,8 +490,9 @@ class AsyncCachingV2(
                             )
                         }
                     }
-                tx.tx.body.messagesList.mapNotNull { it.getIbcChannelEvents() }
+                tx.tx.body.messagesList.map { it.getIbcChannelEvents() }
                     .forEachIndexed { idx, pair ->
+                        if (pair == null) return@forEachIndexed
                         val portAttr = pair.second.first
                         val channelAttr = pair.second.second
                         val (port, channel) = tx.txResponse.logsList[idx]
@@ -503,8 +504,9 @@ class AsyncCachingV2(
                     }
 
                 tx.tx.body.messagesList
-                    .mapNotNull { msg -> msg.getIbcLedgerMsgs() }
+                    .map { msg -> msg.getIbcLedgerMsgs() }
                     .forEachIndexed fe@{ idx, any ->
+                        if (any == null) return@fe
                         val ledger = when {
                             any.typeUrl.endsWith("MsgTransfer") -> {
                                 val msg = any.toMsgTransfer()

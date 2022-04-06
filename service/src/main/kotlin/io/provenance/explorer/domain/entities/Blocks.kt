@@ -483,6 +483,7 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
         fun getRecordsToRetry() = transaction {
             BlockTxRetryRecord
                 .find { (BlockTxRetryTable.retried eq false) and (BlockTxRetryTable.success eq false) }
+                .orderBy(Pair(BlockTxRetryTable.height, SortOrder.ASC))
                 .limit(50)
                 .map { it.height }
         }
