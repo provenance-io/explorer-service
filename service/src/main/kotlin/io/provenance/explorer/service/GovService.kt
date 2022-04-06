@@ -70,19 +70,24 @@ class GovService(
     protected val logger = logger(GovService::class)
 
     fun buildProposal(proposalId: Long, txInfo: TxData, addr: String, isSubmit: Boolean) = transaction {
-        govClient.getProposal(proposalId).let {
+        govClient.getProposal(proposalId)?.let {
             GovProposalRecord.buildInsert(it.proposal, protoPrinter, txInfo, getAddressDetails(addr), isSubmit)
         }
     }
 
     fun updateProposal(record: GovProposalRecord) = transaction {
-        govClient.getProposal(record.proposalId).let { res ->
+        govClient.getProposal(record.proposalId)?.let { res ->
             if (res.proposal.status.name != record.status)
-                record.apply { this.status = res.proposal.status.name }
-        }
+                record.apply {
+                    this.status = res.proposal.status.name
+                    this.data = res.proposal
+                }
+        } // Assumes it is gone due to no deposit
+            ?: record.apply { this.status = Gov.ProposalStatus.PROPOSAL_STATUS_REJECTED.name }
     }
 
     fun buildProposalMonitor(txMsg: Tx.MsgSubmitProposal, proposalId: Long, txInfo: TxData) = transaction {
+        val proposal = govClient.getProposal(proposalId) ?: return@transaction null
         val (proposalType, dataHash) = when {
             txMsg.content.typeUrl.endsWith("v1beta1.StoreCodeProposal") ->
                 ProposalType.STORE_CODE to
@@ -96,7 +101,7 @@ class GovService(
                         .wasmByteCode.gzipUncompress().to256Hash()
             else -> return@transaction null
         }
-        val votingEndTime = govClient.getProposal(proposalId)!!.proposal.votingEndTime.toDateTime()
+        val votingEndTime = proposal.proposal.votingEndTime.toDateTime()
         val avgBlockTime = cacheService.getAvgBlockTime().multiply(BigDecimal(1000)).toLong()
         val blocksUntilCompletion = (votingEndTime.millis - txInfo.txTimestamp.millis).floorDiv(avgBlockTime).toInt()
 
@@ -110,18 +115,18 @@ class GovService(
         )
     }
 
-    fun processProposal(proposal: ProposalMonitorRecord) = transaction {
-        when (ProposalType.valueOf(proposal.proposalType)) {
+    fun processProposal(proposalMon: ProposalMonitorRecord) = transaction {
+        when (ProposalType.valueOf(proposalMon.proposalType)) {
             ProposalType.STORE_CODE -> {
-                val creationHeight = BlockCacheRecord.getFirstBlockAfterTime(proposal.votingEndTime).height
+                val creationHeight = BlockCacheRecord.getFirstBlockAfterTime(proposalMon.votingEndTime).height
                 val records = SmCodeRecord.all().sortedByDescending { it.id.value }
-                val matching = records.firstOrNull { proposal.dataHash == it.dataHash }
+                val matching = records.firstOrNull { proposalMon.dataHash == it.dataHash }
                 // find existing record and update, else search for next code id only.
                 matching?.apply { this.creationHeight = creationHeight }
                     ?.also {
-                        proposal.apply { this.processed = true }
+                        proposalMon.apply { this.processed = true }
                         // Insert matching tx join record
-                        GovProposalRecord.findByProposalId(proposal.proposalId)!!.let { prop ->
+                        GovProposalRecord.findByProposalId(proposalMon.proposalId)!!.let { prop ->
                             TxSmCodeRecord.insertIgnore(
                                 TxData(prop.blockHeight, prop.txHashId.id.value, prop.txHash, prop.txTimestamp),
                                 it.id.value
@@ -130,13 +135,18 @@ class GovService(
                     }
                     ?: records.first().id.value.let { start ->
                         smContractClient.getSmCode(start.toLong() + 1)?.let {
-                            if (it.codeInfo.dataHash.toBase64() == proposal.dataHash) {
+                            if (it.codeInfo.dataHash.toBase64() == proposalMon.dataHash) {
                                 SmCodeRecord.getOrInsert(start + 1, it, creationHeight)
-                                proposal.apply { this.processed = true }
+                                proposalMon.apply { this.processed = true }
                                 // Insert matching tx join record
-                                GovProposalRecord.findByProposalId(proposal.proposalId)!!.let { prop ->
+                                GovProposalRecord.findByProposalId(proposalMon.proposalId)!!.let { prop ->
                                     TxSmCodeRecord.insertIgnore(
-                                        TxData(prop.blockHeight, prop.txHashId.id.value, prop.txHash, prop.txTimestamp),
+                                        TxData(
+                                            prop.blockHeight,
+                                            prop.txHashId.id.value,
+                                            prop.txHash,
+                                            prop.txTimestamp
+                                        ),
                                         start + 1
                                     )
                                 }

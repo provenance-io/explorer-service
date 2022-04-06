@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+
+## Used for Vault implementation for secret keeping
+## See https://www.vaultproject.io/
+if [ -d "/vault/secrets" ]; then
+  for env_file in $(find /vault/secrets -name '*.env'); do
+    . ${env_file}
+  done
+fi
+
+eval $*

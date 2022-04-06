@@ -440,7 +440,8 @@ class AsyncCachingV2(
                                 .let { id ->
                                     pair.second.toMsgSubmitProposal().let {
                                         txUpdate.apply {
-                                            this.proposals.add(govService.buildProposal(id, txInfo, it.proposer, true))
+                                            govService.buildProposal(id, txInfo, it.proposer, true)
+                                                ?.let { this.proposals.add(it) }
                                             this.deposits.addAll(govService.buildDeposit(id, txInfo, null, it))
                                             govService.buildProposalMonitor(it, id, txInfo).let { mon ->
                                                 if (mon != null) this.proposalMonitors.add(mon)
@@ -451,17 +452,15 @@ class AsyncCachingV2(
                         GovMsgType.DEPOSIT ->
                             pair.second.toMsgDeposit().let {
                                 txUpdate.apply {
-                                    this.proposals.add(
-                                        govService.buildProposal(it.proposalId, txInfo, it.depositor, isSubmit = false)
-                                    )
+                                    govService.buildProposal(it.proposalId, txInfo, it.depositor, isSubmit = false)
+                                        ?.let { this.proposals.add(it) }
                                     this.deposits.addAll(govService.buildDeposit(it.proposalId, txInfo, it, null))
                                 }
                             }
                         GovMsgType.VOTE -> pair.second.toMsgVote().let {
                             txUpdate.apply {
-                                this.proposals.add(
-                                    govService.buildProposal(it.proposalId, txInfo, it.voter, isSubmit = false)
-                                )
+                                govService.buildProposal(it.proposalId, txInfo, it.voter, isSubmit = false)
+                                    ?.let { this.proposals.add(it) }
                                 this.votes.addAll(
                                     govService.buildVote(txInfo, listOf(it.toWeightedVote()), it.voter, it.proposalId)
                                 )
@@ -469,9 +468,8 @@ class AsyncCachingV2(
                         }
                         GovMsgType.WEIGHTED -> pair.second.toMsgVoteWeighted().let {
                             txUpdate.apply {
-                                this.proposals.add(
-                                    govService.buildProposal(it.proposalId, txInfo, it.voter, isSubmit = false)
-                                )
+                                govService.buildProposal(it.proposalId, txInfo, it.voter, isSubmit = false)
+                                    ?.let { this.proposals.add(it) }
                                 this.votes.addAll(govService.buildVote(txInfo, it.optionsList, it.voter, it.proposalId))
                             }
                         }

@@ -23,7 +23,9 @@ RUN gradle clean build --no-daemon
 FROM openjdk:11-jre
 
 COPY --from=build /app/service/build/libs/*.jar /service.jar
+ADD docker/service-configure /configure
 
 EXPOSE 8612/tcp
 
-CMD java -jar /service.jar
+ENTRYPOINT ["/configure"]
+CMD ["java", "-jar", "/service.jar"]

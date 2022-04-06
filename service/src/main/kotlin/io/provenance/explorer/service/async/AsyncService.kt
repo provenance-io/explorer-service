@@ -85,7 +85,8 @@ class AsyncService(
 
         BlockTxCountsCacheRecord.updateTxCounts()
         BlockProposerRecord.calcLatency()
-        cacheService.updateCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key, true.toString())
+        if (!cacheService.getCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key)!!.cacheValue.toBoolean())
+            cacheService.updateCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key, true.toString())
     }
 
     fun getBlockIndex() = blockService.getBlockIndexFromCache()?.let {
@@ -130,7 +131,7 @@ class AsyncService(
         }
     }
 
-    @Scheduled(cron = "0 30 0/1 * * ?") // Every hour at the 30 minute mark
+    @Scheduled(cron = "0 0/20 * * * ?") // Every 20 minutes
     fun performProposalUpdates() = transaction {
         logger.info("Performing proposal updates")
         GovProposalRecord.getNonFinalProposals().forEach { govService.updateProposal(it) }
