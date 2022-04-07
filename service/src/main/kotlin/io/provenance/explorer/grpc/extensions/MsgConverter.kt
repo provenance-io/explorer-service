@@ -38,6 +38,7 @@ import io.provenance.explorer.domain.core.toMAddressScope
 import io.provenance.explorer.domain.core.toMAddressScopeSpec
 import io.provenance.explorer.domain.core.toMAddressSession
 import io.provenance.explorer.domain.core.toUuidOrNull
+import io.provenance.explorer.domain.models.explorer.TxIbcData
 import io.provenance.explorer.grpc.extensions.MdEvents.AA
 import io.provenance.explorer.grpc.extensions.MdEvents.AD
 import io.provenance.explorer.grpc.extensions.MdEvents.ADD
@@ -384,31 +385,111 @@ fun Any.getAssociatedDenoms(): List<String> =
 // ///////// IBC
 fun Any.isIbcTransferMsg() = typeUrl.endsWith("MsgTransfer")
 
-// Returns Pair(Event type, Pair(port, channel))
-fun Any.getIbcChannelEvents() =
+fun Any.getTxIbcClientChannel() =
     when {
-        typeUrl.endsWith("MsgTransfer") -> "send_packet" to Pair("packet_src_port", "packet_src_channel")
-        typeUrl.endsWith("MsgChannelOpenInit") -> "channel_open_init" to Pair("port_id", "channel_id")
-        typeUrl.endsWith("MsgChannelOpenTry") -> "channel_open_try" to Pair("port_id", "channel_id")
-        typeUrl.endsWith("MsgChannelOpenAck") -> "channel_open_ack" to Pair("port_id", "channel_id")
-        typeUrl.endsWith("MsgChannelOpenConfirm") -> "channel_open_confirm" to Pair("port_id", "channel_id")
-        typeUrl.endsWith("MsgChannelCloseInit") -> "channel_close_init" to Pair("port_id", "channel_id")
-        typeUrl.endsWith("MsgChannelCloseConfirm") -> "channel_close_confirm" to Pair("port_id", "channel_id")
-        typeUrl.endsWith("MsgRecvPacket") -> "recv_packet" to Pair("packet_dst_port", "packet_dst_channel")
-        typeUrl.endsWith("MsgTimeout") -> "timeout_packet" to Pair("packet_src_port", "packet_src_channel")
-        typeUrl.endsWith("MsgAcknowledgement") -> "acknowledge_packet" to Pair("packet_src_port", "packet_src_channel")
+        typeUrl.endsWith("MsgCreateClient") -> TxIbcData(null, null, null, "create_client", "client_id", null, null)
+        typeUrl.endsWith("MsgUpdateClient") -> this.toMsgUpdateClient()
+            .let { TxIbcData(it.clientId, null, null, "update_client", "client_id", null, null) }
+        typeUrl.endsWith("MsgConnectionOpenInit") -> this.toMsgConnectionOpenInit()
+            .let { TxIbcData(it.clientId, null, null, "connection_open_init", "client_id", null, null) }
+        typeUrl.endsWith("MsgConnectionOpenTry") -> this.toMsgConnectionOpenTry()
+            .let { TxIbcData(it.clientId, null, null, "connection_open_try", "client_id", null, null) }
+        typeUrl.endsWith("MsgConnectionOpenAck") -> TxIbcData(
+            null,
+            null,
+            null,
+            "connection_open_ack",
+            "client_id",
+            null,
+            null
+        )
+        typeUrl.endsWith("MsgConnectionOpenConfirm") -> TxIbcData(
+            null,
+            null,
+            null,
+            "connection_open_confirm",
+            "client_id",
+            null,
+            null
+        )
+        typeUrl.endsWith("MsgChannelOpenInit") -> this.toMsgChannelOpenInit()
+            .let { TxIbcData(null, it.portId, null, "channel_open_init", null, "port_id", "channel_id") }
+        typeUrl.endsWith("MsgChannelOpenTry") -> this.toMsgChannelOpenTry()
+            .let { TxIbcData(null, it.portId, null, "channel_open_try", null, "port_id", "channel_id") }
+        typeUrl.endsWith("MsgChannelOpenAck") -> this.toMsgChannelOpenAck()
+            .let { TxIbcData(null, it.portId, it.channelId, "channel_open_ack", null, "port_id", "channel_id") }
+        typeUrl.endsWith("MsgChannelOpenConfirm") -> this.toMsgChannelOpenConfirm()
+            .let { TxIbcData(null, it.portId, it.channelId, "channel_open_confirm", null, "port_id", "channel_id") }
+        typeUrl.endsWith("MsgChannelCloseInit") -> this.toMsgChannelCloseInit()
+            .let { TxIbcData(null, it.portId, it.channelId, "channel_close_init", null, "port_id", "channel_id") }
+        typeUrl.endsWith("MsgChannelCloseConfirm") -> this.toMsgChannelCloseConfirm()
+            .let { TxIbcData(null, it.portId, it.channelId, "channel_close_confirm", null, "port_id", "channel_id") }
+        typeUrl.endsWith("MsgTransfer") -> this.toMsgTransfer().let {
+            TxIbcData(
+                null,
+                it.sourcePort,
+                it.sourceChannel,
+                "send_packet",
+                null,
+                "packet_src_port",
+                "packet_src_channel"
+            )
+        }
+        typeUrl.endsWith("MsgRecvPacket") -> this.toMsgRecvPacket().let {
+            TxIbcData(
+                null,
+                it.packet.destinationPort,
+                it.packet.destinationChannel,
+                "recv_packet",
+                null,
+                "packet_dst_port",
+                "packet_dst_channel"
+            )
+        }
+        typeUrl.endsWith("MsgTimeout") -> this.toMsgTimeout().let {
+            TxIbcData(
+                null,
+                it.packet.sourcePort,
+                it.packet.sourceChannel,
+                "timeout_packet",
+                null,
+                "packet_src_port",
+                "packet_src_channel"
+            )
+        }
+        typeUrl.endsWith("MsgTimeoutOnClose") -> this.toMsgTimeoutOnClose().let {
+            TxIbcData(
+                null,
+                it.packet.sourcePort,
+                it.packet.sourceChannel,
+                "timeout_packet",
+                null,
+                "packet_src_port",
+                "packet_src_channel"
+            )
+        }
+        typeUrl.endsWith("MsgAcknowledgement") -> this.toMsgAcknowledgement().let {
+            TxIbcData(
+                null,
+                it.packet.sourcePort,
+                it.packet.sourceChannel,
+                "acknowledge_packet",
+                null,
+                "packet_src_port",
+                "packet_src_channel"
+            )
+        }
         else ->
-            null.also { logger().debug("This typeUrl is not yet supported in as an ibc channel event-based msg: $typeUrl") }
+            null.also { logger().debug("This typeUrl is not yet supported in as an ibc tx msg: $typeUrl") }
     }
-
-// The only case where a channel is not in the events, because no events get emitted
-fun Any.isIbcTimeoutOnClose() = typeUrl.endsWith("MsgTimeoutOnClose")
 
 fun Any.getIbcLedgerMsgs() =
     when {
         typeUrl.endsWith("MsgTransfer") ||
-            typeUrl.endsWith("MsgRecvPacket")
-            || typeUrl.endsWith("MsgAcknowledgement") -> this
+            typeUrl.endsWith("MsgRecvPacket") ||
+            typeUrl.endsWith("MsgAcknowledgement") ||
+            typeUrl.endsWith("MsgTimeout")
+            || typeUrl.endsWith("MsgTimeoutOnClose") -> this
         else -> null.also { logger().debug("This typeUrl is not yet supported in as an ibc ledger msg: $typeUrl") }
     }
 

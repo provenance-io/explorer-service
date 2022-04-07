@@ -57,11 +57,13 @@ class SmartContractController(private val scService: SmartContractService) {
         @RequestParam(defaultValue = "10") @Min(1) @Max(100) count: Int
     ) = ResponseEntity.ok(scService.getAllScContractsPaginated(page, count))
 
-    @ApiOperation("Returns detail about a smart contract ")
+    @ApiOperation("Returns detail about a smart contract")
     @GetMapping("/contract/{contract}")
-    fun getContract(@PathVariable contract: String) = ResponseEntity.ok(scService.getContract(contract))
+    fun getContract(@ApiParam(value = "The contract address") @PathVariable contract: String) =
+        ResponseEntity.ok(scService.getContract(contract))
 
     @ApiOperation("Returns a smart contract's history")
     @GetMapping("/contract/{contract}/history")
-    fun getContractHistory(@PathVariable contract: String) = ResponseEntity.ok(scService.getHistoryByContract(contract))
+    fun getContractHistory(@ApiParam(value = "The contract address") @PathVariable contract: String) =
+        ResponseEntity.ok(scService.getHistoryByContract(contract))
 }

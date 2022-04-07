@@ -52,8 +52,7 @@ class TransactionController(private val transactionService: TransactionService) 
     ) =
         ResponseEntity.ok(
             transactionService.getTxsByQuery(
-                null, null, null, msgType, null, txStatus, count, page, fromDate,
-                toDate, null
+                msgType = msgType, txStatus = txStatus, count = count, page = page, fromDate = fromDate, toDate = toDate
             )
         )
 
@@ -83,9 +82,7 @@ class TransactionController(private val transactionService: TransactionService) 
         @ApiParam(value = "Record count between 1 and 200", defaultValue = "10", required = false)
         @RequestParam(defaultValue = "10") @Min(1) @Max(200) count: Int
     ) = ResponseEntity.ok(
-        transactionService.getTxsByQuery(
-            null, null, null, null, height, null, count, page, null, null, null
-        )
+        transactionService.getTxsByQuery(txHeight = height, count = count, page = page)
     )
 
     @ApiOperation("Returns a heatmap of transaction activity on chain")
@@ -138,6 +135,12 @@ class TransactionController(private val transactionService: TransactionService) 
         @RequestParam(required = false) denom: String?,
         @ApiParam(value = "Use the nft address type, ie. scope, scopespec, or the scope UUID", required = false)
         @RequestParam(required = false) nftAddr: String?,
+        @ApiParam(value = "Use the chain identifying name, ie. osmosis-1", required = false)
+        @RequestParam(required = false) ibcChain: String?,
+        @ApiParam(value = "Use the port portion of a source IBC channel, ie. transfer", required = false)
+        @RequestParam(required = false) ibcSrcPort: String?,
+        @ApiParam(value = "Use the channel portion of a source IBC channel, ie. channel-5", required = false)
+        @RequestParam(required = false) ibcSrcChannel: String?,
         @ApiParam(
             type = "DateTime",
             value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
@@ -151,7 +154,8 @@ class TransactionController(private val transactionService: TransactionService) 
     ) =
         ResponseEntity.ok(
             transactionService.getTxsByQuery(
-                address, denom, module, msgType, null, txStatus, count, page, fromDate, toDate, nftAddr
+                address, denom, module, msgType, null, txStatus, count, page, fromDate, toDate, nftAddr,
+                ibcChain, ibcSrcPort, ibcSrcChannel
             )
         )
 
@@ -178,7 +182,8 @@ class TransactionController(private val transactionService: TransactionService) 
     ) =
         ResponseEntity.ok(
             transactionService.getTxsByQuery(
-                address, null, null, msgType, null, txStatus, count, page, fromDate, toDate, null
+                address = address, msgType = msgType, txStatus = txStatus, count = count, page = page,
+                fromDate = fromDate, toDate = toDate
             )
         )
 
@@ -205,7 +210,10 @@ class TransactionController(private val transactionService: TransactionService) 
     ) =
         ResponseEntity.ok(
             transactionService.getTxsByQuery(
-                null, null, null, msgType, null, txStatus, count, page, fromDate, toDate, nftAddr
+                msgType = msgType, txStatus = txStatus, count = count, page = page, fromDate = fromDate,
+                toDate =
+                toDate,
+                nftAddr = nftAddr
             )
         )
 
@@ -274,4 +282,36 @@ class TransactionController(private val transactionService: TransactionService) 
             toDate
         )
     )
+
+    @ApiOperation("Returns transactions for the IBC module with standard response type")
+    @GetMapping("/ibc/chain/{ibcChain}")
+    fun txsForIbc(
+        @ApiParam(value = "Use the chain identifying name, ie. osmosis-1")
+        @PathVariable ibcChain: String,
+        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
+        @ApiParam(value = "Record count between 1 and 200", defaultValue = "10", required = false)
+        @RequestParam(defaultValue = "10") @Min(1) @Max(200) count: Int,
+        @ApiParam(required = false) @RequestParam(required = false) msgType: String?,
+        @ApiParam(required = false) @RequestParam(required = false) txStatus: TxStatus?,
+        @ApiParam(value = "Use the port portion of a source IBC channel, ie. transfer", required = false)
+        @RequestParam(required = false) ibcSrcPort: String?,
+        @ApiParam(value = "Use the channel portion of a source IBC channel, ie. channel-5", required = false)
+        @RequestParam(required = false) ibcSrcChannel: String?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
+    ) =
+        ResponseEntity.ok(
+            transactionService.getTxsByQuery(
+                msgType = msgType, txStatus = txStatus, count = count, page = page, fromDate = fromDate,
+                toDate = toDate, ibcChain = ibcChain, ibcSrcPort = ibcSrcPort, ibcSrcChannel = ibcSrcChannel
+            )
+        )
 }

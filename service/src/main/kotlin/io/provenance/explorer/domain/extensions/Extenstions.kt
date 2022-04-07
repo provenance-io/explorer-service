@@ -44,6 +44,10 @@ fun ByteString.toDbHash() = Hashing.sha512().hashBytes(this.toByteArray()).asByt
 fun String.toDbHash() = Hashing.sha512().hashBytes(this.toByteArray()).asBytes().base64EncodeString()
 fun ByteArray.to256Hash() = Hashing.sha256().hashBytes(this).asBytes().base64EncodeString()
 fun ByteString.toHash() = this.toByteArray().toBech32Data().hexData
+fun String.decodeHex(): String {
+    require(length % 2 == 0) { "Must have an even length" }
+    return String(chunked(2).map { it.toInt(16).toByte() }.toByteArray())
+}
 
 fun Abci.TxResponse.type() = this.logsList?.flatMap { it.eventsList }
     ?.firstOrNull { it.type == "message" }
@@ -115,6 +119,7 @@ fun Timestamp.toDateTime() = DateTime(Instant.ofEpochSecond(this.seconds, this.n
 fun Timestamp.formattedString() = DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()))
 fun DateTime.startOfDay() = this.withZone(DateTimeZone.UTC).withTimeAtStartOfDay()
 fun String.toDateTime() = DateTime.parse(this)
+fun String.toDateTimeWithFormat(formatter: org.joda.time.format.DateTimeFormatter) = DateTime.parse(this, formatter)
 fun OffsetDateTime.toDateTime() = DateTime(this.toInstant().toEpochMilli(), DateTimeZone.UTC)
 
 fun ServiceOuterClass.GetTxResponse.getFeeTotalPaid() =

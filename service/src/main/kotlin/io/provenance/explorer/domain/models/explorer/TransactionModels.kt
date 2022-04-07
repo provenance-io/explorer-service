@@ -6,12 +6,14 @@ import io.provenance.explorer.domain.core.sql.toObject
 import io.provenance.explorer.domain.entities.GovDepositTable
 import io.provenance.explorer.domain.entities.GovProposalTable
 import io.provenance.explorer.domain.entities.GovVoteTable
+import io.provenance.explorer.domain.entities.IbcLedgerAckTable
 import io.provenance.explorer.domain.entities.IbcLedgerTable
 import io.provenance.explorer.domain.entities.ProposalMonitorTable
 import io.provenance.explorer.domain.entities.SignatureJoinTable
 import io.provenance.explorer.domain.entities.TxAddressJoinTable
 import io.provenance.explorer.domain.entities.TxFeeTable
 import io.provenance.explorer.domain.entities.TxFeepayerTable
+import io.provenance.explorer.domain.entities.TxIbcTable
 import io.provenance.explorer.domain.entities.TxMarkerJoinTable
 import io.provenance.explorer.domain.entities.TxNftJoinTable
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheTable
@@ -29,26 +31,32 @@ data class TxData(
 )
 
 data class TxQueryParams(
-    val addressId: Int?,
-    val addressType: String?,
-    val address: String?,
-    val markerId: Int?,
-    val denom: String?,
-    val msgTypes: List<Int>,
-    val txHeight: Int?,
-    val txStatus: TxStatus?,
+    val addressId: Int? = null,
+    val addressType: String? = null,
+    val address: String? = null,
+    val markerId: Int? = null,
+    val denom: String? = null,
+    val msgTypes: List<Int> = emptyList(),
+    val txHeight: Int? = null,
+    val txStatus: TxStatus? = null,
     val count: Int,
     val offset: Int,
-    val fromDate: DateTime?,
-    val toDate: DateTime?,
-    val nftId: Int?,
-    val nftType: String?,
-    val nftUuid: String?,
-    val smCodeId: Int?,
-    val smContractAddrId: Int?
+    val fromDate: DateTime? = null,
+    val toDate: DateTime? = null,
+    val nftId: Int? = null,
+    val nftType: String? = null,
+    val nftUuid: String? = null,
+    val smCodeId: Int? = null,
+    val smContractAddrId: Int? = null,
+    val ibcChannelIds: List<Int> = emptyList()
 )
 
-fun TxQueryParams.onlyTxQuery() = addressId == null && markerId == null && msgTypes.isEmpty()
+fun TxQueryParams.onlyTxQuery() =
+    addressId == null && addressType == null && address == null &&
+        markerId == null && denom == null &&
+        msgTypes.isEmpty() &&
+        nftId == null &&
+        ibcChannelIds.isEmpty()
 
 data class TxDetails(
     val txHash: String,
@@ -218,7 +226,9 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
             "recv_packet",
             "ibc_transfer",
             "wasm-ibc-close",
-            "wasm-ibc-send"
+            "wasm-ibc-send",
+            "timeout",
+            "timeout_on_close"
         )
     )
 }
@@ -301,11 +311,13 @@ data class TxUpdate(
     var addressJoin: MutableList<String> = mutableListOf(),
     var markerJoin: MutableList<String> = mutableListOf(),
     var nftJoin: MutableList<String> = mutableListOf(),
+    var ibcJoin: MutableList<String> = mutableListOf(),
     var proposals: MutableList<String> = mutableListOf(),
     var proposalMonitors: MutableList<String> = mutableListOf(),
     var deposits: MutableList<String> = mutableListOf(),
     var votes: MutableList<String> = mutableListOf(),
     var ibcLedgers: MutableList<String> = mutableListOf(),
+    var ibcLedgerAcks: MutableList<String> = mutableListOf(),
     var smCodes: MutableList<String> = mutableListOf(),
     var smContracts: MutableList<String> = mutableListOf(),
     var sigs: MutableList<String> = mutableListOf(),
@@ -318,9 +330,10 @@ fun TxUpdate.toProcedureObject() =
         this.tx, this.txGasFee!!, this.txFees.toArray(TxFeeTable.tableName),
         this.txMsgs.toArray("tx_msg"), this.singleMsgs.toArray(TxSingleMessageCacheTable.tableName),
         this.addressJoin.toArray(TxAddressJoinTable.tableName), this.markerJoin.toArray(TxMarkerJoinTable.tableName),
-        this.nftJoin.toArray(TxNftJoinTable.tableName), this.proposals.toArray(GovProposalTable.tableName),
-        this.proposalMonitors.toArray(ProposalMonitorTable.tableName), this.deposits.toArray(GovDepositTable.tableName),
-        this.votes.toArray(GovVoteTable.tableName), this.ibcLedgers.toArray(IbcLedgerTable.tableName),
+        this.nftJoin.toArray(TxNftJoinTable.tableName), this.ibcJoin.toArray(TxIbcTable.tableName),
+        this.proposals.toArray(GovProposalTable.tableName), this.proposalMonitors.toArray(ProposalMonitorTable.tableName),
+        this.deposits.toArray(GovDepositTable.tableName), this.votes.toArray(GovVoteTable.tableName),
+        this.ibcLedgers.toArray(IbcLedgerTable.tableName), this.ibcLedgerAcks.toArray(IbcLedgerAckTable.tableName),
         this.smCodes.toArray(TxSmCodeTable.tableName), this.smContracts.toArray(TxSmContractTable.tableName),
         this.sigs.toArray(SignatureJoinTable.tableName), this.feePayers.toArray(TxFeepayerTable.tableName),
         this.validatorMarketRate!!

@@ -140,6 +140,8 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 join = join.innerJoin(TxMarkerJoinTable, { TxCacheTable.id }, { TxMarkerJoinTable.txHashId })
             if (tqp.nftId != null)
                 join = join.innerJoin(TxNftJoinTable, { TxCacheTable.id }, { TxNftJoinTable.txHashId })
+            if (tqp.ibcChannelIds.isNotEmpty())
+                join = join.innerJoin(TxIbcTable, { TxCacheTable.id }, { TxIbcTable.txHashId })
 
             val query = if (distinctQuery != null) join.slice(distinctQuery).selectAll() else join.selectAll()
 
@@ -167,6 +169,8 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 query.andWhere { TxCacheTable.txTimestamp greaterEq tqp.fromDate.startOfDay() }
             if (tqp.toDate != null)
                 query.andWhere { TxCacheTable.txTimestamp lessEq tqp.toDate.startOfDay().plusDays(1) }
+            if (tqp.ibcChannelIds.isNotEmpty())
+                query.andWhere { TxIbcTable.channelId inList tqp.ibcChannelIds }
 
             query
         }
