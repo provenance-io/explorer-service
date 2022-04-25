@@ -8,6 +8,7 @@ import cosmos.gov.v1beta1.Gov
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
+import io.provenance.explorer.domain.extensions.toDecimal
 import io.provenance.explorer.domain.models.explorer.GovAddrData
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.VoteDbRecord
@@ -224,7 +225,7 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
                     txInfo.txHash,
                     txInfo.txTimestamp,
                     0,
-                    it.weight.toDouble()
+                    it.weight.toDecimal()
                 ).toProcedureObject()
             }
         }

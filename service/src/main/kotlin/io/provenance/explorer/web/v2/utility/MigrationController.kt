@@ -40,6 +40,10 @@ class MigrationController(private val migrationService: MigrationService, privat
     fun updateBlocks(@RequestParam start: Int, @RequestParam end: Int, @RequestParam inc: Int) =
         ResponseEntity.ok(migrationService.updateBlocks(start, end, inc))
 
+    @ApiOperation("Updates blocks from list")
+    @PutMapping("/update/blocks/list")
+    fun updateBlocksList(@RequestBody blocks: List<Int>) = ResponseEntity.ok(migrationService.insertBlocks(blocks))
+
     @ApiOperation("Updates denom units")
     @GetMapping("/update/denom/units")
     fun updateDenomUnits() = ResponseEntity.ok(assetService.updateMarkerUnit())

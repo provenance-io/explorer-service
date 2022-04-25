@@ -1,16 +1,25 @@
 package io.provenance.explorer.service
 
-import com.fasterxml.jackson.databind.node.ObjectNode
 import com.google.protobuf.util.JsonFormat
+import cosmos.base.abci.v1beta1.Abci
 import ibc.applications.transfer.v1.Transfer
+import ibc.applications.transfer.v1.Tx.MsgTransfer
 import ibc.core.channel.v1.ChannelOuterClass
+import ibc.core.channel.v1.Tx.MsgAcknowledgement
+import ibc.core.channel.v1.Tx.MsgRecvPacket
+import ibc.core.channel.v1.Tx.MsgTimeout
+import ibc.core.channel.v1.Tx.MsgTimeoutOnClose
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.entities.IbcAckType
 import io.provenance.explorer.domain.entities.IbcChannelRecord
+import io.provenance.explorer.domain.entities.IbcLedgerAckRecord
 import io.provenance.explorer.domain.entities.IbcLedgerRecord
+import io.provenance.explorer.domain.entities.IbcRelayerRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
+import io.provenance.explorer.domain.extensions.decodeHex
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toObjectNode
@@ -27,6 +36,8 @@ import io.provenance.explorer.domain.models.explorer.IbcDenomListed
 import io.provenance.explorer.domain.models.explorer.LedgerInfo
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.TxData
+import io.provenance.explorer.grpc.extensions.denomEventRegexParse
+import io.provenance.explorer.grpc.extensions.scrubQuotes
 import io.provenance.explorer.grpc.v1.IbcGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
@@ -49,19 +60,51 @@ class IbcService(
         IbcChannelRecord.getOrInsert(port, channel, channelRes, client, escrowAccount)
     }
 
-    fun buildIbcLedger(ledger: LedgerInfo, txData: TxData) = transaction { IbcLedgerRecord.buildInsert(ledger, txData) }
+    fun buildIbcLedger(ledger: LedgerInfo, txData: TxData, match: IbcLedgerRecord?) =
+        IbcLedgerRecord.buildInsert(ledger, txData, match)
 
-    fun parseTransfer(ledger: LedgerInfo): LedgerInfo {
-        ledger.denomTrace =
-            if (ledger.denom.startsWith("ibc")) getDenomTrace(ledger.denom.getIbcHash()).toFullPath() else ledger.denom
-        ledger.logs.eventsList.associateBy { it.type }.forEach { (k, v) ->
+    fun buildIbcLedgerAck(ledger: LedgerInfo, txData: TxData, ledgerId: Int) =
+        IbcLedgerAckRecord.buildInsert(ledger, txData, ledgerId)
+
+    fun parseTransfer(msg: MsgTransfer, logs: Abci.ABCIMessageLog): LedgerInfo {
+        val typed = logs.eventsList.associateBy { it.type }
+        val channel = typed["send_packet"]!!.let { event ->
+            val port = event.attributesList.first { it.key == "packet_src_port" }.value
+            val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
+            IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
+        }
+        val ledger = LedgerInfo(channel = channel!!, logs = logs)
+        ledger.ackType = IbcAckType.TRANSFER
+        typed.forEach { (k, v) ->
             when (k) {
-                "transfer" -> v.attributesList.first { it.key == "recipient" }
-                    .let { ledger.passThroughAddress = accountService.getAccountRaw(it.value) }
-                "ibc_transfer" -> v.attributesList.forEach {
+                "transfer" -> v.attributesList.forEach {
                     when (it.key) {
-                        "receiver" -> ledger.toAddress = it.value
-                        "sender" -> ledger.fromAddress = it.value
+                        "recipient" -> ledger.passThroughAddress = accountService.getAccountRaw(it.value)
+                    }
+                }
+                "send_packet" -> v.attributesList.forEach {
+                    when (it.key) {
+                        "packet_data_hex" ->
+                            if (ledger.denom.isEmpty())
+                                it.value.decodeHex().toObjectNode().let { node ->
+                                    ledger.denom = node.get("denom").asText()
+                                    ledger.denomTrace =
+                                        if (ledger.denom.startsWith("ibc")) getDenomTrace(ledger.denom.getIbcHash()).toFullPath() else ledger.denom
+                                    ledger.toAddress = node.get("receiver").asText()
+                                    ledger.fromAddress = node.get("sender").asText()
+                                    ledger.balanceOut = node.get("amount").asText()
+                                }
+                        "packet_data" ->
+                            if (ledger.denom.isEmpty())
+                                it.value.toObjectNode().let { node ->
+                                    ledger.denom = node.get("denom").asText()
+                                    ledger.denomTrace =
+                                        if (ledger.denom.startsWith("ibc")) getDenomTrace(ledger.denom.getIbcHash()).toFullPath() else ledger.denom
+                                    ledger.toAddress = node.get("receiver").asText()
+                                    ledger.fromAddress = node.get("sender").asText()
+                                    ledger.balanceOut = node.get("amount").asText()
+                                }
+                        "packet_sequence" -> ledger.sequence = it.value.toInt()
                     }
                 }
             }
@@ -69,38 +112,166 @@ class IbcService(
         return ledger
     }
 
-    fun parseRecv(ledger: LedgerInfo): LedgerInfo {
-        ledger.logs.eventsList.associateBy { it.type }.forEach { (k, v) ->
-            when (k) {
-                "denomination_trace" -> v.attributesList.first { it.key == "denom" }.let { ledger.denom = it.value }
-                "recv_packet" -> v.attributesList.first { it.key == "packet_data" }.value.toObjectNode().let {
-                    ledger.fromAddress = it["sender"].asText()
-                    ledger.toAddress = it["receiver"].asText()
-                    ledger.denomTrace = it["denom"].asText()
-                    ledger.balanceIn = it["amount"].asText()
-                }
-                "transfer" -> v.attributesList.first { it.key == "sender" }
-                    .let { ledger.passThroughAddress = accountService.getAccountRaw(it.value) }
+    fun parseRecv(txSuccess: Boolean, msg: MsgRecvPacket, logs: Abci.ABCIMessageLog): LedgerInfo {
+        val ledger = LedgerInfo()
+        ledger.logs = logs
+        ledger.ackType = IbcAckType.RECEIVE
+        ledger.movementIn = true
+        if (txSuccess) {
+            ledger.ack = true
+            val typed = logs.eventsList.associateBy { it.type }
+            ledger.channel = typed["recv_packet"]!!.let { event ->
+                val port = event.attributesList.first { it.key == "packet_dst_port" }.value
+                val channel = event.attributesList.first { it.key == "packet_dst_channel" }.value
+                IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
             }
+            typed.forEach { (k, v) ->
+                when (k) {
+                    "recv_packet" -> v.attributesList.forEach {
+                        when (it.key) {
+                            "packet_data_hex" ->
+                                if (ledger.toAddress.isEmpty())
+                                    it.value.decodeHex().toObjectNode().let { node ->
+                                        ledger.toAddress = node.get("receiver").asText()
+                                        ledger.fromAddress = node.get("sender").asText()
+                                        ledger.balanceIn = node.get("amount").asText()
+                                    }
+                            "packet_data" ->
+                                if (ledger.toAddress.isEmpty())
+                                    it.value.toObjectNode().let { node ->
+                                        ledger.toAddress = node.get("receiver").asText()
+                                        ledger.fromAddress = node.get("sender").asText()
+                                        ledger.balanceIn = node.get("amount").asText()
+                                    }
+                            "packet_sequence" -> ledger.sequence = it.value.toInt()
+                        }
+                    }
+                    "transfer" ->
+                        v.attributesList.forEach {
+                            when (it.key) {
+                                "sender" -> ledger.passThroughAddress = accountService.getAccountRaw(it.value)
+                                "amount" -> {
+                                    ledger.denom = it.value.scrubQuotes().denomEventRegexParse().first()
+                                    ledger.denomTrace =
+                                        if (ledger.denom.startsWith("ibc")) getDenomTrace(ledger.denom.getIbcHash()).toFullPath() else ledger.denom
+                                }
+                            }
+                            ledger.changesEffected = true
+                            ledger.ackSuccess = true
+                        }
+                }
+            }
+        } else {
+            ledger.channel = IbcChannelRecord.findBySrcPortSrcChannel(
+                msg.packet.destinationPort,
+                msg.packet.destinationChannel
+            )
+            ledger.sequence = msg.packet.sequence.toInt()
         }
         return ledger
     }
 
-    fun parseAcknowledge(ledger: LedgerInfo, data: ObjectNode): LedgerInfo {
-        ledger.fromAddress = data["sender"].asText()
-        ledger.toAddress = data["receiver"].asText()
-        ledger.denomTrace = data["denom"].asText()
-        ledger.balanceOut = data["amount"].asText()
-        ledger.logs.eventsList.associateBy { it.type }["fungible_token_packet"]!!.let { e ->
-            e.attributesList.firstOrNull { it.key == "success" }?.let { ledger.ack = true }
+    fun parseAcknowledge(txSuccess: Boolean, msg: MsgAcknowledgement, logs: Abci.ABCIMessageLog): LedgerInfo {
+        val ledger = LedgerInfo()
+        ledger.logs = logs
+        ledger.ackType = IbcAckType.ACKNOWLEDGEMENT
+        if (txSuccess) {
+            ledger.ack = true
+            val typed = logs.eventsList.associateBy { it.type }
+            ledger.channel = typed["acknowledge_packet"]!!.let { event ->
+                val port = event.attributesList.first { it.key == "packet_src_port" }.value
+                val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
+                IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
+            }
+            typed.forEach { (k, v) ->
+                when (k) {
+                    "acknowledge_packet" -> v.attributesList.forEach {
+                        when (it.key) {
+                            "packet_sequence" -> ledger.sequence = it.value.toInt()
+                        }
+                    }
+                    "fungible_token_packet" -> v.attributesList.firstOrNull { it.key == "success" }
+                        ?.let {
+                            ledger.changesEffected = true
+                            ledger.ackSuccess = true
+                        }
+                }
+            }
+        } else {
+            ledger.channel = IbcChannelRecord.findBySrcPortSrcChannel(
+                msg.packet.sourcePort,
+                msg.packet.sourceChannel
+            )
+            ledger.sequence = msg.packet.sequence.toInt()
         }
         return ledger
     }
 
-    fun getIbcDenomList(
-        page: Int,
-        count: Int
-    ): PagedResults<IbcDenomListed> {
+    fun parseTimeout(txSuccess: Boolean, msg: MsgTimeout, logs: Abci.ABCIMessageLog): LedgerInfo {
+        val ledger = LedgerInfo()
+        ledger.logs = logs
+        ledger.ackType = IbcAckType.TIMEOUT
+        if (txSuccess) {
+            ledger.ack = true
+            val typed = logs.eventsList.associateBy { it.type }
+            ledger.channel = typed["timeout_packet"]!!.let { event ->
+                val port = event.attributesList.first { it.key == "packet_src_port" }.value
+                val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
+                IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
+            }
+            typed.forEach { (k, v) ->
+                when (k) {
+                    "timeout_packet" -> v.attributesList.forEach {
+                        when (it.key) {
+                            "packet_sequence" -> ledger.sequence = it.value.toInt()
+                        }
+                    }
+                    "timeout" -> ledger.changesEffected = true
+                }
+            }
+        } else {
+            ledger.channel = IbcChannelRecord.findBySrcPortSrcChannel(
+                msg.packet.sourcePort,
+                msg.packet.sourceChannel
+            )
+            ledger.sequence = msg.packet.sequence.toInt()
+        }
+        return ledger
+    }
+
+    fun parseTimeoutOnClose(txSuccess: Boolean, msg: MsgTimeoutOnClose, logs: Abci.ABCIMessageLog): LedgerInfo {
+        val ledger = LedgerInfo()
+        ledger.logs = logs
+        ledger.ackType = IbcAckType.TIMEOUT
+        if (txSuccess) {
+            ledger.ack = true
+            val typed = logs.eventsList.associateBy { it.type }
+            ledger.channel = typed["timeout_packet"]!!.let { event ->
+                val port = event.attributesList.first { it.key == "packet_src_port" }.value
+                val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
+                IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
+            }
+            typed.forEach { (k, v) ->
+                when (k) {
+                    "timeout_packet" -> v.attributesList.forEach {
+                        when (it.key) {
+                            "packet_sequence" -> ledger.sequence = it.value.toInt()
+                        }
+                    }
+                    "timeout" -> ledger.changesEffected = true
+                }
+            }
+        } else {
+            ledger.channel = IbcChannelRecord.findBySrcPortSrcChannel(
+                msg.packet.sourcePort,
+                msg.packet.sourceChannel
+            )
+            ledger.sequence = msg.packet.sequence.toInt()
+        }
+        return ledger
+    }
+
+    fun getIbcDenomList(page: Int, count: Int): PagedResults<IbcDenomListed> {
         val list =
             MarkerCacheRecord
                 .findIbcPaginated(page.toOffset(count), count)
@@ -159,8 +330,8 @@ class IbcService(
             }
     }
 
-    fun getBalanceListByChannel() = transaction {
-        IbcLedgerRecord.getByChannel().groupBy { it.dstChainName }
+    fun getBalanceListByChannel(srcPort: String?, srcChannel: String?) = transaction {
+        IbcLedgerRecord.getByChannel(srcPort, srcChannel).groupBy { it.dstChainName }
             .map { (k, v) ->
                 val channels = v.groupBy { it.srcChannel }.map { (_, list) ->
                     val (src, dst) = list.first().let {
@@ -191,6 +362,17 @@ class IbcService(
                 }.sortedBy { it.srcChannel.channel }
                 IbcChannelStatus(chain, channels)
             }.sortedBy { it.dstChainId }
+    }
+
+    fun getChannelIdsByChain(chain: String) = IbcChannelRecord.findByChain(chain).map { it.id.value }
+
+    fun getChannelIdByPortAndChannel(port: String, channel: String) =
+        IbcChannelRecord.findBySrcPortSrcChannel(port, channel)?.id?.value ?: -1
+
+    fun getRelayersForChannel(srcPort: String, srcChannel: String) = transaction {
+        val channelId = IbcChannelRecord.findBySrcPortSrcChannel(srcPort, srcChannel)?.id?.value
+            ?: throw ResourceNotFoundException("Invalid port and channel: $srcPort / $srcChannel")
+        IbcRelayerRecord.getRelayersForChannel(channelId)
     }
 }
 

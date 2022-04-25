@@ -56,7 +56,8 @@ class TransactionService(
     private val props: ExplorerProperties,
     private val asyncV2: AsyncCachingV2,
     private val nftService: NftService,
-    private val valService: ValidatorService
+    private val valService: ValidatorService,
+    private val ibcService: IbcService
 ) {
 
     protected val logger = logger(TransactionService::class)
@@ -78,17 +79,20 @@ class TransactionService(
     }
 
     fun getTxsByQuery(
-        address: String?,
-        denom: String?,
-        module: MsgTypeSet?,
-        msgType: String?,
-        txHeight: Int?,
-        txStatus: TxStatus?,
+        address: String? = null,
+        denom: String? = null,
+        module: MsgTypeSet? = null,
+        msgType: String? = null,
+        txHeight: Int? = null,
+        txStatus: TxStatus? = null,
         count: Int,
         page: Int,
-        fromDate: DateTime?,
-        toDate: DateTime?,
-        nftAddr: String?
+        fromDate: DateTime? = null,
+        toDate: DateTime? = null,
+        nftAddr: String? = null,
+        ibcChain: String? = null,
+        ibcSrcPort: String? = null,
+        ibcSrcChannel: String? = null
     ): PagedResults<TxSummary> {
         val msgTypes = if (msgType != null) listOf(msgType) else module?.types ?: listOf()
         val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
@@ -96,11 +100,18 @@ class TransactionService(
         val markerId = if (denom != null) MarkerCacheRecord.findByDenom(denom)?.id?.value else null
         val nftMAddress = if (nftAddr != null && nftAddr.isMAddress()) nftAddr.toMAddress() else nftAddr?.toMAddressScope()
         val nft = nftMAddress?.let { Triple(it.getParentForType()?.name, nftService.getNftDbId(it), it.getPrimaryUuid().toString()) }
+        val ibcChannelIds =
+            if (ibcSrcPort != null && ibcSrcChannel != null)
+                listOf(ibcService.getChannelIdByPortAndChannel(ibcSrcPort, ibcSrcChannel))
+            else if (ibcChain != null) ibcService.getChannelIdsByChain(ibcChain)
+            else emptyList()
 
         val params =
             TxQueryParams(
-                addr?.second, addr?.first, address, markerId, denom, msgTypeIds, txHeight, txStatus,
-                count, page.toOffset(count), fromDate, toDate, nft?.second, nft?.first, nft?.third, null, null
+                addressId = addr?.second, addressType = addr?.first, address = address, markerId = markerId,
+                denom = denom, msgTypes = msgTypeIds, txHeight = txHeight, txStatus = txStatus, count = count,
+                offset = page.toOffset(count), fromDate = fromDate, toDate = toDate, nftId = nft?.second,
+                nftType = nft?.first, nftUuid = nft?.third, ibcChannelIds = ibcChannelIds
             )
 
         val total = TxCacheRecord.findByQueryParamsForCount(params)
@@ -210,8 +221,8 @@ class TransactionService(
 
             val params =
                 TxQueryParams(
-                    addr?.second, addr?.first, address, null, null, msgTypeIds, null, txStatus,
-                    count, page.toOffset(count), fromDate, toDate, null, null, null, null, null
+                    addressId = addr?.second, addressType = addr?.first, address = address, msgTypes = msgTypeIds,
+                    txStatus = txStatus, count = count, offset = page.toOffset(count), fromDate = fromDate, toDate = toDate
                 )
 
             val total = TxMessageRecord.findByQueryParamsForCount(params)
@@ -250,8 +261,8 @@ class TransactionService(
 
         val params =
             TxQueryParams(
-                null, null, null, null, null, msgTypeIds, null, txStatus,
-                count, page.toOffset(count), fromDate, toDate, null, null, null, codeId, contractId
+                msgTypes = msgTypeIds, txStatus = txStatus, count = count, offset = page.toOffset(count),
+                fromDate = fromDate, toDate = toDate, smCodeId = codeId, smContractAddrId = contractId
             )
 
         val total = TxMessageRecord.findByQueryParamsForCount(params)

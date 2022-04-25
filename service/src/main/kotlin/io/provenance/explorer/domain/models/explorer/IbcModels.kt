@@ -3,6 +3,7 @@ package io.provenance.explorer.domain.models.explorer
 import com.fasterxml.jackson.databind.node.ObjectNode
 import cosmos.base.abci.v1beta1.Abci
 import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.IbcAckType
 import io.provenance.explorer.domain.entities.IbcChannelRecord
 import org.joda.time.DateTime
 import java.math.BigDecimal
@@ -40,16 +41,21 @@ data class ChannelStatus(
 )
 
 data class LedgerInfo(
-    val channel: IbcChannelRecord,
+    var channel: IbcChannelRecord? = null,
     var denom: String = "",
-    var logs: Abci.ABCIMessageLog,
+    var logs: Abci.ABCIMessageLog? = null,
     var denomTrace: String = "",
     var balanceIn: String? = null,
     var balanceOut: String? = null,
     var fromAddress: String = "",
     var toAddress: String = "",
     var passThroughAddress: AccountRecord? = null,
-    var ack: Boolean = false
+    var ack: Boolean = false,
+    var sequence: Int = -1,
+    var ackType: IbcAckType? = null,
+    var movementIn: Boolean = false, // recv == true, else false
+    var changesEffected: Boolean = false,
+    var ackSuccess: Boolean = false
 )
 
 data class BalancesByChain(
@@ -91,4 +97,38 @@ data class LedgerBySliceRes(
     val balanceIn: BigDecimal?,
     val balanceOut: BigDecimal?,
     val lastTx: DateTime
+)
+
+data class TxIbcData(
+    val msgClient: String?,
+    val msgSrcPort: String?,
+    val msgSrcChannel: String?,
+    val event: String,
+    val clientAttr: String?,
+    val srcPortAttr: String?,
+    var srcChannelAttr: String?
+)
+
+data class IbcEventData(
+    val event: String,
+    val attrs: IbcAttrSet
+)
+
+data class IbcAttrSet(
+    val clientAttr: String?,
+    val srcPortAttr: String?,
+    var srcChannelAttr: String?
+)
+
+data class IbcMsgData(
+    val packetEvent: String,
+    val srcPortAttr: String,
+    val srcChannelAttr: String,
+    val eventCheck: String
+)
+
+data class IbcRelayer(
+    val address: String,
+    val txCount: Long,
+    val lastTimestamp: DateTime
 )

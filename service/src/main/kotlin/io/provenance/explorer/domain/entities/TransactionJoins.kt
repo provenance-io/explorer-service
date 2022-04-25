@@ -213,3 +213,25 @@ class TxSmContractRecord(id: EntityID<Int>) : IntEntity(id) {
     var contractId by TxSmContractTable.contractId
     var contractAddress by TxSmContractTable.contractAddress
 }
+
+object TxIbcTable : IntIdTable(name = "tx_ibc") {
+    val blockHeight = integer("block_height")
+    val txHashId = reference("tx_hash_id", TxCacheTable)
+    val txHash = varchar("tx_hash", 64)
+    val client = varchar("client", 128)
+    val channelId = integer("channel_id")
+}
+
+class TxIbcRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxIbcRecord>(TxIbcTable) {
+
+        fun buildInsert(txInfo: TxData, client: String?, channelId: Int?) =
+            listOf(0, txInfo.blockHeight, -1, txInfo.txHash, client, channelId).toProcedureObject()
+    }
+
+    var blockHeight by TxIbcTable.blockHeight
+    var txHashId by TxCacheRecord referencedOn TxIbcTable.txHashId
+    var txHash by TxIbcTable.txHash
+    var client by TxIbcTable.client
+    var channelId by TxIbcTable.channelId
+}

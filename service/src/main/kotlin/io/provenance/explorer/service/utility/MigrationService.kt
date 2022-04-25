@@ -4,6 +4,7 @@ import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockCacheTable
 import io.provenance.explorer.service.AccountService
+import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.service.async.AsyncCachingV2
 import org.jetbrains.exposed.sql.SortOrder
@@ -14,7 +15,8 @@ import org.springframework.stereotype.Service
 class MigrationService(
     private val asyncCaching: AsyncCachingV2,
     private val validatorService: ValidatorService,
-    private val accountService: AccountService
+    private val accountService: AccountService,
+    private val blockService: BlockService
 ) {
 
     protected val logger = logger(MigrationService::class)
@@ -37,6 +39,14 @@ class MigrationService(
             start += inc
         }
         logger.info("End height: $endHeight")
+    }
+
+    fun insertBlocks(blocks: List<Int>) = transaction {
+        blocks.forEach { block ->
+            blockService.getBlockAtHeightFromChain(block)?.let {
+                asyncCaching.saveBlockEtc(it, true)
+            }
+        }
     }
 
     fun updateMissedBlocks(startHeight: Int, endHeight: Int, inc: Int) {
