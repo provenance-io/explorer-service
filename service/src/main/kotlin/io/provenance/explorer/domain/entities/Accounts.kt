@@ -4,6 +4,7 @@ import com.google.protobuf.Any
 import cosmos.auth.v1beta1.Auth
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.grpc.extensions.getTypeShortName
 import io.provenance.explorer.service.getAccountType
 import io.provenance.marker.v1.MarkerAccount
@@ -29,6 +30,15 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findAccountsMissingNumber() = transaction {
             AccountRecord.find { AccountTable.accountNumber.isNull() and AccountTable.baseAccount.isNotNull() }.toList()
+        }
+
+        fun findZeroSequenceAccounts() = transaction {
+            val query = """
+                SELECT account_address FROM account 
+                WHERE (account.base_account -> 'sequence')::INTEGER = 0
+                AND type = 'BaseAccount';
+            """.trimIndent()
+            query.execAndMap { it.getString("account_address") }
         }
 
         fun findSigsByAddress(address: String) = SignatureRecord.findByJoin(SigJoinType.ACCOUNT, address)
