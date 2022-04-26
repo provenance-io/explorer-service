@@ -49,6 +49,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Updated the Dockerfile to include support for Vault secrets
 * IBC ingestion supports actual IBC flow #336
 * Increased frequency for asset-price polling from every 30 minutes to every 15 minutes
+* Removing 0-sequenced account balances from circulation totals #335
 
 ### Bug Fixes
 * Updated how the service runs on an empty DB

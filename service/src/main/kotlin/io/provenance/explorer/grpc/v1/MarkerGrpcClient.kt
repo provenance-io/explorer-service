@@ -4,6 +4,7 @@ import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.getPagination
 import io.provenance.explorer.grpc.extensions.toMarker
+import io.provenance.marker.v1.Balance
 import io.provenance.marker.v1.MarkerAccount
 import io.provenance.marker.v1.QueryGrpcKt
 import io.provenance.marker.v1.QueryHoldingResponse
@@ -72,4 +73,21 @@ class MarkerGrpcClient(channelUri: URI, private val semaphore: Semaphore) {
         }
 
     suspend fun getMarkerParams() = markerClient.params(MarkerRequest.newBuilder().build())
+
+    suspend fun getAllMarkerHolders(denom: String): MutableList<Balance> {
+        var offset = 0
+        val count = 100
+
+        val results = getMarkerHolders(denom, offset, count)
+
+        val total = results.pagination?.total ?: results.balancesCount.toLong()
+        val holders = results.balancesList.toMutableList()
+
+        while (holders.count() < total) {
+            offset += count
+            getMarkerHolders(denom, offset, count).let { holders.addAll(it.balancesList) }
+        }
+
+        return holders
+    }
 }

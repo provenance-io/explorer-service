@@ -4,7 +4,6 @@ import com.google.protobuf.Any
 import cosmos.auth.v1beta1.Auth
 import cosmos.base.query.v1beta1.Pagination
 import cosmos.base.query.v1beta1.pageRequest
-import cosmos.crypto.multisig.Keys
 import cosmos.distribution.v1beta1.Distribution
 import cosmos.gov.v1beta1.Gov
 import cosmos.gov.v1beta1.Tx
@@ -143,4 +142,5 @@ fun Slashing.Params.toDto() = SlashingParams(
 
 fun MsgFee.toDto() = MsgBasedFee(this.msgTypeUrl, this.additionalFee.toData())
 
-fun Tx.MsgVote.toWeightedVote() = Gov.WeightedVoteOption.newBuilder().setOption(this.option).setWeight("1.00").build()
+fun Tx.MsgVote.toWeightedVote() =
+    Gov.WeightedVoteOption.newBuilder().setOption(this.option).setWeight("1000000000000000000").build()
