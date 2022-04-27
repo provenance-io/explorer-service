@@ -50,6 +50,12 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * IBC ingestion supports actual IBC flow #336
 * Increased frequency for asset-price polling from every 30 minutes to every 15 minutes
 * Removing 0-sequenced account balances from circulation totals #335
+* Updated existing Smart Contract Code and Contract queries with new query params #339
+  * `/api/v2/smart_contract/codes/all` - added filters on `creator`, `has_contracts`
+  * `/api/v2/smart_contract/contract/all` - added filters on `creator`, `admin`, `label`
+  * `/api/v2/smart_contract/code/{id}/contracts` - added filters on `creator`, `admin`
+* Added API to fetch list of unique non-UUID contract labels #339
+  * `/api/v2/smart_contract/contract/labels`
 
 ### Bug Fixes
 * Updated how the service runs on an empty DB
@@ -77,6 +83,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Migration 1.62 - Ingestion procedure updates #336
   * Updated `insert_ibc_ledger()` procedure, created ingest procedures for new tables
   * Updated `add_tx_debug()`, `add_tx()` procedures with new ingestions
+* Migration 1.63 - Add function for `uuid_or_null()` #339
+  * Added function to determine if a string is a UUID, and if not, return null
 
 ## [v4.1.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.1.0) - 2022-03-24
 ### Release Name: Abu Bakr II

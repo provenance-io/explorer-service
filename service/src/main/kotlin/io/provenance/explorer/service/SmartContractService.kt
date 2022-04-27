@@ -8,7 +8,6 @@ import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.SmCodeRecord
 import io.provenance.explorer.domain.entities.SmContractRecord
-import io.provenance.explorer.domain.entities.SmContractTable
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toObjectNodeNonTxMsg
 import io.provenance.explorer.domain.extensions.toOffset
@@ -25,7 +24,6 @@ import io.provenance.explorer.grpc.extensions.toMsgMigrateContractOld
 import io.provenance.explorer.grpc.extensions.toMsgUpdateAdmin
 import io.provenance.explorer.grpc.extensions.toMsgUpdateAdminOld
 import io.provenance.explorer.grpc.v1.SmartContractGrpcClient
-import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.util.zip.GZIPInputStream
@@ -52,20 +50,20 @@ class SmartContractService(
         }
     }
 
-    fun getAllScContractsPaginated(page: Int, count: Int) = transaction {
-        SmContractRecord.getPaginated(page.toOffset(count), count)
-            .map { it.toContractObject() }
-            .let {
-                val total = SmContractRecord.count()
-                PagedResults(total.pageCountOfResults(count), it, total)
-            }
-    }
+    fun getAllScContractsPaginated(page: Int, count: Int, creator: String?, admin: String?, label: String?) =
+        transaction {
+            SmContractRecord.getPaginated(page.toOffset(count), count, creator, admin, label)
+                .map { it.toContractObject() }
+                .let {
+                    val total = SmContractRecord.getCount(creator, admin, label)
+                    PagedResults(total.pageCountOfResults(count), it, total)
+                }
+        }
 
-    fun getAllScCodesPaginated(page: Int, count: Int) = transaction {
-        SmCodeRecord.getPaginated(page.toOffset(count), count)
-            .map { it.toCodeObject() }
+    fun getAllScCodesPaginated(page: Int, count: Int, creator: String?, hasContracts: Boolean?) = transaction {
+        SmCodeRecord.getPaginated(page.toOffset(count), count, creator, hasContracts)
             .let {
-                val total = SmCodeRecord.count()
+                val total = SmCodeRecord.getCount(creator, hasContracts)
                 PagedResults(total.pageCountOfResults(count), it, total)
             }
     }
@@ -74,11 +72,11 @@ class SmartContractService(
         SmCodeRecord.findById(code)?.toCodeObject() ?: throw ResourceNotFoundException("Invalid code ID: $code")
     }
 
-    fun getContractsByCode(codeId: Int, page: Int, count: Int) = transaction {
-        SmContractRecord.getPaginated(page.toOffset(count), count, codeId)
+    fun getContractsByCode(codeId: Int, page: Int, count: Int, creator: String?, admin: String?) = transaction {
+        SmContractRecord.getPaginated(page.toOffset(count), count, creator, admin, codeId = codeId)
             .map { it.toContractObject() }
             .let {
-                val total = SmContractRecord.count(Op.build { SmContractTable.codeId eq codeId })
+                val total = SmContractRecord.getCount(creator, admin, codeId = codeId)
                 PagedResults(total.pageCountOfResults(count), it, total)
             }
     }
@@ -91,6 +89,8 @@ class SmartContractService(
     fun getHistoryByContract(contract: String) = transaction {
         scClient.getSmContractHistory(contract).entriesList.map { it.toObjectNodeNonTxMsg(protoPrinter, listOf("msg")) }
     }
+
+    fun getContractLabels() = SmContractRecord.getContractLabels()
 }
 
 fun SmCodeRecord.toCodeObject() = Code(this.id.value, this.creationHeight, this.creator, this.dataHash)
