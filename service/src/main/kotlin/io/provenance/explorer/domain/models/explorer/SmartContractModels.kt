@@ -15,3 +15,11 @@ data class Code(
     val creator: String?,
     val dataHash: String?
 )
+
+data class CodeWithContractCount(
+    val codeId: Int,
+    val creationHeight: Int,
+    val creator: String?,
+    val dataHash: String?,
+    val contractCount: Long
+)
