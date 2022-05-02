@@ -38,6 +38,7 @@ services:
       - EXPLORER_SWAGGER_URL=localhost:8612
       - EXPLORER_SWAGGER_PROTOCOL=http
       - EXPLORER_PRICING_URL=https://test.figure.tech/service-pricing-engine/external
+      - EXPLORER_VERIFIED_ADDRESSES=test
     depends_on:
       - explorer-postgres
     links:

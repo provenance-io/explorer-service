@@ -18,14 +18,16 @@ data class ValidatorSummary(
     val unbondingHeight: Long?,
     val imgUrl: String?,
     val hr24Change: String?,
-    val uptime: BigDecimal
+    val uptime: BigDecimal,
+    val isVerified: Boolean
 )
 
 data class ValidatorSummaryAbbrev(
     val moniker: String,
     val addressId: String,
     val commission: String,
-    val imgUrl: String?
+    val imgUrl: String?,
+    val isVerified: Boolean
 )
 
 data class ValidatorDetails(
@@ -44,7 +46,8 @@ data class ValidatorDetails(
     val identity: String?,
     val status: String,
     val unbondingHeight: Long?,
-    val jailedUntil: DateTime?
+    val jailedUntil: DateTime?,
+    val isVerified: Boolean
 )
 
 data class Delegation(
@@ -102,7 +105,8 @@ data class CurrentValidatorState(
     val consensusAddr: String,
     val consensusPubKey: String,
     val currentState: ValidatorState,
-    val commissionRate: BigDecimal
+    val commissionRate: BigDecimal,
+    val verified: Boolean
 )
 
 data class BlockLatencyData(

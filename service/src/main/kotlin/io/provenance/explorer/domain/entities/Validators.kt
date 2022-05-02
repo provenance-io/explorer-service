@@ -21,6 +21,7 @@ import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.BooleanColumnType
 import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.SortOrder
@@ -114,6 +115,7 @@ object ValidatorStateTable : IntIdTable(name = "validator_state") {
     val tokenCount = decimal("token_count", 100, 0)
     val json = jsonb<ValidatorStateTable, Staking.Validator>("json", OBJECT_MAPPER)
     val commissionRate = decimal("commission_rate", 19, 18)
+    val verified = bool("verified").default(false)
 }
 
 class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -121,19 +123,21 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
 
         val logger = logger(ValidatorStateRecord::class)
 
-        fun insertIgnore(blockHeight: Int, valId: Int, operator: String, json: Staking.Validator) = transaction {
-            ValidatorStateTable.insertIgnore {
-                it[this.operatorAddrId] = valId
-                it[this.operatorAddress] = operator
-                it[this.blockHeight] = blockHeight
-                it[this.moniker] = json.description.moniker
-                it[this.status] = json.status.name
-                it[this.jailed] = json.jailed
-                it[this.tokenCount] = json.tokens.toBigDecimal()
-                it[this.json] = json
-                it[this.commissionRate] = json.commission.commissionRates.rate.toDecimal()
+        fun insertIgnore(blockHeight: Int, valId: Int, operator: String, json: Staking.Validator, isVerified: Boolean) =
+            transaction {
+                ValidatorStateTable.insertIgnore {
+                    it[this.operatorAddrId] = valId
+                    it[this.operatorAddress] = operator
+                    it[this.blockHeight] = blockHeight
+                    it[this.moniker] = json.description.moniker
+                    it[this.status] = json.status.name
+                    it[this.jailed] = json.jailed
+                    it[this.tokenCount] = json.tokens.toBigDecimal()
+                    it[this.json] = json
+                    it[this.commissionRate] = json.commission.commissionRates.rate.toDecimal()
+                    it[this.verified] = isVerified
+                }
             }
-        }
 
         fun getCommissionHistory(operator: String) = transaction {
             ValidatorStateRecord.find { ValidatorStateTable.operatorAddress eq operator }
@@ -147,7 +151,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun findAll(activeSet: Int) = transaction {
-            val query = "SELECT * FROM get_all_validator_state(?, ?, NULL)".trimIndent()
+            val query = "SELECT * FROM get_all_validator_state(?, ?, NULL, NULL)".trimIndent()
             val arguments = mutableListOf<Pair<ColumnType, *>>(
                 Pair(IntegerColumnType(), activeSet),
                 Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
@@ -156,7 +160,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun findByValId(activeSet: Int, id: Int) = transaction {
-            val query = "SELECT * FROM get_all_validator_state(?, ?, NULL) WHERE operator_addr_id = ?".trimIndent()
+            val query = "SELECT * FROM get_all_validator_state(?, ?, NULL, NULL) WHERE operator_addr_id = ?".trimIndent()
             val arguments = mutableListOf<Pair<ColumnType, *>>(
                 Pair(IntegerColumnType(), activeSet),
                 Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
@@ -169,7 +173,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
             if (ids.isNotEmpty()) {
                 val idList = ids.joinToString(", ", "(", ")")
                 val query =
-                    "SELECT * FROM get_all_validator_state(?, ?, NULL) WHERE operator_addr_id IN $idList".trimIndent()
+                    "SELECT * FROM get_all_validator_state(?, ?, NULL, NULL) WHERE operator_addr_id IN $idList".trimIndent()
                 val arguments = mutableListOf<Pair<ColumnType, *>>(
                     Pair(IntegerColumnType(), activeSet),
                     Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
@@ -179,7 +183,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun findByAccount(activeSet: Int, address: String) = transaction {
-            val query = "SELECT * FROM get_all_validator_state(?, ?, NULL) WHERE account_address = ?".trimIndent()
+            val query = "SELECT * FROM get_all_validator_state(?, ?, NULL, NULL) WHERE account_address = ?".trimIndent()
             val arguments = mutableListOf<Pair<ColumnType, *>>(
                 Pair(IntegerColumnType(), activeSet),
                 Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
@@ -189,7 +193,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun findByOperator(activeSet: Int, address: String) = transaction {
-            val query = "SELECT * FROM get_all_validator_state(?, ?, NULL) WHERE operator_address = ?".trimIndent()
+            val query = "SELECT * FROM get_all_validator_state(?, ?, NULL, NULL) WHERE operator_address = ?".trimIndent()
             val arguments = mutableListOf<Pair<ColumnType, *>>(
                 Pair(IntegerColumnType(), activeSet),
                 Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
@@ -199,7 +203,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun findByConsensusAddress(activeSet: Int, address: String) = transaction {
-            val query = "SELECT * FROM get_all_validator_state(?, ?, NULL) WHERE consensus_address = ?".trimIndent()
+            val query = "SELECT * FROM get_all_validator_state(?, ?, NULL, NULL) WHERE consensus_address = ?".trimIndent()
             val arguments = mutableListOf<Pair<ColumnType, *>>(
                 Pair(IntegerColumnType(), activeSet),
                 Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
@@ -209,7 +213,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun findByConsensusAddressIn(activeSet: Int, addresses: List<String>) = transaction {
-            val query = "SELECT * FROM get_all_validator_state(?, ?, ?) ".trimIndent()
+            val query = "SELECT * FROM get_all_validator_state(?, ?, ?, NULL) ".trimIndent()
             val arguments = mutableListOf<Pair<ColumnType, *>>(
                 Pair(IntegerColumnType(), activeSet),
                 Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
@@ -223,32 +227,35 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
             searchState: ValidatorState,
             consensusAddrSet: List<String>? = null,
             offset: Int? = null,
-            limit: Int? = null
+            limit: Int? = null,
+            searchVerified: Boolean? = null
         ) =
             transaction {
                 when (searchState) {
                     ACTIVE, JAILED, CANDIDATE -> {
                         val offsetDefault = offset ?: 0
                         val limitDefault = limit ?: 10000
-                        val query = "SELECT * FROM get_validator_list(?, ?, ?, ?, ?, ?) "
+                        val query = "SELECT * FROM get_validator_list(?, ?, ?, ?, ?, ?, ?) "
                         val arguments = mutableListOf<Pair<ColumnType, *>>(
                             Pair(IntegerColumnType(), activeSet),
                             Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
                             Pair(TextColumnType(), searchState.name.lowercase()),
                             Pair(IntegerColumnType(), limitDefault),
                             Pair(IntegerColumnType(), offsetDefault),
-                            Pair(ArrayColumnType(TextColumnType()), consensusAddrSet)
+                            Pair(ArrayColumnType(TextColumnType()), consensusAddrSet),
+                            Pair(BooleanColumnType(), searchVerified)
                         )
                         query.execAndMap(arguments) { it.toCurrentValidatorState() }
                     }
                     ALL -> {
                         val limitOffset = if (offset != null && limit != null) " OFFSET $offset LIMIT $limit" else ""
                         val query =
-                            "SELECT * FROM get_all_validator_state(?, ?, ?) ORDER BY token_count DESC $limitOffset".trimIndent()
+                            "SELECT * FROM get_all_validator_state(?, ?, ?, ?) ORDER BY token_count DESC $limitOffset".trimIndent()
                         val arguments = mutableListOf<Pair<ColumnType, *>>(
                             Pair(IntegerColumnType(), activeSet),
                             Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
-                            Pair(ArrayColumnType(TextColumnType()), consensusAddrSet)
+                            Pair(ArrayColumnType(TextColumnType()), consensusAddrSet),
+                            Pair(BooleanColumnType(), searchVerified)
                         )
                         query.execAndMap(arguments) { it.toCurrentValidatorState() }
                     }
@@ -258,29 +265,32 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findByStatusCount(
             activeSet: Int,
             searchState: ValidatorState,
-            consensusAddrSet: List<String>? = null
+            consensusAddrSet: List<String>? = null,
+            searchVerified: Boolean? = null
         ) = transaction {
             when (searchState) {
                 ACTIVE, JAILED, CANDIDATE -> {
                     val offsetDefault = 0
                     val limitDefault = 10000
-                    val query = "SELECT count(*) AS count FROM get_validator_list(?, ?, ?, ?, ?, ?) "
+                    val query = "SELECT count(*) AS count FROM get_validator_list(?, ?, ?, ?, ?, ?, ?) "
                     val arguments = mutableListOf<Pair<ColumnType, *>>(
                         Pair(IntegerColumnType(), activeSet),
                         Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
                         Pair(TextColumnType(), searchState.name.lowercase()),
                         Pair(IntegerColumnType(), limitDefault),
                         Pair(IntegerColumnType(), offsetDefault),
-                        Pair(ArrayColumnType(TextColumnType()), consensusAddrSet)
+                        Pair(ArrayColumnType(TextColumnType()), consensusAddrSet),
+                        Pair(BooleanColumnType(), searchVerified)
                     )
                     query.execAndMap(arguments) { it.toCount() }.first()
                 }
                 ALL -> {
-                    val query = "SELECT count(*) AS count FROM get_all_validator_state(?, ?, ?)".trimIndent()
+                    val query = "SELECT count(*) AS count FROM get_all_validator_state(?, ?, ?, ?)".trimIndent()
                     val arguments = mutableListOf<Pair<ColumnType, *>>(
                         Pair(IntegerColumnType(), activeSet),
                         Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
-                        Pair(ArrayColumnType(TextColumnType()), consensusAddrSet)
+                        Pair(ArrayColumnType(TextColumnType()), consensusAddrSet),
+                        Pair(BooleanColumnType(), searchVerified)
                     )
                     query.execAndMap(arguments) { it.toCount() }.first()
                 }
@@ -297,6 +307,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
     var tokenCount by ValidatorStateTable.tokenCount
     var json by ValidatorStateTable.json
     var commissionRate by ValidatorStateTable.commissionRate
+    var verified by ValidatorStateTable.verified
 }
 
 fun ResultSet.toCurrentValidatorState() = CurrentValidatorState(
@@ -312,7 +323,8 @@ fun ResultSet.toCurrentValidatorState() = CurrentValidatorState(
     this.getString("consensus_address"),
     this.getString("consensus_pubkey"),
     ValidatorState.valueOf(this.getString("validator_state").uppercase()),
-    this.getBigDecimal("commission_rate")
+    this.getBigDecimal("commission_rate"),
+    this.getBoolean("verified")
 )
 
 fun ResultSet.toCount() = this.getLong("count")

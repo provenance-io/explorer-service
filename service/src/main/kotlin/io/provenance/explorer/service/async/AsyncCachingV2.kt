@@ -18,6 +18,7 @@ import io.provenance.explorer.domain.entities.FeePayer
 import io.provenance.explorer.domain.entities.IbcAckType
 import io.provenance.explorer.domain.entities.IbcLedgerRecord
 import io.provenance.explorer.domain.entities.IbcRelayerRecord
+import io.provenance.explorer.domain.entities.NameRecord
 import io.provenance.explorer.domain.entities.SigJoinType
 import io.provenance.explorer.domain.entities.SignatureJoinRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
@@ -49,12 +50,14 @@ import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.BlockUpdate
 import io.provenance.explorer.domain.models.explorer.MsgProtoBreakout
+import io.provenance.explorer.domain.models.explorer.Name
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxUpdate
 import io.provenance.explorer.domain.models.explorer.toProcedureObject
 import io.provenance.explorer.grpc.extensions.AddressEvents
 import io.provenance.explorer.grpc.extensions.DenomEvents
 import io.provenance.explorer.grpc.extensions.GovMsgType
+import io.provenance.explorer.grpc.extensions.NameEvents
 import io.provenance.explorer.grpc.extensions.SmContractEventKeys
 import io.provenance.explorer.grpc.extensions.SmContractValue
 import io.provenance.explorer.grpc.extensions.denomEventRegexParse
@@ -67,6 +70,8 @@ import io.provenance.explorer.grpc.extensions.getAssociatedMetadataEvents
 import io.provenance.explorer.grpc.extensions.getAssociatedSmContractMsgs
 import io.provenance.explorer.grpc.extensions.getDenomEventByEvent
 import io.provenance.explorer.grpc.extensions.getIbcLedgerMsgs
+import io.provenance.explorer.grpc.extensions.getNameEventTypes
+import io.provenance.explorer.grpc.extensions.getNameMsgs
 import io.provenance.explorer.grpc.extensions.getSmContractEventByEvent
 import io.provenance.explorer.grpc.extensions.getTxIbcClientChannel
 import io.provenance.explorer.grpc.extensions.isIbcTransferMsg
@@ -74,6 +79,8 @@ import io.provenance.explorer.grpc.extensions.isMetadataDeletionMsg
 import io.provenance.explorer.grpc.extensions.mapEventAttrValues
 import io.provenance.explorer.grpc.extensions.scrubQuotes
 import io.provenance.explorer.grpc.extensions.toMsgAcknowledgement
+import io.provenance.explorer.grpc.extensions.toMsgBindNameRequest
+import io.provenance.explorer.grpc.extensions.toMsgDeleteNameRequest
 import io.provenance.explorer.grpc.extensions.toMsgDeposit
 import io.provenance.explorer.grpc.extensions.toMsgRecvPacket
 import io.provenance.explorer.grpc.extensions.toMsgSubmitProposal
@@ -93,6 +100,7 @@ import io.provenance.explorer.service.IbcService
 import io.provenance.explorer.service.NftService
 import io.provenance.explorer.service.SmartContractService
 import io.provenance.explorer.service.ValidatorService
+import io.provenance.explorer.service.splitChildParent
 import net.pearx.kasechange.toSnakeCase
 import net.pearx.kasechange.universalWordSplitter
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -129,7 +137,7 @@ class AsyncCachingV2(
 
     fun saveBlockEtc(
         blockRes: Query.GetBlockByHeightResponse?,
-        rerunTxs: Boolean = false
+        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false) // rerun txs, pull from db
     ): Query.GetBlockByHeightResponse? {
         if (blockRes == null) return null
         logger.info("saving block ${blockRes.block.height()}")
@@ -170,7 +178,7 @@ class AsyncCachingV2(
     fun saveTxs(
         blockRes: Query.GetBlockByHeightResponse,
         proposerRec: BlockProposer,
-        rerunTxs: Boolean = false
+        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false) // rerun txs, pull from db
     ): List<TxUpdate> {
         val toBeUpdated =
             addTxsToCache(
@@ -204,24 +212,28 @@ class AsyncCachingV2(
         expectedNumTxs: Int,
         blockTime: Timestamp,
         proposerRec: BlockProposer,
-        rerunTxs: Boolean = false
+        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false) // rerun txs, pull from db
     ) =
-        if (txCountForHeight(blockHeight).toInt() == expectedNumTxs && !rerunTxs)
+        if (txCountForHeight(blockHeight).toInt() == expectedNumTxs && !rerunTxs.first)
             logger.info("Cache hit for transaction at height $blockHeight with $expectedNumTxs transactions")
                 .let { listOf() }
         else {
             logger.info("Searching for $expectedNumTxs transactions at height $blockHeight")
-            tryAddTxs(blockHeight, expectedNumTxs, blockTime, proposerRec)
+            tryAddTxs(blockHeight, expectedNumTxs, blockTime, proposerRec, rerunTxs.second)
         }
 
     private fun tryAddTxs(
         blockHeight: Int,
         txCount: Int,
         blockTime: Timestamp,
-        proposerRec: BlockProposer
+        proposerRec: BlockProposer,
+        pullFromDb: Boolean = false
     ): List<TxUpdatedItems> = try {
-        txClient.getTxsByHeight(blockHeight, txCount)
-            .map { addTxToCacheWithTimestamp(txClient.getTxByHash(it.txhash), blockTime, proposerRec) }
+        if (pullFromDb)
+            TxCacheRecord.findByHeight(blockHeight).map { addTxToCacheWithTimestamp(it.txV2, blockTime, proposerRec) }
+        else
+            txClient.getTxsByHeight(blockHeight, txCount)
+                .map { addTxToCacheWithTimestamp(txClient.getTxByHash(it.txhash), blockTime, proposerRec) }
     } catch (e: Exception) {
         logger.error("Failed to retrieve transactions at block: $blockHeight", e.message)
         BlockTxRetryRecord.insert(blockHeight, e)
@@ -252,6 +264,7 @@ class AsyncCachingV2(
         saveGovData(res, txInfo, txUpdate)
         saveIbcChannelData(res, txInfo, txUpdate)
         saveSmartContractData(res, txInfo, txUpdate)
+        saveNameData(res, txInfo)
         saveSignaturesTx(res, txInfo, txUpdate)
         return TxUpdatedItems(addrs, markers, txUpdate)
     }
@@ -632,6 +645,62 @@ class AsyncCachingV2(
                 .map { contract -> TxSmContractRecord.buildInsert(txInfo, contract.key, contract.value) }
                 .let { txUpdate.apply { this.smContracts.addAll(it) } }
         }
+
+    private fun saveNameData(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData) = transaction {
+        if (tx.txResponse.code == 0) {
+            val insertList = mutableListOf<Name>()
+            tx.tx.body.messagesList.mapNotNull { it.getNameMsgs() }
+                .forEach { any ->
+                    when (any.typeUrl) {
+                        NameEvents.NAME_BIND.msg ->
+                            any.toMsgBindNameRequest().let {
+                                Name(
+                                    if (it.hasParent()) it.parent.name else null,
+                                    it.record.name,
+                                    it.record.name + (if (it.hasParent()) ".${it.parent.name}" else ""),
+                                    it.record.address,
+                                    it.record.restricted,
+                                    txInfo.blockHeight
+                                )
+                            }.let { insertList.add(it) }
+                        NameEvents.NAME_DELETE.msg ->
+                            any.toMsgDeleteNameRequest().let {
+                                NameRecord.deleteByFullNameAndOwner(
+                                    it.record.name,
+                                    it.record.address,
+                                    txInfo.blockHeight
+                                )
+                            }
+                    }
+                }
+
+            tx.txResponse.logsList
+                .flatMap { it.eventsList }
+                .filter { getNameEventTypes().contains(it.type) }
+                .map { e ->
+                    when (e.type) {
+                        NameEvents.NAME_BIND.event -> {
+                            val groupedAtts = e.attributesList.groupBy({ it.key }) { it.value }
+                            val addrList = groupedAtts["address"]!!
+                            groupedAtts["name"]!!.forEachIndexed { idx, name ->
+                                val (child, parent) = name.splitChildParent()
+                                val obj = Name(parent, child, name, addrList[idx], false, txInfo.blockHeight)
+                                if (insertList.firstOrNull { it.fullName == name } == null)
+                                    insertList.add(obj)
+                            }
+                        }
+                        NameEvents.NAME_DELETE.event -> {
+                            val groupedAtts = e.attributesList.groupBy({ it.key }) { it.value }
+                            val addrList = groupedAtts["address"]!!
+                            groupedAtts["name"]!!.forEachIndexed { idx, name ->
+                                NameRecord.deleteByFullNameAndOwner(name, addrList[idx], txInfo.blockHeight)
+                            }
+                        }
+                    }
+                }
+            insertList.forEach { NameRecord.insertOrUpdate(it) }
+        }
+    }
 
     fun saveSignaturesTx(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, txUpdate: TxUpdate) = transaction {
         tx.tx.authInfo.signerInfosList.flatMap { sig ->

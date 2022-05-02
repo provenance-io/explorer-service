@@ -37,6 +37,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Separated out Proposal votes into a paginated API #362
   * Deprecated `/api/v2/gov/proposals/{id}/votes` in favor of `/api/v3/gov/proposals/{id}/votes`
   * Moved Voting params and counts into the proposal detail / proposal listview responses
+* Add Name APIs #134
+  * `/api/v2/names/tree` - tree map of names on chain, including restriction and owner
+* Updated Validator data responses to include `isVerified` attribute #343
+  * Defined by where the validator owner has a KYC attribute created by a trusted address
+  * Added new ENV for `explorer.verified-addresses` - is a list of trusted addresses
 
 ### Improvements
 * Now saving applicable block heights to pull governance param sets #341
@@ -54,6 +59,12 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Updated `gov_proposal` with `deposit_param_check_height`, `voting_param_check_height`, inserted data
   * Updated `insert_gov_proposal()` procedure
   * Created `get_last_block_before_timestamp()` function
+* Migration 1.65 - Add naming tree #134
+  * Created `name` table, and inserted records
+* Migration 1.66 - Add `verified` to validators #343
+  * Added `verified` to `validator_state` table
+  * Updated materialized view `current_validator_state` to include new `verified` column
+  * Updated the `get_validator_list()`, `get_all_validator_state()` functions to include new `verified` column
 
 ## [v4.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.2.0) - 2022-05-24
 ### Release Name: Odoric of Pordenone

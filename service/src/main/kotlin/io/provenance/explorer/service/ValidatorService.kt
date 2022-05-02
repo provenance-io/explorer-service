@@ -66,7 +66,9 @@ import io.provenance.explorer.domain.models.explorer.ValidatorSummaryAbbrev
 import io.provenance.explorer.domain.models.explorer.ValidatorUptimeStats
 import io.provenance.explorer.domain.models.explorer.hourlyBlockCount
 import io.provenance.explorer.grpc.extensions.toAddress
+import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -80,7 +82,9 @@ class ValidatorService(
     private val props: ExplorerProperties,
     private val blockService: BlockService,
     private val grpcClient: ValidatorGrpcClient,
-    private val cacheService: CacheService
+    private val cacheService: CacheService,
+    private val attrClient: AttributeGrpcClient,
+    private val nameService: NameService
 ) {
 
     protected val logger = logger(ValidatorService::class)
@@ -88,6 +92,13 @@ class ValidatorService(
     fun getActiveSet() = grpcClient.getStakingParams().params.maxValidators
 
     fun getSlashingParams() = grpcClient.getSlashingParams().params
+
+    fun isVerified(address: String) =
+        runBlocking {
+            val atts = async { attrClient.getAllAttributesForAddress(address) }.await().map { it.name }
+            val kycAtts = nameService.getVerifiedKycAttributes()
+            atts.intersect(kycAtts).isNotEmpty()
+        }
 
     // Assumes that the returned validators are active at that height
     fun getValidatorsByHeight(blockHeight: Int) = transaction {
@@ -104,7 +115,7 @@ class ValidatorService(
         transaction { ValidatorStateRecord.findByOperator(getActiveSet(), operatorAddress) }
             ?: saveValidator(operatorAddress)
 
-    fun saveValidator(address: String) = transaction {
+    fun saveValidator(address: String) = runBlocking {
         grpcClient.getStakingValidator(address)
             .let {
                 StakingValidatorCacheRecord.insertIgnore(
@@ -117,7 +128,8 @@ class ValidatorService(
                         blockService.getLatestBlockHeightIndex(),
                         record.id.value,
                         it.operatorAddress,
-                        it
+                        it,
+                        isVerified(record.accountAddress),
                     )
                 }
             }.also { ValidatorStateRecord.refreshCurrentStateView() }
@@ -154,7 +166,8 @@ class ValidatorService(
                 stakingValidator.json.description.identity,
                 stakingValidator.json.getStatusString(),
                 if (stakingValidator.currentState != ACTIVE) stakingValidator.json.unbondingHeight else null,
-                if (stakingValidator.jailed) signingInfo?.jailedUntil?.toDateTime() else null
+                if (stakingValidator.jailed) signingInfo?.jailedUntil?.toDateTime() else null,
+                stakingValidator.verified
             )
         } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
@@ -215,7 +228,8 @@ class ValidatorService(
                             blockHeight,
                             it.id.value,
                             validator.operatorAddress,
-                            validator
+                            validator,
+                            isVerified(it.accountAddress)
                         )
                     }.let { true }
                 else false
@@ -231,7 +245,7 @@ class ValidatorService(
             val record = ValidatorStateRecord.findByValId(getActiveSet(), v)!!
             val data = grpcClient.getStakingValidator(record.operatorAddress)
             if (record.blockHeight < height && data != record.json)
-                ValidatorStateRecord.insertIgnore(height, v, record.operatorAddress, data)
+                ValidatorStateRecord.insertIgnore(height, v, record.operatorAddress, data, isVerified(record.accountAddr))
                     .also { if (!updated) updated = true }
         }
         return updated
@@ -244,7 +258,8 @@ class ValidatorService(
                 currVal.json.description.moniker,
                 currVal.operatorAddress,
                 currVal.json.commission.commissionRates.rate.toDecimalString(),
-                getImgUrl(currVal.json.description.identity)
+                getImgUrl(currVal.json.description.identity),
+                currVal.verified
             )
         }
         PagedResults(recs.size.toLong().pageCountOfResults(recs.size), recs, recs.size.toLong())
@@ -314,7 +329,8 @@ class ValidatorService(
             unbondingHeight = if (stakingVal.currentState != ACTIVE) stakingVal.json.unbondingHeight else null,
             imgUrl = getImgUrl(stakingVal.json.description.identity),
             hr24Change = get24HrBondedChange(validator, hr24Validator),
-            uptime = stakingVal.consensusAddr.validatorUptime(slashingWindow, height.toBigInteger())
+            uptime = stakingVal.consensusAddr.validatorUptime(slashingWindow, height.toBigInteger()),
+            isVerified = stakingVal.verified
         )
     }
 
