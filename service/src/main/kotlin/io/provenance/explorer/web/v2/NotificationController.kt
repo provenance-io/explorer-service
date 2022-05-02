@@ -6,6 +6,8 @@ import io.provenance.explorer.service.NotificationService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import io.swagger.annotations.ApiParam
+import org.joda.time.DateTime
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
@@ -52,8 +54,13 @@ class NotificationController(private val notifService: NotificationService) {
     fun getAnnouncements(
         @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
         @ApiParam(value = "Record count between 1 and 50", defaultValue = "10", required = false)
-        @RequestParam(defaultValue = "10") @Min(1) @Max(50) count: Int
-    ) = ResponseEntity.ok(notifService.getAnnouncements(page, count))
+        @RequestParam(defaultValue = "10") @Min(1) @Max(50) count: Int,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?
+    ) = ResponseEntity.ok(notifService.getAnnouncements(page, count, fromDate))
 
     @ApiOperation("Delete an existing announcement")
     @PutMapping("/announcement/{id}")

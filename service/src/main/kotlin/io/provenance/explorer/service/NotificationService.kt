@@ -30,12 +30,14 @@ class NotificationService(
     protected val logger = logger(NotificationService::class)
 
     fun fetchOpenProposalBreakdown() = transaction {
-        val proposals = GovProposalRecord.getNonFinalProposals()
-        if (proposals.isEmpty())
-            return@transaction null
+        val proposals = GovProposalRecord.getNonFinalProposals().sortedBy { it.proposalId }
 
         val typeUrl = govService.getUpgradeProtoType()
-        OpenProposals(proposals.size, proposals.filter { it.proposalType == typeUrl.getProposalType() }.size)
+        val (upgrades, nonUpgrades) = proposals.map {
+            it.proposalType to AnnouncementOut(it.proposalId.toInt(), it.title, null, null)
+        }.partition { it.first == typeUrl.getProposalType() }
+
+        OpenProposals(nonUpgrades.map { it.second }, upgrades.map { it.second })
     }
 
     fun fetchScheduledUpgrades() = transaction {
@@ -77,8 +79,8 @@ class NotificationService(
         return this
     }
 
-    fun getAnnouncements(page: Int, count: Int) =
-        AnnouncementRecord.getAnnouncements(page.toOffset(count), count)
+    fun getAnnouncements(page: Int, count: Int, fromDate: DateTime?) =
+        AnnouncementRecord.getAnnouncements(page.toOffset(count), count, fromDate)
             .map { AnnouncementOut(it.id.value, it.title, it.body, it.annTimestamp.toString()) }
 
     fun deleteAnnouncement(id: Int) = AnnouncementRecord.deleteById(id)
