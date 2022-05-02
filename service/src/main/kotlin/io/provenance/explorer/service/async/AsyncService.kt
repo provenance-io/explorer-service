@@ -131,7 +131,7 @@ class AsyncService(
         }
     }
 
-    @Scheduled(cron = "0 0/20 * * * ?") // Every 20 minutes
+    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
     fun performProposalUpdates() = transaction {
         logger.info("Performing proposal updates")
         GovProposalRecord.getNonFinalProposals().forEach { govService.updateProposal(it) }

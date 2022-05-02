@@ -2,6 +2,7 @@ package io.provenance.explorer.domain.extensions
 
 import io.provenance.explorer.OBJECT_MAPPER
 import org.jetbrains.exposed.sql.IColumnType
+import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
@@ -19,7 +20,7 @@ fun String.exec(args: Iterable<Pair<IColumnType, Any?>>): ResultSet =
 
 fun <T : Any> String.execAndMap(args: Iterable<Pair<IColumnType, Any?>> = emptyList(), transform: (ResultSet) -> T): List<T> {
     val result = arrayListOf<T>()
-    TransactionManager.current().exec(this, args) { rs ->
+    TransactionManager.current().exec(this, args, StatementType.SELECT) { rs ->
         while (rs.next()) {
             result += transform(rs)
         }

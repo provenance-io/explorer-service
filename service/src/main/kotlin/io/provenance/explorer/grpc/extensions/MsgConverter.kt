@@ -678,6 +678,23 @@ enum class SmContractEventKeys(val eventType: String, val eventKey: Map<String, 
 
 fun getSmContractEventByEvent(event: String) = SmContractEventKeys.values().firstOrNull { it.eventType == event }
 
+// ///////// NAMES
+
+enum class NameEvents(val msg: String, val event: String) {
+    NAME_BIND("/provenance.name.v1.MsgBindNameRequest", "provenance.name.v1.EventNameBound"),
+    NAME_DELETE("/provenance.name.v1.MsgDeleteNameRequest", "provenance.name.v1.EventNameUnbound")
+}
+
+fun getNameMsgTypes() = NameEvents.values().map { it.msg }
+
+fun getNameEventTypes() = NameEvents.values().map { it.event }
+
+fun Any.getNameMsgs() =
+    when {
+        getNameMsgTypes().contains(typeUrl) -> this
+        else -> null.also { logger().debug("This typeUrl is not yet supported in as a Name msg: $typeUrl") }
+    }
+
 // ///////// DENOM EVENTS
 enum class DenomEvents(val event: String, val idField: String, val parse: Boolean = false) {
     TRANSFER("transfer", "amount", true),

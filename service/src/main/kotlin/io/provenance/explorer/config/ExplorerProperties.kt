@@ -2,51 +2,27 @@ package io.provenance.explorer.config
 
 import io.provenance.explorer.domain.core.Bech32
 import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.validation.annotation.Validated
-import javax.validation.constraints.NotNull
 
 @ConfigurationProperties(prefix = "explorer")
 @Validated
-class ExplorerProperties {
-
-    @NotNull
-    lateinit var mainnet: String
-
-    @NotNull
-    lateinit var pbUrl: String
-
-    @NotNull
-    lateinit var initialHistoricalDayCount: String
-
-    @NotNull
-    lateinit var spotlightTtlMs: String
-
-    @NotNull
-    lateinit var figmentApikey: String
-
-    @NotNull
-    lateinit var figmentUrl: String
-
-    @NotNull
-    lateinit var genesisVersionUrl: String
-
-    @NotNull
-    lateinit var upgradeVersionRegex: String
-
-    @NotNull
-    lateinit var upgradeGithubRepo: String
-
-    @NotNull
-    lateinit var hiddenApis: String
-
-    @NotNull
-    lateinit var swaggerUrl: String
-
-    @NotNull
-    lateinit var swaggerProtocol: String
-
-    @NotNull
-    lateinit var pricingUrl: String
+@ConstructorBinding
+class ExplorerProperties(
+    val mainnet: String,
+    val pbUrl: String,
+    val initialHistoricalDayCount: String,
+    val spotlightTtlMs: String,
+    val figmentApikey: String,
+    val figmentUrl: String,
+    val genesisVersionUrl: String,
+    val upgradeVersionRegex: String,
+    val upgradeGithubRepo: String,
+    val hiddenApis: String,
+    val swaggerUrl: String,
+    val swaggerProtocol: String,
+    val pricingUrl: String
+) {
 
     fun initialHistoricalDays() = initialHistoricalDayCount.toInt()
 
