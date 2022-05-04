@@ -1,11 +1,13 @@
 package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.domain.exceptions.InvalidArgumentException
+import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.Announcement
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
@@ -37,8 +39,9 @@ class AnnouncementRecord(id: EntityID<Int>) : IntEntity(id) {
             }.value
         }
 
-        fun getAnnouncements(offset: Int, limit: Int) = transaction {
-            AnnouncementRecord.all()
+        fun getAnnouncements(offset: Int, limit: Int, fromDate: DateTime?) = transaction {
+            AnnouncementRecord
+                .find { if (fromDate != null) AnnouncementTable.annTimestamp greaterEq fromDate.startOfDay() else Op.TRUE }
                 .orderBy(Pair(AnnouncementTable.annTimestamp, SortOrder.DESC))
                 .limit(limit, offset.toLong())
                 .toList()

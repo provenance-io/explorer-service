@@ -5,8 +5,8 @@ import io.swagger.annotations.ApiModelProperty
 import org.joda.time.DateTime
 
 data class OpenProposals(
-    val totalOpenCount: Int,
-    val upgradeOpenCount: Int
+    val nonUpgradeOpenList: List<AnnouncementOut>,
+    val upgradeOpenList: List<AnnouncementOut>
 )
 
 data class ScheduledUpgrade(
@@ -32,6 +32,6 @@ data class Announcement(
 data class AnnouncementOut(
     val id: Int,
     val title: String,
-    val body: String,
-    val timestamp: String
+    val body: String?,
+    val timestamp: String?
 )
