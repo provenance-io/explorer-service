@@ -39,6 +39,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * `/api/v2/notifications/upgrades` - List of expected, scheduled upgrades
   * `/api/v2/notifications/announcement` - PUT an announcement to be displayed in Explorer
   * `/api/v2/notifications/announcement/all` - Paginated list of announcements, can filter by `fromDate`
+  * `/api/v2/notifications/announcement/{id}` - GET an announcement by ID
   * `/api/v2/notifications/announcement/{id}` - DELETE an existing announcement
 * Add new IBC APIs #336
   * `/api/v2/txs/ibc/chain/{ibcChain}` - txs per IBC chain id, query params supporting narrowing by channel

@@ -2,6 +2,7 @@ package io.provenance.explorer.service
 
 import cosmos.gov.v1beta1.Gov
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AnnouncementRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
@@ -82,6 +83,12 @@ class NotificationService(
     fun getAnnouncements(page: Int, count: Int, fromDate: DateTime?) =
         AnnouncementRecord.getAnnouncements(page.toOffset(count), count, fromDate)
             .map { AnnouncementOut(it.id.value, it.title, it.body, it.annTimestamp.toString()) }
+
+    fun getAnnouncementById(id: Int) = transaction {
+        AnnouncementRecord.findById(id)
+            ?.let { AnnouncementOut(it.id.value, it.title, it.body, it.annTimestamp.toString()) }
+            ?: throw ResourceNotFoundException("Invalid announcement id: '$id'")
+    }
 
     fun deleteAnnouncement(id: Int) = AnnouncementRecord.deleteById(id)
 }

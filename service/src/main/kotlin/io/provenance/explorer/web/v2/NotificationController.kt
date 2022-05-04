@@ -62,6 +62,10 @@ class NotificationController(private val notifService: NotificationService) {
         ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?
     ) = ResponseEntity.ok(notifService.getAnnouncements(page, count, fromDate))
 
+    @ApiOperation("Returns a single announcement by ID")
+    @GetMapping("/announcement/{id}")
+    fun getAnnouncementById(@PathVariable id: Int) = ResponseEntity.ok(notifService.getAnnouncementById(id))
+
     @ApiOperation("Delete an existing announcement")
     @PutMapping("/announcement/{id}")
     @HiddenApi
