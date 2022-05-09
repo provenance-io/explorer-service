@@ -14,7 +14,7 @@ import io.provenance.explorer.domain.extensions.toAccountPubKey
 import io.provenance.explorer.domain.extensions.toBase64
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
-import io.provenance.explorer.domain.extensions.toDecCoin
+import io.provenance.explorer.domain.extensions.toDecimalString
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.AccountDetail
@@ -128,7 +128,7 @@ class AccountService(
                     null,
                     CoinStr(it.balance.amount, it.balance.denom),
                     null,
-                    it.delegation.shares.toDecCoin(),
+                    it.delegation.shares.toDecimalString(),
                     null,
                     null
                 )
@@ -170,7 +170,7 @@ class AccountService(
                         list.redelegation.validatorDstAddress,
                         CoinStr(it.balance, NHASH),
                         CoinStr(it.redelegationEntry.initialBalance, NHASH),
-                        it.redelegationEntry.sharesDst.toDecCoin(),
+                        it.redelegationEntry.sharesDst.toDecimalString(),
                         it.redelegationEntry.creationHeight.toInt(),
                         it.redelegationEntry.completionTime.toDateTime()
                     )

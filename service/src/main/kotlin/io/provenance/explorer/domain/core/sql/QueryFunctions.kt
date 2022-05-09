@@ -7,6 +7,7 @@ import org.jetbrains.exposed.sql.Function
 import org.jetbrains.exposed.sql.IColumnType
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.QueryBuilder
+import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.append
 import org.jetbrains.exposed.sql.jodatime.CustomDateTimeFunction
@@ -14,6 +15,7 @@ import org.jetbrains.exposed.sql.jodatime.DateColumnType
 import org.jetbrains.exposed.sql.stringLiteral
 import org.joda.time.DateTime
 import java.math.BigDecimal
+import kotlin.Array
 
 // Generic Distinct function
 class Distinct<T>(val expr: Expression<T>, _columnType: IColumnType) : Function<T>(_columnType) {
@@ -68,3 +70,13 @@ class ColumnNullsLast(private val col: Expression<*>) : Expression<String>() {
 fun Expression<*>.nullsLast() = ColumnNullsLast(this)
 
 fun EntityID<Int>?.getOrNull() = try { this?.value } catch (e: Exception) { null }
+
+class Array(val exprs: List<Expression<String>>) : Function<Array<String>>(ArrayColumnType(TextColumnType())) {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) = queryBuilder { append("ARRAY [", exprs.joinToString(","), "]") }
+}
+
+fun List<Expression<*>>.joinToList() = this.joinToString(",") { "$it::text" }
+
+class ArrayAgg(val expr: Expression<Array<String>>) : Function<Array<Array<String>>>(ArrayColumnType(ArrayColumnType(TextColumnType()))) {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) = queryBuilder { append("array_agg(", expr, ")") }
+}

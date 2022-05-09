@@ -3,7 +3,7 @@ package io.provenance.explorer.grpc.v1
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.core.logger
-import io.provenance.explorer.domain.extensions.toDecCoin
+import io.provenance.explorer.domain.extensions.toDecimalString
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -49,7 +49,7 @@ class BankGrpcClient(channelUri: URI) {
 
     fun getCommunityPoolAmount(denom: String): String =
         distClient.communityPool(DistOuterClass.QueryCommunityPoolRequest.newBuilder().build()).poolList
-            .filter { it.denom == denom }[0]?.amount!!.toDecCoin()
+            .filter { it.denom == denom }[0]?.amount!!.toDecimalString()
 
     fun getStakingPool() = stakingClient.pool(StakingOuterClass.QueryPoolRequest.getDefaultInstance())
 

@@ -31,8 +31,8 @@ import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.stringfy
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
-import io.provenance.explorer.domain.extensions.toDecCoin
 import io.provenance.explorer.domain.extensions.toDecimal
+import io.provenance.explorer.domain.extensions.toDecimalString
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toPercentage
 import io.provenance.explorer.domain.extensions.toSingleSigKeyValue
@@ -243,7 +243,7 @@ class ValidatorService(
             ValidatorSummaryAbbrev(
                 currVal.json.description.moniker,
                 currVal.operatorAddress,
-                currVal.json.commission.commissionRates.rate.toDecCoin(),
+                currVal.json.commission.commissionRates.rate.toDecimalString(),
                 getImgUrl(currVal.json.description.identity)
             )
         }
@@ -307,7 +307,7 @@ class ValidatorService(
                 validator.votingPower.toBigInteger(),
                 totalVotingPower
             ) else null,
-            commission = stakingVal.json.commission.commissionRates.rate.toDecCoin(),
+            commission = stakingVal.json.commission.commissionRates.rate.toDecimalString(),
             bondedTokens = CountStrTotal(stakingVal.json.tokens, null, NHASH),
             delegators = delegatorCount,
             status = stakingVal.json.getStatusString(),
@@ -358,7 +358,7 @@ class ValidatorService(
                     null,
                     CoinStr(it.balance.amount, it.balance.denom),
                     null,
-                    it.delegation.shares.toDecCoin(),
+                    it.delegation.shares.toDecimalString(),
                     null,
                     null
                 )
@@ -405,12 +405,12 @@ class ValidatorService(
                 NHASH
             ),
             delegatorCount,
-            validator.delegatorShares.toDecCoin(),
-            rewards?.amount?.toDecCoin()?.let { CoinStr(it, rewards.denom) } ?: CoinStr("0", NHASH),
+            validator.delegatorShares.toDecimalString(),
+            rewards?.amount?.toDecimalString()?.let { CoinStr(it, rewards.denom) } ?: CoinStr("0", NHASH),
             CommissionRate(
-                validator.commission.commissionRates.rate.toDecCoin(),
-                validator.commission.commissionRates.maxRate.toDecCoin(),
-                validator.commission.commissionRates.maxChangeRate.toDecCoin()
+                validator.commission.commissionRates.rate.toDecimalString(),
+                validator.commission.commissionRates.maxRate.toDecimalString(),
+                validator.commission.commissionRates.maxChangeRate.toDecimalString()
             )
         )
     }

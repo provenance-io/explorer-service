@@ -46,9 +46,15 @@ data class GovAddress(
 
 data class ProposalTimings(
     val deposit: DepositPercentage,
+    val voting: VotingDetails,
     val submitTime: String,
     val depositEndTime: String,
     val votingTime: GovTimeFrame
+)
+
+data class VotingDetails(
+    val params: TallyParams,
+    val tally: VotesTally
 )
 
 data class GovVotesDetail(
@@ -101,6 +107,18 @@ data class VoteDbRecord(
     val proposalStatus: String
 )
 
+data class VoteDbRecordAgg(
+    val voter: String,
+    val isValidator: Boolean,
+    val voteWeight: List<VoteWeightDbObj>,
+    val blockHeight: Int,
+    val txHash: String,
+    val txTimestamp: DateTime,
+    val proposalId: Long,
+    val proposalTitle: String,
+    val proposalStatus: String
+)
+
 data class DepositRecord(
     val voter: GovAddress,
     val type: String,
@@ -116,3 +134,10 @@ data class GovMsgDetail(
     val proposalId: Long,
     var proposalTitle: String
 )
+
+data class ProposalParamHeights(
+    val depositCheckHeight: Int,
+    val votingCheckHeight: Int
+)
+
+data class VoteWeightDbObj(val vote: String, val weight: Double)

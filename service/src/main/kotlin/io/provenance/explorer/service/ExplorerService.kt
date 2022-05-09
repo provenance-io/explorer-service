@@ -198,7 +198,7 @@ class ExplorerService(
 
     fun getChainUpgrades(): List<ChainUpgrade> {
         val typeUrl = govService.getUpgradeProtoType()
-        val scheduledName = govClient.getIfUpgradeScheduled()?.plan?.name
+        val scheduledName = runBlocking { govClient.getIfUpgradeScheduled()?.plan?.name }
         val proposals = GovProposalRecord.findByProposalType(typeUrl)
             .filter { it.status == Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name }
         val knownReleases =
@@ -230,7 +230,7 @@ class ExplorerService(
                     one.content.get("plan").get("name").asText(),
                     one.content.get("plan").get("info").asText().getChainVersionFromUrl(props.upgradeVersionRegex),
                     version,
-                    govClient.getIfUpgradeApplied(one.content.get("plan").get("name").asText())
+                    runBlocking { govClient.getIfUpgradeApplied(one.content.get("plan").get("name").asText()) }
                         ?.let { it.height.toInt() != one.content.get("plan").get("height").asInt() }
                         ?: true,
                     scheduledName?.let { name -> name == one.content.get("plan").get("name").asText() } ?: false,
@@ -306,9 +306,9 @@ class ExplorerService(
         val authParams = async { accountClient.getAuthParams().params }
         val bankParams = async { accountClient.getBankParams().params }
         val distParams = validatorClient.getDistParams().params
-        val votingParams = govClient.getParams(GovParamType.voting).votingParams
-        val tallyParams = govClient.getParams(GovParamType.tallying).tallyParams
-        val depositParams = govClient.getParams(GovParamType.deposit).depositParams
+        val votingParams = async { govClient.getParams(GovParamType.voting).votingParams }
+        val tallyParams = async { govClient.getParams(GovParamType.tallying).tallyParams }
+        val depositParams = async { govClient.getParams(GovParamType.deposit).depositParams }
         val mintParams = async { accountClient.getMintParams().params }
         val slashingParams = validatorClient.getSlashingParams().params
         val stakingParams = validatorClient.getStakingParams().params
@@ -327,9 +327,9 @@ class ExplorerService(
                     .toObjectNodePrint(protoPrinter),
                 distParams.toDto(),
                 GovParams(
-                    votingParams.toObjectNodePrint(protoPrinter),
-                    tallyParams.toDto(),
-                    depositParams.toObjectNodePrint(protoPrinter),
+                    votingParams.await().toObjectNodePrint(protoPrinter),
+                    tallyParams.await().toDto(),
+                    depositParams.await().toObjectNodePrint(protoPrinter),
                 ),
                 mintParams.await().toDto(),
                 slashingParams.toDto(),

@@ -6,19 +6,26 @@ import com.google.protobuf.util.JsonFormat
 import cosmos.base.v1beta1.CoinOuterClass
 import cosmos.gov.v1beta1.Gov
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.domain.core.sql.Array
+import io.provenance.explorer.domain.core.sql.ArrayAgg
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.extensions.toDecimal
 import io.provenance.explorer.domain.models.explorer.GovAddrData
+import io.provenance.explorer.domain.models.explorer.ProposalParamHeights
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.VoteDbRecord
+import io.provenance.explorer.domain.models.explorer.VoteDbRecordAgg
+import io.provenance.explorer.domain.models.explorer.VoteWeightDbObj
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.castTo
 import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
@@ -40,6 +47,8 @@ object GovProposalTable : IntIdTable(name = "gov_proposal") {
     val txHash = varchar("tx_hash", 64)
     val txTimestamp = datetime("tx_timestamp")
     val txHashId = reference("tx_hash_id", TxCacheTable)
+    val depositParamCheckHeight = integer("deposit_param_check_height")
+    val votingParamCheckHeight = integer("voting_param_check_height")
 }
 
 fun String.getProposalType() = this.split(".").last().replace("Proposal", "")
@@ -96,7 +105,8 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
             protoPrinter: JsonFormat.Printer,
             txInfo: TxData,
             addrInfo: GovAddrData,
-            isSubmit: Boolean
+            isSubmit: Boolean,
+            paramHeights: ProposalParamHeights
         ) = transaction {
             proposal.content.toProposalTitleAndDescription(protoPrinter).let { (title, description) ->
                 val (hash, block, time) = findByProposalId(proposal.proposalId)?.let {
@@ -118,7 +128,9 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
                     block,
                     hash,
                     time,
-                    0
+                    0,
+                    paramHeights.depositCheckHeight,
+                    paramHeights.votingCheckHeight
                 ).toProcedureObject()
             }
         }
@@ -138,6 +150,8 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
     var txHash by GovProposalTable.txHash
     var txTimestamp by GovProposalTable.txTimestamp
     var txHashId by TxCacheRecord referencedOn GovProposalTable.txHashId
+    var depositParamCheckHeight by GovProposalTable.depositParamCheckHeight
+    var votingParamCheckHeight by GovProposalTable.votingParamCheckHeight
 }
 
 object GovVoteTable : IntIdTable(name = "gov_vote") {
@@ -152,6 +166,9 @@ object GovVoteTable : IntIdTable(name = "gov_vote") {
     val txTimestamp = datetime("tx_timestamp")
     val txHashId = reference("tx_hash_id", TxCacheTable)
 }
+
+fun kotlin.Array<kotlin.Array<String>>.toVoteWeightObj() =
+    this.map { VoteWeightDbObj(it[0], it[1].toDouble()) }.toList()
 
 class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<GovVoteRecord>(GovVoteTable) {
@@ -173,6 +190,54 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
                         ""
                     )
                 }
+        }
+
+        fun findByProposalIdPaginated(proposalId: Long, limit: Int, offset: Int) = transaction {
+            val array = Array(listOf(GovVoteTable.vote.castTo(TextColumnType()), GovVoteTable.weight.castTo(TextColumnType())))
+            val arrayAgg = ArrayAgg(array)
+            GovVoteTable.slice(
+                listOf(
+                    GovVoteTable.proposalId,
+                    GovVoteTable.address,
+                    GovVoteTable.isValidator,
+                    arrayAgg,
+                    GovVoteTable.blockHeight,
+                    GovVoteTable.txHash,
+                    GovVoteTable.txTimestamp
+                )
+            ).select { GovVoteTable.proposalId eq proposalId }
+                .groupBy(
+                    GovVoteTable.proposalId,
+                    GovVoteTable.address,
+                    GovVoteTable.isValidator,
+                    GovVoteTable.blockHeight,
+                    GovVoteTable.txHash,
+                    GovVoteTable.txTimestamp
+                )
+                .orderBy(Pair(GovVoteTable.blockHeight, SortOrder.DESC))
+                .limit(limit, offset.toLong())
+                .map {
+                    VoteDbRecordAgg(
+                        it[GovVoteTable.address],
+                        it[GovVoteTable.isValidator],
+                        it[arrayAgg].toVoteWeightObj(),
+                        it[GovVoteTable.blockHeight],
+                        it[GovVoteTable.txHash],
+                        it[GovVoteTable.txTimestamp],
+                        it[GovVoteTable.proposalId],
+                        "",
+                        ""
+                    )
+                }
+        }
+
+        fun findByProposalIdCount(proposalId: Long) = transaction {
+            val array = Array(listOf(GovVoteTable.vote.castTo(TextColumnType()), GovVoteTable.weight.castTo(TextColumnType())))
+            val arrayAgg = ArrayAgg(array)
+            GovVoteTable.slice(listOf(GovVoteTable.proposalId, GovVoteTable.address, arrayAgg))
+                .select { GovVoteTable.proposalId eq proposalId }
+                .groupBy(GovVoteTable.proposalId, GovVoteTable.address)
+                .count()
         }
 
         fun getByAddrIdPaginated(addrId: Int, limit: Int, offset: Int) = transaction {

@@ -57,7 +57,7 @@ class GeneralController(
             value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = true
         ) @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime,
-        @ApiParam(value = "The granularity of data, either DAY or HOUR", defaultValue = "DAY", required = false)
+        @ApiParam(value = "The granularity of data, either DAY or HOUR", defaultValue = "DAY", required = false, allowableValues = "DAY,HOUR")
         @RequestParam(required = false) granularity: DateTruncGranularity?,
         @ApiParam(value = "The message type string, ie write_scope, send, add_attribute", required = false)
         @RequestParam(required = false) msgType: String?
@@ -76,7 +76,7 @@ class GeneralController(
             value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = true
         ) @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime,
-        @ApiParam(value = "The granularity of data, either DAY or HOUR", defaultValue = "DAY", required = false)
+        @ApiParam(value = "The granularity of data, either DAY or HOUR", defaultValue = "DAY", required = false, allowableValues = "DAY,HOUR")
         @RequestParam(required = false) granularity: DateTruncGranularity?
     ) = ResponseEntity.ok(explorerService.getGasVolume(fromDate, toDate, granularity))
 
