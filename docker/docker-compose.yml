@@ -37,7 +37,7 @@ services:
       - EXPLORER_HIDDEN_APIS=false
       - EXPLORER_SWAGGER_URL=localhost:8612
       - EXPLORER_SWAGGER_PROTOCOL=http
-      - EXPLORER_PRICING_URL=https://test.figure.tech/service-pricing-engine/service-pricing-engine
+      - EXPLORER_PRICING_URL=https://test.figure.tech/service-pricing-engine/external
     depends_on:
       - explorer-postgres
     links:
