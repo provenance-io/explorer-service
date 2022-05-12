@@ -204,7 +204,7 @@ class ExplorerService(
         val knownReleases =
             CacheUpdateRecord.fetchCacheByKey(CacheKeys.CHAIN_RELEASES.key)?.cacheValue?.let {
                 VANILLA_MAPPER.readValue<List<GithubReleaseData>>(it)
-            } ?: getChainReleases()
+            } ?: getAllChainReleases()
         val genesis = props.genesisVersionUrl.getLatestPatchVersion(
             knownReleases,
             props.upgradeVersionRegex,
@@ -241,9 +241,22 @@ class ExplorerService(
         return (listOf(genesis) + upgrades).sortedBy { it.upgradeHeight }
     }
 
+    fun getAllChainReleases(): MutableList<GithubReleaseData> {
+        var page = 1
+        val pageCount = 100
+        val records = getChainReleases(page, pageCount)
+        while (records.size == pageCount * page) {
+            page++
+            records.addAll(getChainReleases(page, pageCount))
+        }
+        if (records.isNotEmpty())
+            CacheUpdateRecord.updateCacheByKey(CacheKeys.CHAIN_RELEASES.key, VANILLA_MAPPER.writeValueAsString(records))
+        return records
+    }
+
     // Fetches and saves the ordered list of releases
-    fun getChainReleases(): MutableList<GithubReleaseData> = runBlocking {
-        val url = "https://api.github.com/repos/${props.upgradeGithubRepo}/releases"
+    fun getChainReleases(page: Int, count: Int): MutableList<GithubReleaseData> = runBlocking {
+        val url = "https://api.github.com/repos/${props.upgradeGithubRepo}/releases?per_page=$count&page=$page"
         val res = try {
             KTOR_CLIENT_JAVA.get<HttpResponse>(url)
         } catch (e: ResponseException) {
@@ -265,9 +278,6 @@ class ExplorerService(
                 mutableListOf<GithubReleaseData>().also { logger.error("Error: $e") }
             }
         } else mutableListOf<GithubReleaseData>().also { logger.error("Error reaching Pricing Engine: ${res.status.value}") }
-    }.also {
-        if (it.isNotEmpty())
-            CacheUpdateRecord.updateCacheByKey(CacheKeys.CHAIN_RELEASES.key, VANILLA_MAPPER.writeValueAsString(it))
     }
 
     fun String.getLatestPatchVersion(

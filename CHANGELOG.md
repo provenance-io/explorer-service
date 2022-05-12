@@ -57,6 +57,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * `/api/v2/smart_contract/code/{id}/contracts` - added filters on `creator`, `admin`
 * Added API to fetch list of unique non-UUID contract labels #339
   * `/api/v2/smart_contract/contract/labels`
+* Updated the Pricing Engine API pathing
 
 ### Bug Fixes
 * Updated how the service runs on an empty DB
@@ -66,6 +67,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Related to incorrect value mapping
   * Added sort to block retry so they process in height order
 * Fixed how the weighted vote percentage was being ingested
+* Fixed chain version fetch from github #349
+  * Due to a limit of count on records from teh Github API
 
 ### Data
 * Migration 1.58 - Add weight to proposal votes #323
