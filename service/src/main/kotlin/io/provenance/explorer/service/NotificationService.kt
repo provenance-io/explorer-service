@@ -8,10 +8,12 @@ import io.provenance.explorer.domain.entities.AnnouncementRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.getProposalType
 import io.provenance.explorer.domain.exceptions.InvalidArgumentException
+import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.Announcement
 import io.provenance.explorer.domain.models.explorer.AnnouncementOut
 import io.provenance.explorer.domain.models.explorer.OpenProposals
+import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.ScheduledUpgrade
 import io.provenance.explorer.grpc.v1.GovGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -35,7 +37,7 @@ class NotificationService(
 
         val typeUrl = govService.getUpgradeProtoType()
         val (upgrades, nonUpgrades) = proposals.map {
-            it.proposalType to AnnouncementOut(it.proposalId.toInt(), it.title, null, null)
+            it.proposalType to AnnouncementOut(it.proposalId.toInt(), it.title, null, null, null, null)
         }.partition { it.first == typeUrl.getProposalType() }
 
         OpenProposals(nonUpgrades.map { it.second }, upgrades.map { it.second })
@@ -82,12 +84,13 @@ class NotificationService(
 
     fun getAnnouncements(page: Int, count: Int, fromDate: DateTime?) =
         AnnouncementRecord.getAnnouncements(page.toOffset(count), count, fromDate)
-            .map { AnnouncementOut(it.id.value, it.title, it.body, it.annTimestamp.toString()) }
+            .let { results ->
+                val totalCount = AnnouncementRecord.getAnnouncementCount(fromDate)
+                PagedResults(totalCount.pageCountOfResults(count), results, totalCount)
+            }
 
     fun getAnnouncementById(id: Int) = transaction {
-        AnnouncementRecord.findById(id)
-            ?.let { AnnouncementOut(it.id.value, it.title, it.body, it.annTimestamp.toString()) }
-            ?: throw ResourceNotFoundException("Invalid announcement id: '$id'")
+        AnnouncementRecord.getById(id) ?: throw ResourceNotFoundException("Invalid announcement id: '$id'")
     }
 
     fun deleteAnnouncement(id: Int) = AnnouncementRecord.deleteById(id)

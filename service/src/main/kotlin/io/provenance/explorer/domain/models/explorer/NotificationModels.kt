@@ -33,5 +33,7 @@ data class AnnouncementOut(
     val id: Int,
     val title: String,
     val body: String?,
-    val timestamp: String?
+    val timestamp: String?,
+    val prevId: Int?,
+    val nextId: Int?
 )

@@ -11,6 +11,7 @@ import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PutMapping
@@ -67,7 +68,7 @@ class NotificationController(private val notifService: NotificationService) {
     fun getAnnouncementById(@PathVariable id: Int) = ResponseEntity.ok(notifService.getAnnouncementById(id))
 
     @ApiOperation("Delete an existing announcement")
-    @PutMapping("/announcement/{id}")
+    @DeleteMapping("/announcement/{id}")
     @HiddenApi
     fun deleteAnnouncement(@PathVariable id: Int): ResponseEntity<String> {
         notifService.deleteAnnouncement(id)

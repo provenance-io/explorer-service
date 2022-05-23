@@ -1,5 +1,6 @@
 package io.provenance.explorer.domain.core.sql
 
+import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.DecimalColumnType
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.Function
@@ -25,9 +26,14 @@ class LagDesc(val lag: Expression<DateTime>, val orderBy: Expression<Int>) : Fun
         queryBuilder { append("LAG(", lag, ") OVER (order by ", orderBy, " desc)") }
 }
 
-class Lag(val lag: Expression<DateTime>, val orderBy: Expression<Int>) : Function<DateTime>(DateColumnType(true)) {
+class Lag<T>(val lag: Expression<T>, val orderBy: Expression<T>, _columnType: IColumnType) : Function<T>(_columnType) {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) =
         queryBuilder { append("LAG(", lag, ") OVER (order by ", orderBy, ")") }
+}
+
+class Lead<T>(val lead: Expression<T>, val orderBy: Expression<T>, _columnType: IColumnType) : Function<T>(_columnType) {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) =
+        queryBuilder { append("LEAD(", lead, ") OVER (order by ", orderBy, ")") }
 }
 
 class ExtractDay(val expr: Expression<DateTime>) : Function<String>(VarCharColumnType(9)) {
@@ -60,3 +66,5 @@ class ColumnNullsLast(private val col: Expression<*>) : Expression<String>() {
 }
 
 fun Expression<*>.nullsLast() = ColumnNullsLast(this)
+
+fun EntityID<Int>?.getOrNull() = try { this?.value } catch (e: Exception) { null }

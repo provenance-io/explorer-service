@@ -35,7 +35,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Features
 * Add notification/announcement support #328
-  * `/api/v2/notifications/proposals` - List of NON-UPGRADE OPEN proposals, List of UPGRADE proposals
+  * `/api/v2/notifications/proposals` - List of NON-UPGRADE OPEN proposals, List of UPGRADE OPEN proposals
   * `/api/v2/notifications/upgrades` - List of expected, scheduled upgrades
   * `/api/v2/notifications/announcement` - PUT an announcement to be displayed in Explorer
   * `/api/v2/notifications/announcement/all` - Paginated list of announcements, can filter by `fromDate`
@@ -67,8 +67,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Related to incorrect value mapping
   * Added sort to block retry so they process in height order
 * Fixed how the weighted vote percentage was being ingested
-* Fixed chain version fetch from github #349
-  * Due to a limit of count on records from teh Github API
+* Fixed chain version fetch from Github #349
+  * Due to a limit of count on records from the Github API
 
 ### Data
 * Migration 1.58 - Add weight to proposal votes #323
