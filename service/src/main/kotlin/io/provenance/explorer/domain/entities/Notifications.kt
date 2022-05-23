@@ -18,6 +18,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
@@ -58,7 +59,12 @@ class AnnouncementRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun getById(id: Int) = transaction {
-            AnnouncementTable.select { AnnouncementTable.id eq id }.firstOrNull()?.toAnnouncementOut()
+            AnnouncementTable
+                .slice(AnnouncementTable.columns.toMutableList() + prevId + nextId)
+                .selectAll()
+                // weirdness with not populating the prev/next when specifying id
+                .firstOrNull { it[AnnouncementTable.id].value == id }
+                ?.toAnnouncementOut()
         }
 
         fun getAnnouncementCount(fromDate: DateTime?) = transaction {

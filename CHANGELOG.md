@@ -58,6 +58,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added API to fetch list of unique non-UUID contract labels #339
   * `/api/v2/smart_contract/contract/labels`
 * Updated the Pricing Engine API pathing
+* Added @jarrydallison as a CODEOWNER
 
 ### Bug Fixes
 * Updated how the service runs on an empty DB
