@@ -7,6 +7,7 @@ import cosmos.base.tendermint.v1beta1.getValidatorSetByHeightRequest
 import cosmos.distribution.v1beta1.queryDelegatorWithdrawAddressRequest
 import cosmos.distribution.v1beta1.queryValidatorCommissionRequest
 import cosmos.distribution.v1beta1.queryValidatorOutstandingRewardsRequest
+import cosmos.slashing.v1beta1.Slashing
 import cosmos.slashing.v1beta1.queryParamsRequest
 import cosmos.slashing.v1beta1.querySigningInfosRequest
 import cosmos.staking.v1beta1.Staking
@@ -76,10 +77,9 @@ class ValidatorGrpcClient(channelUri: URI) {
         var offset = 0
         val limit = 100
 
-        val results = stakingClient.validators(queryValidatorsRequest { pagination = getPagination(offset, limit) })
-
-        val total = results.pagination?.total ?: results.validatorsCount.toLong()
-        val validators = results.validatorsList.toMutableList()
+        val (total, validators) =
+            stakingClient.validators(queryValidatorsRequest { pagination = getPagination(offset, limit) })
+                .let { (it.pagination?.total ?: it.validatorsCount.toLong()) to it.validatorsList.toMutableList() }
 
         while (validators.count() < total) {
             offset += limit
@@ -133,7 +133,21 @@ class ValidatorGrpcClient(channelUri: URI) {
             }
         ).withdrawAddress
 
-    fun getSigningInfos() = slashingClient.signingInfos(querySigningInfosRequest { }).infoList
+    fun getSigningInfos(): MutableList<Slashing.ValidatorSigningInfo> {
+        var offset = 0
+        val limit = 100
+
+        val (total, infos) =
+            slashingClient.signingInfos(querySigningInfosRequest { pagination = getPagination(offset, limit) })
+                .let { (it.pagination?.total ?: it.infoCount.toLong()) to it.infoList.toMutableList() }
+
+        while (infos.count() < total) {
+            offset += limit
+            slashingClient.signingInfos(querySigningInfosRequest { pagination = getPagination(offset, limit) })
+                .let { infos.addAll(it.infoList) }
+        }
+        return infos
+    }
 
     fun getSlashingParams() = slashingClient.params(queryParamsRequest { })
 

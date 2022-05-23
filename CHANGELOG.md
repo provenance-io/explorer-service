@@ -70,6 +70,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Fixed how the weighted vote percentage was being ingested
 * Fixed chain version fetch from Github #349
   * Due to a limit of count on records from the Github API
+* Fixed Validators' missed block count, bond height values #352
+  * Missed blocks -> incorrect values being calculated
+  * Bond Height -> query for signing infos was being limited, so not returning all records, thus missing some
 
 ### Data
 * Migration 1.58 - Add weight to proposal votes #323
