@@ -38,6 +38,7 @@ import io.provenance.explorer.domain.extensions.toPercentage
 import io.provenance.explorer.domain.extensions.toSingleSigKeyValue
 import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.extensions.translateByteArray
+import io.provenance.explorer.domain.extensions.validatorMissedBlocks
 import io.provenance.explorer.domain.extensions.validatorUptime
 import io.provenance.explorer.domain.models.explorer.BlockLatencyData
 import io.provenance.explorer.domain.models.explorer.BlockProposer
@@ -86,6 +87,8 @@ class ValidatorService(
 
     fun getActiveSet() = grpcClient.getStakingParams().params.maxValidators
 
+    fun getSlashingParams() = grpcClient.getSlashingParams().params
+
     // Assumes that the returned validators are active at that height
     fun getValidatorsByHeight(blockHeight: Int) = transaction {
         ValidatorsCacheRecord.findById(blockHeight)?.also {
@@ -121,8 +124,6 @@ class ValidatorService(
             .let { ValidatorStateRecord.findByOperator(getActiveSet(), address)!! }
     }
 
-    fun getMissedBlocks(valConsAddr: String) = MissedBlocksRecord.findLatestForVal(valConsAddr)
-
     // Returns a validator detail object for the validator
     fun getValidator(address: String) =
         getValidatorOperatorAddress(address)?.let { addr ->
@@ -131,6 +132,7 @@ class ValidatorService(
             val validatorSet = grpcClient.getLatestValidators().validatorsList
             val latestValidator = validatorSet.firstOrNull { it.address == addr.consensusAddr }
             val votingPowerTotal = validatorSet.sumOf { it.votingPower.toBigInteger() }
+            val slashingParams = getSlashingParams()
             validateStatus(addr, latestValidator, addr.operatorAddrId)
                 .also { if (it) ValidatorStateRecord.refreshCurrentStateView() }
             val stakingValidator = getStakingValidator(addr.operatorAddress)
@@ -142,15 +144,10 @@ class ValidatorService(
                 addr.accountAddr,
                 grpcClient.getDelegatorWithdrawalAddress(addr.accountAddr),
                 addr.consensusAddr,
-                CountTotal(
-                    (getMissedBlocks(addr.consensusAddr)?.totalCount ?: 0).toBigInteger(),
-                    currentHeight - (signingInfo?.startHeight?.toBigInteger() ?: BigInteger.ZERO)
-                ),
+                addr.consensusAddr.validatorMissedBlocks(slashingParams.signedBlocksWindow.toBigInteger(), currentHeight)
+                    .let { (mbCount, window) -> CountTotal(mbCount.toBigInteger(), window) },
                 signingInfo?.startHeight ?: currentHeight.toLong(),
-                addr.consensusAddr.validatorUptime(
-                    grpcClient.getSlashingParams().params.signedBlocksWindow.toBigInteger(),
-                    currentHeight
-                ),
+                addr.consensusAddr.validatorUptime(slashingParams.signedBlocksWindow.toBigInteger(), currentHeight),
                 getImgUrl(stakingValidator.json.description.identity),
                 stakingValidator.json.description.details,
                 stakingValidator.json.description.website,
@@ -282,11 +279,12 @@ class ValidatorService(
         height: Long
     ) = let {
         val totalVotingPower = validatorSet.sumOf { it.votingPower.toBigInteger() }
+        val slashWindow = grpcClient.getSlashingParams().params.signedBlocksWindow.toBigInteger()
         stakingVals
             .map { stakingVal ->
                 val validator = validatorSet.firstOrNull { it.address == stakingVal.consensusAddr }
                 val hr24Validator = hr24ChangeSet.firstOrNull { it.address == stakingVal.consensusAddr }
-                hydrateValidator(validator, hr24Validator, stakingVal, totalVotingPower, height)
+                hydrateValidator(validator, hr24Validator, stakingVal, totalVotingPower, height, slashWindow)
             }
     }
 
@@ -295,7 +293,8 @@ class ValidatorService(
         hr24Validator: Query.Validator?,
         stakingVal: CurrentValidatorState,
         totalVotingPower: BigInteger,
-        height: Long
+        height: Long,
+        slashingWindow: BigInteger
     ) = let {
         val delegatorCount =
             grpcClient.getStakingValidatorDelegations(stakingVal.operatorAddress, 0, 1).pagination.total
@@ -315,9 +314,7 @@ class ValidatorService(
             unbondingHeight = if (stakingVal.currentState != ACTIVE) stakingVal.json.unbondingHeight else null,
             imgUrl = getImgUrl(stakingVal.json.description.identity),
             hr24Change = get24HrBondedChange(validator, hr24Validator),
-            uptime = stakingVal.consensusAddr.validatorUptime(
-                grpcClient.getSlashingParams().params.signedBlocksWindow.toBigInteger(), height.toBigInteger()
-            )
+            uptime = stakingVal.consensusAddr.validatorUptime(slashingWindow, height.toBigInteger())
         )
     }
 
@@ -570,24 +567,23 @@ class ValidatorService(
 
     fun activeValidatorUptimeStats() = transaction {
         // Get Parameters
-        val (blockCount, slashedAtPercent) =
-            grpcClient.getSlashingParams().params.let { it.signedBlocksWindow to it.minSignedPerWindow }
+        val (window, slashedAtPercent) = getSlashingParams().let { it.signedBlocksWindow to it.minSignedPerWindow }
         val slashedCount =
-            slashedAtPercent.toString(Charsets.UTF_8).toDecimal().multiply(BigDecimal(blockCount)).toLong()
+            slashedAtPercent.toString(Charsets.UTF_8).toDecimal().multiply(BigDecimal(window)).toLong()
         // Height to count from
         val currentHeight = getLatestHeight()
 
         // validators with missed blocks
-        val withMissed = getMissedBlocksForInput(currentHeight, blockCount.toInt(), null)
+        val withMissed = getMissedBlocksForInput(currentHeight, window.toInt(), null)
 
         // calcs
         val missed = withMissed.addresses
             .filter { it.validator.currentState!! == ACTIVE }
             .map {
                 val missedBlockCount = it.missedBlocks.sumOf { set -> set.count }
-                val missedBlockPercent = (missedBlockCount / blockCount.toDouble()).toPercentage()
-                val uptimeCount = blockCount.toInt() - missedBlockCount
-                val uptimePercentage = (uptimeCount / blockCount.toDouble()).toPercentage()
+                val missedBlockPercent = (missedBlockCount / window.toDouble()).toPercentage()
+                val uptimeCount = window.toInt() - missedBlockCount
+                val uptimePercentage = (uptimeCount / window.toDouble()).toPercentage()
                 ValidatorUptimeStats(it.validator, uptimeCount, uptimePercentage, missedBlockCount, missedBlockPercent)
             }
 
@@ -598,10 +594,10 @@ class ValidatorService(
             }.map { active ->
                 ValidatorUptimeStats(
                     ValidatorMoniker(active.consensusAddr, active.operatorAddress, active.moniker, active.currentState),
-                    blockCount.toInt(),
-                    (blockCount / blockCount.toDouble()).toPercentage(),
+                    window.toInt(),
+                    (window / window.toDouble()).toPercentage(),
                     0,
-                    (0 / blockCount.toDouble()).toPercentage()
+                    (0 / window.toDouble()).toPercentage()
                 )
             }
 
@@ -612,13 +608,13 @@ class ValidatorService(
         val avgUptime = records.map { it.uptimeCount }.avg()
 
         UptimeDataSet(
-            currentHeight - blockCount,
+            currentHeight - window,
             currentHeight.toLong(),
-            blockCount,
+            window,
             slashedCount,
             slashedAtPercent.toString(Charsets.UTF_8).toPercentage(),
             avgUptime,
-            (avgUptime / blockCount.toDouble()).toPercentage(),
+            (avgUptime / window.toDouble()).toPercentage(),
             records
         )
     }

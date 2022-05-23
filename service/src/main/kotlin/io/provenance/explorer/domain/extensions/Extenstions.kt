@@ -56,11 +56,19 @@ fun Abci.TxResponse.type() = this.logsList?.flatMap { it.eventsList }
     ?.value
 
 fun String.validatorUptime(blockWindow: BigInteger, currentHeight: BigInteger) =
-    (MissedBlocksRecord.findLatestForVal(this)?.totalCount ?: 0).let {
-        BigDecimal(currentHeight - blockWindow - it.toBigInteger())
-            .divide(BigDecimal(currentHeight - blockWindow), 2, RoundingMode.CEILING)
+    this.validatorMissedBlocks(blockWindow, currentHeight).let { (mbCount, window) ->
+        BigDecimal(window - mbCount.toBigInteger())
+            .divide(BigDecimal(blockWindow), 2, RoundingMode.CEILING)
             .multiply(BigDecimal(100.00))
     }
+
+fun String.validatorMissedBlocks(blockWindow: BigInteger, currentHeight: BigInteger) =
+    (
+        MissedBlocksRecord
+            .findValidatorsWithMissedBlocksForPeriod((currentHeight - blockWindow).toInt(), currentHeight.toInt(), this)
+            .firstOrNull()?.blocks?.count() ?: 0
+        )
+        .let { mbCount -> Pair(mbCount, blockWindow) }
 
 fun Long.isPastDue(currentMillis: Long) = DateTime.now().millis - this > currentMillis
 
