@@ -33,8 +33,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+## [v4.2.1](https://github.com/provenance-io/explorer-service/releases/tag/v4.2.1) - 2022-05-24
+### Release Name: James of Ireland
+
 ### Bug Fixes
-* Fixed Upgrade Proposal type mismatch #357
+* Fixed Upgrade Proposal type mismatch [#357](https://github.com/provenance-io/explorer-service/issues/357)
 
 ## [v4.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.2.0) - 2022-05-24
 ### Release Name: Odoric of Pordenone
