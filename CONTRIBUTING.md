@@ -135,7 +135,7 @@ To create a new release:
 - On the `release` branch, prepare a new version section in the `CHANGELOG.md`
   - At the top of latest changes add `## [vx.x.x](https://github.com/provenance-io/explorer-service/releases/tag/vx.x.x) - YYYY-MM-DD`
   - Beneath that add `### Release Name: xxxxxx` and choose a unique name from [this list](https://en.wikipedia.org/wiki/List_of_explorers)
-  - All links must be link-ified: `python ./scripts/linkify.py CHANGELOG.md`
+  - All links must be link-ified: `python3 ./scripts/linkify.py CHANGELOG.md`
   - Copy the latest release entries into a `RELEASE_CHANGELOG.md`, this is needed so the bot knows which entries to add to the release page on github.
   - Commit changes to the `release` branch
   - Push `release` branch up to github
