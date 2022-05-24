@@ -35,7 +35,7 @@ class NotificationService(
     fun fetchOpenProposalBreakdown() = transaction {
         val proposals = GovProposalRecord.getNonFinalProposals().sortedBy { it.proposalId }
 
-        val typeUrl = govService.getUpgradeProtoType()
+        val typeUrl = govService.getUpgradeProtoType().getProposalType()
         val (upgrades, nonUpgrades) = proposals.map {
             it.proposalType to AnnouncementOut(it.proposalId.toInt(), it.title, null, null, null, null)
         }.partition { it.first == typeUrl.getProposalType() }
