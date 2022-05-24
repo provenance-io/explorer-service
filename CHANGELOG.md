@@ -33,6 +33,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Bug Fixes
+* Fixed Upgrade Proposal type mismatch #357
+
 ## [v4.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.2.0) - 2022-05-24
 ### Release Name: Odoric of Pordenone
 
