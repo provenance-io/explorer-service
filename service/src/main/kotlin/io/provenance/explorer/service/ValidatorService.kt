@@ -615,7 +615,7 @@ class ValidatorService(
             slashedAtPercent.toString(Charsets.UTF_8).toPercentage(),
             avgUptime,
             (avgUptime / window.toDouble()).toPercentage(),
-            records
+            records.sortedByDescending { it.missedCount }
         )
     }
 }

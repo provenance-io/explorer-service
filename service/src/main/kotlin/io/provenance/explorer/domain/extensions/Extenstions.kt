@@ -66,9 +66,8 @@ fun String.validatorMissedBlocks(blockWindow: BigInteger, currentHeight: BigInte
     (
         MissedBlocksRecord
             .findValidatorsWithMissedBlocksForPeriod((currentHeight - blockWindow).toInt(), currentHeight.toInt(), this)
-            .firstOrNull()?.blocks?.count() ?: 0
-        )
-        .let { mbCount -> Pair(mbCount, blockWindow) }
+            .sumOf { it.blocks.count() }
+        ).let { mbCount -> Pair(mbCount, blockWindow) }
 
 fun Long.isPastDue(currentMillis: Long) = DateTime.now().millis - this > currentMillis
 
@@ -124,7 +123,9 @@ fun Staking.Validator.getStatusString() =
     }
 
 fun Timestamp.toDateTime() = DateTime(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()).toEpochMilli())
-fun Timestamp.formattedString() = DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()))
+fun Timestamp.formattedString() =
+    DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()))
+
 fun DateTime.startOfDay() = this.withZone(DateTimeZone.UTC).withTimeAtStartOfDay()
 fun String.toDateTime() = DateTime.parse(this)
 fun String.toDateTimeWithFormat(formatter: org.joda.time.format.DateTimeFormatter) = DateTime.parse(this, formatter)
@@ -132,6 +133,7 @@ fun OffsetDateTime.toDateTime() = DateTime(this.toInstant().toEpochMilli(), Date
 
 fun ServiceOuterClass.GetTxResponse.getFeeTotalPaid() =
     this.tx.authInfo.fee.amountList.first { it.denom == NHASH }.amount.toLong()
+
 fun BlockOuterClass.Block.height() = this.header.height.toInt()
 fun Long.get24HrBlockHeight(avgBlockTime: BigDecimal) =
     BigDecimal(24 * 60 * 60).divide(avgBlockTime, 0, RoundingMode.HALF_UP).let { this - it.toInt() }
