@@ -11,6 +11,7 @@ import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.exec
+import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.map
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.BlockProposer
@@ -18,6 +19,7 @@ import io.provenance.explorer.domain.models.explorer.BlockUpdate
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity.DAY
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity.HOUR
+import io.provenance.explorer.domain.models.explorer.DateTruncGranularity.MINUTE
 import io.provenance.explorer.domain.models.explorer.MissedBlockPeriod
 import io.provenance.explorer.domain.models.explorer.TxHeatmap
 import io.provenance.explorer.domain.models.explorer.TxHeatmapDay
@@ -84,12 +86,15 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
         fun getDaysBetweenHeights(minHeight: Int, maxHeight: Int) = transaction {
             val dateTrunc =
                 Distinct(
-                    DateTrunc(DateTruncGranularity.DAY.name, BlockCacheTable.blockTimestamp),
+                    DateTrunc(DAY.name, BlockCacheTable.blockTimestamp),
                     DateColumnType(true)
                 ).count()
             BlockCacheTable.slice(dateTrunc)
                 .select { BlockCacheTable.height.between(minHeight, maxHeight) }
                 .first()[dateTrunc].toInt()
+        }
+
+        fun test() = transaction {
         }
 
         fun getMaxBlockHeightOrNull() = transaction {
@@ -106,6 +111,12 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
             BlockCacheRecord.find { BlockCacheTable.blockTimestamp.greaterEq(time) }
                 .orderBy(BlockCacheTable.height to SortOrder.ASC)
                 .first()
+        }
+
+        fun getLastBlockBeforeTime(time: DateTime?) = transaction {
+            val query = "SELECT get_last_block_before_timestamp(?);"
+            val arguments = listOf(Pair(DateColumnType(true), time))
+            query.execAndMap(arguments) { it.getInt("get_last_block_before_timestamp") }.first()
         }
     }
 
@@ -333,6 +344,7 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
             when (granularity) {
                 HOUR -> getHourlyCounts(fromDate, toDate)
                 DAY -> getDailyCounts(fromDate, toDate)
+                MINUTE -> emptyList()
             }
         }
 
@@ -382,7 +394,7 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
         }
 
         private fun getDailyCounts(fromDate: DateTime, toDate: DateTime) = transaction {
-            val dateTrunc = DateTrunc("DAY", BlockCacheHourlyTxCountsTable.blockTimestamp)
+            val dateTrunc = DateTrunc(DAY.name, BlockCacheHourlyTxCountsTable.blockTimestamp)
             val txSum = BlockCacheHourlyTxCountsTable.txCount.sum()
             BlockCacheHourlyTxCountsTable.slice(dateTrunc, txSum)
                 .select {
@@ -474,6 +486,15 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.height] = height
                 it[this.retried] = true
                 it[this.success] = false
+                it[this.errorBlock] =
+                    "NON BLOCKING ERROR: Logged to know what happened, but didnt stop processing.\n " +
+                    e.stackTraceToString()
+            }
+        }
+
+        fun insertNonBlockingRetry(height: Int, e: Exception) = transaction {
+            BlockTxRetryTable.insertIgnore {
+                it[this.height] = height
                 it[this.errorBlock] =
                     "NON BLOCKING ERROR: Logged to know what happened, but didnt stop processing.\n " +
                     e.stackTraceToString()

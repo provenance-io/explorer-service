@@ -19,12 +19,12 @@ import javax.validation.constraints.Min
 @RestController
 @RequestMapping(path = ["/api/v2/gov"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Api(
-    description = "Governance-related endpoints",
+    description = "Governance-related endpoints - V2",
     produces = MediaType.APPLICATION_JSON_VALUE,
     consumes = MediaType.APPLICATION_JSON_VALUE,
     tags = ["Governance"]
 )
-class GovController(private val govService: GovService) {
+class GovControllerV2(private val govService: GovService) {
 
     @ApiOperation("Returns paginated list of proposals, proposal ID descending")
     @GetMapping("/proposals/all")
@@ -42,6 +42,7 @@ class GovController(private val govService: GovService) {
 
     @ApiOperation("Returns vote tallies and vote records of a proposal")
     @GetMapping("/proposals/{id}/votes")
+    @Deprecated("Use /api/v3/gov/proposals/{id}/votes")
     fun getProposalVotes(
         @ApiParam(value = "The ID of the proposal") @PathVariable id: Long
     ) = ResponseEntity.ok(govService.getProposalVotes(id))

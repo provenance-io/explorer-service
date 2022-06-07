@@ -522,6 +522,7 @@ class AsyncCachingV2(
             }
 
             val txSuccess = tx.txResponse.code == 0
+            val successfulRecvHashes = mutableListOf<String>()
             // save ledgers, acks
             tx.tx.body.messagesList.map { it.getIbcLedgerMsgs() }
                 .forEachIndexed { idx, any ->
@@ -571,6 +572,15 @@ class AsyncCachingV2(
                                 txUpdate.apply {
                                     this.ibcLedgers.add(ibcService.buildIbcLedger(ledger, txInfo, null))
                                 }
+                            } else if (successfulRecvHashes.contains(IbcLedgerRecord.getUniqueHash(ledger))) {
+                                BlockTxRetryRecord.insertNonBlockingRetry(
+                                    txInfo.blockHeight,
+                                    InvalidArgumentException(
+                                        "Matching IBC Ledger record has not been saved yet - " +
+                                            "${ledger.channel!!.srcPort}/${ledger.channel!!.srcChannel}, " +
+                                            "sequence ${ledger.sequence}. Retrying block to save non-effected RECV record."
+                                    )
+                                )
                             } else {
                                 throw InvalidArgumentException(
                                     "No matching IBC ledger record for channel " +

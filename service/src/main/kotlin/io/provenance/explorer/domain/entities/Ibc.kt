@@ -180,14 +180,15 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
                     else match.ackSuccess
                 else ledger.ackSuccess,
                 match?.sequence ?: ledger.sequence,
-                match?.uniqueHash
-                    ?: listOf(
-                        ledger.channel!!.id.value,
-                        ledger.sequence,
-                        if (ledger.movementIn) IbcMovementType.IN.name else IbcMovementType.OUT.name
-                    ).joinToString("").toDbHash()
+                match?.uniqueHash ?: getUniqueHash(ledger)
             ).toProcedureObject()
         }
+
+        fun getUniqueHash(ledger: LedgerInfo) = listOf(
+            ledger.channel!!.id.value,
+            ledger.sequence,
+            if (ledger.movementIn) IbcMovementType.IN.name else IbcMovementType.OUT.name
+        ).joinToString("").toDbHash()
 
         val lastTxTime = Max(IbcLedgerTable.txTimestamp, DateColumnType(true))
         val balanceInSum = Sum(IbcLedgerTable.balanceIn, DecimalColumnType(100, 10))

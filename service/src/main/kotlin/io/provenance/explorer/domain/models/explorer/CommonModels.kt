@@ -4,7 +4,7 @@ import cosmos.base.v1beta1.CoinOuterClass
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.extensions.USD_UPPER
 import io.provenance.explorer.domain.extensions.toCoinStr
-import io.provenance.explorer.domain.extensions.toDecCoin
+import io.provenance.explorer.domain.extensions.toDecimalString
 import java.math.BigDecimal
 import java.math.BigInteger
 
@@ -57,7 +57,7 @@ fun MarkerCacheRecord.toCoinStrWithPrice(price: BigDecimal?) =
     this.supply.toCoinStrWithPrice(price, this.denom)
 
 fun CoinOuterClass.DecCoin.toCoinStrWithPrice(price: BigDecimal?) =
-    this.amount.toDecCoin().toBigDecimal().toCoinStrWithPrice(price, this.denom)
+    this.amount.toDecimalString().toBigDecimal().toCoinStrWithPrice(price, this.denom)
 
 data class CountTotal(
     val count: BigInteger?,

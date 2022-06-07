@@ -13,6 +13,7 @@ import org.jetbrains.exposed.sql.QueryParameter
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.statements.jdbc.JdbcConnectionImpl
 import org.jetbrains.exposed.sql.transactions.TransactionManager
+import kotlin.Array
 
 fun <T> Table.array(name: String, columnType: ColumnType): Column<Array<T>> = registerColumn(name, ArrayColumnType(columnType))
 

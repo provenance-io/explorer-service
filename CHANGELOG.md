@@ -33,8 +33,27 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Separated out Proposal votes into a paginated API #362
+  * Deprecated `/api/v2/gov/proposals/{id}/votes` in favor of `/api/v3/gov/proposals/{id}/votes`
+  * Moved Voting params and counts into the proposal detail / proposal listview responses
+
+### Improvements
+* Now saving applicable block heights to pull governance param sets #341
+  * This is used to populate past proposals/votes/deposits based on the contemporary parameters on chain
+* Now have the ability to fetch data at height from the chain
+* Added Exposed functionality for Arrays and ArrayAgg Postgres function
+
 ### Bug Fixes
 * Fixed the Validator missed block count
+* Added else case for IBC Recvs where the effected Recv is in the same tx as an uneffected Recv, which makes the block error out
+* Added VotWeighted msg type to `getGovMsgDetail()` function
+
+### Data
+* Migration 1.64 - Updates for gov params at height #341
+  * Updated `gov_proposal` with `deposit_param_check_height`, `voting_param_check_height`, inserted data
+  * Updated `insert_gov_proposal()` procedure
+  * Created `get_last_block_before_timestamp()` function
 
 ## [v4.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.2.0) - 2022-05-24
 ### Release Name: Odoric of Pordenone

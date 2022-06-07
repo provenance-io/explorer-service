@@ -16,6 +16,7 @@ import io.provenance.explorer.domain.models.explorer.OpenProposals
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.ScheduledUpgrade
 import io.provenance.explorer.grpc.v1.GovGrpcClient
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
@@ -43,7 +44,7 @@ class NotificationService(
         OpenProposals(nonUpgrades.map { it.second }, upgrades.map { it.second })
     }
 
-    fun fetchScheduledUpgrades() = transaction {
+    fun fetchScheduledUpgrades() = runBlocking {
         val upgrades = GovProposalRecord.findByProposalType(govService.getUpgradeProtoType())
             .filter { it.status == Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name }
             .filter { proposal ->

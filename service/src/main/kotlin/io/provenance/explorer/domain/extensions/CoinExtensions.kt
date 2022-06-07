@@ -13,7 +13,10 @@ fun BigDecimal.stringfy() = this.stripTrailingZeros().toPlainString()
 
 fun BigDecimal.toCoinStr(denom: String) = CoinStr(this.stringfy(), denom)
 
-fun String.toDecCoin() = this.toDecimal().toPlainString()
+fun String.toDecimalString() = this.toDecimal().toPlainString()
+
+// Used to convert voting power values from mhash (milli) to nhash (nano)
+fun Long.mhashToNhash() = this * 1000000
 
 fun List<CoinOuterClass.Coin>.toProtoCoin() =
     this.firstOrNull() ?: CoinOuterClass.Coin.newBuilder().setAmount("0").setDenom("").build()

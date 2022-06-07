@@ -257,7 +257,7 @@ data class TxMessage(
     val msg: ObjectNode
 )
 
-enum class DateTruncGranularity { DAY, HOUR }
+enum class DateTruncGranularity { DAY, HOUR, MINUTE }
 
 enum class TxStatus { SUCCESS, FAILURE }
 

@@ -9,6 +9,9 @@ import cosmos.gov.v1beta1.Gov
 import cosmos.gov.v1beta1.Tx
 import cosmos.mint.v1beta1.Mint
 import cosmos.slashing.v1beta1.Slashing
+import io.grpc.Metadata
+import io.grpc.stub.AbstractStub
+import io.grpc.stub.MetadataUtils
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toBech32Data
@@ -28,6 +31,13 @@ import io.provenance.marker.v1.Access
 import io.provenance.marker.v1.MarkerAccount
 import io.provenance.marker.v1.MarkerStatus
 import io.provenance.msgfees.v1.MsgFee
+
+const val BLOCK_HEIGHT = "x-cosmos-block-height"
+
+fun <S : AbstractStub<S>> S.addBlockHeightToQuery(blockHeight: String): S =
+    Metadata()
+        .also { it.put(Metadata.Key.of(BLOCK_HEIGHT, Metadata.ASCII_STRING_MARSHALLER), blockHeight) }
+        .let { MetadataUtils.attachHeaders(this, it) }
 
 // Marker Extensions
 fun String.getTypeShortName() = this.split(".").last()
