@@ -6,6 +6,7 @@ import io.provenance.attribute.v1.queryAttributesRequest
 import io.provenance.attribute.v1.queryParamsRequest
 import io.provenance.explorer.config.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.getPagination
+import io.provenance.name.v1.queryResolveRequest
 import io.provenance.name.v1.queryReverseLookupRequest
 import org.springframework.stereotype.Component
 import java.net.URI
@@ -75,6 +76,13 @@ class AttributeGrpcClient(channelUri: URI) {
                 this.pagination = getPagination(offset, limit)
             }
         )
+
+    suspend fun getOwnerForName(name: String) =
+        try {
+            nameClient.resolve(queryResolveRequest { this.name = name })
+        } catch (e: Exception) {
+            null
+        }
 
     suspend fun getAttrParams() = attrClient.params(queryParamsRequest { })
     suspend fun getNameParams() = nameClient.params(io.provenance.name.v1.queryParamsRequest { })

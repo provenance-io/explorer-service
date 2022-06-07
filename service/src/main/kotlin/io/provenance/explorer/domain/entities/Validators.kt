@@ -121,19 +121,20 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
 
         val logger = logger(ValidatorStateRecord::class)
 
-        fun insertIgnore(blockHeight: Int, valId: Int, operator: String, json: Staking.Validator) = transaction {
-            ValidatorStateTable.insertIgnore {
-                it[this.operatorAddrId] = valId
-                it[this.operatorAddress] = operator
-                it[this.blockHeight] = blockHeight
-                it[this.moniker] = json.description.moniker
-                it[this.status] = json.status.name
-                it[this.jailed] = json.jailed
-                it[this.tokenCount] = json.tokens.toBigDecimal()
-                it[this.json] = json
-                it[this.commissionRate] = json.commission.commissionRates.rate.toDecimal()
+        fun insertIgnore(blockHeight: Int, valId: Int, operator: String, json: Staking.Validator) =
+            transaction {
+                ValidatorStateTable.insertIgnore {
+                    it[this.operatorAddrId] = valId
+                    it[this.operatorAddress] = operator
+                    it[this.blockHeight] = blockHeight
+                    it[this.moniker] = json.description.moniker
+                    it[this.status] = json.status.name
+                    it[this.jailed] = json.jailed
+                    it[this.tokenCount] = json.tokens.toBigDecimal()
+                    it[this.json] = json
+                    it[this.commissionRate] = json.commission.commissionRates.rate.toDecimal()
+                }
             }
-        }
 
         fun getCommissionHistory(operator: String) = transaction {
             ValidatorStateRecord.find { ValidatorStateTable.operatorAddress eq operator }
@@ -271,7 +272,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
                         Pair(TextColumnType(), searchState.name.lowercase()),
                         Pair(IntegerColumnType(), limitDefault),
                         Pair(IntegerColumnType(), offsetDefault),
-                        Pair(ArrayColumnType(TextColumnType()), consensusAddrSet)
+                        Pair(ArrayColumnType(TextColumnType()), consensusAddrSet),
                     )
                     query.execAndMap(arguments) { it.toCount() }.first()
                 }
@@ -280,7 +281,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
                     val arguments = mutableListOf<Pair<ColumnType, *>>(
                         Pair(IntegerColumnType(), activeSet),
                         Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
-                        Pair(ArrayColumnType(TextColumnType()), consensusAddrSet)
+                        Pair(ArrayColumnType(TextColumnType()), consensusAddrSet),
                     )
                     query.execAndMap(arguments) { it.toCount() }.first()
                 }
@@ -312,7 +313,7 @@ fun ResultSet.toCurrentValidatorState() = CurrentValidatorState(
     this.getString("consensus_address"),
     this.getString("consensus_pubkey"),
     ValidatorState.valueOf(this.getString("validator_state").uppercase()),
-    this.getBigDecimal("commission_rate")
+    this.getBigDecimal("commission_rate"),
 )
 
 fun ResultSet.toCount() = this.getLong("count")

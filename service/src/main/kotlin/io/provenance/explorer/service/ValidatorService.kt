@@ -104,7 +104,7 @@ class ValidatorService(
         transaction { ValidatorStateRecord.findByOperator(getActiveSet(), operatorAddress) }
             ?: saveValidator(operatorAddress)
 
-    fun saveValidator(address: String) = transaction {
+    fun saveValidator(address: String) = runBlocking {
         grpcClient.getStakingValidator(address)
             .let {
                 StakingValidatorCacheRecord.insertIgnore(

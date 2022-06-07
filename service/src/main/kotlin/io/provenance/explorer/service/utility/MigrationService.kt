@@ -33,7 +33,7 @@ class MigrationService(
                 logger.info("Fetching $start to ${start + inc - 1}")
                 BlockCacheRecord.find { BlockCacheTable.id.between(start, start + inc - 1) }
                     .orderBy(Pair(BlockCacheTable.id, SortOrder.ASC)).forEach {
-                        asyncCaching.saveBlockEtc(it.block, true)
+                        asyncCaching.saveBlockEtc(it.block, Pair(true, false))
                     }
             }
             start += inc
@@ -41,10 +41,10 @@ class MigrationService(
         logger.info("End height: $endHeight")
     }
 
-    fun insertBlocks(blocks: List<Int>) = transaction {
+    fun insertBlocks(blocks: List<Int>, pullFromDb: Boolean) = transaction {
         blocks.forEach { block ->
             blockService.getBlockAtHeightFromChain(block)?.let {
-                asyncCaching.saveBlockEtc(it, true)
+                asyncCaching.saveBlockEtc(it, Pair(true, pullFromDb))
             }
         }
     }
