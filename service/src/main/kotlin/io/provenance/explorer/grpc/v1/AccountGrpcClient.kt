@@ -13,7 +13,7 @@ import cosmos.staking.v1beta1.queryDelegatorDelegationsResponse
 import cosmos.staking.v1beta1.queryDelegatorUnbondingDelegationsRequest
 import cosmos.staking.v1beta1.queryRedelegationsRequest
 import io.grpc.ManagedChannelBuilder
-import io.provenance.explorer.config.GrpcLoggingInterceptor
+import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.getPagination
 import org.springframework.stereotype.Component
 import java.net.URI

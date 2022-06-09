@@ -22,6 +22,7 @@ sourceSets {
 
 dependencies {
     implementation(project(":database"))
+    implementation(Libraries.ProtobufKotlin)
     implementation(Libraries.ProvenanceProto)
     implementation(Libraries.KotlinReflect)
     implementation(Libraries.KotlinStdlib)

@@ -4,7 +4,7 @@ import io.grpc.ManagedChannelBuilder
 import io.provenance.attribute.v1.Attribute
 import io.provenance.attribute.v1.queryAttributesRequest
 import io.provenance.attribute.v1.queryParamsRequest
-import io.provenance.explorer.config.GrpcLoggingInterceptor
+import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.getPagination
 import io.provenance.name.v1.queryResolveRequest
 import io.provenance.name.v1.queryReverseLookupRequest

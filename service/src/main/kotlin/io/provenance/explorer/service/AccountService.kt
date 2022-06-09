@@ -1,14 +1,20 @@
 package io.provenance.explorer.service
 
+import com.google.protobuf.Any
+import cosmos.bank.v1beta1.msgSend
 import io.provenance.attribute.v1.Attribute
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
+import io.provenance.explorer.domain.exceptions.requireToMessage
+import io.provenance.explorer.domain.exceptions.validate
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.USD_UPPER
 import io.provenance.explorer.domain.extensions.fromBase64
 import io.provenance.explorer.domain.extensions.isAddressAsType
+import io.provenance.explorer.domain.extensions.pack
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toAccountPubKey
 import io.provenance.explorer.domain.extensions.toBase64
@@ -20,14 +26,17 @@ import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.AccountDetail
 import io.provenance.explorer.domain.models.explorer.AccountRewards
 import io.provenance.explorer.domain.models.explorer.AttributeObj
+import io.provenance.explorer.domain.models.explorer.BankSendRequest
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.Delegation
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.Reward
 import io.provenance.explorer.domain.models.explorer.TokenCounts
 import io.provenance.explorer.domain.models.explorer.UnpaginatedDelegation
+import io.provenance.explorer.domain.models.explorer.mapToProtoCoin
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
 import io.provenance.explorer.grpc.extensions.getModuleAccName
+import io.provenance.explorer.grpc.extensions.isStandardAddress
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.MetadataGrpcClient
@@ -56,6 +65,10 @@ class AccountService(
                 isContract
             )
             else throw ResourceNotFoundException("Invalid account: '$address'")
+    }
+
+    fun validateAddress(address: String) = transaction {
+        requireNotNullToMessage(AccountRecord.findByAddress(address)) { "Address $address does not exist." }
     }
 
     fun getAccountDetail(address: String) = runBlocking {
@@ -200,6 +213,21 @@ class AccountService(
                 res.totalList.map { t -> t.toCoinStrWithPrice(pricing[t.denom]) }
             )
         }
+    }
+
+    fun createSend(request: BankSendRequest): Any {
+        validate(
+            validateAddress(request.from),
+            requireToMessage(request.to.isStandardAddress(props)) { "to must be a standard address format" },
+            requireToMessage(request.to != request.from) { "The to address must be different that the from address" },
+            *request.funds.map { assetService.validateDenom(it.denom) }.toTypedArray(),
+            requireToMessage(request.funds.none { it.amount.toLong() == 0L }) { "At least one deposit must have an amount greater than zero." }
+        )
+        return msgSend {
+            fromAddress = request.from
+            toAddress = request.to
+            amount.addAll(request.funds.mapToProtoCoin())
+        }.pack()
     }
 }
 

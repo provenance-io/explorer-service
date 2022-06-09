@@ -33,3 +33,13 @@ fun String.toDecimal() = BigDecimal(this.toBigInteger(), 18).stripTrailingZeros(
 fun Double.toPercentage() = "${this * 100}%"
 
 fun List<Int>.avg() = this.sum() / this.size
+
+fun Int.padToDecString() = (this * 1e16).toString()
+
+fun List<CoinOuterClass.DecCoin>.isZero(): Boolean {
+    this.forEach {
+        if (it.amount.toLong() != 0L)
+            return false
+    }
+    return true
+}

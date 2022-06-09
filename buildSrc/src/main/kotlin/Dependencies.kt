@@ -55,6 +55,7 @@ object Versions {
     const val Grpc = "1.40.1"
     const val ProvProto = "1.11.0"
     const val Postgres = "42.2.23"
+    const val Protobuf = "3.19.1"
 
     // Testing
     const val Jupiter = "5.7.1"
@@ -92,6 +93,7 @@ object Libraries {
     // Protobuf
     const val GrpcNetty = "io.grpc:grpc-netty:${Versions.Grpc}"
     const val ProvenanceProto = "io.provenance:proto-kotlin:${Versions.ProvProto}"
+    const val ProtobufKotlin = "com.google.protobuf:protobuf-kotlin:${Versions.Protobuf}"
 
     // Spring
     const val SpringBootDevTools = "org.springframework.boot:spring-boot-devtools:${Versions.SpringBoot}"

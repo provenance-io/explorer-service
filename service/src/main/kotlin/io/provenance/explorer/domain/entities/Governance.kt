@@ -408,7 +408,7 @@ class ProposalMonitorRecord(id: EntityID<Int>) : IntEntity(id) {
             submittedHeight: Int,
             proposedCompletionHeight: Int,
             votingEndTime: DateTime,
-            proposalType: ProposalType,
+            proposalType: MonitorProposalType,
             dataHash: String
         ) = listOf(
             -1,
@@ -458,4 +458,4 @@ class ProposalMonitorRecord(id: EntityID<Int>) : IntEntity(id) {
     var processed by ProposalMonitorTable.processed
 }
 
-enum class ProposalType { STORE_CODE }
+enum class MonitorProposalType { STORE_CODE }

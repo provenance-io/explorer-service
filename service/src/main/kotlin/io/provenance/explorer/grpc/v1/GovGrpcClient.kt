@@ -6,7 +6,7 @@ import cosmos.gov.v1beta1.queryTallyResultRequest
 import cosmos.upgrade.v1beta1.queryAppliedPlanRequest
 import cosmos.upgrade.v1beta1.queryCurrentPlanRequest
 import io.grpc.ManagedChannelBuilder
-import io.provenance.explorer.config.GrpcLoggingInterceptor
+import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.models.explorer.GovParamType
 import io.provenance.explorer.grpc.extensions.addBlockHeightToQuery
 import org.springframework.stereotype.Component

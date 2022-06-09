@@ -208,7 +208,7 @@ fun Any.toMsgRevoke() = this.unpack(cosmos.authz.v1beta1.Tx.MsgRevoke::class.jav
 fun Any.toMsgGrantAllowance() = this.unpack(cosmos.feegrant.v1beta1.Tx.MsgGrantAllowance::class.java)
 fun Any.toMsgRevokeAllowance() = this.unpack(cosmos.feegrant.v1beta1.Tx.MsgRevokeAllowance::class.java)
 
-// ///////// ADDRESSES
+//region ADDRESSES
 fun Any.getAssociatedAddresses(): List<String> =
     when {
         typeUrl.endsWith("MsgSend") -> this.toMsgSend().let { listOf(it.fromAddress, it.toAddress) }
@@ -342,7 +342,9 @@ fun Any.getAssociatedAddresses(): List<String> =
         else -> listOf<String>().also { logger().debug("This typeUrl is not yet supported as an address-based msg: $typeUrl") }
     }
 
-// ///////// DENOMS
+//endregion
+
+//region DENOMS
 fun Any.getAssociatedDenoms(): List<String> =
     when {
         typeUrl.endsWith("MsgSend") -> this.toMsgSend().let { it.amountList.map { am -> am.denom } }
@@ -382,7 +384,9 @@ fun Any.getAssociatedDenoms(): List<String> =
             .also { logger().debug("This typeUrl is not yet supported as an asset-based msg: $typeUrl") }
     }
 
-// ///////// IBC
+//endregion
+
+//region IBC
 fun Any.isIbcTransferMsg() = typeUrl.endsWith("MsgTransfer")
 
 fun Any.getTxIbcClientChannel() =
@@ -493,7 +497,9 @@ fun Any.getIbcLedgerMsgs() =
         else -> null.also { logger().debug("This typeUrl is not yet supported in as an ibc ledger msg: $typeUrl") }
     }
 
-// ///////// METADATA (NFT/SCOPES)
+//endregion
+
+//region METADATA (NFT/SCOPES)
 enum class MdEvents(val event: String, val idField: String) {
     // Contract Spec
     CSPC("provenance.metadata.v1.EventContractSpecificationCreated", "contract_specification_addr"),
@@ -624,7 +630,9 @@ fun SessionIdComponents?.toMAddress() =
         this.sessionUuid.toMAddressSession(scope)
     } else null
 
-// ///////// GOVERNANCE
+//endregion
+
+//region GOVERNANCE
 enum class GovMsgType { PROPOSAL, VOTE, WEIGHTED, DEPOSIT }
 
 fun Any.getAssociatedGovMsgs() =
@@ -636,7 +644,9 @@ fun Any.getAssociatedGovMsgs() =
         else -> null.also { logger().debug("This typeUrl is not a governance-based msg: $typeUrl") }
     }
 
-// ///////// SMART CONTRACTS
+//endregion
+
+//region SMART CONTRACTS
 fun Any.getAssociatedSmContractMsgs() =
     when {
         typeUrl.endsWith("v1.MsgStoreCode") -> null
@@ -678,7 +688,9 @@ enum class SmContractEventKeys(val eventType: String, val eventKey: Map<String, 
 
 fun getSmContractEventByEvent(event: String) = SmContractEventKeys.values().firstOrNull { it.eventType == event }
 
-// ///////// NAMES
+//endregion
+
+//region NAMES
 
 enum class NameEvents(val msg: String, val event: String) {
     NAME_BIND("/provenance.name.v1.MsgBindNameRequest", "provenance.name.v1.EventNameBound"),
@@ -695,7 +707,9 @@ fun Any.getNameMsgs() =
         else -> null.also { logger().debug("This typeUrl is not yet supported in as a Name msg: $typeUrl") }
     }
 
-// ///////// DENOM EVENTS
+//endregion
+
+//region DENOM EVENTS
 enum class DenomEvents(val event: String, val idField: String, val parse: Boolean = false) {
     TRANSFER("transfer", "amount", true),
     MARKER_TRANSFER("provenance.marker.v1.EventMarkerTransfer", "denom"),
@@ -719,7 +733,9 @@ fun String.denomEventRegexParse() =
     if (this.isNotBlank()) this.split(",").map { Regex("^([0-9]+)(.*)\$").matchEntire(it)!!.groups[2]!!.value }
     else emptyList()
 
-// ///////// ADDRESS EVENTS
+//endregion
+
+//region ADDRESS EVENTS
 enum class AddressEvents(val event: String, vararg val idField: String) {
     TRANSFER("transfer", "sender", "recipient"),
     MARKER_TRANSFER("provenance.marker.v1.EventMarkerTransfer", "administrator", "to_address", "from_address"),
@@ -748,7 +764,9 @@ fun getAddressEventByEvent(event: String) = AddressEvents.values().firstOrNull {
 
 fun String.scrubQuotes() = this.removeSurrounding("\"")
 
-// ///////// MSG TO DEFINED EVENT
+//endregion
+
+//region MSG TO DEFINED EVENT
 // This links a msg type to a specific event it always emits. Helps to identify actions within an ExecuteContract msg
 // When this is updated, update update_tx_fees() and update_market_rate() procedures as well
 enum class MsgToDefinedEvent(val msg: String, val definedEvent: String, val uniqueField: String) {
@@ -776,7 +794,6 @@ fun getDefinedEventsByMsg(msg: String) = MsgToDefinedEvent.values().firstOrNull 
 fun getDefinedEventsByEvent(event: String) = MsgToDefinedEvent.values().firstOrNull { it.definedEvent == event }
 fun getByDefinedEvent() = MsgToDefinedEvent.values().associateBy { it.definedEvent }
 
-fun getExecuteContractTypeUrl() =
-    Any.pack(cosmwasm.wasm.v1.Tx.MsgExecuteContract.getDefaultInstance()).typeUrl
-        .split("/")[1]
-        .let { "/$it" }
+fun getExecuteContractTypeUrl() = Any.pack(cosmwasm.wasm.v1.Tx.MsgExecuteContract.getDefaultInstance(), "").typeUrl
+
+//endregion

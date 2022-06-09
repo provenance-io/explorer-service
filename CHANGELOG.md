@@ -35,6 +35,23 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Features
 * Updated Provenance proto set to 1.11.0 #371
+* Add Support for Tx Msg building #355
+  * Now supports building Tx msgs through API
+    * POST `/api/v3/gov/types/supported` - Gives list of proposal types supported for governance msgs
+    * POST `/api/v3/gov/submit/{type}` - Crafts a Submit Proposal msg from the given data
+    * POST `/api/v3/gov/deposit` - Crafts a Deposit msg
+    * POST `/api/v3/gov/vote` - Crafts a Vote msg
+    * POST `/api/v3/staking/delegate` - Crafts a Delegate msg
+    * POST `/api/v3/staking/redelegate` - Crafts a Redelegate msg
+    * POST `/api/v3/staking/undelegate` - Crafts an Undelegate msg
+    * POST `/api/v3/staking/withdraw_rewards` - Crafts a Withdraw Rewards msg
+    * POST `/api/v3/staking/withdraw_commission` - Crafts a Withdraw Commission msg
+    * POST `/api/v2/accounts/send` - Crafts a Send msg
+  * Validations included to allow for better support
+  * Docs included to help with usage
+
+### Improvements
+* Added Validation message collection to allow for multiple validations at once #355
 
 ## [v4.3.1](https://github.com/provenance-io/explorer-service/releases/tag/v4.3.1) - 2022-06-24
 ### Release Name: James of Ireland
@@ -61,7 +78,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Bug Fixes
 * Fixed the Validator missed block count
 * Added else case for IBC Recvs where the effected Recv is in the same tx as an uneffected Recv, which makes the block error out
-* Added VotWeighted msg type to `getGovMsgDetail()` function
+* Added VoteWeighted msg type to `getGovMsgDetail()` function
 * Fixed how addresses were being associated with txs
 
 ### Data

@@ -1,7 +1,7 @@
 package io.provenance.explorer.grpc.v1
 
 import io.grpc.ManagedChannelBuilder
-import io.provenance.explorer.config.GrpcLoggingInterceptor
+import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.getPagination
 import io.provenance.msgfees.v1.QueryGrpcKt
 import io.provenance.msgfees.v1.queryAllMsgFeesRequest

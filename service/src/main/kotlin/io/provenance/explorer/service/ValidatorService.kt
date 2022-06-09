@@ -22,6 +22,7 @@ import io.provenance.explorer.domain.entities.ValidatorState.ACTIVE
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
 import io.provenance.explorer.domain.entities.updateHitCount
+import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.avg
@@ -123,6 +124,9 @@ class ValidatorService(
             }.also { ValidatorStateRecord.refreshCurrentStateView() }
             .let { ValidatorStateRecord.findByOperator(getActiveSet(), address)!! }
     }
+
+    fun validateValidator(validator: String) =
+        requireNotNullToMessage(StakingValidatorCacheRecord.findByOperAddr(validator)) { "Validator $validator does not exist." }
 
     // Returns a validator detail object for the validator
     fun getValidator(address: String) =
@@ -388,6 +392,8 @@ class ValidatorService(
             UnpaginatedDelegation(recs, mapOf(Pair("unbondingTotal", total)))
         }
 
+    fun getValidatorCommission(address: String) = grpcClient.getValidatorCommission(address).commissionList
+
     fun getCommissionInfo(address: String): ValidatorCommission {
         val validator = ValidatorStateRecord.findByOperator(getActiveSet(), address)?.json
             ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
@@ -395,7 +401,7 @@ class ValidatorService(
         val selfBonded = getValSelfBonded(validator)
         val delegatorCount =
             grpcClient.getStakingValidatorDelegations(validator.operatorAddress, 0, 10).pagination.total
-        val rewards = grpcClient.getValidatorCommission(address).commissionList.firstOrNull()
+        val rewards = getValidatorCommission(address).firstOrNull()
         return ValidatorCommission(
             CountStrTotal(validator.tokens, null, NHASH),
             CountStrTotal(selfBonded.first, null, selfBonded.second),

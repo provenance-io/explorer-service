@@ -76,6 +76,8 @@ import io.provenance.explorer.grpc.extensions.getSmContractEventByEvent
 import io.provenance.explorer.grpc.extensions.getTxIbcClientChannel
 import io.provenance.explorer.grpc.extensions.isIbcTransferMsg
 import io.provenance.explorer.grpc.extensions.isMetadataDeletionMsg
+import io.provenance.explorer.grpc.extensions.isStandardAddress
+import io.provenance.explorer.grpc.extensions.isValidatorAddress
 import io.provenance.explorer.grpc.extensions.mapEventAttrValues
 import io.provenance.explorer.grpc.extensions.scrubQuotes
 import io.provenance.explorer.grpc.extensions.toMsgAcknowledgement
@@ -745,9 +747,9 @@ class AsyncCachingV2(
 }
 
 fun String.getAddressType(activeSet: Int, props: ExplorerProperties) = when {
-    this.startsWith(props.provValOperPrefix()) ->
+    this.isValidatorAddress(props) ->
         Pair(TxAddressJoinType.OPERATOR.name, ValidatorStateRecord.findByOperator(activeSet, this)?.operatorAddrId)
-    this.startsWith(props.provAccPrefix()) ->
+    this.isStandardAddress(props) ->
         Pair(TxAddressJoinType.ACCOUNT.name, AccountRecord.findByAddress(this)?.id?.value)
     else -> logger().debug("Address type is not supported: Addr $this").let { null }
 }

@@ -4,7 +4,7 @@ import cosmos.base.abci.v1beta1.Abci
 import cosmos.tx.v1beta1.ServiceGrpc
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.grpc.ManagedChannelBuilder
-import io.provenance.explorer.config.GrpcLoggingInterceptor
+import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.exceptions.TendermintApiException
 import io.provenance.explorer.grpc.extensions.getPaginationBuilder
