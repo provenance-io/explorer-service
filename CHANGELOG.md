@@ -50,6 +50,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Fixed the Validator missed block count
 * Added else case for IBC Recvs where the effected Recv is in the same tx as an uneffected Recv, which makes the block error out
 * Added VotWeighted msg type to `getGovMsgDetail()` function
+* Fixed how addresses were being associated with txs
 
 ### Data
 * Migration 1.64 - Updates for gov params at height #341
