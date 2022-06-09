@@ -373,9 +373,9 @@ class AsyncCachingV2(
                 BlockTxRetryRecord.insertNonRetry(txInfo.blockHeight, ex)
             }
         }
-        if (addrPair.second != null)
+        if (pairCopy.second != null)
             txUpdate.apply { this.addressJoin.add(TxAddressJoinRecord.buildInsert(txInfo, pairCopy, addr)) }
-        return addrPair
+        return pairCopy
     }
 
     private fun saveMarkers(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse, txUpdate: TxUpdate) = transaction {
