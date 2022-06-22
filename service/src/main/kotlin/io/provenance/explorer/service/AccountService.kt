@@ -2,20 +2,29 @@ package io.provenance.explorer.service
 
 import com.google.protobuf.Any
 import cosmos.bank.v1beta1.msgSend
+import cosmos.vesting.v1beta1.msgCreateVestingAccount
 import io.provenance.attribute.v1.Attribute
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.TxAddressJoinTable
+import io.provenance.explorer.domain.entities.TxCacheRecord
+import io.provenance.explorer.domain.entities.TxCacheTable
+import io.provenance.explorer.domain.entities.TxMessageTable
+import io.provenance.explorer.domain.entities.TxMessageTypeTable
 import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
 import io.provenance.explorer.domain.exceptions.requireToMessage
 import io.provenance.explorer.domain.exceptions.validate
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.USD_UPPER
+import io.provenance.explorer.domain.extensions.diff
 import io.provenance.explorer.domain.extensions.fromBase64
+import io.provenance.explorer.domain.extensions.getType
 import io.provenance.explorer.domain.extensions.isAddressAsType
 import io.provenance.explorer.domain.extensions.pack
 import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.pageOfResults
 import io.provenance.explorer.domain.extensions.toAccountPubKey
 import io.provenance.explorer.domain.extensions.toBase64
 import io.provenance.explorer.domain.extensions.toCoinStr
@@ -29,7 +38,9 @@ import io.provenance.explorer.domain.models.explorer.AttributeObj
 import io.provenance.explorer.domain.models.explorer.BankSendRequest
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.Delegation
+import io.provenance.explorer.domain.models.explorer.DenomBalanceBreakdown
 import io.provenance.explorer.domain.models.explorer.PagedResults
+import io.provenance.explorer.domain.models.explorer.PeriodInSeconds
 import io.provenance.explorer.domain.models.explorer.Reward
 import io.provenance.explorer.domain.models.explorer.TokenCounts
 import io.provenance.explorer.domain.models.explorer.UnpaginatedDelegation
@@ -37,13 +48,20 @@ import io.provenance.explorer.domain.models.explorer.mapToProtoCoin
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
 import io.provenance.explorer.grpc.extensions.getModuleAccName
 import io.provenance.explorer.grpc.extensions.isStandardAddress
+import io.provenance.explorer.grpc.extensions.isVesting
+import io.provenance.explorer.grpc.extensions.toVestingData
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.MetadataGrpcClient
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.innerJoin
+import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
+import java.math.BigDecimal
 
 @Service
 class AccountService(
@@ -89,11 +107,13 @@ class AccountService(
                     metadataClient.getScopesByOwner(it.accountAddress).pagination.total.toInt()
                 ),
                 it.isContract,
-                assetService.getAumForList(
-                    balances.await().balancesList.associate { bal -> bal.denom to bal.amount },
-                    "accountAUM"
-                )
-                    .toCoinStr(USD_UPPER)
+                assetService
+                    .getAumForList(
+                        balances.await().balancesList.associate { bal -> bal.denom to bal.amount },
+                        "accountAUM"
+                    )
+                    .toCoinStr(USD_UPPER),
+                it.data?.isVesting() ?: false
             )
         }
     }
@@ -108,11 +128,35 @@ class AccountService(
     suspend fun getBalances(address: String, page: Int, limit: Int) =
         accountClient.getAccountBalances(address, page.toOffset(limit), limit)
 
+    suspend fun getBalancesAll(address: String) = accountClient.getAccountBalancesAll(address)
+
+    suspend fun getSpendableBalances(address: String) = accountClient.getSpendableBalancesAll(address)
+
+    @Deprecated("Use AccountService.getAccountBalancesDetailed")
     fun getAccountBalances(address: String, page: Int, limit: Int) = runBlocking {
         getBalances(address, page, limit).let { res ->
             val pricing = assetService.getPricingInfoIn(res.balancesList.map { it.denom }, "accountBalances")
             val bals = res.balancesList.map { it.toCoinStrWithPrice(pricing[it.denom]) }
             PagedResults(res.pagination.total.pageCountOfResults(limit), bals, res.pagination.total)
+        }
+    }
+
+    fun getAccountBalancesDetailed(address: String, page: Int, limit: Int) = runBlocking {
+        getBalancesAll(address).let { res ->
+            val pricing = assetService.getPricingInfoIn(res.map { it.denom }, "accountBalances")
+            val spendable = getSpendableBalances(address).associateBy { it.denom }
+            val bals = res.map {
+                DenomBalanceBreakdown(
+                    it.toCoinStrWithPrice(pricing[it.denom]),
+                    spendable[it.denom]!!.toCoinStrWithPrice(pricing[it.denom]),
+                    it.diff(spendable[it.denom]!!).toCoinStrWithPrice(pricing[it.denom], it.denom)
+                )
+            }.sortedByDescending { it.total.totalBalancePrice?.amount?.toBigDecimal() ?: BigDecimal.ZERO }
+            PagedResults(
+                bals.count().toLong().pageCountOfResults(limit),
+                bals.pageOfResults(page, limit),
+                bals.count().toLong()
+            )
         }
     }
 
@@ -228,6 +272,33 @@ class AccountService(
             toAddress = request.to
             amount.addAll(request.funds.mapToProtoCoin())
         }.pack()
+    }
+
+    fun getVestingSchedule(address: String, continuousPeriod: PeriodInSeconds = PeriodInSeconds.DAY) = transaction {
+        getAccountRaw(address).let { acc ->
+            if (acc.data == null || acc.data?.isVesting() == false)
+                throw ResourceNotFoundException("Invalid vesting account: '$address'")
+            acc.data!!.toVestingData(getInitializationDate(acc), continuousPeriod)
+        }
+    }
+
+    // Gets the origination dateTime for the account. Currently only applicable to vesting accounts
+    private fun getInitializationDate(account: AccountRecord) = transaction {
+        val types = listOf(msgCreateVestingAccount { }.getType())
+
+        TxAddressJoinTable
+            .innerJoin(TxMessageTable, { TxAddressJoinTable.txHashId }, { TxMessageTable.txHashId })
+            .innerJoin(TxMessageTypeTable, { TxMessageTable.txMessageType }, { TxMessageTypeTable.id })
+            .innerJoin(TxCacheTable, { TxAddressJoinTable.txHashId }, { TxCacheTable.id })
+            .slice(TxCacheTable.columns)
+            .select { TxMessageTypeTable.protoType inList types }
+            .andWhere { TxAddressJoinTable.addressId eq account.id.value }
+            .andWhere { TxCacheTable.errorCode.isNull() }
+            .orderBy(Pair(TxCacheTable.txTimestamp, SortOrder.ASC))
+            .limit(1)
+            .let { TxCacheRecord.wrapRows(it) }
+            .firstOrNull()
+            ?.txTimestamp
     }
 }
 

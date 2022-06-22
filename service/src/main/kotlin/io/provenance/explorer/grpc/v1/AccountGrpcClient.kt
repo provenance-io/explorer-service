@@ -1,12 +1,15 @@
 package io.provenance.explorer.grpc.v1
 
 import cosmos.auth.v1beta1.queryAccountRequest
+import cosmos.bank.v1beta1.Bank
 import cosmos.bank.v1beta1.queryAllBalancesRequest
 import cosmos.bank.v1beta1.queryDenomMetadataRequest
 import cosmos.bank.v1beta1.queryDenomMetadataResponse
 import cosmos.bank.v1beta1.queryDenomsMetadataRequest
 import cosmos.bank.v1beta1.queryParamsRequest
+import cosmos.bank.v1beta1.querySpendableBalancesRequest
 import cosmos.bank.v1beta1.querySupplyOfRequest
+import cosmos.base.v1beta1.CoinOuterClass
 import cosmos.distribution.v1beta1.queryDelegationTotalRewardsRequest
 import cosmos.staking.v1beta1.queryDelegatorDelegationsRequest
 import cosmos.staking.v1beta1.queryDelegatorDelegationsResponse
@@ -71,6 +74,58 @@ class AccountGrpcClient(channelUri: URI) {
             }
         )
 
+    suspend fun getAccountBalancesAll(address: String): MutableList<CoinOuterClass.Coin> {
+        var (offset, limit) = 0 to 100
+
+        val results =
+            bankClient.allBalances(
+                queryAllBalancesRequest {
+                    this.address = address
+                    this.pagination = getPagination(offset, limit)
+                }
+            )
+
+        val total = results.pagination?.total ?: results.balancesCount.toLong()
+        val balances = results.balancesList.toMutableList()
+
+        while (balances.count() < total) {
+            offset += limit
+            bankClient.allBalances(
+                queryAllBalancesRequest {
+                    this.address = address
+                    this.pagination = getPagination(offset, limit)
+                }
+            ).let { balances.addAll(it.balancesList) }
+        }
+        return balances
+    }
+
+    suspend fun getSpendableBalancesAll(address: String): MutableList<CoinOuterClass.Coin> {
+        var (offset, limit) = 0 to 100
+
+        val results =
+            bankClient.spendableBalances(
+                querySpendableBalancesRequest {
+                    this.address = address
+                    this.pagination = getPagination(offset, limit)
+                }
+            )
+
+        val total = results.pagination?.total ?: results.balancesCount.toLong()
+        val balances = results.balancesList.toMutableList()
+
+        while (balances.count() < total) {
+            offset += limit
+            bankClient.spendableBalances(
+                querySpendableBalancesRequest {
+                    this.address = address
+                    this.pagination = getPagination(offset, limit)
+                }
+            ).let { balances.addAll(it.balancesList) }
+        }
+        return balances
+    }
+
     suspend fun getCurrentSupply(denom: String) =
         bankClient.supplyOf(querySupplyOfRequest { this.denom = denom }).amount
 
@@ -81,8 +136,22 @@ class AccountGrpcClient(channelUri: URI) {
             queryDenomMetadataResponse { }
         }
 
-    suspend fun getAllDenomMetadata() =
-        bankClient.denomsMetadata(queryDenomsMetadataRequest { this.pagination = getPagination(0, 100) })
+    suspend fun getAllDenomMetadata(): MutableList<Bank.Metadata> {
+        var (offset, limit) = 0 to 100
+
+        val results =
+            bankClient.denomsMetadata(queryDenomsMetadataRequest { this.pagination = getPagination(offset, limit) })
+
+        val total = results.pagination?.total ?: results.metadatasCount.toLong()
+        val metadatas = results.metadatasList.toMutableList()
+
+        while (metadatas.count() < total) {
+            offset += limit
+            bankClient.denomsMetadata(queryDenomsMetadataRequest { this.pagination = getPagination(offset, limit) })
+                .let { metadatas.addAll(it.metadatasList) }
+        }
+        return metadatas
+    }
 
     suspend fun getDelegations(address: String, offset: Int, limit: Int) =
         try {
