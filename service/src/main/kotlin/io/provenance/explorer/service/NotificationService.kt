@@ -45,15 +45,17 @@ class NotificationService(
     }
 
     fun fetchScheduledUpgrades() = runBlocking {
+        val currentHeight = blockService.getLatestBlockHeightIndexOrFromChain()
+
         val upgrades = GovProposalRecord.findByProposalType(govService.getUpgradeProtoType())
             .filter { it.status == Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name }
             .filter { proposal ->
                 val name = proposal.content.get("plan").get("name").asText()
-                govClient.getIfUpgradeApplied(name) == null
+                govClient.getIfUpgradeApplied(name).height == 0L &&
+                    proposal.content.get("plan").get("height").asLong() > currentHeight
             }.sortedBy { it.proposalId }
 
         val avgBlockTime = cacheService.getAvgBlockTime()
-        val currentHeight = blockService.getLatestBlockHeightIndexOrFromChain()
         val currentTimeMs = DateTime.now(DateTimeZone.UTC).millis
 
         upgrades.map {
