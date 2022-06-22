@@ -68,11 +68,7 @@ class GovGrpcClient(channelUri: URI) {
         }
 
     suspend fun getIfUpgradeApplied(planName: String) =
-        try {
-            upgradeClient.appliedPlan(queryAppliedPlanRequest { this.name = planName })
-        } catch (e: Exception) {
-            null
-        }
+        upgradeClient.appliedPlan(queryAppliedPlanRequest { this.name = planName })
 
     suspend fun getIfUpgradeScheduled() =
         try {

@@ -231,8 +231,7 @@ class ExplorerService(
                     one.content.get("plan").get("info").asText().getChainVersionFromUrl(props.upgradeVersionRegex),
                     version,
                     runBlocking { govClient.getIfUpgradeApplied(one.content.get("plan").get("name").asText()) }
-                        ?.let { it.height.toInt() != one.content.get("plan").get("height").asInt() }
-                        ?: true,
+                        .let { it.height.toInt() != one.content.get("plan").get("height").asInt() },
                     scheduledName?.let { name -> name == one.content.get("plan").get("name").asText() } ?: false,
                     url
                 )
