@@ -107,6 +107,7 @@ import io.provenance.metadata.v1.MsgWriteSessionRequest
 import io.provenance.msgfees.v1.AddMsgFeeProposal
 import io.provenance.msgfees.v1.RemoveMsgFeeProposal
 import io.provenance.msgfees.v1.UpdateMsgFeeProposal
+import io.provenance.msgfees.v1.UpdateNhashPerUsdMilProposal
 import io.provenance.name.v1.CreateRootNameProposal
 import io.provenance.name.v1.EventNameBound
 import io.provenance.name.v1.EventNameUnbound
@@ -334,7 +335,8 @@ fun contentDescriptors() =
         Client.UpgradeProposal.getDescriptor(),
         AddMsgFeeProposal.getDescriptor(),
         UpdateMsgFeeProposal.getDescriptor(),
-        RemoveMsgFeeProposal.getDescriptor()
+        RemoveMsgFeeProposal.getDescriptor(),
+        UpdateNhashPerUsdMilProposal.getDescriptor()
     )
 
 fun events() = listOf(

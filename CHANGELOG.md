@@ -33,6 +33,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Updated Provenance proto set to 1.11.0 #371
+
 ## [v4.3.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.3.0) - 2022-06-23
 ### Release Name: Wang Dayuan
 
