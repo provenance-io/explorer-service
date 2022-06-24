@@ -166,7 +166,7 @@ When the hotfix is ready to be released:
 - Start on `hotfix/vx.x.(x+1)` (aka `hotfix`)
 - On the `hotfix` branch, prepare a new version section in the `CHANGELOG.md`
   - At the top of latest changes add `## [vx.x.x](https://github.com/provenance-io/explorer-service/releases/tag/vx.x.x) - YYYY-MM-DD`
-  - All links must be link-ified: `$ python ./scripts/linkify_changelog.py CHANGELOG.md`
+  - All links must be link-ified: `$ python3 ./scripts/linkify_changelog.py CHANGELOG.md`
 - Copy the latest release entries into a `RELEASE_CHANGELOG.md`
 - Tag the release (use `git tag -a vx.x.x -m "vx.x.x"`)
 - Push the tag up (use `git push origin vx.x.x`)

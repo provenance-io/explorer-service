@@ -585,6 +585,7 @@ class AsyncCachingV2(
                                 txUpdate.apply {
                                     this.ibcLedgers.add(ibcService.buildIbcLedger(ledger, txInfo, null))
                                 }
+                                successfulRecvHashes.add(IbcLedgerRecord.getUniqueHash(ledger))
                             } else if (successfulRecvHashes.contains(IbcLedgerRecord.getUniqueHash(ledger))) {
                                 BlockTxRetryRecord.insertNonBlockingRetry(
                                     txInfo.blockHeight,
@@ -595,9 +596,14 @@ class AsyncCachingV2(
                                     )
                                 )
                             } else {
-                                throw InvalidArgumentException(
-                                    "No matching IBC ledger record for channel " +
-                                        "${ledger.channel!!.srcPort}/${ledger.channel!!.srcChannel}, sequence ${ledger.sequence}"
+                                BlockTxRetryRecord.insertNonBlockingRetry(
+                                    txInfo.blockHeight,
+                                    InvalidArgumentException(
+                                        "Matching IBC Ledger record has not been saved yet - " +
+                                            "${ledger.channel!!.srcPort}/${ledger.channel!!.srcChannel}, " +
+                                            "sequence ${ledger.sequence}. Could be contained in another Tx in the " +
+                                            "same block."
+                                    )
                                 )
                             }
                         IbcAckType.TRANSFER ->

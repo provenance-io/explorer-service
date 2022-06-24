@@ -169,7 +169,7 @@ class AsyncService(
         logger.info("Retrying block/tx records")
         BlockTxRetryRecord.getRecordsToRetry().map { height ->
             val block = try {
-                asyncCache.saveBlockEtc(blockService.getBlockAtHeightFromChain(height))!!
+                asyncCache.saveBlockEtc(blockService.getBlockAtHeightFromChain(height), Pair(true, false))!!
             } catch (e: Exception) {
                 null
             }
