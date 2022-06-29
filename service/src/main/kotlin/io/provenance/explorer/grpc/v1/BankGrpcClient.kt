@@ -1,7 +1,7 @@
 package io.provenance.explorer.grpc.v1
 
 import io.grpc.ManagedChannelBuilder
-import io.provenance.explorer.config.GrpcLoggingInterceptor
+import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.extensions.toDecimalString
 import org.springframework.stereotype.Component

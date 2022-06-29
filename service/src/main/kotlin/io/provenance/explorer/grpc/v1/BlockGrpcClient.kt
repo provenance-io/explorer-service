@@ -10,7 +10,7 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.config.ExplorerProperties
-import io.provenance.explorer.config.GrpcLoggingInterceptor
+import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.exceptions.FigmentApiException
 import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Component

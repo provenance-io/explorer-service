@@ -1,5 +1,11 @@
 package io.provenance.explorer.web.v2
 
+import com.google.protobuf.util.JsonFormat
+import io.provenance.explorer.config.interceptor.JwtInterceptor
+import io.provenance.explorer.domain.extensions.TxMessageBody
+import io.provenance.explorer.domain.extensions.toTxBody
+import io.provenance.explorer.domain.extensions.toTxMessageBody
+import io.provenance.explorer.domain.models.explorer.BankSendRequest
 import io.provenance.explorer.service.AccountService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -9,6 +15,9 @@ import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestAttribute
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -24,7 +33,7 @@ import javax.validation.constraints.Min
     consumes = MediaType.APPLICATION_JSON_VALUE,
     tags = ["Account"]
 )
-class AccountController(private val accountService: AccountService) {
+class AccountController(private val accountService: AccountService, private val printer: JsonFormat.Printer) {
 
     @ApiOperation("Returns account detail for the account address")
     @GetMapping("/{address}")
@@ -83,4 +92,16 @@ class AccountController(private val accountService: AccountService) {
         @RequestParam(defaultValue = "10") @Min(1) @Max(50) count: Int,
         @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int
     ) = ResponseEntity.ok(accountService.getNamesOwnedByAccount(address, page, count))
+
+    @ApiOperation(value = "Builds send transaction for submission to blockchain")
+    @PostMapping("/send")
+    fun createSend(
+        @ApiParam(value = "Data used to craft the Send msg type")
+        @RequestBody request: BankSendRequest,
+        @ApiParam(hidden = true) @RequestAttribute(name = JwtInterceptor.X_ADDRESS, required = true) xAddress: String
+    ): TxMessageBody {
+        if (xAddress != request.from)
+            throw IllegalArgumentException("Unable to process create send; connected wallet does not match request")
+        return accountService.createSend(request).toTxBody().toTxMessageBody(printer)
+    }
 }

@@ -1,25 +1,8 @@
 version: '3.5'
-services:
-  explorer-postgres:
-    image: postgres:13.2
-    container_name: postgres-local-testnet
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password1
-    ports:
-      - 5432:5432
-    volumes:
-      - ./db-init:/docker-entrypoint-initdb.d/ # inits the db with username/password
-      - pg-local-testnet:/var/lib/postgresql/data
-
-volumes:
-  pg-local-testnet:
-
-
 #services:
 #  explorer-postgres:
 #    image: postgres:13.2
-#    container_name: postgres-local-mainnet
+#    container_name: postgres-local-testnet
 #    environment:
 #      - POSTGRES_USER=postgres
 #      - POSTGRES_PASSWORD=password1
@@ -27,7 +10,24 @@ volumes:
 #      - 5432:5432
 #    volumes:
 #      - ./db-init:/docker-entrypoint-initdb.d/ # inits the db with username/password
-#      - pg-local-mainnet:/var/lib/postgresql/data
+#      - pg-local-testnet:/var/lib/postgresql/data
 #
 #volumes:
-#  pg-local-mainnet:
+#  pg-local-testnet:
+
+
+services:
+  explorer-postgres:
+    image: postgres:13.2
+    container_name: postgres-local-mainnet
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password1
+    ports:
+      - 5432:5432
+    volumes:
+      - ./db-init:/docker-entrypoint-initdb.d/ # inits the db with username/password
+      - pg-local-mainnet:/var/lib/postgresql/data
+
+volumes:
+  pg-local-mainnet:

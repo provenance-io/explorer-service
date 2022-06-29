@@ -1,4 +1,4 @@
-package io.provenance.explorer.config
+package io.provenance.explorer.config.interceptor
 
 import io.grpc.CallOptions
 import io.grpc.Channel

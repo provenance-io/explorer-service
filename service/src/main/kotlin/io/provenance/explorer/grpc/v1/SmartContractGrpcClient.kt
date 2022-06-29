@@ -5,7 +5,7 @@ import cosmwasm.wasm.v1.QueryGrpc
 import cosmwasm.wasm.v1.QueryOuterClass
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.ExplorerProperties
-import io.provenance.explorer.config.GrpcLoggingInterceptor
+import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit

@@ -1,12 +1,29 @@
 package io.provenance.explorer.service
 
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.google.protobuf.Any
 import com.google.protobuf.util.JsonFormat
 import cosmos.gov.v1beta1.Gov
 import cosmos.gov.v1beta1.Gov.VoteOption
 import cosmos.gov.v1beta1.Tx
+import cosmos.gov.v1beta1.msgDeposit
+import cosmos.gov.v1beta1.msgSubmitProposal
+import cosmos.gov.v1beta1.msgVote
+import cosmos.gov.v1beta1.msgVoteWeighted
+import cosmos.gov.v1beta1.textProposal
+import cosmos.gov.v1beta1.weightedVoteOption
+import cosmos.params.v1beta1.paramChange
+import cosmos.params.v1beta1.parameterChangeProposal
 import cosmos.upgrade.v1beta1.Upgrade
+import cosmos.upgrade.v1beta1.cancelSoftwareUpgradeProposal
+import cosmos.upgrade.v1beta1.plan
+import cosmos.upgrade.v1beta1.softwareUpgradeProposal
+import cosmwasm.wasm.v1.accessConfig
+import cosmwasm.wasm.v1.instantiateContractProposal
+import cosmwasm.wasm.v1.storeCodeProposal
 import cosmwasm.wasm.v1beta1.Proposal
+import io.provenance.explorer.VANILLA_MAPPER
+import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
@@ -15,18 +32,25 @@ import io.provenance.explorer.domain.entities.DepositType
 import io.provenance.explorer.domain.entities.GovDepositRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.GovVoteRecord
+import io.provenance.explorer.domain.entities.MonitorProposalType
 import io.provenance.explorer.domain.entities.ProposalMonitorRecord
-import io.provenance.explorer.domain.entities.ProposalType
 import io.provenance.explorer.domain.entities.SmCodeRecord
 import io.provenance.explorer.domain.entities.TxSmCodeRecord
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
+import io.provenance.explorer.domain.exceptions.InvalidArgumentException
+import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
+import io.provenance.explorer.domain.exceptions.requireToMessage
+import io.provenance.explorer.domain.exceptions.validate
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.mhashToNhash
+import io.provenance.explorer.domain.extensions.pack
+import io.provenance.explorer.domain.extensions.padToDecString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.stringfy
 import io.provenance.explorer.domain.extensions.to256Hash
 import io.provenance.explorer.domain.extensions.toBase64
+import io.provenance.explorer.domain.extensions.toByteString
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDecimalString
@@ -36,15 +60,29 @@ import io.provenance.explorer.domain.models.explorer.DepositPercentage
 import io.provenance.explorer.domain.models.explorer.DepositRecord
 import io.provenance.explorer.domain.models.explorer.GovAddrData
 import io.provenance.explorer.domain.models.explorer.GovAddress
+import io.provenance.explorer.domain.models.explorer.GovDepositRequest
 import io.provenance.explorer.domain.models.explorer.GovMsgDetail
 import io.provenance.explorer.domain.models.explorer.GovParamType
 import io.provenance.explorer.domain.models.explorer.GovProposalDetail
+import io.provenance.explorer.domain.models.explorer.GovSubmitProposalRequest
 import io.provenance.explorer.domain.models.explorer.GovTimeFrame
+import io.provenance.explorer.domain.models.explorer.GovVoteRequest
 import io.provenance.explorer.domain.models.explorer.GovVotesDetail
+import io.provenance.explorer.domain.models.explorer.InstantiateContractData
 import io.provenance.explorer.domain.models.explorer.PagedResults
+import io.provenance.explorer.domain.models.explorer.ParameterChangeData
 import io.provenance.explorer.domain.models.explorer.ProposalHeader
 import io.provenance.explorer.domain.models.explorer.ProposalParamHeights
 import io.provenance.explorer.domain.models.explorer.ProposalTimings
+import io.provenance.explorer.domain.models.explorer.ProposalType
+import io.provenance.explorer.domain.models.explorer.ProposalType.CANCEL_UPGRADE
+import io.provenance.explorer.domain.models.explorer.ProposalType.INSTANTIATE_CONTRACT
+import io.provenance.explorer.domain.models.explorer.ProposalType.PARAMETER_CHANGE
+import io.provenance.explorer.domain.models.explorer.ProposalType.SOFTWARE_UPGRADE
+import io.provenance.explorer.domain.models.explorer.ProposalType.STORE_CODE
+import io.provenance.explorer.domain.models.explorer.ProposalType.TEXT
+import io.provenance.explorer.domain.models.explorer.SoftwareUpgradeData
+import io.provenance.explorer.domain.models.explorer.StoreCodeData
 import io.provenance.explorer.domain.models.explorer.Tally
 import io.provenance.explorer.domain.models.explorer.TallyParams
 import io.provenance.explorer.domain.models.explorer.TxData
@@ -53,15 +91,17 @@ import io.provenance.explorer.domain.models.explorer.VoteDbRecordAgg
 import io.provenance.explorer.domain.models.explorer.VoteRecord
 import io.provenance.explorer.domain.models.explorer.VotesTally
 import io.provenance.explorer.domain.models.explorer.VotingDetails
+import io.provenance.explorer.domain.models.explorer.mapToProtoCoin
 import io.provenance.explorer.domain.models.explorer.toData
+import io.provenance.explorer.grpc.extensions.isStandardAddress
 import io.provenance.explorer.grpc.extensions.toMsgDeposit
 import io.provenance.explorer.grpc.extensions.toMsgVote
 import io.provenance.explorer.grpc.extensions.toMsgVoteWeighted
 import io.provenance.explorer.grpc.v1.GovGrpcClient
-import io.provenance.explorer.grpc.v1.SmartContractGrpcClient
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
+import org.springframework.web.multipart.MultipartFile
 import java.math.BigDecimal
 
 @Service
@@ -69,8 +109,11 @@ class GovService(
     private val govClient: GovGrpcClient,
     private val protoPrinter: JsonFormat.Printer,
     private val valService: ValidatorService,
-    private val smContractClient: SmartContractGrpcClient,
-    private val cacheService: CacheService
+    private val smService: SmartContractService,
+    private val cacheService: CacheService,
+    private val accountService: AccountService,
+    private val assetService: AssetService,
+    private val props: ExplorerProperties
 ) {
     protected val logger = logger(GovService::class)
 
@@ -120,12 +163,12 @@ class GovService(
         val proposal = govClient.getProposal(proposalId) ?: return@runBlocking null
         val (proposalType, dataHash) = when {
             txMsg.content.typeUrl.endsWith("v1beta1.StoreCodeProposal") ->
-                ProposalType.STORE_CODE to
+                MonitorProposalType.STORE_CODE to
                     // base64(sha256(gzipUncompress(wasmByteCode))) == base64(storedCode.data_hash)
                     txMsg.content.unpack(Proposal.StoreCodeProposal::class.java)
                         .wasmByteCode.gzipUncompress().to256Hash()
             txMsg.content.typeUrl.endsWith("v1.StoreCodeProposal") ->
-                ProposalType.STORE_CODE to
+                MonitorProposalType.STORE_CODE to
                     // base64(sha256(gzipUncompress(wasmByteCode))) == base64(storedCode.data_hash)
                     txMsg.content.unpack(cosmwasm.wasm.v1.Proposal.StoreCodeProposal::class.java)
                         .wasmByteCode.gzipUncompress().to256Hash()
@@ -146,8 +189,8 @@ class GovService(
     }
 
     fun processProposal(proposalMon: ProposalMonitorRecord) = transaction {
-        when (ProposalType.valueOf(proposalMon.proposalType)) {
-            ProposalType.STORE_CODE -> {
+        when (MonitorProposalType.valueOf(proposalMon.proposalType)) {
+            MonitorProposalType.STORE_CODE -> {
                 val creationHeight = BlockCacheRecord.getLastBlockBeforeTime(proposalMon.votingEndTime) + 1
                 val records = SmCodeRecord.all().sortedByDescending { it.id.value }
                 val matching = records.firstOrNull { proposalMon.dataHash == it.dataHash }
@@ -164,7 +207,7 @@ class GovService(
                         }
                     }
                     ?: records.first().id.value.let { start ->
-                        smContractClient.getSmCode(start.toLong() + 1)?.let {
+                        smService.getSmCodeFromNode(start.toLong() + 1)?.let {
                             if (it.codeInfo.dataHash.toBase64() == proposalMon.dataHash) {
                                 SmCodeRecord.getOrInsert(start + 1, it, creationHeight)
                                 proposalMon.apply { this.processed = true }
@@ -301,7 +344,7 @@ class GovService(
         )
     )
 
-    fun getUpgradeProtoType() = Any.pack(Upgrade.SoftwareUpgradeProposal.getDefaultInstance()).typeUrl
+    fun getUpgradeProtoType() = Any.pack(Upgrade.SoftwareUpgradeProposal.getDefaultInstance(), "").typeUrl
 
     fun getProposalsList(page: Int, count: Int) =
         GovProposalRecord.getAllPaginated(page.toOffset(count), count)
@@ -435,6 +478,172 @@ class GovService(
                 PagedResults(total.toLong().pageCountOfResults(count), it, total.toLong())
             }
     }
+
+    private fun validateProposal(proposalId: Long, status: List<Gov.ProposalStatus>) =
+        GovProposalRecord.findByProposalId(proposalId).let {
+            listOf(
+                requireNotNullToMessage(it) { "Proposal ID $proposalId does not exist." },
+                requireToMessage(
+                    status.map { it.name }
+                        .contains(it.status)
+                ) { "Proposal ID $proposalId is not in the correct status for this action." }
+            )
+        }
+
+    fun createVote(request: GovVoteRequest): Any {
+        validate(
+            *validateProposal(
+                request.proposalId,
+                listOf(Gov.ProposalStatus.PROPOSAL_STATUS_VOTING_PERIOD)
+            ).toTypedArray(),
+            accountService.validateAddress(request.voter),
+            requireToMessage(request.votes.sumOf { it.weight } == 100) { "The sum of all submitted votes must be 100" },
+        )
+        return when (request.votes.size) {
+            0 -> throw InvalidArgumentException("A vote option must be included in the request")
+            1 -> msgVote {
+                proposalId = request.proposalId
+                voter = request.voter
+                option = request.votes.first().option
+            }.pack()
+            else -> msgVoteWeighted {
+                proposalId = request.proposalId
+                voter = request.voter
+                options.addAll(
+                    request.votes.filter { it.weight > 0 }.map {
+                        weightedVoteOption {
+                            option = it.option
+                            weight = it.weight.padToDecString()
+                        }
+                    }
+                )
+            }.pack()
+        }
+    }
+
+    fun createDeposit(request: GovDepositRequest): Any {
+        validate(
+            *validateProposal(
+                request.proposalId,
+                listOf(
+                    Gov.ProposalStatus.PROPOSAL_STATUS_DEPOSIT_PERIOD,
+                    Gov.ProposalStatus.PROPOSAL_STATUS_VOTING_PERIOD
+                )
+            ).toTypedArray(),
+            accountService.validateAddress(request.depositor),
+            *request.deposit.map { assetService.validateDenom(it.denom) }.toTypedArray(),
+            requireToMessage(request.deposit.none { it.amount.toLong() == 0L }) { "At least one deposit must have an amount greater than zero." }
+        )
+        return msgDeposit {
+            proposalId = request.proposalId
+            depositor = request.depositor
+            amount.addAll(request.deposit.mapToProtoCoin())
+        }.pack()
+    }
+
+    fun getSupportedProposalTypes() = ProposalType.values().map { it.name to it.example }.toMap()
+
+    fun createSubmitProposal(type: ProposalType, request: GovSubmitProposalRequest, wasmFile: MultipartFile?) =
+        transaction {
+            val prevalidates = mutableListOf(
+                accountService.validateAddress(request.submitter),
+                *request.initialDeposit.map { assetService.validateDenom(it.denom) }.toTypedArray()
+            )
+            when (type) {
+                TEXT -> textProposal {
+                    title = request.title
+                    description = request.description
+                }.pack()
+                CANCEL_UPGRADE -> cancelSoftwareUpgradeProposal {
+                    title = request.title
+                    description = request.description
+                }.pack()
+                PARAMETER_CHANGE ->
+                    VANILLA_MAPPER.readValue<ParameterChangeData>(request.content).let { content ->
+                        parameterChangeProposal {
+                            title = request.title
+                            description = request.description
+                            changes.addAll(
+                                content.changes.map {
+                                    paramChange {
+                                        subspace = it.subspace
+                                        key = it.key
+                                        value = it.value
+                                    }
+                                }
+                            )
+                        }.pack()
+                    }
+                SOFTWARE_UPGRADE ->
+                    VANILLA_MAPPER.readValue<SoftwareUpgradeData>(request.content).let { content ->
+                        softwareUpgradeProposal {
+                            title = request.title
+                            description = request.description
+                            plan = plan {
+                                name = content.name
+                                height = content.height
+                                info = content.info
+                            }
+                        }.pack()
+                    }
+                STORE_CODE -> {
+                    prevalidates.addAll(
+                        listOf(
+                            requireNotNullToMessage(wasmFile) { "Must have a WASM file submitted for a StoreCode proposal" },
+                            requireToMessage(wasmFile.bytes.isWASM()) { "Must have a .wasm file type for a StoreCode proposal" }
+                        )
+                    )
+                    VANILLA_MAPPER.readValue<StoreCodeData>(request.content).let { content ->
+                        prevalidates.addAll(
+                            listOf(
+                                requireToMessage(content.runAs.isStandardAddress(props)) { "runAs must be a standard address format" },
+                                requireToMessage(content.accessConfig?.address?.isStandardAddress(props) ?: true) { "accessConfig.address must be a standard address format" }
+                            )
+                        )
+                        storeCodeProposal {
+                            title = request.title
+                            description = request.description
+                            runAs = content.runAs
+                            wasmByteCode = wasmFile.bytes.gzipCompress().toByteString()
+                            content.accessConfig?.let { config ->
+                                instantiatePermission = accessConfig {
+                                    config.address?.let { this.address = it }
+                                    permission = config.type
+                                }
+                            }
+                        }.pack()
+                    }
+                }
+                INSTANTIATE_CONTRACT ->
+                    VANILLA_MAPPER.readValue<InstantiateContractData>(request.content).let { content ->
+                        prevalidates.addAll(content.funds.map { assetService.validateDenom(it.denom) })
+                        prevalidates.addAll(
+                            listOf(
+                                requireToMessage(content.runAs.isStandardAddress(props)) { "runAs must be a standard address format" },
+                                requireToMessage(content.admin?.isStandardAddress(props) ?: true) { "admin must be a standard address format" },
+                                requireNotNullToMessage(smService.getSmCodeFromNode(content.codeId.toLong())) { "codeId is not valid for instantiation" }
+                            )
+                        )
+                        instantiateContractProposal {
+                            title = request.title
+                            description = request.description
+                            runAs = content.runAs
+                            content.admin?.let { this.admin = it }
+                            codeId = content.codeId.toLong()
+                            content.label?.let { this.label = it }
+                            msg = content.msg.toByteArray().toByteString()
+                            content.funds.mapToProtoCoin().let { if (it.isNotEmpty()) funds.addAll(it) }
+                        }.pack()
+                    }
+            }.let { msg ->
+                validate(*prevalidates.toTypedArray())
+                msgSubmitProposal {
+                    content = msg
+                    proposer = request.submitter
+                    request.initialDeposit.mapToProtoCoin().let { if (it.isNotEmpty()) initialDeposit.addAll(it) }
+                }.pack()
+            }
+        }
 }
 
 fun Any.getGovMsgDetail(txHash: String) =

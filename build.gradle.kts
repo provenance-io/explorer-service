@@ -46,7 +46,11 @@ subprojects {
     }
     tasks.withType<KotlinCompile> {
         kotlinOptions {
-            freeCompilerArgs = listOf("-Xjsr305=strict", "-Xopt-in=kotlin.RequiresOptIn")
+            freeCompilerArgs = listOf(
+                "-Xjsr305=strict",
+                "-Xopt-in=kotlin.RequiresOptIn",
+                "-Xopt-in=kotlin.contracts.ExperimentalContracts"
+            )
             jvmTarget = "11"
             languageVersion = "1.5"
             apiVersion = "1.5"

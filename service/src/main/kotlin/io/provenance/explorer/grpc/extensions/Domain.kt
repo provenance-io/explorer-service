@@ -12,6 +12,7 @@ import cosmos.slashing.v1beta1.Slashing
 import io.grpc.Metadata
 import io.grpc.stub.AbstractStub
 import io.grpc.stub.MetadataUtils
+import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.toBech32Data
@@ -92,6 +93,10 @@ fun Any.toAddress(hrpPrefix: String) =
             this.unpack(cosmos.crypto.ed25519.Keys.PubKey::class.java).key.edPubKeyToBech32(hrpPrefix)
         else -> null.also { logger().error("This typeUrl is not supported as a consensus address: $typeUrl") }
     }
+
+fun String.isStandardAddress(props: ExplorerProperties) =
+    this.startsWith(props.provAccPrefix()) && !this.startsWith(props.provValOperPrefix())
+fun String.isValidatorAddress(props: ExplorerProperties) = this.startsWith(props.provValOperPrefix())
 
 // TODO: Once cosmos-sdk implements a grpc endpoint for this we can replace this with grpc Issue: https://github.com/cosmos/cosmos-sdk/issues/9437
 fun getEscrowAccountAddress(portId: String, channelId: String, hrpPrefix: String): String {

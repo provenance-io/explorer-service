@@ -18,6 +18,7 @@ import io.provenance.explorer.domain.entities.MarkerUnitRecord
 import io.provenance.explorer.domain.entities.TokenDistributionAmountsRecord
 import io.provenance.explorer.domain.entities.TokenDistributionPaginatedResultsRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
+import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toObjectNode
@@ -61,6 +62,9 @@ class AssetService(
     private val props: ExplorerProperties
 ) {
     protected val logger = logger(AssetService::class)
+
+    fun validateDenom(denom: String) =
+        requireNotNullToMessage(MarkerCacheRecord.findByDenom(denom)) { "Denom $denom does not exist." }
 
     fun getAssets(
         statuses: List<MarkerStatus>,

@@ -26,25 +26,28 @@ import io.provenance.explorer.grpc.extensions.toMsgUpdateAdminOld
 import io.provenance.explorer.grpc.v1.SmartContractGrpcClient
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
+import java.io.ByteArrayOutputStream
 import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 
 @Service
 class SmartContractService(
-    private val smContractClient: SmartContractGrpcClient,
     private val protoPrinter: JsonFormat.Printer,
     private val accountService: AccountService,
     private val scClient: SmartContractGrpcClient
 ) {
     protected val logger = logger(SmartContractService::class)
 
+    fun getSmCodeFromNode(codeId: Long) = scClient.getSmCode(codeId)
+
     fun saveCode(codeId: Long, txInfo: TxData) = transaction {
-        smContractClient.getSmCode(codeId).let {
+        getSmCodeFromNode(codeId).let {
             SmCodeRecord.getOrInsert(codeId.toInt(), it, txInfo.blockHeight)
         }
     }
 
     fun saveContract(contract: String, txInfo: TxData) = transaction {
-        smContractClient.getSmContract(contract).let {
+        scClient.getSmContract(contract).let {
             accountService.saveAccount(contract, true)
             SmContractRecord.getOrInsert(it, txInfo.blockHeight)
         }
@@ -98,17 +101,20 @@ fun SmCodeRecord.toCodeObject() = Code(this.id.value, this.creationHeight, this.
 fun SmContractRecord.toContractObject() =
     Contract(this.contractAddress, this.creationHeight, this.codeId, this.creator, this.admin, this.label)
 
-fun ByteArray.isGZIPStream(): Boolean {
-    return (
-        this[0] == GZIPInputStream.GZIP_MAGIC.toByte() &&
-            this[1] == (GZIPInputStream.GZIP_MAGIC ushr 8).toByte()
-        )
-}
+fun ByteArray.isGZIPStream(): Boolean =
+    this[0] == GZIPInputStream.GZIP_MAGIC.toByte() && this[1] == (GZIPInputStream.GZIP_MAGIC ushr 8).toByte()
+
+fun ByteArray.isWASM() = this.sliceArray(0 until 4).contentEquals(byteArrayOf(0x00, 0x61, 0x73, 0x6D))
 
 fun ByteString.gzipUncompress() =
     if (this.toByteArray().isGZIPStream())
         GZIPInputStream(this.toByteArray().inputStream()).use { it.readBytes() }
     else this.toByteArray()
+
+fun ByteArray.gzipCompress(): ByteArray = ByteArrayOutputStream().use { byteStream ->
+    GZIPOutputStream(byteStream).use { it.write(this, 0, this.size) }
+    byteStream.toByteArray()
+}
 
 fun Any.getScMsgDetail(msgIdx: Int, tx: ServiceOuterClass.GetTxResponse): Pair<Int, String?>? =
     when {
