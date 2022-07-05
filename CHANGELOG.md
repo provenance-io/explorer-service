@@ -49,9 +49,14 @@ Ref: https://keepachangelog.com/en/1.0.0/
     * POST `/api/v2/accounts/send` - Crafts a Send msg
   * Validations included to allow for better support
   * Docs included to help with usage
+* Add Support for Vesting Accounts #366
+  * GET `/api/v3/accounts/{address}/balances` - Returns paginated balances, broken down by spendable vs locked
+  * GET `/api/v3/accounts/{address}/vesting` - Returns Vesting detail and vesting schedule
+  * Now ingests properly
 
 ### Improvements
 * Added Validation message collection to allow for multiple validations at once #355
+* Updated Tx Type lists with new types
 
 ## [v4.3.1](https://github.com/provenance-io/explorer-service/releases/tag/v4.3.1) - 2022-06-24
 ### Release Name: James of Ireland

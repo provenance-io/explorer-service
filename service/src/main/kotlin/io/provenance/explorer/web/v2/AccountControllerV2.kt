@@ -33,7 +33,7 @@ import javax.validation.constraints.Min
     consumes = MediaType.APPLICATION_JSON_VALUE,
     tags = ["Account"]
 )
-class AccountController(private val accountService: AccountService, private val printer: JsonFormat.Printer) {
+class AccountControllerV2(private val accountService: AccountService, private val printer: JsonFormat.Printer) {
 
     @ApiOperation("Returns account detail for the account address")
     @GetMapping("/{address}")
@@ -44,6 +44,8 @@ class AccountController(private val accountService: AccountService, private val 
 
     @ApiOperation("Returns account balances for the account address")
     @GetMapping("/{address}/balances")
+    @Deprecated("Use /api/v3/accounts/{address}/balances")
+    @java.lang.Deprecated
     fun getAccountBalances(
         @ApiParam(value = "The address of the account, starting with the standard account prefix")
         @PathVariable address: String,

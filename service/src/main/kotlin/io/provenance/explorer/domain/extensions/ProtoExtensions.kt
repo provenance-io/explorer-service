@@ -14,6 +14,8 @@ data class TxMessageBody(
 
 fun Message.pack(): Any = Any.pack(this, "")
 
+fun Message.getType() = this.pack().typeUrl
+
 fun Iterable<Any>.toTxBody(memo: String? = null, timeoutHeight: Long? = null): TxBody =
     TxBody.newBuilder()
         .addAllMessages(this)

@@ -42,8 +42,7 @@ class AttributeGrpcClient(channelUri: URI) {
 
     suspend fun getAllAttributesForAddress(address: String?): MutableList<Attribute> {
         if (address == null) return mutableListOf()
-        var offset = 0
-        val limit = 100
+        var (offset, limit) = 0 to 100
 
         val results = attrClient.attributes(
             queryAttributesRequest {

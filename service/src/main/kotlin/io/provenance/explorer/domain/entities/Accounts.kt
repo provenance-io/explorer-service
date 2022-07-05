@@ -2,6 +2,7 @@ package io.provenance.explorer.domain.entities
 
 import com.google.protobuf.Any
 import cosmos.auth.v1beta1.Auth
+import cosmos.vesting.v1beta1.Vesting
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.execAndMap
@@ -56,43 +57,86 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun insertIgnore(acc: Any, isContract: Boolean = false) =
-            acc.typeUrl.getTypeShortName().let { type ->
-                when (type) {
-                    Auth.ModuleAccount::class.java.simpleName ->
-                        acc.unpack(Auth.ModuleAccount::class.java).let {
-                            insertIgnore(
-                                it.baseAccount.address,
-                                acc.typeUrl.getAccountType(),
-                                it.baseAccount.accountNumber,
-                                it.baseAccount,
-                                acc,
-                                isContract
-                            )
-                        }
-                    Auth.BaseAccount::class.java.simpleName ->
-                        acc.unpack(Auth.BaseAccount::class.java).let {
-                            insertIgnore(
-                                it.address,
-                                acc.typeUrl.getAccountType(),
-                                it.accountNumber,
-                                it,
-                                acc,
-                                isContract
-                            )
-                        }
-                    MarkerAccount::class.java.simpleName ->
-                        acc.unpack(MarkerAccount::class.java).let {
-                            insertIgnore(
-                                it.baseAccount.address,
-                                acc.typeUrl.getAccountType(),
-                                it.baseAccount.accountNumber,
-                                it.baseAccount,
-                                acc,
-                                isContract
-                            )
-                        }
-                    else -> throw IllegalArgumentException("This account type has not been handled yet: ${acc.typeUrl}")
-                }
+            when (acc.typeUrl.getTypeShortName()) {
+                Auth.ModuleAccount::class.java.simpleName ->
+                    acc.unpack(Auth.ModuleAccount::class.java).let {
+                        insertIgnore(
+                            it.baseAccount.address,
+                            acc.typeUrl.getAccountType(),
+                            it.baseAccount.accountNumber,
+                            it.baseAccount,
+                            acc,
+                            isContract
+                        )
+                    }
+                Auth.BaseAccount::class.java.simpleName ->
+                    acc.unpack(Auth.BaseAccount::class.java).let {
+                        insertIgnore(
+                            it.address,
+                            acc.typeUrl.getAccountType(),
+                            it.accountNumber,
+                            it,
+                            acc,
+                            isContract
+                        )
+                    }
+                MarkerAccount::class.java.simpleName ->
+                    acc.unpack(MarkerAccount::class.java).let {
+                        insertIgnore(
+                            it.baseAccount.address,
+                            acc.typeUrl.getAccountType(),
+                            it.baseAccount.accountNumber,
+                            it.baseAccount,
+                            acc,
+                            isContract
+                        )
+                    }
+                Vesting.ContinuousVestingAccount::class.java.simpleName ->
+                    acc.unpack(Vesting.ContinuousVestingAccount::class.java).let {
+                        insertIgnore(
+                            it.baseVestingAccount.baseAccount.address,
+                            acc.typeUrl.getAccountType(),
+                            it.baseVestingAccount.baseAccount.accountNumber,
+                            it.baseVestingAccount.baseAccount,
+                            acc,
+                            isContract
+                        )
+                    }
+                Vesting.DelayedVestingAccount::class.java.simpleName ->
+                    acc.unpack(Vesting.DelayedVestingAccount::class.java).let {
+                        insertIgnore(
+                            it.baseVestingAccount.baseAccount.address,
+                            acc.typeUrl.getAccountType(),
+                            it.baseVestingAccount.baseAccount.accountNumber,
+                            it.baseVestingAccount.baseAccount,
+                            acc,
+                            isContract
+                        )
+                    }
+                Vesting.PeriodicVestingAccount::class.java.simpleName ->
+                    acc.unpack(Vesting.PeriodicVestingAccount::class.java).let {
+                        insertIgnore(
+                            it.baseVestingAccount.baseAccount.address,
+                            acc.typeUrl.getAccountType(),
+                            it.baseVestingAccount.baseAccount.accountNumber,
+                            it.baseVestingAccount.baseAccount,
+                            acc,
+                            isContract
+                        )
+                    }
+                Vesting.PermanentLockedAccount::class.java.simpleName ->
+                    acc.unpack(Vesting.PermanentLockedAccount::class.java).let {
+                        insertIgnore(
+                            it.baseVestingAccount.baseAccount.address,
+                            acc.typeUrl.getAccountType(),
+                            it.baseVestingAccount.baseAccount.accountNumber,
+                            it.baseVestingAccount.baseAccount,
+                            acc,
+                            isContract
+                        )
+                    }
+
+                else -> throw IllegalArgumentException("This account type has not been handled yet: ${acc.typeUrl}")
             }
 
         private fun insertIgnore(

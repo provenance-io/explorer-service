@@ -125,6 +125,8 @@ fun Staking.Validator.getStatusString() =
 fun Timestamp.toDateTime() = DateTime(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()).toEpochMilli())
 fun Timestamp.formattedString() =
     DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()))
+// Uses seconds as the base vs millis
+fun Long.toDateTime() = DateTime(Instant.ofEpochSecond(this).toEpochMilli())
 
 fun DateTime.startOfDay() = this.withZone(DateTimeZone.UTC).withTimeAtStartOfDay()
 fun String.toDateTime() = DateTime.parse(this)

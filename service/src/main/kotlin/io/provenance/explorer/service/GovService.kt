@@ -14,7 +14,6 @@ import cosmos.gov.v1beta1.textProposal
 import cosmos.gov.v1beta1.weightedVoteOption
 import cosmos.params.v1beta1.paramChange
 import cosmos.params.v1beta1.parameterChangeProposal
-import cosmos.upgrade.v1beta1.Upgrade
 import cosmos.upgrade.v1beta1.cancelSoftwareUpgradeProposal
 import cosmos.upgrade.v1beta1.plan
 import cosmos.upgrade.v1beta1.softwareUpgradeProposal
@@ -43,6 +42,7 @@ import io.provenance.explorer.domain.exceptions.requireToMessage
 import io.provenance.explorer.domain.exceptions.validate
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.formattedString
+import io.provenance.explorer.domain.extensions.getType
 import io.provenance.explorer.domain.extensions.mhashToNhash
 import io.provenance.explorer.domain.extensions.pack
 import io.provenance.explorer.domain.extensions.padToDecString
@@ -344,7 +344,7 @@ class GovService(
         )
     )
 
-    fun getUpgradeProtoType() = Any.pack(Upgrade.SoftwareUpgradeProposal.getDefaultInstance(), "").typeUrl
+    fun getUpgradeProtoType() = softwareUpgradeProposal { }.getType()
 
     fun getProposalsList(page: Int, count: Int) =
         GovProposalRecord.getAllPaginated(page.toOffset(count), count)
@@ -541,7 +541,7 @@ class GovService(
         }.pack()
     }
 
-    fun getSupportedProposalTypes() = ProposalType.values().map { it.name to it.example }.toMap()
+    fun getSupportedProposalTypes() = ProposalType.values().associate { it.name to it.example }
 
     fun createSubmitProposal(type: ProposalType, request: GovSubmitProposalRequest, wasmFile: MultipartFile?) =
         transaction {

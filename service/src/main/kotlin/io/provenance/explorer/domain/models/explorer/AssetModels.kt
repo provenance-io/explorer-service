@@ -2,6 +2,7 @@ package io.provenance.explorer.domain.models.explorer
 
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.provenance.explorer.domain.extensions.USD_LOWER
+import org.joda.time.DateTime
 import java.math.BigInteger
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -51,7 +52,23 @@ data class AccountDetail(
     val attributes: List<AttributeObj>,
     val tokens: TokenCounts,
     val isContract: Boolean,
-    val accountAum: CoinStr
+    val accountAum: CoinStr,
+    val isVesting: Boolean
+)
+
+data class AccountVestingInfo(
+    val dataAsOfDate: DateTime,
+    val endTime: DateTime,
+    val originalVestingList: List<CoinStr>,
+    val startTime: DateTime? = null,
+    val periodicVestingList: List<PeriodicVestingInfo> = emptyList(),
+)
+
+data class PeriodicVestingInfo(
+    val length: Long, // in seconds
+    val coins: List<CoinStr>,
+    val vestingDate: DateTime,
+    val isVested: Boolean
 )
 
 data class AssetManagement(
@@ -82,4 +99,10 @@ data class AssetPricing(
     val priceDenomination: String = USD_LOWER,
     val priceTimestamp: OffsetDateTime,
     val usdPrice: Double?
+)
+
+data class DenomBalanceBreakdown(
+    val total: CoinStrWithPrice,
+    val spendable: CoinStrWithPrice,
+    val locked: CoinStrWithPrice
 )

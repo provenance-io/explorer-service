@@ -104,6 +104,8 @@ import io.provenance.name.v1.MsgDeleteNameRequest
  * Ginormous file meant to convert a Msg object to the proper format, and do stuff with it.
  */
 
+// Updating this list also means updating io.provenance.explorer.domain.extensions.SigExtenstionsKt.getSigners()
+
 fun Any.toMsgSend() = this.unpack(Tx.MsgSend::class.java)
 fun Any.toMsgMultiSend() = this.unpack(Tx.MsgMultiSend::class.java)
 fun Any.toMsgSubmitProposal() = this.unpack(cosmos.gov.v1beta1.Tx.MsgSubmitProposal::class.java)
@@ -379,6 +381,8 @@ fun Any.getAssociatedDenoms(): List<String> =
         typeUrl.endsWith("v1beta1.MsgExecuteContract") -> this.toMsgExecuteContractOld()
             .let { it.fundsList.map { c -> c.denom } }
         typeUrl.endsWith("MsgTransfer") -> this.toMsgTransfer().let { listOf(it.token.denom) }
+        typeUrl.endsWith("MsgCreateVestingAccount") -> this.toMsgCreateVestingAccount()
+            .let { it.amountList.map { c -> c.denom } }
 
         else -> listOf<String>()
             .also { logger().debug("This typeUrl is not yet supported as an asset-based msg: $typeUrl") }

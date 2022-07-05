@@ -127,12 +127,14 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
         "account",
         listOf(
             "add_attribute",
+            "update_attribute",
             "delete_attribute",
             "grant_allowance",
             "revoke_allowance",
             "grant",
             "revoke",
-            "exec"
+            "exec",
+            "create_vesting_account"
         )
     ),
     DELEGATION(
@@ -156,11 +158,18 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
     ),
     SMART_CONTRACT(
         "smart_contract",
-        listOf("store_code", "instantiate_contract", "execute_contract", "migrate_contract", "clear_admin")
+        listOf(
+            "store_code",
+            "instantiate_contract",
+            "execute_contract",
+            "migrate_contract",
+            "clear_admin",
+            "update_admin"
+        )
     ),
     TRANSFER(
         "transfer",
-        listOf("send", "multisend", "transfer", "ibc_transfer")
+        listOf("send", "multi_send", "transfer", "ibc_transfer")
     ),
     ASSET(
         "asset",
@@ -327,15 +336,25 @@ data class TxUpdate(
 
 fun TxUpdate.toProcedureObject() =
     listOf(
-        this.tx, this.txGasFee!!, this.txFees.toArray(TxFeeTable.tableName),
-        this.txMsgs.toArray("tx_msg"), this.singleMsgs.toArray(TxSingleMessageCacheTable.tableName),
-        this.addressJoin.toArray(TxAddressJoinTable.tableName), this.markerJoin.toArray(TxMarkerJoinTable.tableName),
-        this.nftJoin.toArray(TxNftJoinTable.tableName), this.ibcJoin.toArray(TxIbcTable.tableName),
-        this.proposals.toArray(GovProposalTable.tableName), this.proposalMonitors.toArray(ProposalMonitorTable.tableName),
-        this.deposits.toArray(GovDepositTable.tableName), this.votes.toArray(GovVoteTable.tableName),
-        this.ibcLedgers.toArray(IbcLedgerTable.tableName), this.ibcLedgerAcks.toArray(IbcLedgerAckTable.tableName),
-        this.smCodes.toArray(TxSmCodeTable.tableName), this.smContracts.toArray(TxSmContractTable.tableName),
-        this.sigs.toArray(SignatureJoinTable.tableName), this.feePayers.toArray(TxFeepayerTable.tableName),
+        this.tx,
+        this.txGasFee!!,
+        this.txFees.toArray(TxFeeTable.tableName),
+        this.txMsgs.toArray("tx_msg"),
+        this.singleMsgs.toArray(TxSingleMessageCacheTable.tableName),
+        this.addressJoin.toArray(TxAddressJoinTable.tableName),
+        this.markerJoin.toArray(TxMarkerJoinTable.tableName),
+        this.nftJoin.toArray(TxNftJoinTable.tableName),
+        this.ibcJoin.toArray(TxIbcTable.tableName),
+        this.proposals.toArray(GovProposalTable.tableName),
+        this.proposalMonitors.toArray(ProposalMonitorTable.tableName),
+        this.deposits.toArray(GovDepositTable.tableName),
+        this.votes.toArray(GovVoteTable.tableName),
+        this.ibcLedgers.toArray(IbcLedgerTable.tableName),
+        this.ibcLedgerAcks.toArray(IbcLedgerAckTable.tableName),
+        this.smCodes.toArray(TxSmCodeTable.tableName),
+        this.smContracts.toArray(TxSmContractTable.tableName),
+        this.sigs.toArray(SignatureJoinTable.tableName),
+        this.feePayers.toArray(TxFeepayerTable.tableName),
         this.validatorMarketRate!!
     ).toObject()
 

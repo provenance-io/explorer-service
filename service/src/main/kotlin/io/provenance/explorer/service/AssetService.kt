@@ -127,15 +127,14 @@ class AssetService(
                 getAssetFromDB(unit.marker)?.let { (id, record) ->
                     val txCount = TxMarkerJoinRecord.findCountByDenom(id.value)
                     val attributes = async { attrClient.getAllAttributesForAddress(record.markerAddress) }
-                    val balances = async { accountClient.getAccountBalances(record.markerAddress!!, 1, 1) }
+                    val balances = async { accountClient.getAccountBalances(record.markerAddress!!, 0, 1) }
                     val price = getPricingInfoIn(listOf(unit.marker), "assetDetail")[unit.marker]
                     AssetDetail(
                         record.denom,
                         record.markerAddress,
-                        if (record.data != null) AssetManagement(
-                            record.data!!.getManagingAccounts(),
-                            record.data!!.allowGovernanceControl
-                        ) else null,
+                        if (record.data != null)
+                            AssetManagement(record.data!!.getManagingAccounts(), record.data!!.allowGovernanceControl)
+                        else null,
                         record.toCoinStrWithPrice(price),
                         record.data?.isMintable() ?: false,
                         if (record.markerAddress != null) markerClient.getMarkerHoldersCount(unit.marker).pagination.total.toInt() else 0,
@@ -307,7 +306,7 @@ class AssetService(
 
     fun getDenomMetadata(denom: String?) = runBlocking {
         if (denom != null) listOf(accountClient.getDenomMetadata(denom).metadata)
-        else accountClient.getAllDenomMetadata().metadatasList
+        else accountClient.getAllDenomMetadata()
     }
 
     fun updateMarkerUnit() = transaction {
