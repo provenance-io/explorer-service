@@ -119,7 +119,7 @@ fun Any.toAddress(hrpPrefix: String) =
         typeUrl.contains("secp256r1") ->
             this.unpack(cosmos.crypto.secp256r1.Keys.PubKey::class.java).key.secp256r1PubKeyToBech32(
                 hrpPrefix,
-                typeUrl.split("/")[1]
+                typeUrl.removeFirstSlash()
             )
         typeUrl.contains("ed25519") ->
             this.unpack(cosmos.crypto.ed25519.Keys.PubKey::class.java).key.edPubKeyToBech32(hrpPrefix)

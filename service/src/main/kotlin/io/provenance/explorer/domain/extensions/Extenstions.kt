@@ -141,6 +141,7 @@ fun Long.get24HrBlockHeight(avgBlockTime: BigDecimal) =
     BigDecimal(24 * 60 * 60).divide(avgBlockTime, 0, RoundingMode.HALF_UP).let { this - it.toInt() }
 
 fun String.toObjectNode() = OBJECT_MAPPER.readValue(StringEscapeUtils.unescapeJson(this), ObjectNode::class.java)
+fun Any?.stringify() = if (this == null) null else OBJECT_MAPPER.writeValueAsString(this)
 
 fun List<BigDecimal>.average() = this.fold(BigDecimal.ZERO, BigDecimal::add)
     .divide(this.size.toBigDecimal(), 3, RoundingMode.CEILING)
@@ -155,7 +156,7 @@ fun String.nullOrString() = this.ifBlank { null }
  *  @Bean
  *  fun mapper(): ObjectMapper = ObjectMapper().configureFigure()
  */
-fun ObjectMapper.configureProvenance(): ObjectMapper = registerKotlinModule()
+fun ObjectMapper.configureProvenance(): ObjectMapper = this.registerKotlinModule()
     .registerModule(JavaTimeModule())
     .registerModule(ProtobufModule())
     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)

@@ -65,7 +65,11 @@ class UtilityController(private val us: UtilityService) {
     @PostMapping("/update/tx_fees")
     fun updateTxFeesFromHeight(@RequestParam height: Int) = ResponseEntity.ok(us.updateTxFeesFromHeight(height))
 
-    @ApiOperation("Parses and tries to save raw tx json, formatted as a string. Used for debugging a tx response")
+    @ApiOperation("Parses raw tx json, formatted as a string. Used for debugging a tx response")
     @PostMapping("/parse/tx_json")
     fun parseTxResponseObject(@RequestBody rawJson: String) = ResponseEntity.ok(us.parseRawTxJson(rawJson))
+
+    @ApiOperation("Parses and tries to save raw tx json, formatted as a string. Used for debugging a tx response")
+    @PostMapping("/parse/tx_json/save")
+    fun saveTxResponseObject(@RequestBody rawJson: String) = ResponseEntity.ok(us.saveRawTxJson(rawJson))
 }

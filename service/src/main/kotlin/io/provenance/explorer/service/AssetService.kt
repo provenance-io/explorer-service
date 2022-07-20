@@ -127,7 +127,10 @@ class AssetService(
                 getAssetFromDB(unit.marker)?.let { (id, record) ->
                     val txCount = TxMarkerJoinRecord.findCountByDenom(id.value)
                     val attributes = async { attrClient.getAllAttributesForAddress(record.markerAddress) }
-                    val balances = async { accountClient.getAccountBalances(record.markerAddress!!, 0, 1) }
+                    val balances =
+                        if (record.markerAddress != null)
+                            async { accountClient.getAccountBalances(record.markerAddress!!, 0, 1) }
+                        else null
                     val price = getPricingInfoIn(listOf(unit.marker), "assetDetail")[unit.marker]
                     AssetDetail(
                         record.denom,
@@ -142,7 +145,7 @@ class AssetService(
                         attributes.await().map { attr -> attr.toResponse() },
                         getDenomMetadataSingle(unit.marker).toObjectNode(protoPrinter),
                         TokenCounts(
-                            if (record.markerAddress != null) balances.await().pagination.total else 0,
+                            balances?.await()?.pagination?.total ?: 0,
                             if (record.markerAddress != null) metadataClient.getScopesByOwner(record.markerAddress!!).pagination.total.toInt() else 0
                         ),
                         record.status.prettyStatus(),
@@ -156,11 +159,12 @@ class AssetService(
         val unit = MarkerUnitRecord.findByUnit(denom)?.marker ?: denom
         val supply = getCurrentSupply(unit)
         val res = markerClient.getMarkerHolders(unit, page.toOffset(count), count)
-        val list = res.balancesList.asFlow().map { bal ->
+        val list = res?.balancesList?.asFlow()?.map { bal ->
             val balance = bal.coinsList.first { coin -> coin.denom == unit }.amount
             AssetHolder(bal.address, CountStrTotal(balance, supply, unit))
-        }.toList().sortedWith(compareBy { it.balance.count.toBigDecimal() }).asReversed()
-        PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
+        }?.toList()?.sortedWith(compareBy { it.balance.count.toBigDecimal() })?.asReversed()
+            ?: listOf()
+        PagedResults(res?.pagination?.total?.pageCountOfResults(count) ?: 0, list, res?.pagination?.total ?: 0)
     }
 
     fun getTokenDistributionStats() = transaction { TokenDistributionAmountsRecord.getStats() }

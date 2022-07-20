@@ -9,3 +9,8 @@ fun ServiceOuterClass.GetTxResponse.mapEventAttrValues(idx: Int, event: String, 
 
 fun ServiceOuterClass.GetTxResponse.findEvent(idx: Int, event: String) =
     this.txResponse.logsList[idx].eventsList.firstOrNull { it.type == event }
+
+fun ServiceOuterClass.GetTxResponse.findAllMatchingEvents(eventList: List<String>) =
+    this.txResponse.logsList.flatMap { log -> log.eventsList }.filter { it.type in eventList }
+
+fun String.removeFirstSlash() = this.split("/")[1]

@@ -52,14 +52,18 @@ class MarkerGrpcClient(channelUri: URI, private val semaphore: Semaphore) {
             }
         }
 
-    suspend fun getMarkerHolders(denom: String, offset: Int, count: Int): QueryHoldingResponse =
+    suspend fun getMarkerHolders(denom: String, offset: Int, count: Int): QueryHoldingResponse? =
         semaphore.withPermit {
-            markerClient.holding(
-                queryHoldingRequest {
-                    this.id = denom
-                    this.pagination = getPagination(offset, count)
-                }
-            )
+            try {
+                markerClient.holding(
+                    queryHoldingRequest {
+                        this.id = denom
+                        this.pagination = getPagination(offset, count)
+                    }
+                )
+            } catch (e: Exception) {
+                null
+            }
         }
 
     suspend fun getMarkerHoldersCount(denom: String): QueryHoldingResponse =
@@ -78,14 +82,14 @@ class MarkerGrpcClient(channelUri: URI, private val semaphore: Semaphore) {
         var offset = 0
         val count = 100
 
-        val results = getMarkerHolders(denom, offset, count)
+        val results = getMarkerHolders(denom, offset, count) ?: return mutableListOf()
 
         val total = results.pagination?.total ?: results.balancesCount.toLong()
         val holders = results.balancesList.toMutableList()
 
         while (holders.count() < total) {
             offset += count
-            getMarkerHolders(denom, offset, count).let { holders.addAll(it.balancesList) }
+            getMarkerHolders(denom, offset, count).let { holders.addAll(it!!.balancesList) }
         }
 
         return holders
