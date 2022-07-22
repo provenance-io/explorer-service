@@ -61,6 +61,7 @@ import io.provenance.explorer.grpc.extensions.NameEvents
 import io.provenance.explorer.grpc.extensions.SmContractEventKeys
 import io.provenance.explorer.grpc.extensions.SmContractValue
 import io.provenance.explorer.grpc.extensions.denomEventRegexParse
+import io.provenance.explorer.grpc.extensions.findAllMatchingEvents
 import io.provenance.explorer.grpc.extensions.getAddressEventByEvent
 import io.provenance.explorer.grpc.extensions.getAssociatedAddresses
 import io.provenance.explorer.grpc.extensions.getAssociatedDenoms
@@ -301,7 +302,7 @@ class AsyncCachingV2(
         proposerRec: BlockProposer
     ) =
         txUpdate.apply {
-            val msgBasedFeeMap = TxFeeRecord.identifyMsgBasedFees(tx, msgFeeClient)
+            val msgBasedFeeMap = TxFeeRecord.identifyMsgBasedFees(tx)
             this.txFees.addAll(TxFeeRecord.buildInserts(txInfo, tx, assetService, msgBasedFeeMap))
             this.txGasFee = TxGasCacheRecord.buildInsert(tx, txInfo.txTimestamp, msgBasedFeeMap.totalMsgBasedFees())
             this.validatorMarketRate = ValidatorMarketRateRecord.buildInsert(
@@ -420,9 +421,7 @@ class AsyncCachingV2(
 
         // Gather event-only MetadataAddresses from the events
         val me = tx.tx.body.messagesList.flatMap { it.getAssociatedMetadataEvents() }.toSet()
-        val meAddrs = tx.txResponse.logsList
-            .flatMap { log -> log.eventsList }
-            .filter { it.type in me.map { m -> m.event } }
+        val meAddrs = tx.findAllMatchingEvents(me.map { m -> m.event })
             .flatMap { e ->
                 e.attributesList
                     .filter { a -> a.key in me.map { m -> m.idField } }

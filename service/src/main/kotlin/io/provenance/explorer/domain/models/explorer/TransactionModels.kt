@@ -78,7 +78,37 @@ data class TxFeepayer(val type: String, val address: String)
 
 data class TxFee(val type: String, val fees: List<FeeCoinStr>)
 
-data class FeeCoinStr(val amount: String, val denom: String, val msgType: String?)
+data class FeeCoinStr(
+    val amount: String,
+    val denom: String,
+    val msgType: String?,
+    val recipient: String?,
+    val origFees: List<CustomFee>?
+)
+
+data class TxFeeData(
+    val msgType: String,
+    val amount: BigDecimal,
+    val denom: String,
+    val recipient: String?,
+    val origFees: CustomFeeList?
+)
+
+data class CustomFeeList(val list: List<CustomFee>)
+
+data class CustomFee(
+    val name: String,
+    val amount: BigDecimal,
+    val denom: String,
+    val recipient: String
+)
+
+data class EventFee(
+    val msg_type: String,
+    val count: String,
+    val total: String,
+    val recipient: String
+)
 
 data class Gas(
     val gasUsed: Long,

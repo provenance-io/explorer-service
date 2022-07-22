@@ -2,6 +2,9 @@ package io.provenance.explorer.grpc.extensions
 
 import com.google.protobuf.Any
 import cosmos.bank.v1beta1.Tx
+import cosmwasm.wasm.v1.msgExecuteContract
+import cosmwasm.wasm.v1.msgInstantiateContract
+import cosmwasm.wasm.v1.msgMigrateContract
 import ibc.applications.transfer.v1.Tx.MsgTransfer
 import ibc.core.channel.v1.Tx.MsgAcknowledgement
 import ibc.core.channel.v1.Tx.MsgChannelCloseConfirm
@@ -38,6 +41,7 @@ import io.provenance.explorer.domain.core.toMAddressScope
 import io.provenance.explorer.domain.core.toMAddressScopeSpec
 import io.provenance.explorer.domain.core.toMAddressSession
 import io.provenance.explorer.domain.core.toUuidOrNull
+import io.provenance.explorer.domain.extensions.getType
 import io.provenance.explorer.domain.models.explorer.TxIbcData
 import io.provenance.explorer.grpc.extensions.MdEvents.AA
 import io.provenance.explorer.grpc.extensions.MdEvents.AD
@@ -734,8 +738,13 @@ enum class DenomEvents(val event: String, val idField: String, val parse: Boolea
 fun getDenomEventByEvent(event: String) = DenomEvents.values().firstOrNull { it.event == event }
 
 fun String.denomEventRegexParse() =
-    if (this.isNotBlank()) this.split(",").map { Regex("^([0-9]+)(.*)\$").matchEntire(it)!!.groups[2]!!.value }
+    if (this.isNotBlank()) this.split(",").map { it.denomAmountToPair().second }
     else emptyList()
+
+fun String.denomAmountToPair() =
+    if (this.isNotBlank())
+        Regex("^([0-9]+)(.*)\$").matchEntire(this)!!.let { it.groups[1]!!.value to it.groups[2]!!.value }
+    else Pair("", "")
 
 //endregion
 
@@ -785,19 +794,22 @@ enum class MsgToDefinedEvent(val msg: String, val definedEvent: String, val uniq
         "scope_addr"
     ),
     SCOPE_UPDATED(
+
         "/provenance.metadata.v1.MsgWriteScopeRequest",
         "provenance.metadata.v1.EventScopeUpdated",
         "scope_addr"
     ),
     NAME_BIND("/provenance.name.v1.MsgBindNameRequest", "provenance.name.v1.EventNameBound", "address"),
     PROPOSAL_SUBMIT("/cosmos.gov.v1beta1.MsgSubmitProposal", "submit_proposal", "proposal_id"),
-    MARKER_ADD("/provenance.marker.v1.MsgAddMarkerRequest", "provenance.marker.v1.EventMarkerAdd", "denom")
+    MARKER_ADD("/provenance.marker.v1.MsgAddMarkerRequest", "provenance.marker.v1.EventMarkerAdd", "denom"),
+    CONTRACT_CUSTOM("", "assess_custom_msg_fee", "name")
 }
 
 fun getDefinedEventsByMsg(msg: String) = MsgToDefinedEvent.values().firstOrNull { it.msg == msg }
 fun getDefinedEventsByEvent(event: String) = MsgToDefinedEvent.values().firstOrNull { it.definedEvent == event }
 fun getByDefinedEvent() = MsgToDefinedEvent.values().associateBy { it.definedEvent }
 
-fun getExecuteContractTypeUrl() = Any.pack(cosmwasm.wasm.v1.Tx.MsgExecuteContract.getDefaultInstance(), "").typeUrl
+fun getContractTypeUrlList() =
+    setOf(msgExecuteContract { }.getType(), msgInstantiateContract { }.getType(), msgMigrateContract { }.getType())
 
 //endregion

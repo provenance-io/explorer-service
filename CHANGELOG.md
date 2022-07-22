@@ -53,6 +53,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * GET `/api/v3/accounts/{address}/balances` - Returns paginated balances, broken down by spendable vs locked
   * GET `/api/v3/accounts/{address}/vesting` - Returns Vesting detail and vesting schedule
   * Now ingests properly
+* Add Support for Custom Msg Fees #367
+  * Updated fee ingestion to accommodate custom msg fees
+  * Also saves the original fee amount and denom for historical purposes
 
 ### Improvements
 * Added Validation message collection to allow for multiple validations at once #355

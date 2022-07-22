@@ -6,6 +6,7 @@ import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.ErrorFinding
+import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxFeeRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
@@ -70,13 +71,14 @@ class UtilityService(
             var offset = 0
             val limit = 100
 
-            val results = markerClient.getMarkerHolders(denom, offset, limit)
+            val results = markerClient.getMarkerHolders(denom, offset, limit) ?: return@runBlocking emptyList()
+
             val total = results.pagination?.total ?: results.balancesCount.toLong()
             val holders = results.balancesList.toMutableList()
 
             while (holders.count() < total) {
                 offset += limit
-                markerClient.getMarkerHolders(denom, offset, limit).let { holders.addAll(it.balancesList) }
+                markerClient.getMarkerHolders(denom, offset, limit).let { holders.addAll(it!!.balancesList) }
             }
 
             val map = holders.associateBy { it.address }
@@ -89,10 +91,15 @@ class UtilityService(
             }
         }
 
-    fun parseRawTxJson(rawJson: String) = transaction {
+    fun parseRawTxJson(rawJson: String, blockHeight: Int = 1, timestamp: DateTime = DateTime.now()) = transaction {
         val builder = ServiceOuterClass.GetTxResponse.newBuilder()
         protoParser.ignoringUnknownFields().merge(rawJson, builder)
-        async.addTxToCache(builder.build(), DateTime.now(), BlockProposer(1, "", DateTime.now()))
+        async.addTxToCache(builder.build(), DateTime.now(), BlockProposer(blockHeight, "", timestamp))
+    }
+
+    fun saveRawTxJson(rawJson: String, blockHeight: Int = 1, timestamp: DateTime = DateTime.now()) = transaction {
+        val parsed = parseRawTxJson(rawJson, blockHeight, timestamp)
+        TxCacheRecord.insertToProcedure(parsed.txUpdate, blockHeight, timestamp)
     }
 
     fun stringToJson(str: String) = str.toObjectNode()

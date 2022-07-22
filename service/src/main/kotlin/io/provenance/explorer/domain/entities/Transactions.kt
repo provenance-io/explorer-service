@@ -1,28 +1,37 @@
 package io.provenance.explorer.domain.entities
 
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.google.protobuf.Any
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_OVERAGE
 import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_USED
+import io.provenance.explorer.domain.entities.FeeType.CUSTOM_FEE
 import io.provenance.explorer.domain.entities.FeeType.MSG_BASED_FEE
 import io.provenance.explorer.domain.entities.TxFeeRecord.Companion.calcFeesPaid
 import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.exec
 import io.provenance.explorer.domain.extensions.getFeeTotalPaid
+import io.provenance.explorer.domain.extensions.getType
 import io.provenance.explorer.domain.extensions.map
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.stringfy
+import io.provenance.explorer.domain.extensions.stringify
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDbHash
+import io.provenance.explorer.domain.models.explorer.CustomFee
+import io.provenance.explorer.domain.models.explorer.CustomFeeList
+import io.provenance.explorer.domain.models.explorer.EventFee
 import io.provenance.explorer.domain.models.explorer.FeeCoinStr
 import io.provenance.explorer.domain.models.explorer.GasStats
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxFee
+import io.provenance.explorer.domain.models.explorer.TxFeeData
 import io.provenance.explorer.domain.models.explorer.TxFeepayer
 import io.provenance.explorer.domain.models.explorer.TxGasVolume
 import io.provenance.explorer.domain.models.explorer.TxQueryParams
@@ -31,10 +40,12 @@ import io.provenance.explorer.domain.models.explorer.TxUpdate
 import io.provenance.explorer.domain.models.explorer.getCategoryForType
 import io.provenance.explorer.domain.models.explorer.onlyTxQuery
 import io.provenance.explorer.domain.models.explorer.toProcedureObject
-import io.provenance.explorer.grpc.extensions.getByDefinedEvent
-import io.provenance.explorer.grpc.extensions.getExecuteContractTypeUrl
-import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
+import io.provenance.explorer.grpc.extensions.denomAmountToPair
+import io.provenance.explorer.grpc.extensions.findAllMatchingEvents
+import io.provenance.explorer.grpc.extensions.removeFirstSlash
 import io.provenance.explorer.service.AssetService
+import io.provenance.msgfees.v1.eventMsgFees
+import io.provenance.msgfees.v1.msgAssessCustomMsgFeeRequest
 import net.pearx.kasechange.toTitleCase
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
@@ -586,17 +597,30 @@ object TxFeeTable : IntIdTable(name = "tx_fee") {
     val marker = varchar("marker", 256)
     val amount = decimal("amount", 100, 10)
     val msgType = varchar("msg_type", 256).nullable()
+    val recipient = varchar("recipient", 128).nullable()
+    val origFees = jsonb<TxFeeTable, CustomFeeList>("orig_fees", OBJECT_MAPPER).nullable()
 }
 
-enum class FeeType { BASE_FEE_USED, BASE_FEE_OVERAGE, PRIORITY_FEE, MSG_BASED_FEE }
+enum class FeeType { BASE_FEE_USED, BASE_FEE_OVERAGE, PRIORITY_FEE, MSG_BASED_FEE, CUSTOM_FEE }
 
 fun List<TxFeeRecord>.toFees() = this.groupBy { it.feeType }
     .map { (k, v) -> TxFee(k.toTitleCase(), v.map { it.toFeeCoinStr() }) }
 
-fun TxFeeRecord.toFeeCoinStr() = FeeCoinStr(this.amount.stringfy(), this.marker, this.msgType)
+fun TxFeeRecord.toFeeCoinStr() =
+    FeeCoinStr(
+        this.amount.stringfy(),
+        this.marker,
+        this.msgType,
+        this.recipient,
+        this.origFees?.list
+    )
 
 fun List<TxFeeRecord>.toFeePaid(altDenom: String) =
     this.sumOf { it.amount }.toCoinStr(this.firstOrNull()?.marker ?: altDenom)
+
+fun getCustomFeeProtoType() = msgAssessCustomMsgFeeRequest { }.getType()
+const val CUSTOM_FEE_MSG_TYPE = "custom_fee"
+fun getEventMsgFeesType() = eventMsgFees { }.getType()
 
 class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxFeeRecord>(TxFeeTable) {
@@ -616,16 +640,16 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
             txInfo: TxData,
             tx: ServiceOuterClass.GetTxResponse,
             assetService: AssetService,
-            msgBasedFeeMap: MutableMap<String, MutableList<Long>>
+            msgBasedFeeList: MutableList<TxFeeData>
         ) =
             transaction {
                 val success = tx.txResponse.code == 0
                 val feeList = mutableListOf<String>()
                 // calc baseFeeUsed, baseFeeOverage in nhash
                 tx.getFeeTotalPaid().let { totalFeeAmount ->
-                    val marketRate = calcMarketRate(tx, msgBasedFeeMap.totalMsgBasedFees())
+                    val marketRate = calcMarketRate(tx, msgBasedFeeList.totalMsgBasedFees())
                     var baseFeeUsed = tx.txResponse.gasUsed * marketRate
-                    var overage = totalFeeAmount - msgBasedFeeMap.totalMsgBasedFees() - baseFeeUsed
+                    var overage = totalFeeAmount - msgBasedFeeList.totalMsgBasedFees() - baseFeeUsed
                     // if totalFeeAmount is less than baseFeeUsed (ie, fails on gas),
                     // baseFeeUsed = totalFeeAmount, and overage = 0
                     // Else save the used and overage as normal, regardless of tx success
@@ -653,15 +677,19 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                         )
                     // insert additional fees grouped by msg type
                     if (success)
-                        msgBasedFeeMap.forEach { (k, v) ->
+                        msgBasedFeeList.forEach { fee ->
+                            val feeType =
+                                if (fee.msgType == CUSTOM_FEE_MSG_TYPE) CUSTOM_FEE.name else MSG_BASED_FEE.name
                             feeList.add(
                                 buildInsert(
                                     txInfo,
-                                    MSG_BASED_FEE.name,
+                                    feeType,
                                     nhash.id.value,
                                     nhash.denom,
-                                    v.sum().toBigDecimal(),
-                                    k
+                                    fee.amount,
+                                    fee.recipient,
+                                    fee.msgType,
+                                    fee.origFees
                                 )
                             )
                         }
@@ -669,49 +697,43 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                 feeList
             }
 
-        fun MutableMap<String, MutableList<Long>>.totalMsgBasedFees() = this.map { it.value.sum() }.sum()
+        fun MutableList<TxFeeData>.totalMsgBasedFees() = this.sumOf { it.amount }.toLong()
 
-        fun identifyMsgBasedFees(tx: ServiceOuterClass.GetTxResponse, msgFeeClient: MsgFeeGrpcClient): MutableMap<String, MutableList<Long>> {
-            // find any msgs that have additional fees
-            val msgToFee = mutableMapOf<String, MutableList<Long>>()
-            val msgTypes = tx.tx.body.messagesList.groupingBy { it.typeUrl }.eachCount()
-            val msgFees =
-                msgFeeClient.getMsgFees().msgFeesList.associate { it.msgTypeUrl to it.additionalFee }
-            msgFees.filter { msgTypes.keys.contains(it.key) }
-                .forEach {
-                    val amount = it.value.amount.toLong() * msgTypes[it.key]!!
-                    msgToFee[TxMessageTypeRecord.findByProtoType(it.key)!!.type]?.add(amount)
-                        ?: msgToFee.put(
-                            TxMessageTypeRecord.findByProtoType(it.key)!!.type,
-                            mutableListOf(amount)
-                        )
-                }
+        fun identifyMsgBasedFees(tx: ServiceOuterClass.GetTxResponse): MutableList<TxFeeData> {
+            val msgToFee = mutableListOf<TxFeeData>()
+            // find tx level msg event
+            val definedMsgFeeList = tx.txResponse.eventsList
+                .firstOrNull { it.type == getEventMsgFeesType().removeFirstSlash() }
+                ?.attributesList?.first { it.key.toStringUtf8() == "msg_fees" }
+                ?.value?.let { VANILLA_MAPPER.readValue<List<EventFee>>(it.toStringUtf8()) }
 
-            // find any events for contract executes that have additional fees
-            if (msgTypes.keys.contains(getExecuteContractTypeUrl())) {
-                val indices = tx.tx.body.messagesList.mapIndexed { idx, msg -> idx to msg.typeUrl }
-                    .filter { it.second == getExecuteContractTypeUrl() }
-                    .map { it.first }
-                val definedEvents = getByDefinedEvent()
-                tx.txResponse.logsList.filterIndexed { idx, _ -> indices.contains(idx) }
-                    .forEach { log ->
-                        log.eventsList.filter { definedEvents.keys.contains(it.type) }
-                            .forEach { event ->
-                                val defined = definedEvents[event.type]!!
-                                val fee = msgFees[defined.msg]!!
-                                val count =
-                                    event.attributesList.filter { it.key == defined.uniqueField }.count()
-                                val amount = fee.amount.toLong() * count
-                                msgToFee[TxMessageTypeRecord.findByProtoType(defined.msg)!!.type]
-                                    ?.add(amount)
-                                    ?: msgToFee.put(
-                                        TxMessageTypeRecord.findByProtoType(defined.msg)!!.type,
-                                        mutableListOf(amount)
-                                    )
-                            }
-                    }
+            // Adds any defined fees to fee map
+            definedMsgFeeList?.forEach { fee ->
+                // gets the total value and denom from the defined fees
+                val (amount, denom) = fee.total.denomAmountToPair()
+                val customFeeMap =
+                    if (fee.msg_type == getCustomFeeProtoType()) {
+                        tx.findAllMatchingEvents(listOf("assess_custom_msg_fee"))
+                            .flatMap { event ->
+                                val nameList = event.attributesList.filter { it.key == "name" }
+                                val amountList = event.attributesList.filter { it.key == "amount" }
+                                val recipList = event.attributesList.filter { it.key == "recipient" }
+                                nameList.mapIndexed { idx, name ->
+                                    val (custAmount, custDenom) = amountList[idx].value.denomAmountToPair()
+                                    CustomFee(name.value, custAmount.toBigDecimal(), custDenom, recipList[idx].value)
+                                }
+                            }.groupBy { it.recipient }
+                    } else emptyMap()
+
+                val data = TxFeeData(
+                    TxMessageTypeRecord.findByProtoType(fee.msg_type)?.type ?: CUSTOM_FEE_MSG_TYPE,
+                    amount.toBigDecimal(),
+                    denom,
+                    fee.recipient.ifEmpty { null },
+                    customFeeMap[fee.recipient]?.let { CustomFeeList(it) }
+                )
+                msgToFee.add(data)
             }
-
             return msgToFee
         }
 
@@ -721,8 +743,22 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
             markerId: Int,
             marker: String,
             amount: BigDecimal,
-            msgType: String? = null
-        ) = listOf(0, txInfo.blockHeight, 0, txInfo.txHash, type, markerId, marker, amount, msgType).toProcedureObject()
+            recipient: String? = null,
+            msgType: String? = null,
+            origFees: CustomFeeList? = null
+        ) = listOf(
+            0,
+            txInfo.blockHeight,
+            0,
+            txInfo.txHash,
+            type,
+            markerId,
+            marker,
+            amount,
+            msgType,
+            recipient,
+            origFees.stringify()
+        ).toProcedureObject()
     }
 
     var blockHeight by TxFeeTable.blockHeight
@@ -733,4 +769,6 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
     var marker by TxFeeTable.marker
     var amount by TxFeeTable.amount
     var msgType by TxFeeTable.msgType
+    var recipient by TxFeeTable.recipient
+    var origFees by TxFeeTable.origFees
 }
