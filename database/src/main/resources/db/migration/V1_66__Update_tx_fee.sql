@@ -8,7 +8,7 @@ DROP INDEX IF EXISTS tx_fee_unique_idx;
 CREATE UNIQUE INDEX IF NOT EXISTS tx_fee_unique_idx ON tx_fee (tx_hash_id, fee_type, COALESCE(msg_type,''), marker_id, recipient);
 
 
-create or replace procedure insert_tx_fees(txfees explorer.tx_fee[], tx_height integer, tx_id integer)
+create or replace procedure insert_tx_fees(txfees tx_fee[], tx_height integer, tx_id integer)
     language plpgsql as
 $$
 DECLARE
