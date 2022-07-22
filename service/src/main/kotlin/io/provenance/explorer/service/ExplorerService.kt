@@ -27,7 +27,6 @@ import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
 import io.provenance.explorer.domain.entities.ValidatorState
 import io.provenance.explorer.domain.entities.ValidatorState.ACTIVE
 import io.provenance.explorer.domain.entities.toDto
-import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.USD_UPPER
 import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.formattedString
@@ -96,7 +95,8 @@ class ExplorerService(
     private val msgFeeClient: MsgFeeGrpcClient,
     private val validatorClient: ValidatorGrpcClient,
     private val protoPrinter: JsonFormat.Printer,
-    private val govService: GovService
+    private val govService: GovService,
+    private val pricingService: PricingService
 ) {
 
     protected val logger = logger(ExplorerService::class)
@@ -167,7 +167,7 @@ class ExplorerService(
                         avgBlockTime = BlockProposerRecord.findAvgBlockCreation(100),
                         bondedTokens = CountStrTotal(it.first.toString(), it.second, NHASH),
                         totalTxCount = BlockCacheHourlyTxCountsRecord.getTotalTxCount().toBigInteger(),
-                        totalAum = assetService.getTotalAum().toCoinStr(USD_UPPER)
+                        totalAum = pricingService.getTotalAum().toCoinStr(USD_UPPER)
                     )
                 }.let { cacheService.addSpotlightToCache(it) }
             else -> null
@@ -389,7 +389,7 @@ class ExplorerService(
 
     fun saveChainAum() = transaction {
         val date = DateTime.now().hourOfDay().roundFloorCopy()
-        val amount = assetService.getTotalAum()
+        val amount = pricingService.getTotalAum()
         ChainAumHourlyRecord.insertIgnore(date, amount, USD_UPPER)
     }
 

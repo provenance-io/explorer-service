@@ -10,6 +10,7 @@ import cosmos.bank.v1beta1.queryParamsRequest
 import cosmos.bank.v1beta1.querySpendableBalancesRequest
 import cosmos.bank.v1beta1.querySupplyOfRequest
 import cosmos.base.v1beta1.CoinOuterClass
+import cosmos.distribution.v1beta1.QueryOuterClass
 import cosmos.distribution.v1beta1.queryDelegationTotalRewardsRequest
 import cosmos.staking.v1beta1.queryDelegatorDelegationsRequest
 import cosmos.staking.v1beta1.queryDelegatorDelegationsResponse
@@ -17,6 +18,7 @@ import cosmos.staking.v1beta1.queryDelegatorUnbondingDelegationsRequest
 import cosmos.staking.v1beta1.queryRedelegationsRequest
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
+import io.provenance.explorer.domain.extensions.toDecimalString
 import io.provenance.explorer.grpc.extensions.getPagination
 import org.springframework.stereotype.Component
 import java.net.URI
@@ -126,6 +128,21 @@ class AccountGrpcClient(channelUri: URI) {
         return balances
     }
 
+    suspend fun getSpendableBalanceDenom(address: String, denom: String): CoinOuterClass.Coin? {
+        var (offset, limit) = 0 to 100
+        var balance: CoinOuterClass.Coin?
+        do {
+            balance = bankClient.spendableBalances(
+                querySpendableBalancesRequest {
+                    this.address = address
+                    this.pagination = getPagination(offset, limit)
+                }
+            ).balancesList.firstOrNull { it.denom == denom }
+            offset += limit
+        } while (balance == null)
+        return balance
+    }
+
     suspend fun getCurrentSupply(denom: String) =
         bankClient.supplyOf(querySupplyOfRequest { this.denom = denom }).amount
 
@@ -181,8 +198,22 @@ class AccountGrpcClient(channelUri: URI) {
             }
         )
 
+    suspend fun getStakingPool() = stakingClient.pool(
+        cosmos.staking.v1beta1.QueryOuterClass.QueryPoolRequest
+            .getDefaultInstance()
+    )
+
     suspend fun getRewards(delAddr: String) =
         distClient.delegationTotalRewards(queryDelegationTotalRewardsRequest { this.delegatorAddress = delAddr })
+
+    suspend fun getCommunityPoolAmount(denom: String): String =
+        distClient.communityPool(QueryOuterClass.QueryCommunityPoolRequest.newBuilder().build()).poolList
+            .filter { it.denom == denom }[0]?.amount!!.toDecimalString()
+
+    suspend fun getMarkerBalance(address: String, denom: String): String =
+        bankClient.balance(
+            cosmos.bank.v1beta1.QueryOuterClass.QueryBalanceRequest.newBuilder().setAddress(address).setDenom(denom).build()
+        ).balance.amount
 
     suspend fun getBankParams() = bankClient.params(queryParamsRequest { })
 

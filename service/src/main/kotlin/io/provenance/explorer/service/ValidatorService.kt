@@ -23,7 +23,6 @@ import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
-import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.avg
 import io.provenance.explorer.domain.extensions.get24HrBlockHeight

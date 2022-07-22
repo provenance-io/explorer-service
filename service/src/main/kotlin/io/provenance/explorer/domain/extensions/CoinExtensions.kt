@@ -6,7 +6,6 @@ import io.provenance.explorer.domain.models.explorer.CoinStr
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-const val NHASH = "nhash"
 const val USD_UPPER = "USD"
 const val USD_LOWER = "usd"
 
@@ -28,8 +27,7 @@ fun ServiceOuterClass.GetTxResponse.toCoinStr() =
     this.tx.authInfo.fee.amountList.toProtoCoin().let { coin -> CoinStr(coin.amount, coin.denom) }
 
 // Math extensions
-fun String.toPercentage() =
-    BigDecimal(this.toBigInteger(), 18).multiply(BigDecimal(100)).stripTrailingZeros().toPlainString() + "%"
+fun String.toPercentage() = BigDecimal(this.toBigInteger(), 18).multiply(BigDecimal(100)).stringify() + "%"
 
 fun String.toDecimal() = BigDecimal(this.toBigInteger(), 18).stripTrailingZeros()
 
@@ -57,6 +55,12 @@ fun CoinOuterClass.Coin.toPercentage(num: Long, den: Long) =
         )
         .setScale(0, RoundingMode.HALF_EVEN)
         .toCoinStr(this.denom)
+
+fun String.toPercentage(num: Long, den: Long, scale: Int) =
+    this.toBigDecimal()
+        .multiply(num.toBigDecimal().divide(den.toBigDecimal(), 100, RoundingMode.HALF_EVEN))
+        .setScale(scale, RoundingMode.HALF_EVEN)
+        .stringify() + "%"
 
 // Calcs the difference between this (oldList) of denoms and the newList of denoms
 fun List<CoinStr>.diff(newList: List<CoinStr>) =

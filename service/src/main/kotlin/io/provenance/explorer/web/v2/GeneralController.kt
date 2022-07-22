@@ -5,7 +5,7 @@ import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.Params
 import io.provenance.explorer.domain.models.explorer.Spotlight
 import io.provenance.explorer.service.ExplorerService
-import io.provenance.explorer.service.TokenSupplyService
+import io.provenance.explorer.service.TokenService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import io.swagger.annotations.ApiParam
@@ -32,7 +32,7 @@ import javax.validation.constraints.Min
 )
 class GeneralController(
     private val explorerService: ExplorerService,
-    private val tokenSupplyService: TokenSupplyService
+    private val tokenSupplyService: TokenService
 ) {
 
     @ApiOperation("Returns parameters for all modules on chain")
@@ -110,7 +110,9 @@ class GeneralController(
 
     @ApiOperation("Returns token statistics for the chain, ie circulation, community pool")
     @GetMapping("/token/stats")
-    fun getTokenStats() = ResponseEntity.ok(tokenSupplyService.getTokenStats())
+    @Deprecated("Use /api/v3/utility_token/stats")
+    @java.lang.Deprecated
+    fun getTokenStats() = ResponseEntity.ok(tokenSupplyService.getTokenBreakdown())
 
     @ApiOperation("Returns a list of upgrades made against the chain")
     @GetMapping("/chain/upgrades")

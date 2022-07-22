@@ -16,7 +16,6 @@ import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
 import io.provenance.explorer.domain.entities.ValidatorMarketRateStatsRecord
-import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
@@ -25,6 +24,9 @@ import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.CacheService
 import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.service.GovService
+import io.provenance.explorer.service.NHASH
+import io.provenance.explorer.service.PricingService
+import io.provenance.explorer.service.TokenService
 import io.provenance.explorer.service.getBlock
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -44,7 +46,9 @@ class AsyncService(
     private val govService: GovService,
     private val asyncCache: AsyncCachingV2,
     private val explorerService: ExplorerService,
-    private val cacheService: CacheService
+    private val cacheService: CacheService,
+    private val tokenService: TokenService,
+    private val pricingService: PricingService
 ) {
 
     protected val logger = logger(AsyncService::class)
@@ -158,7 +162,7 @@ class AsyncService(
     @Scheduled(cron = "0 0 1 * * ?") // Everyday at 1 am
     fun updateTokenDistributionAmounts() = transaction {
         logger.info("Updating token distribution amounts")
-        assetService.updateTokenDistributionStats(NHASH)
+        tokenService.updateTokenDistributionStats(NHASH)
     }
 
     @Scheduled(cron = "0/5 * * * * ?") // Every 5 seconds
@@ -186,8 +190,8 @@ class AsyncService(
         val key = CacheKeys.PRICING_UPDATE.key
         val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC).toString()
         cacheService.getCacheValue(key)!!.let { cache ->
-            assetService.getPricingAsync(cache.cacheValue!!, "async pricing update").forEach { price ->
-                assetService.insertAssetPricing(price)
+            pricingService.getPricingAsync(cache.cacheValue!!, "async pricing update").forEach { price ->
+                assetService.getAssetRaw(price.markerDenom).let { pricingService.insertAssetPricing(it, price) }
             }
         }.let { cacheService.updateCacheValue(key, now) }
     }
