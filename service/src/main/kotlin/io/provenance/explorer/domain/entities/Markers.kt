@@ -5,7 +5,8 @@ import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.batchUpsert
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.nullsLast
-import io.provenance.explorer.domain.extensions.map
+import io.provenance.explorer.domain.core.sql.toDbQueryList
+import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.explorer.AssetHolder
 import io.provenance.explorer.domain.models.explorer.AssetPricing
@@ -29,7 +30,6 @@ import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
-import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import java.math.BigDecimal
@@ -158,17 +158,27 @@ object TokenDistributionPaginatedResultsTable : IntIdTable(name = "token_distrib
 class TokenDistributionPaginatedResultsRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TokenDistributionPaginatedResultsRecord>(TokenDistributionPaginatedResultsTable) {
 
-        fun findByLimitOffset(limit: Any, offset: Int) = transaction {
+        fun findByLimitOffset(addresses: Set<String>, limit: Any, offset: Int) = transaction {
             val query = """
-                SELECT data
+                SELECT owner_address, data
                 FROM token_distribution_paginated_results
+                WHERE owner_address IN (${addresses.toDbQueryList()})
                 ORDER BY (data ->> 'count')::double precision DESC
                 LIMIT $limit OFFSET $offset
             """.trimIndent()
 
-            TransactionManager.current().exec(query) { it ->
-                it.map { OBJECT_MAPPER.readValue(it.getString("data"), CountStrTotal::class.java) }
+            query.execAndMap {
+                TokenDistributionPaginatedResults(
+                    it.getString("owner_address"),
+                    OBJECT_MAPPER.readValue(it.getString("data"), CountStrTotal::class.java)
+                )
             }
+        }
+
+        fun findByAddresses(addresses: Set<String>) = transaction {
+            TokenDistributionPaginatedResultsRecord
+                .find { TokenDistributionPaginatedResultsTable.ownerAddress inList addresses }
+                .toList()
         }
 
         fun savePaginatedResults(assetHolders: List<AssetHolder>) = transaction {

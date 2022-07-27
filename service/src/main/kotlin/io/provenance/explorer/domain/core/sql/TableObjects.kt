@@ -44,3 +44,5 @@ fun toDbText(value: String) = transaction {
 }
 
 fun String.replaceSingleQuotes() = this.replace("'", "''")
+
+fun Set<String>.toDbQueryList() = this.joinToString(",") { "'$it'" }

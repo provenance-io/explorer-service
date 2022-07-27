@@ -2,6 +2,7 @@ package io.provenance.explorer.web.v2
 
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.IbcService
+import io.provenance.explorer.service.TokenService
 import io.provenance.marker.v1.MarkerStatus
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -26,7 +27,11 @@ import javax.validation.constraints.Min
     consumes = MediaType.APPLICATION_JSON_VALUE,
     tags = ["Assets"]
 )
-class AssetController(private val assetService: AssetService, private val ibcService: IbcService) {
+class AssetController(
+    private val assetService: AssetService,
+    private val ibcService: IbcService,
+    private val tokenService: TokenService
+) {
 
     @ApiOperation("Returns a paginated list of assets for selected statuses")
     @GetMapping("/all")
@@ -63,7 +68,9 @@ class AssetController(private val assetService: AssetService, private val ibcSer
 
     @ApiOperation("Returns distribution of hash between sets of accounts")
     @GetMapping("/distribution")
-    fun getTokenDistributionStats() = ResponseEntity.ok(assetService.getTokenDistributionStats())
+    @Deprecated("Use /api/v3/utility_token/distribution")
+    @java.lang.Deprecated
+    fun getTokenDistributionStats() = ResponseEntity.ok(tokenService.getTokenDistributionStats())
 
     @ApiOperation("Returns denom metadata for all or the specified asset")
     @GetMapping("/metadata")

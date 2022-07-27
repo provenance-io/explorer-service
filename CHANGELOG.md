@@ -56,6 +56,20 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Add Support for Custom Msg Fees #367
   * Updated fee ingestion to accommodate custom msg fees
   * Also saves the original fee amount and denom for historical purposes
+* Add APIs for CoinMarketCap #375
+  * GET `/api/v3/utility_token/stats` - Moved from `/api/v2/token/stats`, returns breakdown of nhash allocation on a broader scale
+  * GET `/api/v3/utility_token/distribution` - Moved from `/api/v2/assets/distribution`, returns distribution of nhash across valid accounts
+    * all accounts - nhash marker - zeroSeq - modules - contracts
+  * GET `/api/v3/utility_token/rich_list` - Returns the top X accounts rich in nhash
+    * all accounts - nhash marker - zeroSeq - modules - contracts
+  * GET `/api/v3/utility_token/max_supply` - Returns the maximum supply ever of nhash on chain
+  * GET `/api/v3/utility_token/total_supply` - Returns the total current supply of nhash
+    * max - burned
+  * GET `/api/v3/utility_token/circulating_supply` - Returns the current circulating supply of nhash
+    * max - burned - modules - zeroSeq - pool - nonspendable
+  * Updated `nhash` listview and detail supply values to use new `total_supply`
+  * Added `burned` amount, `max_supply` amount to token stats chart data
+  * Updated Chain Value AUM to use new `total_supply` for `nhash`
 
 ### Improvements
 * Added Validation message collection to allow for multiple validations at once #355

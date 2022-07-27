@@ -13,7 +13,6 @@ import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_USED
 import io.provenance.explorer.domain.entities.FeeType.CUSTOM_FEE
 import io.provenance.explorer.domain.entities.FeeType.MSG_BASED_FEE
 import io.provenance.explorer.domain.entities.TxFeeRecord.Companion.calcFeesPaid
-import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.exec
 import io.provenance.explorer.domain.extensions.getFeeTotalPaid
 import io.provenance.explorer.domain.extensions.getType
@@ -44,6 +43,7 @@ import io.provenance.explorer.grpc.extensions.denomAmountToPair
 import io.provenance.explorer.grpc.extensions.findAllMatchingEvents
 import io.provenance.explorer.grpc.extensions.removeFirstSlash
 import io.provenance.explorer.service.AssetService
+import io.provenance.explorer.service.NHASH
 import io.provenance.msgfees.v1.eventMsgFees
 import io.provenance.msgfees.v1.msgAssessCustomMsgFeeRequest
 import net.pearx.kasechange.toTitleCase

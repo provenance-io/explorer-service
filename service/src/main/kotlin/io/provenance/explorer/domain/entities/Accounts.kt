@@ -4,8 +4,10 @@ import com.google.protobuf.Any
 import cosmos.auth.v1beta1.Auth
 import cosmos.vesting.v1beta1.Vesting
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.execAndMap
+import io.provenance.explorer.domain.extensions.isAddressAsType
 import io.provenance.explorer.grpc.extensions.getTypeShortName
 import io.provenance.explorer.service.getAccountType
 import io.provenance.marker.v1.MarkerAccount
@@ -13,7 +15,7 @@ import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
-import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -26,12 +28,17 @@ object AccountTable : IntIdTable(name = "account") {
     val isContract = bool("is_contract").default(false)
 }
 
+val vestingAccountTypes = listOf(
+    Vesting.ContinuousVestingAccount::class.java.simpleName,
+    Vesting.DelayedVestingAccount::class.java.simpleName,
+    Vesting.PeriodicVestingAccount::class.java.simpleName,
+    Vesting.PermanentLockedAccount::class.java.simpleName
+)
+
+fun List<AccountRecord>.addressList() = this.map { it.accountAddress }.toSet()
+
 class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<AccountRecord>(AccountTable) {
-
-        fun findAccountsMissingNumber() = transaction {
-            AccountRecord.find { AccountTable.accountNumber.isNull() and AccountTable.baseAccount.isNotNull() }.toList()
-        }
 
         fun findZeroSequenceAccounts() = transaction {
             val query = """
@@ -42,13 +49,26 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
             query.execAndMap { it.getString("account_address") }
         }
 
+        fun findAccountsByType(types: List<String>) = transaction {
+            AccountRecord.find { AccountTable.type inList types }.toList()
+        }
+
+        fun findContractAccounts() = transaction {
+            AccountRecord.find { AccountTable.isContract eq Op.TRUE }.toList()
+        }
+
         fun findSigsByAddress(address: String) = SignatureRecord.findByJoin(SigJoinType.ACCOUNT, address)
 
         fun findByAddress(addr: String) = AccountRecord.find { AccountTable.accountAddress eq addr }.firstOrNull()
 
-        fun findListByAddress(list: List<String>) = AccountRecord.find { AccountTable.accountAddress.inList(list) }
+        fun saveAccount(address: String, accPrefix: String, accountData: Any?, isContract: Boolean = false) =
+            transaction {
+                accountData?.let { insertIgnore(it, isContract) }
+                    ?: if (address.isAddressAsType(accPrefix)) insertUnknownAccount(address, isContract)
+                    else throw ResourceNotFoundException("Invalid account: '$address'")
+            }
 
-        fun insertUnknownAccount(addr: String, isContract: Boolean = false) = transaction {
+        private fun insertUnknownAccount(addr: String, isContract: Boolean = false) = transaction {
             findByAddress(addr) ?: AccountTable.insertAndGetId {
                 it[this.accountAddress] = addr
                 it[this.type] = "BaseAccount"
@@ -56,7 +76,7 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
             }.let { findById(it)!! }
         }
 
-        fun insertIgnore(acc: Any, isContract: Boolean = false) =
+        private fun insertIgnore(acc: Any, isContract: Boolean = false) =
             when (acc.typeUrl.getTypeShortName()) {
                 Auth.ModuleAccount::class.java.simpleName ->
                     acc.unpack(Auth.ModuleAccount::class.java).let {

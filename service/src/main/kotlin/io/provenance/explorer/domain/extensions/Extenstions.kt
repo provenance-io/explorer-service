@@ -21,6 +21,7 @@ import io.provenance.explorer.domain.core.toBech32Data
 import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.entities.MissedBlocksRecord
 import io.provenance.explorer.domain.models.explorer.Addresses
+import io.provenance.explorer.service.NHASH
 import org.apache.commons.text.StringEscapeUtils
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone

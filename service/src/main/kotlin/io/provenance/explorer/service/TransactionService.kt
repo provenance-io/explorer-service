@@ -22,7 +22,6 @@ import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.getFeepayer
 import io.provenance.explorer.domain.entities.toFeePaid
 import io.provenance.explorer.domain.entities.toFees
-import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toCoinStr

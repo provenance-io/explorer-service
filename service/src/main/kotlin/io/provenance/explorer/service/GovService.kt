@@ -40,7 +40,6 @@ import io.provenance.explorer.domain.exceptions.InvalidArgumentException
 import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
 import io.provenance.explorer.domain.exceptions.requireToMessage
 import io.provenance.explorer.domain.exceptions.validate
-import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.getType
 import io.provenance.explorer.domain.extensions.mhashToNhash

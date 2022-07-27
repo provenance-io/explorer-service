@@ -16,12 +16,10 @@ import io.provenance.explorer.domain.entities.TxMessageTypeTable
 import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
 import io.provenance.explorer.domain.exceptions.requireToMessage
 import io.provenance.explorer.domain.exceptions.validate
-import io.provenance.explorer.domain.extensions.NHASH
 import io.provenance.explorer.domain.extensions.USD_UPPER
 import io.provenance.explorer.domain.extensions.diff
 import io.provenance.explorer.domain.extensions.fromBase64
 import io.provenance.explorer.domain.extensions.getType
-import io.provenance.explorer.domain.extensions.isAddressAsType
 import io.provenance.explorer.domain.extensions.pack
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.pageOfResults
@@ -69,6 +67,7 @@ class AccountService(
     private val props: ExplorerProperties,
     private val attrClient: AttributeGrpcClient,
     private val metadataClient: MetadataGrpcClient,
+    private val pricingService: PricingService,
     private val assetService: AssetService
 ) {
 
@@ -77,12 +76,7 @@ class AccountService(
     fun getAccountRaw(address: String) = transaction { AccountRecord.findByAddress(address) } ?: saveAccount(address)
 
     fun saveAccount(address: String, isContract: Boolean = false) = runBlocking {
-        accountClient.getAccountInfo(address)?.let { AccountRecord.insertIgnore(it, isContract) }
-            ?: if (address.isAddressAsType(props.provAccPrefix())) AccountRecord.insertUnknownAccount(
-                address,
-                isContract
-            )
-            else throw ResourceNotFoundException("Invalid account: '$address'")
+        AccountRecord.saveAccount(address, props.provAccPrefix(), accountClient.getAccountInfo(address), isContract)
     }
 
     fun validateAddress(address: String) = transaction {
@@ -107,11 +101,10 @@ class AccountService(
                     metadataClient.getScopesByOwner(it.accountAddress).pagination.total.toInt()
                 ),
                 it.isContract,
-                assetService
-                    .getAumForList(
-                        balances.await().balancesList.associate { bal -> bal.denom to bal.amount },
-                        "accountAUM"
-                    )
+                pricingService.getAumForList(
+                    balances.await().balancesList.associate { bal -> bal.denom to bal.amount },
+                    "accountAUM"
+                )
                     .toCoinStr(USD_UPPER),
                 it.data?.isVesting() ?: false
             )
@@ -135,7 +128,7 @@ class AccountService(
     @Deprecated("Use AccountService.getAccountBalancesDetailed")
     fun getAccountBalances(address: String, page: Int, limit: Int) = runBlocking {
         getBalances(address, page, limit).let { res ->
-            val pricing = assetService.getPricingInfoIn(res.balancesList.map { it.denom }, "accountBalances")
+            val pricing = pricingService.getPricingInfoIn(res.balancesList.map { it.denom }, "accountBalances")
             val bals = res.balancesList.map { it.toCoinStrWithPrice(pricing[it.denom]) }
             PagedResults(res.pagination.total.pageCountOfResults(limit), bals, res.pagination.total)
         }
@@ -143,7 +136,7 @@ class AccountService(
 
     fun getAccountBalancesDetailed(address: String, page: Int, limit: Int) = runBlocking {
         getBalancesAll(address).let { res ->
-            val pricing = assetService.getPricingInfoIn(res.map { it.denom }, "accountBalances")
+            val pricing = pricingService.getPricingInfoIn(res.map { it.denom }, "accountBalances")
             val spendable = getSpendableBalances(address).associateBy { it.denom }
             val bals = res.map {
                 DenomBalanceBreakdown(
@@ -242,7 +235,7 @@ class AccountService(
     fun getRewards(address: String) = runBlocking {
         accountClient.getRewards(address).let { res ->
             val pricing =
-                assetService.getPricingInfoIn(
+                pricingService.getPricingInfoIn(
                     res.rewardsList.flatMap { list -> list.rewardList.map { it.denom } },
                     "rewards"
                 )
