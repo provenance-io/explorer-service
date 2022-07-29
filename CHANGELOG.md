@@ -33,6 +33,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Big Fixes
+* Swapped `Long` for `BigDecimal` in places that will need it, specifically for large nhash quantities #380
+* Rounding circulating supply, community pool values as those are whole `nhash` values #381
+
 ## [v5.0.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.3.1) - 2022-07-28
 ### Release Name: Odoric of Pordenone
 

@@ -11,6 +11,7 @@ import io.provenance.explorer.domain.entities.TokenDistributionPaginatedResultsR
 import io.provenance.explorer.domain.entities.addressList
 import io.provenance.explorer.domain.entities.vestingAccountTypes
 import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.roundWhole
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toPercentage
@@ -128,7 +129,7 @@ class TokenService(
     }
 
     fun getTokenBreakdown() = runBlocking {
-        val bonded = accountClient.getStakingPool().pool.bondedTokens.toBigDecimal().toCoinStr(NHASH)
+        val bonded = accountClient.getStakingPool().pool.bondedTokens.toBigDecimal().roundWhole().toCoinStr(NHASH)
         TokenSupply(
             maxSupply().toCoinStr(NHASH),
             totalSupply().toCoinStr(NHASH),
@@ -140,13 +141,13 @@ class TokenService(
     }
 
     fun nhashMarkerAddr() = MarkerCacheRecord.findByDenom(NHASH)?.markerAddress!!
-    fun burnedSupply() = runBlocking { accountClient.getMarkerBalance(nhashMarkerAddr(), NHASH).toBigDecimal() }
+    fun burnedSupply() = runBlocking { accountClient.getMarkerBalance(nhashMarkerAddr(), NHASH).toBigDecimal().roundWhole() }
     fun moduleAccounts() = AccountRecord.findAccountsByType(listOf(Auth.ModuleAccount::class.java.simpleName))
     fun zeroSeqAccounts() = AccountRecord.findZeroSequenceAccounts()
     fun vestingAccounts() = AccountRecord.findAccountsByType(vestingAccountTypes)
     fun contractAccounts() = AccountRecord.findContractAccounts()
     fun allAccounts() = transaction { AccountRecord.all().toMutableList() }
-    fun communityPoolSupply() = runBlocking { accountClient.getCommunityPoolAmount(NHASH).toBigDecimal() }
+    fun communityPoolSupply() = runBlocking { accountClient.getCommunityPoolAmount(NHASH).toBigDecimal().roundWhole() }
     fun richListAccounts() =
         allAccounts().addressList() - zeroSeqAccounts().toSet() - moduleAccounts().addressList() -
             contractAccounts().addressList() - setOf(nhashMarkerAddr())
@@ -176,7 +177,7 @@ class TokenService(
     fun maxSupply() = runBlocking { accountClient.getCurrentSupply(NHASH).amount.toBigDecimal() }
 
     // total supply = max - burned -> comes from the nhash marker address
-    fun totalSupply() = maxSupply() - burnedSupply()
+    fun totalSupply() = maxSupply() - burnedSupply().roundWhole()
 
     // circulating supply = max - burned - modules - zero seq - pool - nonspendable
     fun circulatingSupply() =
@@ -185,6 +186,7 @@ class TokenService(
             .minus(totalBalanceForList(zeroSeqAccounts().toSet() + moduleAccounts().addressList())) // modules/zero seq
             .minus(communityPoolSupply()) // pool
             .minus(totalNonspendableBalanceForList(vestingAccounts().addressList())) // nonSpendable
+            .roundWhole()
 
     // rich list = all accounts - nhash marker - zero seq - modules - contracts ->>>>>>>>> out of total
     fun richList(topCount: Int = 100) = transaction {
@@ -194,7 +196,7 @@ class TokenService(
                 RichAccount(
                     it.ownerAddress,
                     CoinStr(it.data.count, it.data.denom),
-                    it.data.count.toPercentage(100, totalSupply.toLong(), 4)
+                    it.data.count.toPercentage(BigDecimal(100), totalSupply, 4)
                 )
             }
     }

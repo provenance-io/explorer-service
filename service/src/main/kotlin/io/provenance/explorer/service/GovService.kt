@@ -284,7 +284,7 @@ class GovService(
                             )
                             .let { valService.getValidatorsByHeight(it + 1) }
                             .validatorsList
-                            .sumOf { it.votingPower }
+                            .sumOf { it.votingPower.toBigDecimal() }
                             // Voting power is in mhash, not hash. So pad up to nhash for FE UI conversion
                             .mhashToNhash()
 
