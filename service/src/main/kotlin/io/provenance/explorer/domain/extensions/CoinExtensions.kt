@@ -16,7 +16,7 @@ fun BigDecimal.toCoinStr(denom: String) = CoinStr(this.stringfy(), denom)
 fun String.toDecimalString() = this.toDecimal().toPlainString()
 
 // Used to convert voting power values from mhash (milli) to nhash (nano)
-fun Long.mhashToNhash() = this * 1000000
+fun BigDecimal.mhashToNhash() = this * BigDecimal(1000000)
 
 fun List<CoinOuterClass.Coin>.toProtoCoin() =
     this.firstOrNull() ?: CoinOuterClass.Coin.newBuilder().setAmount("0").setDenom("").build()
@@ -32,6 +32,7 @@ fun String.toPercentage() = BigDecimal(this.toBigInteger(), 18).multiply(BigDeci
 fun String.toDecimal() = BigDecimal(this.toBigInteger(), 18).stripTrailingZeros()
 
 fun Double.toPercentage() = "${this * 100}%"
+// fun BigDecimal.toPercentage() = "${this * 100}%"
 
 fun List<Int>.avg() = this.sum() / this.size
 
@@ -39,7 +40,7 @@ fun Int.padToDecString() = (this * 1e16).toString()
 
 fun List<CoinOuterClass.DecCoin>.isZero(): Boolean {
     this.forEach {
-        if (it.amount.toLong() != 0L)
+        if (it.amount.toBigDecimal() != BigDecimal.ZERO)
             return false
     }
     return true
@@ -56,9 +57,10 @@ fun CoinOuterClass.Coin.toPercentage(num: Long, den: Long) =
         .setScale(0, RoundingMode.HALF_EVEN)
         .toCoinStr(this.denom)
 
-fun String.toPercentage(num: Long, den: Long, scale: Int) =
+fun String.toPercentage(num: BigDecimal, den: BigDecimal, scale: Int) =
     this.toBigDecimal()
-        .multiply(num.toBigDecimal().divide(den.toBigDecimal(), 100, RoundingMode.HALF_EVEN))
+        .divide(den, 100, RoundingMode.HALF_EVEN)
+        .multiply(num)
         .setScale(scale, RoundingMode.HALF_EVEN)
         .stringify() + "%"
 
@@ -73,3 +75,5 @@ fun List<CoinStr>.diff(newList: List<CoinStr>) =
                     CoinStr(map[orig.denom]!!.amount.toBigInteger().minus(orig.amount.toBigInteger()).toString(), orig.denom)
                 }
             }
+
+fun BigDecimal.roundWhole() = this.setScale(0, RoundingMode.HALF_EVEN)

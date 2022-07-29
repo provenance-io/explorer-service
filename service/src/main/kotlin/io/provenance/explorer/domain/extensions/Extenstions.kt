@@ -135,7 +135,7 @@ fun String.toDateTimeWithFormat(formatter: org.joda.time.format.DateTimeFormatte
 fun OffsetDateTime.toDateTime() = DateTime(this.toInstant().toEpochMilli(), DateTimeZone.UTC)
 
 fun ServiceOuterClass.GetTxResponse.getFeeTotalPaid() =
-    this.tx.authInfo.fee.amountList.first { it.denom == NHASH }.amount.toLong()
+    this.tx.authInfo.fee.amountList.first { it.denom == NHASH }.amount.toBigDecimal()
 
 fun BlockOuterClass.Block.height() = this.header.height.toInt()
 fun Long.get24HrBlockHeight(avgBlockTime: BigDecimal) =

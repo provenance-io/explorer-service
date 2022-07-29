@@ -499,7 +499,7 @@ object TxGasCacheTable : IntIdTable(name = "tx_gas_cache") {
 class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxGasCacheRecord>(TxGasCacheTable) {
 
-        fun buildInsert(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime, msgBasedFees: Long) =
+        fun buildInsert(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime, msgBasedFees: BigDecimal) =
             listOf(
                 0,
                 tx.txResponse.txhash,
@@ -630,11 +630,11 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
             this.exec(query)
         }
 
-        fun ServiceOuterClass.GetTxResponse.calcFeesPaid(msgBasedFees: Long) =
+        fun ServiceOuterClass.GetTxResponse.calcFeesPaid(msgBasedFees: BigDecimal) =
             if (this.txResponse.code == 0) this.getFeeTotalPaid() else this.getFeeTotalPaid() - msgBasedFees
 
-        fun calcMarketRate(tx: ServiceOuterClass.GetTxResponse, msgBasedFees: Long) =
-            (tx.getFeeTotalPaid() - msgBasedFees) / tx.txResponse.gasWanted
+        fun calcMarketRate(tx: ServiceOuterClass.GetTxResponse, msgBasedFees: BigDecimal) =
+            (tx.getFeeTotalPaid() - msgBasedFees) / tx.txResponse.gasWanted.toBigDecimal()
 
         fun buildInserts(
             txInfo: TxData,
@@ -648,31 +648,31 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                 // calc baseFeeUsed, baseFeeOverage in nhash
                 tx.getFeeTotalPaid().let { totalFeeAmount ->
                     val marketRate = calcMarketRate(tx, msgBasedFeeList.totalMsgBasedFees())
-                    var baseFeeUsed = tx.txResponse.gasUsed * marketRate
+                    var baseFeeUsed = tx.txResponse.gasUsed.toBigDecimal() * marketRate
                     var overage = totalFeeAmount - msgBasedFeeList.totalMsgBasedFees() - baseFeeUsed
                     // if totalFeeAmount is less than baseFeeUsed (ie, fails on gas),
                     // baseFeeUsed = totalFeeAmount, and overage = 0
                     // Else save the used and overage as normal, regardless of tx success
                     if (baseFeeUsed > totalFeeAmount) {
                         baseFeeUsed = totalFeeAmount
-                        overage = 0
+                        overage = BigDecimal.ZERO
                     }
                     Pair(overage, baseFeeUsed)
                 }.let { (baseFeeOverage, baseFeeUsed) ->
                     val nhash = assetService.getAssetRaw(NHASH).second
                     // insert used fee
                     feeList.add(
-                        buildInsert(txInfo, BASE_FEE_USED.name, nhash.id.value, nhash.denom, baseFeeUsed.toBigDecimal())
+                        buildInsert(txInfo, BASE_FEE_USED.name, nhash.id.value, nhash.denom, baseFeeUsed)
                     )
                     // insert paid too much fee if > 0
-                    if (baseFeeOverage > 0)
+                    if (baseFeeOverage > BigDecimal.ZERO)
                         feeList.add(
                             buildInsert(
                                 txInfo,
                                 BASE_FEE_OVERAGE.name,
                                 nhash.id.value,
                                 nhash.denom,
-                                baseFeeOverage.toBigDecimal()
+                                baseFeeOverage
                             )
                         )
                     // insert additional fees grouped by msg type
@@ -697,7 +697,7 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                 feeList
             }
 
-        fun MutableList<TxFeeData>.totalMsgBasedFees() = this.sumOf { it.amount }.toLong()
+        fun MutableList<TxFeeData>.totalMsgBasedFees() = this.sumOf { it.amount }
 
         fun identifyMsgBasedFees(tx: ServiceOuterClass.GetTxResponse): MutableList<TxFeeData> {
             val msgToFee = mutableListOf<TxFeeData>()

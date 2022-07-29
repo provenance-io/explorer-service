@@ -258,7 +258,7 @@ class AccountService(
             requireToMessage(request.to.isStandardAddress(props)) { "to must be a standard address format" },
             requireToMessage(request.to != request.from) { "The to address must be different that the from address" },
             *request.funds.map { assetService.validateDenom(it.denom) }.toTypedArray(),
-            requireToMessage(request.funds.none { it.amount.toLong() == 0L }) { "At least one deposit must have an amount greater than zero." }
+            requireToMessage(request.funds.none { it.amount.toBigDecimal() == BigDecimal.ZERO }) { "At least one deposit must have an amount greater than zero." }
         )
         return msgSend {
             fromAddress = request.from

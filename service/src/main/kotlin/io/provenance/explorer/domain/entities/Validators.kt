@@ -35,6 +35,7 @@ import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
+import java.math.BigDecimal
 import java.sql.ResultSet
 
 object ValidatorsCacheTable : CacheIdTable<Int>(name = "validators_cache") {
@@ -330,7 +331,7 @@ object ValidatorMarketRateTable : IntIdTable(name = "validator_market_rate") {
 
 class ValidatorMarketRateRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<ValidatorMarketRateRecord>(ValidatorMarketRateTable) {
-        fun buildInsert(txInfo: TxData, proposer: String, tx: ServiceOuterClass.GetTxResponse, msgBasedFees: Long) =
+        fun buildInsert(txInfo: TxData, proposer: String, tx: ServiceOuterClass.GetTxResponse, msgBasedFees: BigDecimal) =
             listOf(
                 0,
                 txInfo.blockHeight,
