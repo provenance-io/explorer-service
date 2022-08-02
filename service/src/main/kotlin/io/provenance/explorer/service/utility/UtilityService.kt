@@ -12,11 +12,16 @@ import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.UnknownTxType
 import io.provenance.explorer.domain.extensions.fromBase64
+import io.provenance.explorer.domain.extensions.height
+import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.getCategoryForType
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
+import io.provenance.explorer.grpc.v1.TransactionGrpcClient
 import io.provenance.explorer.service.AssetService
+import io.provenance.explorer.service.BlockService
+import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.service.async.AsyncCachingV2
 import kotlinx.coroutines.runBlocking
 import net.pearx.kasechange.toSnakeCase
@@ -31,7 +36,10 @@ class UtilityService(
     private val protoParser: JsonFormat.Parser,
     private val markerClient: MarkerGrpcClient,
     private val assetService: AssetService,
-    private val async: AsyncCachingV2
+    private val async: AsyncCachingV2,
+    private val txClient: TransactionGrpcClient,
+    private val blockService: BlockService,
+    private val validatorService: ValidatorService
 ) {
 
     protected val logger = logger(UtilityService::class)
@@ -100,6 +108,18 @@ class UtilityService(
     fun saveRawTxJson(rawJson: String, blockHeight: Int = 1, timestamp: DateTime = DateTime.now()) = transaction {
         val parsed = parseRawTxJson(rawJson, blockHeight, timestamp)
         TxCacheRecord.insertToProcedure(parsed.txUpdate, blockHeight, timestamp)
+    }
+
+    fun parseFromTxHash(hash: String, save: Boolean = false) = transaction {
+        txClient.getTxByHash(hash).let { tx ->
+            val block = blockService.getBlockAtHeightFromChain(tx.txResponse.height.toInt())!!
+            val timestamp = block.block.header.time.toDateTime()
+            val proposer = validatorService.buildProposerInsert(block, timestamp, block.block.height())
+            async.addTxToCache(tx, timestamp, proposer).also {
+                if(save)
+                    TxCacheRecord.insertToProcedure(it.txUpdate, block.block.height(), timestamp)
+            }
+        }
     }
 
     fun stringToJson(str: String) = str.toObjectNode()
