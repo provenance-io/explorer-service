@@ -107,7 +107,7 @@ data class EventFee(
     val msg_type: String,
     val count: String,
     val total: String,
-    val recipient: String
+    val recipient: String? = null
 )
 
 data class Gas(
