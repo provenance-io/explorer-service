@@ -729,7 +729,7 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                     TxMessageTypeRecord.findByProtoType(fee.msg_type)?.type ?: CUSTOM_FEE_MSG_TYPE,
                     amount.toBigDecimal(),
                     denom,
-                    fee.recipient.ifEmpty { null },
+                    fee.recipient,
                     customFeeMap[fee.recipient]?.let { CustomFeeList(it) }
                 )
                 msgToFee.add(data)

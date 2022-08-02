@@ -36,6 +36,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Big Fixes
 * Swapped `Long` for `BigDecimal` in places that will need it, specifically for large nhash quantities #380
 * Rounding circulating supply, community pool values as those are whole `nhash` values #381
+* Fix Null pointer on reading to EventFee object
 
 ## [v5.0.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.3.1) - 2022-07-28
 ### Release Name: Odoric of Pordenone
