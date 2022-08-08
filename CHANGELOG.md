@@ -33,6 +33,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+* Removed calls to Figment #385
+
 ### Big Fixes
 * Swapped `Long` for `BigDecimal` in places that will need it, specifically for large nhash quantities #380
 * Rounding circulating supply, community pool values as those are whole `nhash` values #381
