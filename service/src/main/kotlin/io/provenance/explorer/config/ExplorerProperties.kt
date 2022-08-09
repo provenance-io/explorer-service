@@ -13,8 +13,6 @@ class ExplorerProperties(
     val pbUrl: String,
     val initialHistoricalDayCount: String,
     val spotlightTtlMs: String,
-    val figmentApikey: String,
-    val figmentUrl: String,
     val genesisVersionUrl: String,
     val upgradeVersionRegex: String,
     val upgradeGithubRepo: String,
