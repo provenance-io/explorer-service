@@ -28,7 +28,6 @@ import io.provenance.explorer.domain.entities.TxEventAttrRecord
 import io.provenance.explorer.domain.entities.TxEventAttrTable
 import io.provenance.explorer.domain.entities.TxEventRecord
 import io.provenance.explorer.domain.entities.TxFeeRecord
-import io.provenance.explorer.domain.entities.TxFeeRecord.Companion.totalMsgBasedFees
 import io.provenance.explorer.domain.entities.TxFeepayerRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxIbcRecord
@@ -113,7 +112,6 @@ import org.springframework.stereotype.Service
 @Service
 class AsyncCachingV2(
     private val txClient: TransactionGrpcClient,
-    private val msgFeeClient: MsgFeeGrpcClient,
     private val blockService: BlockService,
     private val validatorService: ValidatorService,
     private val accountService: AccountService,
@@ -122,7 +120,8 @@ class AsyncCachingV2(
     private val govService: GovService,
     private val ibcService: IbcService,
     private val smContractService: SmartContractService,
-    private val props: ExplorerProperties
+    private val props: ExplorerProperties,
+    private val msgFeeClient: MsgFeeGrpcClient
 ) {
 
     protected val logger = logger(AsyncCachingV2::class)
@@ -258,7 +257,7 @@ class AsyncCachingV2(
     ): TxUpdatedItems {
         val tx = TxCacheRecord.buildInsert(res, blockTime)
         val txUpdate = TxUpdate(tx)
-        val txInfo = TxData(res.txResponse.height.toInt(), null, res.txResponse.txhash, blockTime)
+        val txInfo = TxData(proposerRec.blockHeight, null, res.txResponse.txhash, blockTime)
         saveMessages(txInfo, res, txUpdate)
         saveTxFees(res, txInfo, txUpdate, proposerRec)
         val addrs = saveAddresses(txInfo, res, txUpdate)
@@ -302,12 +301,11 @@ class AsyncCachingV2(
         proposerRec: BlockProposer
     ) =
         txUpdate.apply {
-            val msgBasedFeeMap = TxFeeRecord.identifyMsgBasedFees(tx)
-            this.txFees.addAll(TxFeeRecord.buildInserts(txInfo, tx, assetService, msgBasedFeeMap))
-            this.txGasFee = TxGasCacheRecord.buildInsert(tx, txInfo.txTimestamp, msgBasedFeeMap.totalMsgBasedFees())
-            this.validatorMarketRate = ValidatorMarketRateRecord.buildInsert(
-                txInfo, proposerRec.proposerOperatorAddress, tx, msgBasedFeeMap.totalMsgBasedFees()
-            )
+            val msgBasedFeeMap = TxFeeRecord.identifyMsgBasedFees(tx, msgFeeClient, proposerRec.blockHeight)
+            this.txFees.addAll(TxFeeRecord.buildInserts(txInfo, tx, assetService, msgBasedFeeMap, msgFeeClient, proposerRec.blockHeight))
+            this.txGasFee = TxGasCacheRecord.buildInsert(tx, txInfo, msgFeeClient, proposerRec.blockHeight)
+            this.validatorMarketRate =
+                ValidatorMarketRateRecord.buildInsert(txInfo, proposerRec.proposerOperatorAddress, tx, msgFeeClient, proposerRec.blockHeight)
         }
 
     fun saveMessages(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse, txUpdate: TxUpdate) = transaction {
@@ -319,12 +317,7 @@ class AsyncCachingV2(
             if (tx.txResponse.logsCount > 0) {
                 events = saveEvents(txInfo, tx, msgRec.second, idx)
                 if (tx.tx.body.messagesCount == 1)
-                    single = TxSingleMessageCacheRecord.buildInsert(
-                        txInfo.txTimestamp,
-                        txInfo.txHash,
-                        tx.txResponse.gasUsed.toInt(),
-                        type
-                    )
+                    single = TxSingleMessageCacheRecord.buildInsert(txInfo, tx.txResponse.gasUsed.toInt(), type)
             }
             txUpdate.apply {
                 if (single != null) this.singleMsgs.add(single)

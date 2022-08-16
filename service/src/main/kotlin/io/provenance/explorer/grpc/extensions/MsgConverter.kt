@@ -782,6 +782,7 @@ fun String.scrubQuotes() = this.removeSurrounding("\"")
 //region MSG TO DEFINED EVENT
 // This links a msg type to a specific event it always emits. Helps to identify actions within an ExecuteContract msg
 // When this is updated, update update_tx_fees() and update_market_rate() procedures as well
+// THIS IS FOR OLDER TXS WHEN MSG FEES WERE FIRST INTRODUCED. SHOULD NOT BE USED FOR FUTURE CASES
 enum class MsgToDefinedEvent(val msg: String, val definedEvent: String, val uniqueField: String) {
     ATTRIBUTE_ADD(
         "/provenance.attribute.v1.MsgAddAttributeRequest",
@@ -794,7 +795,6 @@ enum class MsgToDefinedEvent(val msg: String, val definedEvent: String, val uniq
         "scope_addr"
     ),
     SCOPE_UPDATED(
-
         "/provenance.metadata.v1.MsgWriteScopeRequest",
         "provenance.metadata.v1.EventScopeUpdated",
         "scope_addr"
@@ -802,7 +802,6 @@ enum class MsgToDefinedEvent(val msg: String, val definedEvent: String, val uniq
     NAME_BIND("/provenance.name.v1.MsgBindNameRequest", "provenance.name.v1.EventNameBound", "address"),
     PROPOSAL_SUBMIT("/cosmos.gov.v1beta1.MsgSubmitProposal", "submit_proposal", "proposal_id"),
     MARKER_ADD("/provenance.marker.v1.MsgAddMarkerRequest", "provenance.marker.v1.EventMarkerAdd", "denom"),
-    CONTRACT_CUSTOM("", "assess_custom_msg_fee", "name")
 }
 
 fun getDefinedEventsByMsg(msg: String) = MsgToDefinedEvent.values().firstOrNull { it.msg == msg }

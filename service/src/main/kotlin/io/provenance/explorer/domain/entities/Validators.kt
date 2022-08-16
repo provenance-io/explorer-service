@@ -13,10 +13,12 @@ import io.provenance.explorer.domain.entities.ValidatorState.ALL
 import io.provenance.explorer.domain.entities.ValidatorState.CANDIDATE
 import io.provenance.explorer.domain.entities.ValidatorState.JAILED
 import io.provenance.explorer.domain.extensions.execAndMap
+import io.provenance.explorer.domain.extensions.getTotalBaseFees
 import io.provenance.explorer.domain.extensions.mapper
 import io.provenance.explorer.domain.extensions.toDecimal
 import io.provenance.explorer.domain.models.explorer.CurrentValidatorState
 import io.provenance.explorer.domain.models.explorer.TxData
+import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -35,7 +37,6 @@ import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
-import java.math.BigDecimal
 import java.sql.ResultSet
 
 object ValidatorsCacheTable : CacheIdTable<Int>(name = "validators_cache") {
@@ -331,7 +332,13 @@ object ValidatorMarketRateTable : IntIdTable(name = "validator_market_rate") {
 
 class ValidatorMarketRateRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<ValidatorMarketRateRecord>(ValidatorMarketRateTable) {
-        fun buildInsert(txInfo: TxData, proposer: String, tx: ServiceOuterClass.GetTxResponse, msgBasedFees: BigDecimal) =
+        fun buildInsert(
+            txInfo: TxData,
+            proposer: String,
+            tx: ServiceOuterClass.GetTxResponse,
+            msgFeeClient: MsgFeeGrpcClient,
+            height: Int
+        ) =
             listOf(
                 0,
                 txInfo.blockHeight,
@@ -339,7 +346,7 @@ class ValidatorMarketRateRecord(id: EntityID<Int>) : IntEntity(id) {
                 proposer,
                 0,
                 txInfo.txHash,
-                TxFeeRecord.calcMarketRate(tx, msgBasedFees),
+                TxFeeRecord.calcMarketRate(tx, tx.txResponse.getTotalBaseFees(msgFeeClient, height)),
                 tx.txResponse.code == 0
             ).toProcedureObject()
 

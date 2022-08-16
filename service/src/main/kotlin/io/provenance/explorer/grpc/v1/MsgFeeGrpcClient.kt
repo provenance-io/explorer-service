@@ -2,6 +2,7 @@ package io.provenance.explorer.grpc.v1
 
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
+import io.provenance.explorer.grpc.extensions.addBlockHeightToQuery
 import io.provenance.explorer.grpc.extensions.getPagination
 import io.provenance.msgfees.v1.QueryGrpcKt
 import io.provenance.msgfees.v1.queryAllMsgFeesRequest
@@ -42,7 +43,26 @@ class MsgFeeGrpcClient(channelUri: URI) {
         )
     }
 
+    fun getMsgFeesAtHeight(height: Int, offset: Int = 0, limit: Int = 100) = runBlocking {
+        msgFeeClient
+            .addBlockHeightToQuery(height.toString())
+            .queryAllMsgFees(
+                queryAllMsgFeesRequest {
+                    this.pagination = getPagination(offset, limit)
+                }
+            )
+    }
+
     suspend fun getMsgFeeParams() = msgFeeClient.params(io.provenance.msgfees.v1.queryParamsRequest { })
 
-    fun getFloorGasPrice() = runBlocking { getMsgFeeParams().params.floorGasPrice.amount.toLong() }
+    fun getFloorGasPriceAtHeight(height: Int) = runBlocking {
+        try {
+            msgFeeClient
+                .addBlockHeightToQuery(height.toString())
+                .params(io.provenance.msgfees.v1.queryParamsRequest { })
+                .params.floorGasPrice.amount.toLong()
+        } catch (e: Exception) {
+            null
+        }
+    }
 }

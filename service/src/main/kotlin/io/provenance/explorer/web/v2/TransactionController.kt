@@ -58,7 +58,10 @@ class TransactionController(private val transactionService: TransactionService) 
 
     @ApiOperation("Return transaction detail by hash value")
     @GetMapping("/{hash}")
-    fun txByHash(@PathVariable hash: String) = ResponseEntity.ok(transactionService.getTransactionByHash(hash))
+    fun txByHash(
+        @PathVariable hash: String,
+        @ApiParam(required = false) @RequestParam(required = false) blockHeight: Int? = null
+    ) = ResponseEntity.ok(transactionService.getTransactionByHash(hash, blockHeight))
 
     @ApiOperation("Return a transaction's messages by tx hash value")
     @GetMapping("/{hash}/msgs")
@@ -67,12 +70,16 @@ class TransactionController(private val transactionService: TransactionService) 
         @ApiParam(required = false) @RequestParam(required = false) msgType: String?,
         @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
         @ApiParam(value = "Record count between 1 and 200", defaultValue = "10", required = false)
-        @RequestParam(defaultValue = "10") @Min(1) @Max(200) count: Int
-    ) = ResponseEntity.ok(transactionService.getTxMsgsPaginated(hash, msgType, page, count))
+        @RequestParam(defaultValue = "10") @Min(1) @Max(200) count: Int,
+        @ApiParam(required = false) @RequestParam(required = false) blockHeight: Int? = null
+    ) = ResponseEntity.ok(transactionService.getTxMsgsPaginated(hash, msgType, page, count, blockHeight))
 
     @ApiOperation("Returns a transaction object as JSON by tx hash value")
     @GetMapping("/{hash}/json")
-    fun transactionJson(@PathVariable hash: String) = ResponseEntity.ok(transactionService.getTransactionJson(hash))
+    fun transactionJson(
+        @PathVariable hash: String,
+        @ApiParam(required = false) @RequestParam(required = false) blockHeight: Int? = null
+    ) = ResponseEntity.ok(transactionService.getTransactionJson(hash, blockHeight))
 
     @ApiOperation("Returns transactions by block height")
     @GetMapping("/height/{height}")
@@ -117,8 +124,10 @@ class TransactionController(private val transactionService: TransactionService) 
 
     @ApiOperation("Return list of transaction types by tx hash")
     @GetMapping("/types/tx/{hash}")
-    fun txTypesByTxHash(@PathVariable hash: String) =
-        ResponseEntity.ok(transactionService.getTxTypesByTxHash(hash))
+    fun txTypesByTxHash(
+        @PathVariable hash: String,
+        @ApiParam(required = false) @RequestParam(required = false) blockHeight: Int? = null
+    ) = ResponseEntity.ok(transactionService.getTxTypesByTxHash(hash))
 
     @ApiOperation("Returns transactions by query params for a specific module of msg types")
     @GetMapping("/module/{module}")

@@ -136,6 +136,7 @@ class SmContractRecord(id: EntityID<Int>) : IntEntity(id) {
                 .andWhere { if (creator != null) SmContractTable.creator eq creator else Op.TRUE }
                 .andWhere { if (admin != null) SmContractTable.admin eq admin else Op.TRUE }
                 .andWhere { if (label != null) SmContractTable.label eq label else Op.TRUE }
+                .orderBy(Pair(SmContractTable.creationHeight, SortOrder.DESC))
         }
 
         fun getPaginated(

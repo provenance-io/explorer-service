@@ -1,6 +1,7 @@
 package io.provenance.explorer.web.v3
 
 import com.google.protobuf.util.JsonFormat
+import io.provenance.explorer.domain.annotation.HiddenApi
 import io.provenance.explorer.domain.models.explorer.PeriodInSeconds
 import io.provenance.explorer.service.AccountService
 import io.swagger.annotations.Api
@@ -46,4 +47,13 @@ class AccountControllerV3(private val accountService: AccountService, private va
         @ApiParam(value = "The period selection for a ContinuousVestingAccount", defaultValue = "DAY", required = false)
         @RequestParam(defaultValue = "DAY") continuousPeriod: PeriodInSeconds
     ) = ResponseEntity.ok(accountService.getVestingSchedule(address, continuousPeriod))
+
+    @ApiOperation("Returns account balances for the account address, broken down by spendable and locked")
+    @GetMapping("/{address}/balances/{height}")
+    @HiddenApi
+    fun getAccountBalancesAtHeight(
+        @ApiParam(value = "The address of the account, starting with the standard account prefix")
+        @PathVariable address: String,
+        @ApiParam(value = "block height to search at") @PathVariable height: Int
+    ) = ResponseEntity.ok(accountService.getAccountBalancesAllAtHeight(address, height))
 }

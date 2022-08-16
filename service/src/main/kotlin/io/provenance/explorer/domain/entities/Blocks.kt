@@ -398,7 +398,7 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
             val txSum = BlockCacheHourlyTxCountsTable.txCount.sum()
             BlockCacheHourlyTxCountsTable.slice(dateTrunc, txSum)
                 .select {
-                    dateTrunc.between(fromDate.startOfDay(), toDate.startOfDay().plusDays(1))
+                    dateTrunc.between(fromDate.startOfDay(), toDate.startOfDay())
                 }
                 .groupBy(dateTrunc)
                 .orderBy(dateTrunc, SortOrder.DESC)
