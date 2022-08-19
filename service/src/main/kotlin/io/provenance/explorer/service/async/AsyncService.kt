@@ -1,5 +1,6 @@
 package io.provenance.explorer.service.async
 
+import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
@@ -7,10 +8,12 @@ import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.BlockTxCountsCacheRecord
 import io.provenance.explorer.domain.entities.BlockTxRetryRecord
 import io.provenance.explorer.domain.entities.CacheKeys
+import io.provenance.explorer.domain.entities.CacheUpdateRecord
 import io.provenance.explorer.domain.entities.ChainMarketRateStatsRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.ProposalMonitorRecord
 import io.provenance.explorer.domain.entities.ProposalMonitorRecord.Companion.checkIfProposalReadyForProcessing
+import io.provenance.explorer.domain.entities.TokenHistoricalDailyRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
@@ -201,4 +204,16 @@ class AsyncService(
 
     @Scheduled(cron = "0 0 0/1 * * ?") // Every hour
     fun saveChainAum() = explorerService.saveChainAum()
+
+    @Scheduled(cron = "0 0 1 * * ?") // Every day at 1 am
+    fun updateTokenHistorical() =
+        tokenService.updateTokenHistorical()?.data?.quotes?.forEach {
+            TokenHistoricalDailyRecord.save(it.time_open.startOfDay(), it)
+        }
+
+    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
+    fun updateTokenLatest() =
+        tokenService.updateTokenLatest()?.data?.get("19960")?.let {
+            CacheUpdateRecord.updateCacheByKey(CacheKeys.UTILITY_TOKEN_LATEST.key, VANILLA_MAPPER.writeValueAsString(it))
+        }
 }

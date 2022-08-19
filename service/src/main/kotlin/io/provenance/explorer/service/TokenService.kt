@@ -1,21 +1,37 @@
 package io.provenance.explorer.service
 
+import com.fasterxml.jackson.module.kotlin.readValue
 import cosmos.auth.v1beta1.Auth
+import io.ktor.client.features.ResponseException
+import io.ktor.client.request.accept
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.request.parameter
+import io.ktor.http.ContentType
+import io.provenance.explorer.KTOR_CLIENT_JAVA
+import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.CacheKeys
+import io.provenance.explorer.domain.entities.CacheUpdateRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.MarkerUnitRecord
 import io.provenance.explorer.domain.entities.TokenDistributionAmountsRecord
 import io.provenance.explorer.domain.entities.TokenDistributionPaginatedResultsRecord
+import io.provenance.explorer.domain.entities.TokenHistoricalDailyRecord
 import io.provenance.explorer.domain.entities.addressList
 import io.provenance.explorer.domain.entities.vestingAccountTypes
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.roundWhole
+import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toPercentage
 import io.provenance.explorer.domain.models.explorer.AssetHolder
+import io.provenance.explorer.domain.models.explorer.CmcHistoricalResponse
+import io.provenance.explorer.domain.models.explorer.CmcLatestData
+import io.provenance.explorer.domain.models.explorer.CmcLatestResponse
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.PagedResults
@@ -31,6 +47,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -199,6 +216,42 @@ class TokenService(
                     it.data.count.toPercentage(BigDecimal(100), totalSupply, 4)
                 )
             }
+    }
+
+    fun updateTokenHistorical(): CmcHistoricalResponse? = runBlocking {
+        try {
+            KTOR_CLIENT_JAVA.get("${props.cmcApiUrl}/v2/cryptocurrency/ohlcv/historical") {
+                parameter("id", props.cmcTokenId)
+                parameter("count", 32)
+                parameter("time_start", DateTime.now().startOfDay().minusMonths(1))
+                accept(ContentType.Application.Json)
+                header("X-CMC_PRO_API_KEY", props.cmcApiKey)
+            }
+        } catch (e: ResponseException) {
+            return@runBlocking null
+                .also { logger.error("Error updating Token Historical Pricing: ${e.response}") }
+        }
+    }
+
+    fun updateTokenLatest(): CmcLatestResponse? = runBlocking {
+        try {
+            KTOR_CLIENT_JAVA.get("${props.cmcApiUrl}/v2/cryptocurrency/quotes/latest") {
+                parameter("id", props.cmcTokenId)
+                parameter("aux", "num_market_pairs,cmc_rank,date_added,tags,platform,max_supply,circulating_supply,total_supply,market_cap_by_total_supply,volume_24h_reported,volume_7d,volume_7d_reported,volume_30d,volume_30d_reported,is_active,is_fiat")
+                accept(ContentType.Application.Json)
+                header("X-CMC_PRO_API_KEY", props.cmcApiKey)
+            }
+        } catch (e: ResponseException) {
+            return@runBlocking null
+                .also { logger.error("Error updating Token Latest Pricing: ${e.response}") }
+        }
+    }
+
+    fun getTokenHistorical(fromDate: DateTime?, toDate: DateTime?) =
+        TokenHistoricalDailyRecord.findForDates(fromDate?.startOfDay(), toDate?.startOfDay())
+
+    fun getTokenLatest() = CacheUpdateRecord.fetchCacheByKey(CacheKeys.UTILITY_TOKEN_LATEST.key)?.cacheValue?.let {
+        VANILLA_MAPPER.readValue<CmcLatestData>(it)
     }
 }
 

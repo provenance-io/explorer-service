@@ -19,7 +19,10 @@ class ExplorerProperties(
     val hiddenApis: String,
     val swaggerUrl: String,
     val swaggerProtocol: String,
-    val pricingUrl: String
+    val pricingUrl: String,
+    val cmcApiKey: String,
+    val cmcApiUrl: String,
+    val cmcTokenId: Int
 ) {
 
     fun initialHistoricalDays() = initialHistoricalDayCount.toInt()

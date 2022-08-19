@@ -4,6 +4,7 @@ import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.models.explorer.ChainAum
 import io.provenance.explorer.domain.models.explorer.ChainMarketRate
+import io.provenance.explorer.domain.models.explorer.CmcHistoricalQuote
 import io.provenance.explorer.domain.models.explorer.Spotlight
 import io.provenance.explorer.domain.models.explorer.ValidatorMarketRate
 import org.jetbrains.exposed.dao.Entity
@@ -168,7 +169,8 @@ enum class CacheKeys(val key: String) {
     PRICING_UPDATE("pricing_update"),
     CHAIN_RELEASES("chain_releases"),
     SPOTLIGHT_PROCESSING("spotlight_processing"),
-    STANDARD_BLOCK_TIME("standard_block_time")
+    STANDARD_BLOCK_TIME("standard_block_time"),
+    UTILITY_TOKEN_LATEST("utility_token_latest"),
 }
 
 class CacheUpdateRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -224,3 +226,36 @@ class ChainAumHourlyRecord(id: EntityID<Int>) : IntEntity(id) {
 
 fun ChainAumHourlyRecord.toDto() =
     ChainAum(this.datetime.toString("yyyy-MM-dd HH:mm:SS"), this.denom, this.amount)
+
+object TokenHistoricalDailyTable : IdTable<DateTime>(name = "token_historical_daily") {
+    val timestamp = datetime("historical_timestamp")
+    override val id = timestamp.entityId()
+    val data = jsonb<TokenHistoricalDailyTable, CmcHistoricalQuote>("data", OBJECT_MAPPER)
+}
+
+class TokenHistoricalDailyRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) {
+    companion object : EntityClass<DateTime, TokenHistoricalDailyRecord>(TokenHistoricalDailyTable) {
+
+        fun save(date: DateTime, data: CmcHistoricalQuote) =
+            transaction {
+                TokenHistoricalDailyTable.insertIgnore {
+                    it[this.timestamp] = date
+                    it[this.data] = data
+                }
+            }
+
+        fun findForDates(fromDate: DateTime?, toDate: DateTime?) = transaction {
+            val query = TokenHistoricalDailyTable.selectAll()
+            if (fromDate != null)
+                query.andWhere { TokenHistoricalDailyTable.timestamp greaterEq fromDate }
+            if (toDate != null)
+                query.andWhere { TokenHistoricalDailyTable.timestamp lessEq toDate.plusDays(1) }
+
+            query.orderBy(TokenHistoricalDailyTable.timestamp, SortOrder.ASC)
+            TokenHistoricalDailyRecord.wrapRows(query).map { it.data }.toList()
+        }
+    }
+
+    var timestamp by TokenHistoricalDailyTable.timestamp
+    var data by TokenHistoricalDailyTable.data
+}
