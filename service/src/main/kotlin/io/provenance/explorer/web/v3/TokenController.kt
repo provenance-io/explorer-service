@@ -5,6 +5,9 @@ import io.provenance.explorer.service.NHASH
 import io.provenance.explorer.service.TokenService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
+import io.swagger.annotations.ApiParam
+import org.joda.time.DateTime
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
@@ -55,4 +58,23 @@ class TokenController(private val tokenService: TokenService) {
     @ApiOperation("Returns circulating supply of `nhash` = max - burned - modules - zeroSeq - pool - nonspendable ")
     @GetMapping("/circulating_supply")
     fun getCirculatingSupply() = ResponseEntity.ok(tokenService.circulatingSupply())
+
+    @ApiOperation("Returns CoinMarketCap historical token pricing for the given dates inclusive")
+    @GetMapping("/historical_pricing")
+    fun getHistoricalPricing(
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
+    ) = ResponseEntity.ok(tokenService.getTokenHistorical(fromDate, toDate))
+
+    @ApiOperation("Returns CoinMarketCap latest token pricing")
+    @GetMapping("/latest_pricing")
+    fun getLatestPricing() = ResponseEntity.ok(tokenService.getTokenLatest())
 }

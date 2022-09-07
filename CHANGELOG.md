@@ -33,13 +33,23 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Added APIs for CoinMarketCap data #388
+  * GET `/api/v3/utility_token/historical_pricing` - Returns a list of daily historical pricing for the utility token, queryable by date range
+  * GET `/api/v3/utility_token/latest_pricing` - Returns the latest pricing for the utility token
+
 ### Improvements
 * Removed calls to Figment #385
 
-### Big Fixes
+### Bug Fixes
 * Swapped `Long` for `BigDecimal` in places that will need it, specifically for large nhash quantities #380
 * Rounding circulating supply, community pool values as those are whole `nhash` values #381
 * Fix Null pointer on reading to EventFee object
+
+### Data
+* Migration 1.67 - Adding CMC data caching support #388
+  * Added `token_historical_daily` table
+  * Inserted `cache_update` record for `utility_token_latest` key
 
 ## [v5.0.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.3.1) - 2022-07-28
 ### Release Name: Odoric of Pordenone

@@ -36,6 +36,11 @@ services:
       - EXPLORER_SWAGGER_URL=localhost:8612
       - EXPLORER_SWAGGER_PROTOCOL=http
       - EXPLORER_PRICING_URL=https://test.figure.tech/service-pricing-engine/external
+      # Replace with your CMC API key when using production
+      - EXPLORER_CMC_API_KEY=b54bcf4d-1bca-4e8e-9a24-22ff2c3d462c
+      # Replace with {https://pro-api.coinmarketcap.com} when using in production
+      - EXPLORER_CMC_API_URL=https://sandbox-api.coinmarketcap.com
+      - EXPLORER_CMC_TOKEN_ID=19960
     depends_on:
       - explorer-postgres
     links:
