@@ -41,6 +41,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Improvements
 * Removed calls to Figment #385
 * Added API to check account balance at height #387
+* Updated Prov Protos from 1.11.0 to 1.12.0 #391
 
 ### Bug Fixes
 * Swapped `Long` for `BigDecimal` in places that will need it, specifically for large nhash quantities #380

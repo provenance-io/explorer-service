@@ -1,26 +1,29 @@
 package io.provenance.explorer.grpc.v1
 
+import ibc.applications.transfer.v1.queryDenomTraceRequest
+import ibc.applications.transfer.v1.queryEscrowAddressRequest
+import ibc.applications.transfer.v1.queryParamsRequest
+import ibc.core.channel.v1.queryChannelClientStateRequest
+import ibc.core.channel.v1.queryChannelRequest
+import ibc.core.client.v1.queryClientParamsRequest
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
-import io.provenance.explorer.grpc.extensions.getEscrowAccountAddress
+import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
-import ibc.applications.transfer.v1.QueryGrpc as TransferQueryGrpc
-import ibc.applications.transfer.v1.QueryOuterClass as TransferOuterClass
-import ibc.core.channel.v1.QueryGrpc as ChannelQueryGrpc
-import ibc.core.channel.v1.QueryOuterClass as ChannelOuterClass
-import ibc.core.client.v1.QueryGrpc as ClientQueryGrpc
-import ibc.core.client.v1.QueryOuterClass as ClientOuterClass
-import ibc.core.connection.v1.QueryGrpc as ConnectionQueryGrpc
+import ibc.applications.transfer.v1.QueryGrpcKt as TransferQueryGrpc
+import ibc.core.channel.v1.QueryGrpcKt as ChannelQueryGrpc
+import ibc.core.client.v1.QueryGrpcKt as ClientQueryGrpc
+import ibc.core.connection.v1.QueryGrpcKt as ConnectionQueryGrpc
 
 @Component
 class IbcGrpcClient(channelUri: URI) {
 
-    private val transferClient: TransferQueryGrpc.QueryBlockingStub
-    private val channelClient: ChannelQueryGrpc.QueryBlockingStub
-    private val clientClient: ClientQueryGrpc.QueryBlockingStub
-    private val connectionClient: ConnectionQueryGrpc.QueryBlockingStub
+    private val transferClient: TransferQueryGrpc.QueryCoroutineStub
+    private val channelClient: ChannelQueryGrpc.QueryCoroutineStub
+    private val clientClient: ClientQueryGrpc.QueryCoroutineStub
+    private val connectionClient: ConnectionQueryGrpc.QueryCoroutineStub
 
     init {
         val channel =
@@ -38,35 +41,43 @@ class IbcGrpcClient(channelUri: URI) {
                 .intercept(GrpcLoggingInterceptor())
                 .build()
 
-        transferClient = TransferQueryGrpc.newBlockingStub(channel)
-        channelClient = ChannelQueryGrpc.newBlockingStub(channel)
-        clientClient = ClientQueryGrpc.newBlockingStub(channel)
-        connectionClient = ConnectionQueryGrpc.newBlockingStub(channel)
+        transferClient = TransferQueryGrpc.QueryCoroutineStub(channel)
+        channelClient = ChannelQueryGrpc.QueryCoroutineStub(channel)
+        clientClient = ClientQueryGrpc.QueryCoroutineStub(channel)
+        connectionClient = ConnectionQueryGrpc.QueryCoroutineStub(channel)
     }
 
-    fun getDenomTrace(hash: String) =
-        transferClient.denomTrace(TransferOuterClass.QueryDenomTraceRequest.newBuilder().setHash(hash).build()).denomTrace
+    suspend fun getDenomTrace(hash: String) =
+        transferClient.denomTrace(
+            queryDenomTraceRequest { this.hash = hash }
+        ).denomTrace
 
-    fun getEscrowAddress(portId: String, channelId: String, hrpPrefix: String) =
-        getEscrowAccountAddress(portId, channelId, hrpPrefix)
+    suspend fun getEscrowAddress(portId: String, channelId: String, hrpPrefix: String) = runBlocking {
+        transferClient.escrowAddress(
+            queryEscrowAddressRequest {
+                this.portId = portId
+                this.channelId = channelId
+            }
+        ).escrowAddress
+    }
 
-    fun getChannel(port: String, channel: String) =
+    suspend fun getChannel(port: String, channel: String) =
         channelClient.channel(
-            ChannelOuterClass.QueryChannelRequest.newBuilder()
-                .setPortId(port)
-                .setChannelId(channel)
-                .build()
+            queryChannelRequest {
+                this.portId = port
+                this.channelId = channel
+            }
         )
 
-    fun getClientForChannel(port: String, channel: String) =
+    suspend fun getClientForChannel(port: String, channel: String) =
         channelClient.channelClientState(
-            ChannelOuterClass.QueryChannelClientStateRequest.newBuilder()
-                .setPortId(port)
-                .setChannelId(channel)
-                .build()
+            queryChannelClientStateRequest {
+                this.portId = port
+                this.channelId = channel
+            }
         )
 
-    fun getTransferParams() = transferClient.params(TransferOuterClass.QueryParamsRequest.newBuilder().build())
+    suspend fun getTransferParams() = transferClient.params(queryParamsRequest { })
 
-    fun getClientParams() = clientClient.clientParams(ClientOuterClass.QueryClientParamsRequest.newBuilder().build())
+    suspend fun getClientParams() = clientClient.clientParams(queryClientParamsRequest { })
 }
