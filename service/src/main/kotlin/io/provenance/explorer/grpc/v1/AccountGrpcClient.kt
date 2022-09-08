@@ -19,6 +19,7 @@ import cosmos.staking.v1beta1.queryRedelegationsRequest
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.extensions.toDecimalString
+import io.provenance.explorer.grpc.extensions.addBlockHeightToQuery
 import io.provenance.explorer.grpc.extensions.getPagination
 import org.springframework.stereotype.Component
 import java.net.URI
@@ -98,6 +99,36 @@ class AccountGrpcClient(channelUri: URI) {
                     this.pagination = getPagination(offset, limit)
                 }
             ).let { balances.addAll(it.balancesList) }
+        }
+        return balances
+    }
+
+    suspend fun getAccountBalancesAllAtHeight(address: String, height: Int): MutableList<CoinOuterClass.Coin> {
+        var (offset, limit) = 0 to 100
+
+        val results =
+            bankClient
+                .addBlockHeightToQuery(height.toString())
+                .allBalances(
+                    queryAllBalancesRequest {
+                        this.address = address
+                        this.pagination = getPagination(offset, limit)
+                    }
+                )
+
+        val total = results.pagination?.total ?: results.balancesCount.toLong()
+        val balances = results.balancesList.toMutableList()
+
+        while (balances.count() < total) {
+            offset += limit
+            bankClient
+                .addBlockHeightToQuery(height.toString())
+                .allBalances(
+                    queryAllBalancesRequest {
+                        this.address = address
+                        this.pagination = getPagination(offset, limit)
+                    }
+                ).let { balances.addAll(it.balancesList) }
         }
         return balances
     }

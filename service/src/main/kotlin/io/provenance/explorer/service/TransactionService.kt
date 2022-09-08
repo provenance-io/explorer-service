@@ -20,11 +20,11 @@ import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.getFeepayer
-import io.provenance.explorer.domain.entities.toFeePaid
-import io.provenance.explorer.domain.entities.toFees
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toCoinStr
+import io.provenance.explorer.domain.extensions.toFeePaid
+import io.provenance.explorer.domain.extensions.toFees
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toSigObj
@@ -70,11 +70,14 @@ class TransactionService(
         }.toList().mapToRes()
     }
 
-    fun getTxTypesByTxHash(txHash: String) = transaction {
-        getTxByHash(txHash)?.let { tx ->
-            TxMessageRecord.getDistinctTxMsgTypesByTxHash(tx.id).let { TxMessageTypeRecord.findByIdIn(it) }
-                .mapToRes()
-        } ?: throw ResourceNotFoundException("Invalid transaction hash: '$txHash'")
+    fun getTxTypesByTxHash(txHash: String, blockHeight: Int? = null) = transaction {
+        getTxByHash(txHash)
+            .ifEmpty { throw ResourceNotFoundException("Invalid transaction hash: '$txHash'") }
+            .getMainState(blockHeight)
+            .let { tx ->
+                TxMessageRecord.getDistinctTxMsgTypesByTxHash(tx.id).let { TxMessageTypeRecord.findByIdIn(it) }
+                    .mapToRes()
+            }
     }
 
     fun getTxsByQuery(
@@ -140,11 +143,20 @@ class TransactionService(
 
     private fun getTxByHash(hash: String) = getTxByHashFromCache(hash)
 
-    fun getTransactionJson(txnHash: String) = getTxByHash(txnHash)?.txV2?.let { protoPrinter.print(it) }
-        ?: throw ResourceNotFoundException("Invalid transaction hash: '$txnHash'")
+    fun getTransactionJson(txnHash: String, blockHeight: Int? = null) =
+        getTxByHash(txnHash)
+            .ifEmpty { throw ResourceNotFoundException("Invalid transaction hash: '$txnHash'") }
+            .getMainState(blockHeight).txV2.let { protoPrinter.print(it) }
 
-    fun getTransactionByHash(hash: String) = getTxByHash(hash)?.let { hydrateTxDetails(it) }
-        ?: throw ResourceNotFoundException("Invalid transaction hash: '$hash'")
+    fun getTransactionByHash(hash: String, blockHeight: Int? = null) =
+        getTxByHash(hash)
+            .ifEmpty { throw ResourceNotFoundException("Invalid transaction hash: '$hash'") }
+            .let { list ->
+                val state = list.getMainState(blockHeight)
+
+                hydrateTxDetails(state)
+                    .apply { this.additionalHeights = list.filterNot { it.height == state.height }.map { it.height } }
+            }
 
     private fun hydrateTxDetails(tx: TxCacheRecord) = transaction {
         TxDetails(
@@ -168,17 +180,21 @@ class TransactionService(
         )
     }
 
-    fun getTxMsgsPaginated(hash: String, msgType: String?, page: Int, count: Int) = transaction {
-        val msgTypes = if (msgType != null) listOf(msgType) else listOf()
-        val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
+    fun getTxMsgsPaginated(hash: String, msgType: String?, page: Int, count: Int, blockHeight: Int? = null) =
+        transaction {
+            val msgTypes = if (msgType != null) listOf(msgType) else listOf()
+            val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
 
-        TxCacheRecord.findByHash(hash)?.id?.value?.let { id ->
-            val msgs = TxMessageRecord.findByHashIdPaginated(id, msgTypeIds, count, page.toOffset(count))
-                .mapToTxMessages()
-            val total = TxMessageRecord.getCountByHashId(id, msgTypeIds)
-            PagedResults(total.pageCountOfResults(count), msgs, total)
-        } ?: throw ResourceNotFoundException("Invalid transaction hash: '$hash'")
-    }
+            TxCacheRecord.findByHash(hash)
+                .ifEmpty { throw ResourceNotFoundException("Invalid transaction hash: '$hash'") }
+                .getMainState(blockHeight)
+                .id.value.let { id ->
+                    val msgs = TxMessageRecord.findByHashIdPaginated(id, msgTypeIds, count, page.toOffset(count))
+                        .mapToTxMessages()
+                    val total = TxMessageRecord.getCountByHashId(id, msgTypeIds)
+                    PagedResults(total.pageCountOfResults(count), msgs, total)
+                }
+        }
 
     fun getTxHeatmap() = BlockCacheHourlyTxCountsRecord.getTxHeatmap()
 
@@ -285,3 +301,6 @@ class TransactionService(
 
 fun List<TxMessageTypeRecord>.mapToRes() =
     this.map { TxType(it.category ?: it.module, it.type) }.toSet().sortedWith(compareBy(TxType::module, TxType::type))
+
+fun List<TxCacheRecord>.getMainState(blockHeight: Int? = null) =
+    if (blockHeight != null) this.first { it.height == blockHeight } else this.first()

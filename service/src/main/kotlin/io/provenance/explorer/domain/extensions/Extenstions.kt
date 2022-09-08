@@ -22,7 +22,6 @@ import io.provenance.explorer.domain.core.toBech32Data
 import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.entities.MissedBlocksRecord
 import io.provenance.explorer.domain.models.explorer.Addresses
-import io.provenance.explorer.service.NHASH
 import org.apache.commons.text.StringEscapeUtils
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
@@ -135,9 +134,7 @@ fun String.toDateTime() = DateTime.parse(this)
 fun String.toDateTimeWithFormat(formatter: org.joda.time.format.DateTimeFormatter) = DateTime.parse(this, formatter)
 fun OffsetDateTime.toDateTime() = DateTime(this.toInstant().toEpochMilli(), DateTimeZone.UTC)
 
-fun ServiceOuterClass.GetTxResponse.getFeeTotalPaid() =
-    this.tx.authInfo.fee.amountList.first { it.denom == NHASH }.amount.toBigDecimal()
-
+fun ServiceOuterClass.GetTxResponse.success() = this.txResponse.code == 0
 fun BlockOuterClass.Block.height() = this.header.height.toInt()
 fun Long.get24HrBlockHeight(avgBlockTime: BigDecimal) =
     BigDecimal(24 * 60 * 60).divide(avgBlockTime, 0, RoundingMode.HALF_UP).let { this - it.toInt() }

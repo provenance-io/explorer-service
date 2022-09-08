@@ -12,24 +12,24 @@ import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_OVERAGE
 import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_USED
 import io.provenance.explorer.domain.entities.FeeType.CUSTOM_FEE
 import io.provenance.explorer.domain.entities.FeeType.MSG_BASED_FEE
-import io.provenance.explorer.domain.entities.TxFeeRecord.Companion.calcFeesPaid
+import io.provenance.explorer.domain.extensions.CUSTOM_FEE_MSG_TYPE
+import io.provenance.explorer.domain.extensions.calcFeesPaid
 import io.provenance.explorer.domain.extensions.exec
-import io.provenance.explorer.domain.extensions.getFeeTotalPaid
-import io.provenance.explorer.domain.extensions.getType
+import io.provenance.explorer.domain.extensions.getCustomFeeProtoType
+import io.provenance.explorer.domain.extensions.getEventMsgFeesType
+import io.provenance.explorer.domain.extensions.getTotalBaseFees
+import io.provenance.explorer.domain.extensions.identifyMsgBasedFeesOld
 import io.provenance.explorer.domain.extensions.map
 import io.provenance.explorer.domain.extensions.startOfDay
-import io.provenance.explorer.domain.extensions.stringfy
 import io.provenance.explorer.domain.extensions.stringify
-import io.provenance.explorer.domain.extensions.toCoinStr
+import io.provenance.explorer.domain.extensions.success
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDbHash
 import io.provenance.explorer.domain.models.explorer.CustomFee
 import io.provenance.explorer.domain.models.explorer.CustomFeeList
 import io.provenance.explorer.domain.models.explorer.EventFee
-import io.provenance.explorer.domain.models.explorer.FeeCoinStr
 import io.provenance.explorer.domain.models.explorer.GasStats
 import io.provenance.explorer.domain.models.explorer.TxData
-import io.provenance.explorer.domain.models.explorer.TxFee
 import io.provenance.explorer.domain.models.explorer.TxFeeData
 import io.provenance.explorer.domain.models.explorer.TxFeepayer
 import io.provenance.explorer.domain.models.explorer.TxGasVolume
@@ -42,11 +42,9 @@ import io.provenance.explorer.domain.models.explorer.toProcedureObject
 import io.provenance.explorer.grpc.extensions.denomAmountToPair
 import io.provenance.explorer.grpc.extensions.findAllMatchingEvents
 import io.provenance.explorer.grpc.extensions.removeFirstSlash
+import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.NHASH
-import io.provenance.msgfees.v1.eventMsgFees
-import io.provenance.msgfees.v1.msgAssessCustomMsgFeeRequest
-import net.pearx.kasechange.toTitleCase
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -111,7 +109,11 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findByHeight(height: Int) =
             TxCacheRecord.find { TxCacheTable.height eq height }
 
-        fun findByHash(hash: String) = transaction { TxCacheRecord.find { TxCacheTable.hash eq hash } }.firstOrNull()
+        fun findByHash(hash: String) = transaction {
+            TxCacheRecord.find { TxCacheTable.hash eq hash }
+                .orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
+                .toList()
+        }
 
         fun findSigsByHash(hash: String) = transaction { SignatureRecord.findByJoin(SigJoinType.TRANSACTION, hash) }
 
@@ -422,13 +424,14 @@ object TxSingleMessageCacheTable : IntIdTable(name = "tx_single_message_cache") 
     val gasUsed = integer("gas_used")
     val txMessageType = varchar("tx_message_type", 128)
     val processed = bool("processed")
+    val height = integer("height")
 }
 
 class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxSingleMessageCacheRecord>(TxSingleMessageCacheTable) {
 
-        fun buildInsert(txTime: DateTime, txHash: String, gasUsed: Int, type: String) =
-            listOf(0, txTime, txHash, gasUsed, type, false).toProcedureObject()
+        fun buildInsert(txInfo: TxData, gasUsed: Int, type: String) =
+            listOf(0, txInfo.txTimestamp, txInfo.txHash, gasUsed, type, false, txInfo.blockHeight).toProcedureObject()
 
         fun getGasStats(fromDate: DateTime, toDate: DateTime, granularity: String, msgType: String?) = transaction {
             val tblName = "tx_single_message_gas_stats_${granularity.lowercase()}"
@@ -485,6 +488,7 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var gasUsed by TxSingleMessageCacheTable.gasUsed
     var txMessageType by TxSingleMessageCacheTable.txMessageType
     var processed by TxSingleMessageCacheTable.processed
+    var height by TxSingleMessageCacheTable.height
 }
 
 object TxGasCacheTable : IntIdTable(name = "tx_gas_cache") {
@@ -494,20 +498,22 @@ object TxGasCacheTable : IntIdTable(name = "tx_gas_cache") {
     val gasUsed = integer("gas_used")
     val feeAmount = double("fee_amount").nullable()
     val processed = bool("processed").default(false)
+    val height = integer("height")
 }
 
 class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxGasCacheRecord>(TxGasCacheTable) {
 
-        fun buildInsert(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime, msgBasedFees: BigDecimal) =
+        fun buildInsert(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, msgFeeClient: MsgFeeGrpcClient, height: Int) =
             listOf(
                 0,
                 tx.txResponse.txhash,
-                txTime,
+                txInfo.txTimestamp,
                 tx.txResponse.gasWanted.toInt(),
                 tx.txResponse.gasUsed.toInt(),
-                tx.calcFeesPaid(msgBasedFees),
-                false
+                tx.calcFeesPaid(msgFeeClient, height),
+                false,
+                txInfo.blockHeight
             ).toProcedureObject()
 
         fun getGasVolume(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
@@ -557,6 +563,7 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var gasUsed by TxGasCacheTable.gasUsed
     var feeAmount by TxGasCacheTable.feeAmount
     var processed by TxGasCacheTable.processed
+    var height by TxGasCacheTable.height
 }
 
 object TxFeepayerTable : IntIdTable(name = "tx_feepayer") {
@@ -603,25 +610,6 @@ object TxFeeTable : IntIdTable(name = "tx_fee") {
 
 enum class FeeType { BASE_FEE_USED, BASE_FEE_OVERAGE, PRIORITY_FEE, MSG_BASED_FEE, CUSTOM_FEE }
 
-fun List<TxFeeRecord>.toFees() = this.groupBy { it.feeType }
-    .map { (k, v) -> TxFee(k.toTitleCase(), v.map { it.toFeeCoinStr() }) }
-
-fun TxFeeRecord.toFeeCoinStr() =
-    FeeCoinStr(
-        this.amount.stringfy(),
-        this.marker,
-        this.msgType,
-        this.recipient,
-        this.origFees?.list
-    )
-
-fun List<TxFeeRecord>.toFeePaid(altDenom: String) =
-    this.sumOf { it.amount }.toCoinStr(this.firstOrNull()?.marker ?: altDenom)
-
-fun getCustomFeeProtoType() = msgAssessCustomMsgFeeRequest { }.getType()
-const val CUSTOM_FEE_MSG_TYPE = "custom_fee"
-fun getEventMsgFeesType() = eventMsgFees { }.getType()
-
 class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxFeeRecord>(TxFeeTable) {
 
@@ -630,40 +618,34 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
             this.exec(query)
         }
 
-        fun ServiceOuterClass.GetTxResponse.calcFeesPaid(msgBasedFees: BigDecimal) =
-            if (this.txResponse.code == 0) this.getFeeTotalPaid() else this.getFeeTotalPaid() - msgBasedFees
-
-        fun calcMarketRate(tx: ServiceOuterClass.GetTxResponse, msgBasedFees: BigDecimal) =
-            (tx.getFeeTotalPaid() - msgBasedFees) / tx.txResponse.gasWanted.toBigDecimal()
+        fun calcMarketRate(tx: ServiceOuterClass.GetTxResponse, totalBaseFees: BigDecimal) =
+            totalBaseFees / tx.txResponse.gasWanted.toBigDecimal()
 
         fun buildInserts(
             txInfo: TxData,
             tx: ServiceOuterClass.GetTxResponse,
             assetService: AssetService,
-            msgBasedFeeList: MutableList<TxFeeData>
+            msgBasedFeeList: MutableList<TxFeeData>,
+            msgFeeClient: MsgFeeGrpcClient,
+            height: Int
         ) =
             transaction {
-                val success = tx.txResponse.code == 0
                 val feeList = mutableListOf<String>()
                 // calc baseFeeUsed, baseFeeOverage in nhash
-                tx.getFeeTotalPaid().let { totalFeeAmount ->
-                    val marketRate = calcMarketRate(tx, msgBasedFeeList.totalMsgBasedFees())
+                tx.txResponse.getTotalBaseFees(msgFeeClient, height).let { totalBaseFeeAmount ->
+                    val marketRate = calcMarketRate(tx, totalBaseFeeAmount)
                     var baseFeeUsed = tx.txResponse.gasUsed.toBigDecimal() * marketRate
-                    var overage = totalFeeAmount - msgBasedFeeList.totalMsgBasedFees() - baseFeeUsed
-                    // if totalFeeAmount is less than baseFeeUsed (ie, fails on gas),
-                    // baseFeeUsed = totalFeeAmount, and overage = 0
-                    // Else save the used and overage as normal, regardless of tx success
-                    if (baseFeeUsed > totalFeeAmount) {
-                        baseFeeUsed = totalFeeAmount
+                    var overage = totalBaseFeeAmount - baseFeeUsed
+                    // If failed, set to totalBaseFeeAmount as identified
+                    if (!tx.success()) {
+                        baseFeeUsed = totalBaseFeeAmount
                         overage = BigDecimal.ZERO
                     }
                     Pair(overage, baseFeeUsed)
                 }.let { (baseFeeOverage, baseFeeUsed) ->
                     val nhash = assetService.getAssetRaw(NHASH).second
                     // insert used fee
-                    feeList.add(
-                        buildInsert(txInfo, BASE_FEE_USED.name, nhash.id.value, nhash.denom, baseFeeUsed)
-                    )
+                    feeList.add(buildInsert(txInfo, BASE_FEE_USED.name, nhash.id.value, nhash.denom, baseFeeUsed))
                     // insert paid too much fee if > 0
                     if (baseFeeOverage > BigDecimal.ZERO)
                         feeList.add(
@@ -676,7 +658,7 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                             )
                         )
                     // insert additional fees grouped by msg type
-                    if (success)
+                    if (tx.success())
                         msgBasedFeeList.forEach { fee ->
                             val feeType =
                                 if (fee.msgType == CUSTOM_FEE_MSG_TYPE) CUSTOM_FEE.name else MSG_BASED_FEE.name
@@ -687,7 +669,7 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                                     nhash.id.value,
                                     nhash.denom,
                                     fee.amount,
-                                    fee.recipient,
+                                    fee.recipient?.ifEmpty { null },
                                     fee.msgType,
                                     fee.origFees
                                 )
@@ -697,9 +679,11 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                 feeList
             }
 
-        fun MutableList<TxFeeData>.totalMsgBasedFees() = this.sumOf { it.amount }
-
-        fun identifyMsgBasedFees(tx: ServiceOuterClass.GetTxResponse): MutableList<TxFeeData> {
+        fun identifyMsgBasedFees(
+            tx: ServiceOuterClass.GetTxResponse,
+            msgFeeClient: MsgFeeGrpcClient,
+            height: Int
+        ): MutableList<TxFeeData> {
             val msgToFee = mutableListOf<TxFeeData>()
             // find tx level msg event
             val definedMsgFeeList = tx.txResponse.eventsList
@@ -733,7 +717,7 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                     customFeeMap[fee.recipient]?.let { CustomFeeList(it) }
                 )
                 msgToFee.add(data)
-            }
+            } ?: msgToFee.addAll(tx.identifyMsgBasedFeesOld(msgFeeClient, height))
             return msgToFee
         }
 

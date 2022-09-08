@@ -40,16 +40,31 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Improvements
 * Removed calls to Figment #385
+* Added API to check account balance at height #387
 
 ### Bug Fixes
 * Swapped `Long` for `BigDecimal` in places that will need it, specifically for large nhash quantities #380
 * Rounding circulating supply, community pool values as those are whole `nhash` values #381
 * Fix Null pointer on reading to EventFee object
+* Fixed calcs for tx fees, including failed #387
+* Updated tx hash uniqueness to include block height #384
+  * Added `blockHeight` query param to APIs where tx hash is used as the identifier
+  * Updated the tx detail response to include a list of other blocks the hash was found in
 
 ### Data
 * Migration 1.67 - Adding CMC data caching support #388
   * Added `token_historical_daily` table
   * Inserted `cache_update` record for `utility_token_latest` key
+* Migration 1.68 - Fixing `tx_fee` data, again #387
+  * Update `recipient` values that are blank to `null`
+  * Delete duplicate fee records due to incorrect unique key
+  * Correct the unique key, and update the ingest procedure to use it
+* Migration 1.69 - Adding height uniqueness to tx hash keys #384
+  * Addressed `tx_cache`, `gov_deposit`, `tx_address_join`, `tx_feepayer`, `tx_gas_cache`, `tx_marker_join`,
+    `tx_nft_join`, `tx_single_message_cache`, `tx_sm_code`, `tx_sm_contract`, `validator_market_rate`, `add_tx()`, `add_tx_debug()`
+* Migration 1.70 - Update `tx_fee` records for non-fee failures #387
+  * Updated `BASE_FEE_USED` fee type to `0`
+  * Deleted any extra records
 
 ## [v5.0.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.3.1) - 2022-07-28
 ### Release Name: Odoric of Pordenone

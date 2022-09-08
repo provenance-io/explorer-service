@@ -76,4 +76,13 @@ Fee processing
 * Recipient can come from the custom msg fee, otherwise null
 
 
-?? Will the tx level event roll up all fees based on type and recipient
+
+Total Base fee designation
+* on success, use tx -> basefee event for total base fee paid (total - msg fees)
+  * If doesnt exist, fallback to tx -> fee event
+  * If doesnt exist, fallback to basic calc used now
+* on failure, use coin_spent -> amount for total base fee paid
+  * If doesnt exist, fallback to basic calc used now 
+* on failure no fees paid, if coin_spent is null, set to 0 as base fee paid
+
+https://github.com/cosmos/cosmos-sdk/blob/35ae2c4c72d4aeb33447d5a7af23ca47f786606e/x/auth/ante/sigverify.go#L198
