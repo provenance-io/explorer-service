@@ -16,7 +16,6 @@ import io.grpc.stub.MetadataUtils
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
-import io.provenance.explorer.domain.core.toBech32Data
 import io.provenance.explorer.domain.extensions.diff
 import io.provenance.explorer.domain.extensions.edPubKeyToBech32
 import io.provenance.explorer.domain.extensions.secp256k1PubKeyToBech32
@@ -24,7 +23,6 @@ import io.provenance.explorer.domain.extensions.secp256r1PubKeyToBech32
 import io.provenance.explorer.domain.extensions.toCoinStrList
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toPercentage
-import io.provenance.explorer.domain.extensions.toSha256
 import io.provenance.explorer.domain.models.explorer.AccountVestingInfo
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.DistParams
@@ -224,18 +222,6 @@ fun Any.isVesting() =
         this.typeUrl.getTypeShortName() == Vesting.DelayedVestingAccount::class.java.simpleName ||
         this.typeUrl.getTypeShortName() == Vesting.PeriodicVestingAccount::class.java.simpleName ||
         this.typeUrl.getTypeShortName() == Vesting.PermanentLockedAccount::class.java.simpleName
-
-//endregion
-
-//region IBC
-
-// TODO: Once cosmos-sdk implements a grpc endpoint for this we can replace this with grpc Issue: https://github.com/cosmos/cosmos-sdk/issues/9437
-fun getEscrowAccountAddress(portId: String, channelId: String, hrpPrefix: String): String {
-    val contents = "$portId/$channelId".toByteArray()
-    val preImage = "ics20-1".encodeToByteArray() + 0x0.toByte() + contents
-    val hash = preImage.toSha256().copyOfRange(0, 20)
-    return hash.toBech32Data(hrpPrefix).address
-}
 
 //endregion
 

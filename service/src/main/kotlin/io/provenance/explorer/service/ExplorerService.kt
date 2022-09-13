@@ -311,8 +311,8 @@ class ExplorerService(
         val mintParams = async { accountClient.getMintParams().params }
         val slashingParams = validatorClient.getSlashingParams().params
         val stakingParams = validatorClient.getStakingParams().params
-        val transferParams = ibcClient.getTransferParams().params
-        val clientParams = ibcClient.getClientParams().params
+        val transferParams = async { ibcClient.getTransferParams().params }
+        val clientParams = async { ibcClient.getClientParams().params }
         val attrParams = attrClient.getAttrParams().params
         val markerParams = markerClient.getMarkerParams().params
         val metadataParams = metadataClient.getMetadataParams().params
@@ -334,8 +334,8 @@ class ExplorerService(
                 slashingParams.toDto(),
                 stakingParams.toObjectNodePrint(protoPrinter),
                 IBCParams(
-                    transferParams.toObjectNodePrint(protoPrinter),
-                    clientParams.toObjectNodePrint(protoPrinter),
+                    transferParams.await().toObjectNodePrint(protoPrinter),
+                    clientParams.await().toObjectNodePrint(protoPrinter),
                 ),
             ),
             ProvParams(

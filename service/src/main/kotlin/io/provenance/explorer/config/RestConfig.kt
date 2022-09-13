@@ -3,6 +3,8 @@ package io.provenance.explorer.config
 import com.google.protobuf.util.JsonFormat
 import cosmos.auth.v1beta1.Auth
 import cosmos.authz.v1beta1.Authz
+import cosmos.authz.v1beta1.Authz.CountAuthorization
+import cosmos.authz.v1beta1.Authz.GrantAuthorization
 import cosmos.authz.v1beta1.Event
 import cosmos.bank.v1beta1.Tx
 import cosmos.crypto.ed25519.Keys
@@ -393,5 +395,7 @@ fun miscAnys() = listOf(
     Feegrant.PeriodicAllowance.getDescriptor(),
     Feegrant.AllowedMsgAllowance.getDescriptor(),
     cosmos.staking.v1beta1.Authz.StakeAuthorization.getDescriptor(),
-    MarkerTransferAuthorization.getDescriptor()
+    MarkerTransferAuthorization.getDescriptor(),
+    CountAuthorization.getDescriptor(),
+    GrantAuthorization.getDescriptor()
 )

@@ -39,6 +39,8 @@ import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.grpc.extensions.denomEventRegexParse
 import io.provenance.explorer.grpc.extensions.scrubQuotes
 import io.provenance.explorer.grpc.v1.IbcGrpcClient
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 
@@ -52,12 +54,12 @@ class IbcService(
 ) {
     protected val logger = logger(IbcService::class)
 
-    fun saveIbcChannel(port: String, channel: String) = transaction {
-        val channelRes = ibcClient.getChannel(port, channel)
-        val client = ibcClient.getClientForChannel(port, channel)
-        val escrowAddr = ibcClient.getEscrowAddress(port, channel, props.provAccPrefix())
-        val escrowAccount = accountService.getAccountRaw(escrowAddr)
-        IbcChannelRecord.getOrInsert(port, channel, channelRes, client, escrowAccount)
+    fun saveIbcChannel(port: String, channel: String) = runBlocking {
+        val channelRes = async { ibcClient.getChannel(port, channel) }
+        val client = async { ibcClient.getClientForChannel(port, channel) }
+        val escrowAddr = async { ibcClient.getEscrowAddress(port, channel, props.provAccPrefix()) }
+        val escrowAccount = accountService.getAccountRaw(escrowAddr.await())
+        IbcChannelRecord.getOrInsert(port, channel, channelRes.await(), client.await(), escrowAccount)
     }
 
     fun buildIbcLedger(ledger: LedgerInfo, txData: TxData, match: IbcLedgerRecord?) =
@@ -300,7 +302,7 @@ class IbcService(
                 )
             } ?: throw ResourceNotFoundException("Invalid asset: ${ibcHash.getIbcDenom()}")
 
-    fun getDenomTrace(ibcHash: String) = ibcClient.getDenomTrace(ibcHash)
+    fun getDenomTrace(ibcHash: String) = runBlocking { ibcClient.getDenomTrace(ibcHash) }
 
     fun getBalanceListByDenom() = transaction {
         IbcLedgerRecord.getByDenom().map {
