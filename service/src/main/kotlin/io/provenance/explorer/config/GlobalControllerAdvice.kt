@@ -2,6 +2,7 @@ package io.provenance.explorer.config
 
 import io.grpc.StatusRuntimeException
 import io.provenance.explorer.domain.exceptions.InvalidArgumentException
+import io.provenance.explorer.domain.exceptions.InvalidJwtException
 import io.provenance.explorer.domain.exceptions.TendermintApiException
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
@@ -25,6 +26,15 @@ class GlobalControllerAdvice : ResponseEntityExceptionHandler() {
     fun grpcStatusException(ex: StatusRuntimeException, request: HttpServletRequest): ResponseEntity<Any> {
         logger.info("404 on '${request.requestURI}' with error '${ex.message}'")
         return ResponseEntity<Any>(ex.message, HttpHeaders(), HttpStatus.NOT_FOUND)
+    }
+
+    /**
+     * Catch InvalidJwtException, return 403
+     */
+    @ExceptionHandler(InvalidJwtException::class)
+    fun handleInvalidJwt(ex: InvalidJwtException, request: HttpServletRequest): ResponseEntity<Any> {
+        logger.info("403 on '${request.requestURI}' with error '${ex.message}'")
+        return ResponseEntity<Any>(ex.message, HttpHeaders(), HttpStatus.FORBIDDEN)
     }
 
     /**

@@ -16,8 +16,10 @@ import cosmos.staking.v1beta1.queryValidatorDelegationsRequest
 import cosmos.staking.v1beta1.queryValidatorRequest
 import cosmos.staking.v1beta1.queryValidatorUnbondingDelegationsRequest
 import cosmos.staking.v1beta1.queryValidatorsRequest
+import cosmos.staking.v1beta1.validator
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
+import io.provenance.explorer.grpc.extensions.addBlockHeightToQuery
 import io.provenance.explorer.grpc.extensions.getPagination
 import org.springframework.stereotype.Component
 import java.net.URI
@@ -89,8 +91,22 @@ class ValidatorGrpcClient(channelUri: URI) {
         return validators
     }
 
-    fun getStakingValidator(address: String) =
-        stakingClient.validator(queryValidatorRequest { validatorAddr = address }).validator
+    fun getStakingValidator(address: String, height: Int? = null): Staking.Validator {
+        val client = stakingClient
+        if (height != null)
+            client.addBlockHeightToQuery(height.toString())
+        return client.validator(queryValidatorRequest { validatorAddr = address }).validator
+    }
+
+    fun getStakingValidatorOrNull(address: String, height: Int? = null): Staking.Validator? =
+        try {
+            val client = stakingClient
+            if (height != null)
+                client.addBlockHeightToQuery(height.toString())
+            client.validator(queryValidatorRequest { validatorAddr = address }).validator
+        } catch (e: Exception) {
+            null
+        }
 
     fun getStakingValidatorDelegations(address: String, offset: Int, limit: Int) =
         stakingClient.validatorDelegations(

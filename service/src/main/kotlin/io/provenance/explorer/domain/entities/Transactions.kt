@@ -13,11 +13,9 @@ import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_USED
 import io.provenance.explorer.domain.entities.FeeType.CUSTOM_FEE
 import io.provenance.explorer.domain.entities.FeeType.MSG_BASED_FEE
 import io.provenance.explorer.domain.extensions.CUSTOM_FEE_MSG_TYPE
-import io.provenance.explorer.domain.extensions.calcFeesPaid
 import io.provenance.explorer.domain.extensions.exec
 import io.provenance.explorer.domain.extensions.getCustomFeeProtoType
 import io.provenance.explorer.domain.extensions.getEventMsgFeesType
-import io.provenance.explorer.domain.extensions.getTotalBaseFees
 import io.provenance.explorer.domain.extensions.identifyMsgBasedFeesOld
 import io.provenance.explorer.domain.extensions.map
 import io.provenance.explorer.domain.extensions.startOfDay
@@ -504,14 +502,18 @@ object TxGasCacheTable : IntIdTable(name = "tx_gas_cache") {
 class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxGasCacheRecord>(TxGasCacheTable) {
 
-        fun buildInsert(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, msgFeeClient: MsgFeeGrpcClient, height: Int) =
+        fun buildInsert(
+            tx: ServiceOuterClass.GetTxResponse,
+            txInfo: TxData,
+            totalBaseFees: BigDecimal
+        ) =
             listOf(
                 0,
                 tx.txResponse.txhash,
                 txInfo.txTimestamp,
                 tx.txResponse.gasWanted.toInt(),
                 tx.txResponse.gasUsed.toInt(),
-                tx.calcFeesPaid(msgFeeClient, height),
+                totalBaseFees,
                 false,
                 txInfo.blockHeight
             ).toProcedureObject()
@@ -626,13 +628,12 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
             tx: ServiceOuterClass.GetTxResponse,
             assetService: AssetService,
             msgBasedFeeList: MutableList<TxFeeData>,
-            msgFeeClient: MsgFeeGrpcClient,
-            height: Int
+            totalBaseFees: BigDecimal
         ) =
             transaction {
                 val feeList = mutableListOf<String>()
                 // calc baseFeeUsed, baseFeeOverage in nhash
-                tx.txResponse.getTotalBaseFees(msgFeeClient, height).let { totalBaseFeeAmount ->
+                totalBaseFees.let { totalBaseFeeAmount ->
                     val marketRate = calcMarketRate(tx, totalBaseFeeAmount)
                     var baseFeeUsed = tx.txResponse.gasUsed.toBigDecimal() * marketRate
                     var overage = totalBaseFeeAmount - baseFeeUsed

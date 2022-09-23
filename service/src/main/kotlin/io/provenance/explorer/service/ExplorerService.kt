@@ -130,15 +130,15 @@ class ExplorerService(
         validatorsResponse: Query.GetValidatorSetByHeightResponse
     ) = let {
         val proposer = transaction { BlockProposerRecord.findById(blockResponse.block.height())!! }
-        val stakingValidator = validatorService.getStakingValidator(proposer.proposerOperatorAddress).json
+        val stakingValidator = validatorService.getStakingValidator(proposer.proposerOperatorAddress)
         val votingVals = nextBlock?.getVotingSet(props, Types.BlockIDFlag.BLOCK_ID_FLAG_ABSENT_VALUE)?.keys
         BlockSummary(
             height = blockResponse.block.height(),
             hash = blockResponse.blockId.hash.toHash(),
             time = blockResponse.block.header.time.formattedString(),
             proposerAddress = proposer.proposerOperatorAddress,
-            moniker = stakingValidator.description.moniker,
-            icon = validatorService.getImgUrl(stakingValidator.description.identity),
+            moniker = stakingValidator.moniker,
+            icon = stakingValidator.imageUrl,
             votingPower = CountTotal(
                 if (votingVals != null)
                     validatorsResponse.validatorsList.filter { it.address in votingVals }

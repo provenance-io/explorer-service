@@ -128,8 +128,7 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
     override var hitCount by BlockCacheTable.hitCount
 }
 
-object BlockIndexTable : IdTable<Int>(name = "block_index") {
-    override val id = integer("id").entityId()
+object BlockIndexTable : IntIdTable(name = "block_index") {
     val maxHeightRead = integer("max_height_read").nullable()
     val minHeightRead = integer("min_height_read").nullable()
     val lastUpdate = datetime("last_update")

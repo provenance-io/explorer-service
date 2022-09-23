@@ -43,6 +43,7 @@ import io.provenance.explorer.domain.entities.buildInsert
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.exceptions.InvalidArgumentException
 import io.provenance.explorer.domain.extensions.getSigners
+import io.provenance.explorer.domain.extensions.getTotalBaseFees
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.translateAddress
@@ -302,10 +303,11 @@ class AsyncCachingV2(
     ) =
         txUpdate.apply {
             val msgBasedFeeMap = TxFeeRecord.identifyMsgBasedFees(tx, msgFeeClient, proposerRec.blockHeight)
-            this.txFees.addAll(TxFeeRecord.buildInserts(txInfo, tx, assetService, msgBasedFeeMap, msgFeeClient, proposerRec.blockHeight))
-            this.txGasFee = TxGasCacheRecord.buildInsert(tx, txInfo, msgFeeClient, proposerRec.blockHeight)
+            val totalBaseFees = tx.txResponse.getTotalBaseFees(msgFeeClient, proposerRec.blockHeight, props)
+            this.txFees.addAll(TxFeeRecord.buildInserts(txInfo, tx, assetService, msgBasedFeeMap, totalBaseFees))
+            this.txGasFee = TxGasCacheRecord.buildInsert(tx, txInfo, totalBaseFees)
             this.validatorMarketRate =
-                ValidatorMarketRateRecord.buildInsert(txInfo, proposerRec.proposerOperatorAddress, tx, msgFeeClient, proposerRec.blockHeight)
+                ValidatorMarketRateRecord.buildInsert(txInfo, proposerRec.proposerOperatorAddress, tx, totalBaseFees)
         }
 
     fun saveMessages(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse, txUpdate: TxUpdate) = transaction {

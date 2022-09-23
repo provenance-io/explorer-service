@@ -3,6 +3,7 @@ package io.provenance.explorer.domain.extensions
 import cosmos.base.abci.v1beta1.Abci
 import cosmos.tx.v1beta1.ServiceOuterClass
 import cosmos.tx.v1beta1.TxOuterClass.Tx
+import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.entities.TxFeeRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.models.explorer.FeeCoinStr
@@ -16,9 +17,6 @@ import io.provenance.msgfees.v1.eventMsgFees
 import io.provenance.msgfees.v1.msgAssessCustomMsgFeeRequest
 import net.pearx.kasechange.toTitleCase
 import java.math.BigDecimal
-
-fun ServiceOuterClass.GetTxResponse.getFeeTotalPaid() =
-    this.tx.authInfo.fee.amountList.first { it.denom == NHASH }.amount.toBigDecimal()
 
 fun Abci.TxResponse.getFeeTotalPaid() =
     this.tx.unpack(Tx::class.java).authInfo.fee.amountList.first { it.denom == NHASH }.amount.toBigDecimal()
@@ -42,24 +40,27 @@ fun getCustomFeeProtoType() = msgAssessCustomMsgFeeRequest { }.getType()
 const val CUSTOM_FEE_MSG_TYPE = "custom_fee"
 fun getEventMsgFeesType() = eventMsgFees { }.getType()
 
-fun ServiceOuterClass.GetTxResponse.calcFeesPaid(msgFeeClient: MsgFeeGrpcClient, height: Int) =
-    if (this.txResponse.code == 0) this.getFeeTotalPaid() else this.txResponse.getFailureTotalBaseFee(msgFeeClient, height)
+fun Abci.TxResponse.defaultBaseFees(msgFeeClient: MsgFeeGrpcClient, height: Int) =
+    BigDecimal(this.gasWanted * msgFeeClient.getFloorGasPriceOrDefault(height))
 
-fun MutableList<TxFeeData>.totalMsgBasedFees() = this.sumOf { it.amount }
-
+// If block lands in bug range, use wanted * gas price param
 // If basefee event is present, use that
 // If not, if fee event is present, use that
 // If not, use the total fee paid (usually used for older txs)
-fun Abci.TxResponse.getSuccessTotalBaseFee() =
-    this.eventsList
-        .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("basefee") }
-        ?.attributesList?.first { it.key.toStringUtf8() == "basefee" }
-        ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.toBigDecimal()
-        ?: this.eventsList
-            .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("fee") }
-            ?.attributesList?.first { it.key.toStringUtf8() == "fee" }
+fun Abci.TxResponse.getSuccessTotalBaseFee(msgFeeClient: MsgFeeGrpcClient, height: Int, props: ExplorerProperties) =
+    if (props.inOneElevenBugRange(height)) this.defaultBaseFees(msgFeeClient, height)
+    else
+        this.eventsList
+            .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("basefee") }
+            ?.attributesList?.first { it.key.toStringUtf8() == "basefee" }
             ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.toBigDecimal()
-        ?: this.getFeeTotalPaid()
+            ?: (
+                this.eventsList
+                    .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("fee") }
+                    ?.attributesList?.first { it.key.toStringUtf8() == "fee" }
+                    ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.toBigDecimal()
+                    ?: this.getFeeTotalPaid()
+                )
 
 // If min_fee_charged event is present, use that
 // if not, if coin_spent event is present, use that
@@ -71,20 +72,27 @@ fun Abci.TxResponse.getFailureTotalBaseFee(msgFeeClient: MsgFeeGrpcClient, heigh
         .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("min_fee_charged") }
         ?.attributesList?.first { it.key.toStringUtf8() == "min_fee_charged" }
         ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.toBigDecimal()
-        ?: this.eventsList
-            .firstOrNull { it.type == "coin_spent" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("amount") }
-            ?.attributesList?.first { it.key.toStringUtf8() == "amount" }
-            ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.toBigDecimal()
-        ?: sigErrorComboList.firstOrNull { it == Pair(this.codespace, this.code) }?.let { BigDecimal.ZERO }
-        ?: if (msgFeeClient.getMsgFeesAtHeight(height).msgFeesList.isNotEmpty()) {
-            val baseFee = BigDecimal(this.gasWanted * (msgFeeClient.getFloorGasPriceAtHeight(height) ?: 1905))
-            if (baseFee > this.getFeeTotalPaid()) this.getFeeTotalPaid() else baseFee
-        } else this.getFeeTotalPaid()
+        ?: (
+            this.eventsList
+                .firstOrNull { it.type == "coin_spent" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("amount") }
+                ?.attributesList?.first { it.key.toStringUtf8() == "amount" }
+                ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.toBigDecimal()
+                ?: (
+                    sigErrorComboList.firstOrNull { it == Pair(this.codespace, this.code) }?.let { BigDecimal.ZERO }
+                        ?: (
+                            if (msgFeeClient.getMsgFeesAtHeight(height).msgFeesList.isNotEmpty()) {
+                                val baseFee = this.defaultBaseFees(msgFeeClient, height)
+                                if (baseFee > this.getFeeTotalPaid()) this.getFeeTotalPaid() else baseFee
+                            } else this.getFeeTotalPaid()
+                            )
+                    )
+            )
 
 val sigErrorComboList = listOf("sdk" to 8, "sdk" to 32)
 
-fun Abci.TxResponse.getTotalBaseFees(msgFeeClient: MsgFeeGrpcClient, height: Int) =
-    if (this.code == 0) this.getSuccessTotalBaseFee() else this.getFailureTotalBaseFee(msgFeeClient, height)
+fun Abci.TxResponse.getTotalBaseFees(msgFeeClient: MsgFeeGrpcClient, height: Int, props: ExplorerProperties) =
+    if (this.code == 0) this.getSuccessTotalBaseFee(msgFeeClient, height, props)
+    else this.getFailureTotalBaseFee(msgFeeClient, height)
 
 // Old way to find msg fees, before the events were in place
 fun ServiceOuterClass.GetTxResponse.identifyMsgBasedFeesOld(msgFeeClient: MsgFeeGrpcClient, height: Int): List<TxFeeData> {

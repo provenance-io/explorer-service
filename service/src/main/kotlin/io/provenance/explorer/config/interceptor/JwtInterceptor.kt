@@ -1,6 +1,7 @@
 package io.provenance.explorer.config.interceptor
 
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.domain.exceptions.InvalidJwtException
 import io.provenance.explorer.domain.extensions.fromBase64
 import org.springframework.http.HttpHeaders
 import org.springframework.web.servlet.HandlerInterceptor
@@ -22,9 +23,13 @@ class JwtInterceptor : HandlerInterceptor {
         val jwt = request.getHeader(HttpHeaders.AUTHORIZATION)?.removePrefix("Bearer")?.trimStart()
 
         if (!jwt.isNullOrBlank()) {
-            val authPayload = jwt.toAuthPayload()
-            request.setAttribute(X_ADDRESS, authPayload.addr)
-            request.setAttribute(X_PUBLIC_KEY, authPayload.sub)
+            try {
+                val authPayload = jwt.toAuthPayload()
+                request.setAttribute(X_ADDRESS, authPayload.addr)
+                request.setAttribute(X_PUBLIC_KEY, authPayload.sub)
+            } catch (e: Exception) {
+                throw InvalidJwtException("JWT token is invalid, permission denied")
+            }
         }
 
         return super.preHandle(

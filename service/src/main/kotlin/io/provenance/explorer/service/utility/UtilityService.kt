@@ -11,6 +11,7 @@ import io.provenance.explorer.domain.entities.TxFeeRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.UnknownTxType
+import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.extensions.fromBase64
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.models.explorer.BlockProposer
@@ -122,6 +123,8 @@ class UtilityService(
             "( '$proto', '$module', '$type', '$category' )"
         }
     }
+
+    fun refreshCurrentValidatorState() = ValidatorStateRecord.refreshCurrentStateView()
 }
 
 data class ProtoBreakout(
