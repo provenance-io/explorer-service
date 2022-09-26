@@ -42,6 +42,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Removed calls to Figment #385
 * Added API to check account balance at height #387
 * Updated Prov Protos from 1.11.0 to 1.12.0 #391
+* Added proper exception on invalid JWT token #394
+* Added caching on image urls from Keybase #396
+  * Reduces calls to Keybase so it doesnt yell at us
 
 ### Bug Fixes
 * Swapped `Long` for `BigDecimal` in places that will need it, specifically for large nhash quantities #380
@@ -51,6 +54,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Updated tx hash uniqueness to include block height #384
   * Added `blockHeight` query param to APIs where tx hash is used as the identifier
   * Updated the tx detail response to include a list of other blocks the hash was found in
+* Fixed calc for tx fees, including success, during 1.11 block range #397
+* Fixed error on validator fetch when validator is no longer in state #395
 
 ### Data
 * Migration 1.67 - Adding CMC data caching support #388
@@ -66,7 +71,24 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Migration 1.70 - Update `tx_fee` records for non-fee failures #387
   * Updated `BASE_FEE_USED` fee type to `0`
   * Deleted any extra records
-
+* Migration 1.71 - Update rollup functions #397
+  * Updated `update_gas_fee_volume()` function to aggregate fees from `tx_fee` table
+  * Updated `insert_tx_gas_cache()` function to reset `processed` to false and update the fee amount
+    * This will ensure the rollups will be reaggregated
+  * Updated `insert_validator_market_rate()` to update the market rate value on duplicate
+  * Updated `insert_tx_fees()` to delete all related fee records first, then insert
+  * Inserted new `cache_update` record for 1.11 block range to reprocess those blocks for correct fees
+* Migration 1.72 - Update `validator_state` to include new `removed` field #395
+  * Added `removed` column
+  * Updated `current_validator_state` view to include the new column
+  * Updated `get_validator_list()` function to include new column
+  * Updated `get_all_validator_state()` function to include new column
+* Migration 1.73 - Add `address_image` table to store image urls against an address #396
+  * Added `address_image` table
+  * Updated `current_validator_state` view to include the new table join
+  * Updated `get_validator_list()` function to include new column from the view
+  * Updated `get_all_validator_state()` function to include new column from the view
+ 
 ## [v5.0.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.3.1) - 2022-07-28
 ### Release Name: Odoric of Pordenone
 

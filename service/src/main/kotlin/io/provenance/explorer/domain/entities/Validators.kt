@@ -12,13 +12,12 @@ import io.provenance.explorer.domain.entities.ValidatorState.ACTIVE
 import io.provenance.explorer.domain.entities.ValidatorState.ALL
 import io.provenance.explorer.domain.entities.ValidatorState.CANDIDATE
 import io.provenance.explorer.domain.entities.ValidatorState.JAILED
+import io.provenance.explorer.domain.entities.ValidatorState.REMOVED
 import io.provenance.explorer.domain.extensions.execAndMap
-import io.provenance.explorer.domain.extensions.getTotalBaseFees
 import io.provenance.explorer.domain.extensions.mapper
 import io.provenance.explorer.domain.extensions.toDecimal
 import io.provenance.explorer.domain.models.explorer.CurrentValidatorState
 import io.provenance.explorer.domain.models.explorer.TxData
-import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -37,6 +36,7 @@ import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
+import java.math.BigDecimal
 import java.sql.ResultSet
 
 object ValidatorsCacheTable : CacheIdTable<Int>(name = "validators_cache") {
@@ -104,7 +104,7 @@ class StakingValidatorCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var consensusAddress by StakingValidatorCacheTable.consensusAddress
 }
 
-enum class ValidatorState { ACTIVE, CANDIDATE, JAILED, ALL }
+enum class ValidatorState { ACTIVE, CANDIDATE, JAILED, REMOVED, ALL }
 
 object ValidatorStateTable : IntIdTable(name = "validator_state") {
     val operatorAddrId = integer("operator_addr_id")
@@ -116,6 +116,7 @@ object ValidatorStateTable : IntIdTable(name = "validator_state") {
     val tokenCount = decimal("token_count", 100, 0)
     val json = jsonb<ValidatorStateTable, Staking.Validator>("json", OBJECT_MAPPER)
     val commissionRate = decimal("commission_rate", 19, 18)
+    val removed = bool("removed")
 }
 
 class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -135,6 +136,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.tokenCount] = json.tokens.toBigDecimal()
                     it[this.json] = json
                     it[this.commissionRate] = json.commission.commissionRates.rate.toDecimal()
+                    it[this.removed] = json.tokens.toBigDecimal() == BigDecimal.ZERO
                 }
             }
 
@@ -230,7 +232,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
         ) =
             transaction {
                 when (searchState) {
-                    ACTIVE, JAILED, CANDIDATE -> {
+                    ACTIVE, JAILED, CANDIDATE, REMOVED -> {
                         val offsetDefault = offset ?: 0
                         val limitDefault = limit ?: 10000
                         val query = "SELECT * FROM get_validator_list(?, ?, ?, ?, ?, ?) "
@@ -264,7 +266,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
             consensusAddrSet: List<String>? = null
         ) = transaction {
             when (searchState) {
-                ACTIVE, JAILED, CANDIDATE -> {
+                ACTIVE, JAILED, CANDIDATE, REMOVED -> {
                     val offsetDefault = 0
                     val limitDefault = 10000
                     val query = "SELECT count(*) AS count FROM get_validator_list(?, ?, ?, ?, ?, ?) "
@@ -300,6 +302,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
     var tokenCount by ValidatorStateTable.tokenCount
     var json by ValidatorStateTable.json
     var commissionRate by ValidatorStateTable.commissionRate
+    var removed by ValidatorStateTable.removed
 }
 
 fun ResultSet.toCurrentValidatorState() = CurrentValidatorState(
@@ -316,6 +319,8 @@ fun ResultSet.toCurrentValidatorState() = CurrentValidatorState(
     this.getString("consensus_pubkey"),
     ValidatorState.valueOf(this.getString("validator_state").uppercase()),
     this.getBigDecimal("commission_rate"),
+    this.getBoolean("removed"),
+    this.getString("image_url")
 )
 
 fun ResultSet.toCount() = this.getLong("count")
@@ -336,8 +341,7 @@ class ValidatorMarketRateRecord(id: EntityID<Int>) : IntEntity(id) {
             txInfo: TxData,
             proposer: String,
             tx: ServiceOuterClass.GetTxResponse,
-            msgFeeClient: MsgFeeGrpcClient,
-            height: Int
+            totalBaseFees: BigDecimal
         ) =
             listOf(
                 0,
@@ -346,7 +350,7 @@ class ValidatorMarketRateRecord(id: EntityID<Int>) : IntEntity(id) {
                 proposer,
                 0,
                 txInfo.txHash,
-                TxFeeRecord.calcMarketRate(tx, tx.txResponse.getTotalBaseFees(msgFeeClient, height)),
+                TxFeeRecord.calcMarketRate(tx, totalBaseFees),
                 tx.txResponse.code == 0
             ).toProcedureObject()
 

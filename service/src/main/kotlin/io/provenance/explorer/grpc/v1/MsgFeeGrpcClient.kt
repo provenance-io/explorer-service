@@ -65,4 +65,6 @@ class MsgFeeGrpcClient(channelUri: URI) {
             null
         }
     }
+
+    fun getFloorGasPriceOrDefault(height: Int) = getFloorGasPriceAtHeight(height) ?: 1905
 }

@@ -72,4 +72,8 @@ class UtilityController(private val us: UtilityService) {
     @ApiOperation("Parses and tries to save raw tx json, formatted as a string. Used for debugging a tx response")
     @PostMapping("/parse/tx_json/save")
     fun saveTxResponseObject(@RequestBody rawJson: String) = ResponseEntity.ok(us.saveRawTxJson(rawJson))
+
+    @ApiOperation("Refresh the current validator state view")
+    @GetMapping("/validator_refresh")
+    fun refreshValidatorStateView() = ResponseEntity.ok(us.refreshCurrentValidatorState())
 }

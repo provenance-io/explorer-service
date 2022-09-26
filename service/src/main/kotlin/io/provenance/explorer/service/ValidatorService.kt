@@ -11,6 +11,7 @@ import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.entities.AddressImageRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.MissedBlocksRecord
 import io.provenance.explorer.domain.entities.SpotlightCacheRecord
@@ -26,7 +27,6 @@ import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
 import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.avg
 import io.provenance.explorer.domain.extensions.get24HrBlockHeight
-import io.provenance.explorer.domain.extensions.getStatusString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.stringfy
 import io.provenance.explorer.domain.extensions.toCoinStr
@@ -65,6 +65,7 @@ import io.provenance.explorer.domain.models.explorer.ValidatorSummary
 import io.provenance.explorer.domain.models.explorer.ValidatorSummaryAbbrev
 import io.provenance.explorer.domain.models.explorer.ValidatorUptimeStats
 import io.provenance.explorer.domain.models.explorer.hourlyBlockCount
+import io.provenance.explorer.domain.models.explorer.zeroOutValidatorObj
 import io.provenance.explorer.grpc.extensions.toAddress
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import kotlinx.coroutines.runBlocking
@@ -104,8 +105,8 @@ class ValidatorService(
         transaction { ValidatorStateRecord.findByOperator(getActiveSet(), operatorAddress) }
             ?: saveValidator(operatorAddress)
 
-    fun saveValidator(address: String) = runBlocking {
-        grpcClient.getStakingValidator(address)
+    fun saveValidator(address: String, height: Int? = null) = runBlocking {
+        grpcClient.getStakingValidator(address, height)
             .let {
                 StakingValidatorCacheRecord.insertIgnore(
                     address,
@@ -119,6 +120,8 @@ class ValidatorService(
                         it.operatorAddress,
                         it
                     )
+                    getImgUrl(it.description.identity)
+                        ?.let { img -> AddressImageRecord.upsert(it.operatorAddress, img) }
                 }
             }.also { ValidatorStateRecord.refreshCurrentStateView() }
             .let { ValidatorStateRecord.findByOperator(getActiveSet(), address)!! }
@@ -151,13 +154,14 @@ class ValidatorService(
                     .let { (mbCount, window) -> CountTotal(mbCount.toBigInteger(), window) },
                 signingInfo?.startHeight ?: currentHeight.toLong(),
                 addr.consensusAddr.validatorUptime(slashingParams.signedBlocksWindow.toBigInteger(), currentHeight),
-                getImgUrl(stakingValidator.json.description.identity),
+                stakingValidator.imageUrl,
                 stakingValidator.json.description.details,
                 stakingValidator.json.description.website,
                 stakingValidator.json.description.identity,
-                stakingValidator.json.getStatusString(),
+                stakingValidator.currentState.toString().lowercase(),
                 if (stakingValidator.currentState != ACTIVE) stakingValidator.json.unbondingHeight else null,
-                if (stakingValidator.jailed) signingInfo?.jailedUntil?.toDateTime() else null
+                if (stakingValidator.jailed) signingInfo?.jailedUntil?.toDateTime() else null,
+                stakingValidator.removed
             )
         } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
@@ -220,6 +224,8 @@ class ValidatorService(
                             validator.operatorAddress,
                             validator
                         )
+                        getImgUrl(validator.description.identity)
+                            ?.let { img -> AddressImageRecord.upsert(validator.operatorAddress, img) }
                     }.let { true }
                 else false
             }.also { map -> if (map.contains(true)) ValidatorStateRecord.refreshCurrentStateView() }
@@ -232,10 +238,13 @@ class ValidatorService(
         var updated = false
         vals.forEach { v ->
             val record = ValidatorStateRecord.findByValId(getActiveSet(), v)!!
-            val data = grpcClient.getStakingValidator(record.operatorAddress)
+            val data = grpcClient.getStakingValidatorOrNull(record.operatorAddress, height) ?: record.json.zeroOutValidatorObj()
             if (record.blockHeight < height && data != record.json)
                 ValidatorStateRecord.insertIgnore(height, v, record.operatorAddress, data)
-                    .also { if (!updated) updated = true }
+                    .also {
+                        getImgUrl(data.description.identity)
+                            ?.let { img -> AddressImageRecord.upsert(record.operatorAddress, img) }
+                    }.also { if (!updated) updated = true }
         }
         return updated
     }
@@ -247,7 +256,7 @@ class ValidatorService(
                 currVal.json.description.moniker,
                 currVal.operatorAddress,
                 currVal.json.commission.commissionRates.rate.toDecimalString(),
-                getImgUrl(currVal.json.description.identity)
+                currVal.imageUrl
             )
         }
         PagedResults(recs.size.toLong().pageCountOfResults(recs.size), recs, recs.size.toLong())
@@ -313,9 +322,9 @@ class ValidatorService(
             commission = stakingVal.json.commission.commissionRates.rate.toDecimalString(),
             bondedTokens = CountStrTotal(stakingVal.json.tokens, null, NHASH),
             delegators = delegatorCount,
-            status = stakingVal.json.getStatusString(),
+            status = stakingVal.currentState.toString().lowercase(),
             unbondingHeight = if (stakingVal.currentState != ACTIVE) stakingVal.json.unbondingHeight else null,
-            imgUrl = getImgUrl(stakingVal.json.description.identity),
+            imgUrl = stakingVal.imageUrl,
             hr24Change = get24HrBondedChange(validator, hr24Validator),
             uptime = stakingVal.consensusAddr.validatorUptime(slashingWindow, height.toBigInteger())
         )

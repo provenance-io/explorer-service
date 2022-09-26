@@ -1,9 +1,16 @@
 package io.provenance.explorer.domain.models.explorer
 
 import cosmos.staking.v1beta1.Staking
+import cosmos.staking.v1beta1.copy
 import io.provenance.explorer.domain.entities.ValidatorState
 import org.joda.time.DateTime
 import java.math.BigDecimal
+
+fun Staking.Validator.zeroOutValidatorObj() =
+    this.copy {
+        this.delegatorShares = "0"
+        this.tokens = "0"
+    }
 
 data class ValidatorSummary(
     val moniker: String,
@@ -44,7 +51,8 @@ data class ValidatorDetails(
     val identity: String?,
     val status: String,
     val unbondingHeight: Long?,
-    val jailedUntil: DateTime?
+    val jailedUntil: DateTime?,
+    val removed: Boolean
 )
 
 data class Delegation(
@@ -102,7 +110,9 @@ data class CurrentValidatorState(
     val consensusAddr: String,
     val consensusPubKey: String,
     val currentState: ValidatorState,
-    val commissionRate: BigDecimal
+    val commissionRate: BigDecimal,
+    val removed: Boolean,
+    val imageUrl: String?
 )
 
 data class BlockLatencyData(

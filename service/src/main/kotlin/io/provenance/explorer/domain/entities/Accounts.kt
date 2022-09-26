@@ -11,11 +11,15 @@ import io.provenance.explorer.domain.extensions.isAddressAsType
 import io.provenance.explorer.grpc.extensions.getTypeShortName
 import io.provenance.explorer.service.getAccountType
 import io.provenance.marker.v1.MarkerAccount
+import org.jetbrains.exposed.dao.Entity
+import org.jetbrains.exposed.dao.EntityClass
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -182,10 +186,7 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.data] = data
                     it[this.isContract] = isContract
                 }.let { findById(it)!! }
-                )
-                .also {
-                    SignatureJoinRecord.insert(baseAccount.pubKey, SigJoinType.ACCOUNT, address)
-                }
+                ).also { SignatureJoinRecord.insert(baseAccount.pubKey, SigJoinType.ACCOUNT, address) }
         }
     }
 
@@ -195,4 +196,28 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
     var baseAccount by AccountTable.baseAccount
     var data by AccountTable.data
     var isContract by AccountTable.isContract
+}
+
+object AddressImageTable : IdTable<String>(name = "address_image") {
+    val address = varchar("address", 256)
+    override val id = address.entityId()
+    val imageUrl = text("image_url")
+}
+
+class AddressImageRecord(id: EntityID<String>) : Entity<String>(id) {
+    companion object : EntityClass<String, AddressImageRecord>(AddressImageTable) {
+
+        fun findByAddress(addr: String) = transaction { AddressImageRecord.findById(addr) }
+
+        fun upsert(addr: String, url: String) = transaction {
+            findByAddress(addr)?.apply { this.imageUrl = url }
+                ?: AddressImageTable.insert {
+                    it[this.address] = addr
+                    it[this.imageUrl] = url
+                }
+        }
+    }
+
+    var address by AddressImageTable.address
+    var imageUrl by AddressImageTable.imageUrl
 }

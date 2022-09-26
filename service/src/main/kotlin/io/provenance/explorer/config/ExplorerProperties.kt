@@ -22,7 +22,8 @@ class ExplorerProperties(
     val pricingUrl: String,
     val cmcApiKey: String,
     val cmcApiUrl: String,
-    val cmcTokenId: Int
+    val cmcTokenId: Int,
+    val feeBugRangeOneEleven: List<Int> // [0] is the beginning of the range, [1] is the end of the range, inclusive
 ) {
 
     fun initialHistoricalDays() = initialHistoricalDayCount.toInt()
@@ -45,4 +46,10 @@ class ExplorerProperties(
     fun provValConsPrefix() =
         if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_CONSENSUS_ACCOUNT_PREFIX
         else Bech32.PROVENANCE_TESTNET_CONSENSUS_ACCOUNT_PREFIX
+
+    fun oneElevenBugRange() =
+        if (feeBugRangeOneEleven[0] == 0) null
+        else feeBugRangeOneEleven[0]..feeBugRangeOneEleven[1]
+
+    fun inOneElevenBugRange(height: Int) = oneElevenBugRange()?.contains(height) ?: false
 }

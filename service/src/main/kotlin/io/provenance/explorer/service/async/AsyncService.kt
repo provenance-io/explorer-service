@@ -43,7 +43,7 @@ import java.time.ZoneOffset
 
 @Service
 class AsyncService(
-    private val explorerProperties: ExplorerProperties,
+    private val props: ExplorerProperties,
     private val blockService: BlockService,
     private val assetService: AssetService,
     private val govService: GovService,
@@ -106,12 +106,12 @@ class AsyncService(
     fun continueCollectingHistoricalBlocks(maxRead: Int, minRead: Int): Boolean {
         if (collectHistorical) {
             val historicalDays = BlockCacheRecord.getDaysBetweenHeights(minRead, maxRead)
-            collectHistorical = historicalDays < explorerProperties.initialHistoricalDays() && minRead > 1
+            collectHistorical = historicalDays < props.initialHistoricalDays() && minRead > 1
         }
         return collectHistorical
     }
 
-    fun getEndDate() = LocalDate().toDateTimeAtStartOfDay().minusDays(explorerProperties.initialHistoricalDays() + 1)
+    fun getEndDate() = LocalDate().toDateTimeAtStartOfDay().minusDays(props.initialHistoricalDays() + 1)
 
     fun BlockOuterClass.Block.day() = this.header.time.toDateTime()
 
@@ -216,4 +216,34 @@ class AsyncService(
         tokenService.updateTokenLatest()?.data?.get("19960")?.let {
             CacheUpdateRecord.updateCacheByKey(CacheKeys.UTILITY_TOKEN_LATEST.key, VANILLA_MAPPER.writeValueAsString(it))
         }
+
+    // Remove once the ranges have been updated
+    @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
+    fun feeBugOneElevenReprocess() {
+        val done = "DONE"
+        // Find existing record
+        var startBlock = cacheService.getCacheValue(CacheKeys.FEE_BUG_ONE_ELEVEN_START_BLOCK.key)!!.cacheValue
+        // If null, update from env. If env comes back null, update to "DONE"
+        if (startBlock.isNullOrBlank())
+            startBlock = props.oneElevenBugRange()?.first()?.toString()
+                .also { cacheService.updateCacheValue(CacheKeys.FEE_BUG_ONE_ELEVEN_START_BLOCK.key, it ?: done) }
+                ?: done
+        // If "DONE" exit out
+        if (startBlock == done) return
+        var lastBlock = 0
+        // Create range, and process next 200 blocks or until the end of the fee bug range, whichever is less
+        (startBlock.toInt()..minOf(props.oneElevenBugRange()!!.last, startBlock.toInt().plus(1000))).toList()
+            .forEach { block ->
+                (blockService.getBlockAtHeight(block)?.block ?: blockService.getBlockAtHeightFromChain(block))
+                    ?.let { asyncCache.saveBlockEtc(it, Pair(true, false)) }
+                // Check if the last processed block equals the end of the fee bug range
+                if (block == props.oneElevenBugRange()!!.last)
+                    cacheService.updateCacheValue(CacheKeys.FEE_BUG_ONE_ELEVEN_START_BLOCK.key, done)
+                else
+                    lastBlock = block
+            }
+        // Update the cache value to the last block processed
+        cacheService.updateCacheValue(CacheKeys.FEE_BUG_ONE_ELEVEN_START_BLOCK.key, lastBlock.toString())
+        logger.info("Updated fee bug range")
+    }
 }
