@@ -43,8 +43,8 @@ import io.provenance.explorer.domain.models.explorer.Reward
 import io.provenance.explorer.domain.models.explorer.TokenCounts
 import io.provenance.explorer.domain.models.explorer.UnpaginatedDelegation
 import io.provenance.explorer.domain.models.explorer.mapToProtoCoin
+import io.provenance.explorer.domain.models.explorer.toCoinStr
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
-import io.provenance.explorer.domain.models.explorer.toData
 import io.provenance.explorer.grpc.extensions.getModuleAccName
 import io.provenance.explorer.grpc.extensions.isStandardAddress
 import io.provenance.explorer.grpc.extensions.isVesting
@@ -156,7 +156,7 @@ class AccountService(
 
     // Used for balance validation - this is raw data only
     fun getAccountBalancesAllAtHeight(address: String, height: Int) = runBlocking {
-        accountClient.getAccountBalancesAllAtHeight(address, height).map { it.toData() }
+        accountClient.getAccountBalancesAllAtHeight(address, height).map { it.toCoinStr() }
     }
 
     private fun getDelegationTotal(address: String) = runBlocking {

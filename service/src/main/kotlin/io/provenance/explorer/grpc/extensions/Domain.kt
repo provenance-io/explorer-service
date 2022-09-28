@@ -32,7 +32,7 @@ import io.provenance.explorer.domain.models.explorer.PeriodInSeconds
 import io.provenance.explorer.domain.models.explorer.PeriodicVestingInfo
 import io.provenance.explorer.domain.models.explorer.SlashingParams
 import io.provenance.explorer.domain.models.explorer.TallyingParams
-import io.provenance.explorer.domain.models.explorer.toData
+import io.provenance.explorer.domain.models.explorer.toCoinStr
 import io.provenance.explorer.service.prettyRole
 import io.provenance.marker.v1.Access
 import io.provenance.marker.v1.MarkerAccount
@@ -257,7 +257,7 @@ fun Slashing.Params.toDto() = SlashingParams(
     this.slashFractionDowntime.toString(Charsets.UTF_8).toPercentage(),
 )
 
-fun MsgFee.toDto() = MsgBasedFee(this.msgTypeUrl, this.additionalFee.toData())
+fun MsgFee.toDto() = MsgBasedFee(this.msgTypeUrl, this.additionalFee.toCoinStr())
 
 fun Tx.MsgVote.toWeightedVote() =
     Gov.WeightedVoteOption.newBuilder().setOption(this.option).setWeight("1000000000000000000").build()

@@ -4,6 +4,7 @@ import io.grpc.StatusRuntimeException
 import io.provenance.explorer.domain.exceptions.InvalidArgumentException
 import io.provenance.explorer.domain.exceptions.InvalidJwtException
 import io.provenance.explorer.domain.exceptions.TendermintApiException
+import io.provenance.explorer.domain.exceptions.TendermintApiNotFoundException
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
 import org.springframework.http.HttpHeaders
@@ -21,6 +22,10 @@ class GlobalControllerAdvice : ResponseEntityExceptionHandler() {
     @ExceptionHandler(TendermintApiException::class)
     fun endpointExceptionHandler(ex: TendermintApiException): ResponseEntity<Any> =
         ResponseEntity<Any>(ex.message, HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR)
+
+    @ExceptionHandler(TendermintApiNotFoundException::class)
+    fun tmApiNotFoundExceptionHandler(ex: TendermintApiNotFoundException): ResponseEntity<Any> =
+        ResponseEntity<Any>(ex.message, HttpHeaders(), HttpStatus.NOT_IMPLEMENTED)
 
     @ExceptionHandler(StatusRuntimeException::class)
     fun grpcStatusException(ex: StatusRuntimeException, request: HttpServletRequest): ResponseEntity<Any> {

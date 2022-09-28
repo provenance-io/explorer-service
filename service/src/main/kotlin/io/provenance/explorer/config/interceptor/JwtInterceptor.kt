@@ -3,7 +3,6 @@ package io.provenance.explorer.config.interceptor
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.exceptions.InvalidJwtException
 import io.provenance.explorer.domain.extensions.fromBase64
-import org.springframework.http.HttpHeaders
 import org.springframework.web.servlet.HandlerInterceptor
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
@@ -20,7 +19,7 @@ class JwtInterceptor : HandlerInterceptor {
         response: HttpServletResponse,
         handler: Any
     ): Boolean {
-        val jwt = request.getHeader(HttpHeaders.AUTHORIZATION)?.removePrefix("Bearer")?.trimStart()
+        val jwt = request.getHeader("BearerToken")?.removePrefix("Bearer")?.trimStart()
 
         if (!jwt.isNullOrBlank()) {
             try {

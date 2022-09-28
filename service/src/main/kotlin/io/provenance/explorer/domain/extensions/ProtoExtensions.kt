@@ -16,6 +16,8 @@ fun Message.pack(): Any = Any.pack(this, "")
 
 fun Message.getType() = this.pack().typeUrl
 
+fun Any.getShortType() = this.typeUrl.split(".").last()
+
 fun Iterable<Any>.toTxBody(memo: String? = null, timeoutHeight: Long? = null): TxBody =
     TxBody.newBuilder()
         .addAllMessages(this)
