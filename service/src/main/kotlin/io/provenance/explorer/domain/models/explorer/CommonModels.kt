@@ -12,7 +12,7 @@ data class PagedResults<T>(
     val pages: Int,
     val results: List<T>,
     val total: Long,
-    val rollupTotals: Map<String, CoinStr> = mapOf()
+    val rollupTotals: Map<String, CoinStr> = emptyMap()
 )
 
 data class Addresses(
@@ -40,7 +40,7 @@ data class CoinStrWithPrice(
     val totalBalancePrice: CoinStr?
 )
 
-fun CoinOuterClass.Coin.toData() = CoinStr(this.amount, this.denom)
+fun CoinOuterClass.Coin.toCoinStr() = CoinStr(this.amount, this.denom)
 
 fun BigDecimal.toCoinStrWithPrice(price: BigDecimal?, denom: String) =
     CoinStrWithPrice(

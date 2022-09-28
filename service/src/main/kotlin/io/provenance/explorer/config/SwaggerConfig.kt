@@ -47,11 +47,11 @@ class SwaggerConfig(val props: ExplorerProperties) {
             .securityContexts(
                 listOf(
                     SecurityContext.builder()
-                        .securityReferences(listOf(SecurityReference("Bearer Token", emptyArray())))
+                        .securityReferences(listOf(SecurityReference("BearerToken", emptyArray())))
                         .build()
                 )
             )
-            .securitySchemes(listOf(ApiKey("Bearer Token", AUTHORIZATION, "header")))
+            .securitySchemes(listOf(ApiKey("BearerToken", AUTHORIZATION, "header")))
             .select()
             .apis(RequestHandlerSelectors.basePackage("io.provenance.explorer.web"))
 

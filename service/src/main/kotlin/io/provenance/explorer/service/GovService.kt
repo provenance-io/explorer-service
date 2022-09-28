@@ -91,7 +91,7 @@ import io.provenance.explorer.domain.models.explorer.VoteRecord
 import io.provenance.explorer.domain.models.explorer.VotesTally
 import io.provenance.explorer.domain.models.explorer.VotingDetails
 import io.provenance.explorer.domain.models.explorer.mapToProtoCoin
-import io.provenance.explorer.domain.models.explorer.toData
+import io.provenance.explorer.domain.models.explorer.toCoinStr
 import io.provenance.explorer.grpc.extensions.isStandardAddress
 import io.provenance.explorer.grpc.extensions.toMsgDeposit
 import io.provenance.explorer.grpc.extensions.toMsgVote
@@ -658,7 +658,7 @@ fun Any.getGovMsgDetail(txHash: String) =
         typeUrl.endsWith("MsgVoteWeighted") ->
             this.toMsgVoteWeighted().let { GovMsgDetail(null, "", it.proposalId, "") }
         typeUrl.endsWith("MsgDeposit") ->
-            this.toMsgDeposit().let { GovMsgDetail(it.amountList.first().toData(), "", it.proposalId, "") }
+            this.toMsgDeposit().let { GovMsgDetail(it.amountList.first().toCoinStr(), "", it.proposalId, "") }
         else -> null.also { logger().debug("This typeUrl is not a governance-based msg: $typeUrl") }
     }?.let { detail ->
         transaction {

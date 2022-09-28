@@ -22,6 +22,7 @@ import io.provenance.explorer.domain.core.toBech32Data
 import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.entities.MissedBlocksRecord
 import io.provenance.explorer.domain.models.explorer.Addresses
+import net.pearx.kasechange.splitToWords
 import org.apache.commons.text.StringEscapeUtils
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
@@ -146,6 +147,8 @@ fun List<BigDecimal>.average() = this.fold(BigDecimal.ZERO, BigDecimal::add)
     .divide(this.size.toBigDecimal(), 3, RoundingMode.CEILING)
 
 fun String.nullOrString() = this.ifBlank { null }
+
+fun String.toNormalCase() = this.splitToWords().joinToString(" ")
 
 /**
  * ObjectMapper extension for getting the ObjectMapper configured

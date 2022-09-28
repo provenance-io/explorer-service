@@ -37,6 +37,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added APIs for CoinMarketCap data #388
   * GET `/api/v3/utility_token/historical_pricing` - Returns a list of daily historical pricing for the utility token, queryable by date range
   * GET `/api/v3/utility_token/latest_pricing` - Returns the latest pricing for the utility token
+* Added APIs for Authz grant and Feegrant data on an address #265
+  * GET `/api/v3/grants/authz/{address}/grantee` - Returns a paginated list of authz grants granted to the address
+  * GET `/api/v3/grants/authz/{address}/granter` - Returns a paginated list of authz grants granted by the address
+  * GET `/api/v3/grants/feegrant/{address}/grantee` - Returns a paginated list of feegrant allowances granted to the address
+  * GET `/api/v3/grants/feegrant/{address}/granter` - Returns a 501 until the supporting gRPC query is applied to the chain
 
 ### Improvements
 * Removed calls to Figment #385
