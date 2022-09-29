@@ -87,6 +87,8 @@ class AccountControllerV2(private val accountService: AccountService, private va
 
     @ApiOperation("Returns attribute names owned by the account address")
     @GetMapping("/{address}/attributes/owned")
+    @Deprecated("Use /api/v2/names/{address}/owned")
+    @java.lang.Deprecated
     fun getAccountNamesOwned(
         @ApiParam(value = "The address of the account, starting with the standard account prefix")
         @PathVariable address: String,

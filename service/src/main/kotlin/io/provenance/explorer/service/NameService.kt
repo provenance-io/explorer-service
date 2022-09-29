@@ -1,10 +1,13 @@
 package io.provenance.explorer.service
 
 import io.provenance.explorer.domain.entities.NameRecord
+import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.pageOfResults
 import io.provenance.explorer.domain.models.explorer.Name
 import io.provenance.explorer.domain.models.explorer.NameMap
 import io.provenance.explorer.domain.models.explorer.NameObj
 import io.provenance.explorer.domain.models.explorer.NameTreeResponse
+import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -40,9 +43,18 @@ class NameService(
         attrClient.getOwnerForName(name)?.let { res ->
             val (child, parent) = name.splitChildParent()
             NameRecord.insertOrUpdate(Name(parent, child, name, res.address, true, 0))
-            NameObj(name.split(".").reversed(), res.address, true, name)
+            NameObj(name.split(".").reversed(), res.address, true, name, 0)
         }
     }
+
+    fun getNamesOwnedByAddress(address: String, page: Int, count: Int) =
+        NameRecord.getNameSet()
+            .filter { it.owner == address }
+            .sortedBy { it.nameList.joinToString(".") }
+            .let {
+                val result = it.pageOfResults(page, count)
+                PagedResults(it.size.toLong().pageCountOfResults(count), result, it.size.toLong())
+            }
 }
 
 // Splits from `figuretest2.kyc.pb` -> Pair(`kyc.pb`, `kyc.pb`)

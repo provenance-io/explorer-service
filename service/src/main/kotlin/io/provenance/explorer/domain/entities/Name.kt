@@ -56,12 +56,20 @@ class NameRecord(id: EntityID<Int>) : IntEntity(id) {
         fun getNameSet() = transaction {
             val query = """
                 with data as (
-                 select
+                    select
                         string_to_array(name.full_name, '.') as parts,
                         owner,
                         restricted,
                         full_name
-                 from name
+                    from name
+                 ),
+                 child_count AS (
+                    select 
+                        parent.full_name,
+                        count(child.id) as child_count
+                    from name parent
+                    LEFT JOIN name child ON parent.full_name = child.parent
+                    group by parent.full_name
                  )
                 select
                   array(
@@ -69,16 +77,15 @@ class NameRecord(id: EntityID<Int>) : IntEntity(id) {
                     from generate_subscripts(parts, 1) as indices(i)
                     order by i desc
                   ) as reversed,
-                       owner,
-                       restricted,
-                       full_name
-                from data;
+                       data.owner,
+                       data.restricted,
+                       data.full_name,
+                       child_count.child_count
+                from data
+                join child_count ON data.full_name = child_count.full_name
+                ;
             """.trimIndent()
             query.execAndMap { it.toNameObj() }
-        }
-
-        fun getNamesByOwners(owners: List<String>) = transaction {
-            NameRecord.find { NameTable.owner inList owners }.toSet()
         }
     }
 
@@ -94,5 +101,6 @@ fun ResultSet.toNameObj() = NameObj(
     (this.getArray("reversed").array as Array<out String>).toList(),
     this.getString("owner"),
     this.getBoolean("restricted"),
-    this.getString("full_name")
+    this.getString("full_name"),
+    this.getInt("child_count")
 )

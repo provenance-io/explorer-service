@@ -42,6 +42,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * GET `/api/v3/grants/authz/{address}/granter` - Returns a paginated list of authz grants granted by the address
   * GET `/api/v3/grants/feegrant/{address}/grantee` - Returns a paginated list of feegrant allowances granted to the address
   * GET `/api/v3/grants/feegrant/{address}/granter` - Returns a 501 until the supporting gRPC query is applied to the chain
+* Added dedicated API for getting Attribute Names by address #346
+  * GET `/api/v2/names/{address}/owned` - Returns attribute names owned by the address; applies to contracts as well
 
 ### Improvements
 * Removed calls to Figment #385
