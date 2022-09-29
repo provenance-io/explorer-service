@@ -94,9 +94,6 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
                 .first()[dateTrunc].toInt()
         }
 
-        fun test() = transaction {
-        }
-
         fun getMaxBlockHeightOrNull() = transaction {
             val maxHeight = Max(BlockCacheTable.height, IntegerColumnType())
             BlockCacheTable.slice(maxHeight).selectAll().firstOrNull()?.let { it[maxHeight] }

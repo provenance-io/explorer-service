@@ -13,7 +13,8 @@ data class NameObj(
     val nameList: List<String>,
     val owner: String,
     val restricted: Boolean,
-    val fullName: String
+    val fullName: String,
+    val childCount: Int
 )
 
 data class NameMap(

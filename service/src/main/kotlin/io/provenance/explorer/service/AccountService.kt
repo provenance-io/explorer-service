@@ -112,6 +112,7 @@ class AccountService(
         }
     }
 
+    @Deprecated("Use NameService.getNamesOwnedByAddress")
     fun getNamesOwnedByAccount(address: String, page: Int, limit: Int) = runBlocking {
         attrClient.getNamesForAddress(address, page.toOffset(limit), limit).let { res ->
             val names = res.nameList.toList()
