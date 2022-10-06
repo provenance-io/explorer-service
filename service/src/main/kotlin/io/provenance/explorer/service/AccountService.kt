@@ -28,6 +28,7 @@ import io.provenance.explorer.domain.extensions.toBase64
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDecimalString
+import io.provenance.explorer.domain.extensions.toNormalCase
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.AccountDetail
@@ -90,7 +91,7 @@ class AccountService(
             val tokenCount = async { getBalances(it.accountAddress, 0, 1) }
             val balances = async { getBalances(it.accountAddress, 1, tokenCount.await().pagination.total.toInt()) }
             AccountDetail(
-                it.type,
+                it.type.toNormalCase(),
                 it.accountAddress,
                 it.accountNumber,
                 it.baseAccount?.sequence?.toInt(),

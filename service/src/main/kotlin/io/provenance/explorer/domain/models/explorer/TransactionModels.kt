@@ -153,7 +153,7 @@ data class TxType(
     val type: String
 )
 
-enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
+enum class MsgTypeSet(val mainCategory: String, val types: List<String>, val additionalTypes: List<String> = emptyList()) {
     ACCOUNT(
         "account",
         listOf(
@@ -200,7 +200,8 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
     ),
     TRANSFER(
         "transfer",
-        listOf("send", "multi_send", "transfer", "ibc_transfer")
+        listOf("send", "multi_send", "transfer", "ibc_transfer"),
+        listOf("execute_contract")
     ),
     ASSET(
         "asset",
@@ -216,7 +217,8 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
             "burn",
             "withdraw",
             "set_denom_metadata",
-        )
+        ),
+        listOf("instantiate_contract")
     ),
     NFT(
         "nft",
@@ -274,6 +276,7 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>) {
 }
 
 fun String.getCategoryForType() = MsgTypeSet.values().firstOrNull { it.types.contains(this) }
+fun MsgTypeSet?.getValuesPlusAddtnl() = this!!.types + this.additionalTypes
 
 data class TxSummary(
     val txHash: String,

@@ -52,6 +52,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added proper exception on invalid JWT token #394
 * Added caching on image urls from Keybase #396
   * Reduces calls to Keybase so it doesnt yell at us
+* Updated the MsgTypeSet enum to include an `additionalType` list that can be included in the module-based tx list #405
+  * This allows assets created and traded via smart contract to show those transactions under the asset page
 
 ### Bug Fixes
 * Swapped `Long` for `BigDecimal` in places that will need it, specifically for large nhash quantities #380

@@ -41,6 +41,7 @@ import io.provenance.explorer.domain.models.explorer.TxSmartContract
 import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.domain.models.explorer.TxSummary
 import io.provenance.explorer.domain.models.explorer.TxType
+import io.provenance.explorer.domain.models.explorer.getValuesPlusAddtnl
 import io.provenance.explorer.grpc.extensions.getModuleAccName
 import io.provenance.explorer.service.async.AsyncCachingV2
 import io.provenance.explorer.service.async.getAddressType
@@ -96,7 +97,7 @@ class TransactionService(
         ibcSrcPort: String? = null,
         ibcSrcChannel: String? = null
     ): PagedResults<TxSummary> {
-        val msgTypes = if (msgType != null) listOf(msgType) else module?.types ?: listOf()
+        val msgTypes = if (msgType != null) listOf(msgType) else module?.getValuesPlusAddtnl() ?: listOf()
         val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
         val addr = transaction { address?.getAddressType(valService.getActiveSet(), props) }
         val markerId = if (denom != null) MarkerCacheRecord.findByDenom(denom)?.id?.value else null
