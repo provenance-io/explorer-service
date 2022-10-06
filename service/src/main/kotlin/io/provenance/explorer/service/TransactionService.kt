@@ -177,7 +177,8 @@ class TransactionService(
             signers = TxCacheRecord.findSigsByHash(tx.txV2.txResponse.txhash).toSigObj(props.provAccPrefix()),
             memo = tx.txV2.tx.body.memo,
             monikers = getMonikers(tx.id),
-            feepayer = tx.txFeepayer.getFeepayer()
+            feepayer = tx.txFeepayer.getFeepayer(),
+            associatedValues = TxCacheRecord.getAssociatedValues(tx.hash, tx.height)
         )
     }
 

@@ -104,6 +104,7 @@ import io.provenance.explorer.service.NftService
 import io.provenance.explorer.service.SmartContractService
 import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.service.splitChildParent
+import io.provenance.explorer.service.unchainDenom
 import net.pearx.kasechange.toSnakeCase
 import net.pearx.kasechange.universalWordSplitter
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -398,7 +399,7 @@ class AsyncCachingV2(
         (denoms + eventDenoms).toSet().mapNotNull { de ->
             val denom = msgDenoms.firstOrNull { it.first.contains(de) }
             if (denom != null && denom.second) if (tx.txResponse.code == 0) saveDenom(de, txInfo, txUpdate) else null
-            else saveDenom(de, txInfo, txUpdate)
+            else saveDenom(de.unchainDenom(), txInfo, txUpdate)
         }
     }
 

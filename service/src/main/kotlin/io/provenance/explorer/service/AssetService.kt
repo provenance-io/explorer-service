@@ -227,3 +227,6 @@ fun String.getBaseDenomType() =
         this.startsWith("ibc/") -> Pair(BaseDenomType.IBC_DENOM, MarkerStatus.MARKER_STATUS_ACTIVE)
         else -> Pair(BaseDenomType.DENOM, MarkerStatus.MARKER_STATUS_UNSPECIFIED)
     }
+
+// Used to find the base denom for a recieved IBC token that originated on this chain
+fun String.unchainDenom() = if (this.contains("channel")) this.split("/").lastOrNull()!! else this
