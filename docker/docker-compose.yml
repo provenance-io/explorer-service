@@ -42,6 +42,7 @@ services:
       - EXPLORER_CMC_API_URL=https://sandbox-api.coinmarketcap.com
       - EXPLORER_CMC_TOKEN_ID=19960
       - EXPLORER_FEE_BUG_RANGE_ONE_ELEVEN=8721085,10046412
+      - EXPLORER_UTILITY_TOKEN=nhash
     depends_on:
       - explorer-postgres
     links:

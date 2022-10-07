@@ -5,6 +5,7 @@ import com.google.protobuf.Any
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.VANILLA_MAPPER
+import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
@@ -44,7 +45,6 @@ import io.provenance.explorer.grpc.extensions.findAllMatchingEvents
 import io.provenance.explorer.grpc.extensions.removeFirstSlash
 import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
 import io.provenance.explorer.service.AssetService
-import io.provenance.explorer.service.NHASH
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -656,7 +656,7 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                     }
                     Pair(overage, baseFeeUsed)
                 }.let { (baseFeeOverage, baseFeeUsed) ->
-                    val nhash = assetService.getAssetRaw(NHASH).second
+                    val nhash = assetService.getAssetRaw(ExplorerProperties.UTILITY_TOKEN).second
                     // insert used fee
                     feeList.add(buildInsert(txInfo, BASE_FEE_USED.name, nhash.id.value, nhash.denom, baseFeeUsed))
                     // insert paid too much fee if > 0

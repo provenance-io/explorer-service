@@ -12,6 +12,7 @@ import io.ktor.client.statement.HttpResponse
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.core.PREFIX_SCOPE
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
@@ -165,7 +166,7 @@ class ExplorerService(
                     Spotlight(
                         latestBlock = getBlockAtHeight(blockService.getMaxBlockCacheHeight() - 1),
                         avgBlockTime = BlockProposerRecord.findAvgBlockCreation(100),
-                        bondedTokens = CountStrTotal(it.first.toString(), it.second, NHASH),
+                        bondedTokens = CountStrTotal(it.first.toString(), it.second, UTILITY_TOKEN),
                         totalTxCount = BlockCacheHourlyTxCountsRecord.getTotalTxCount().toBigInteger(),
                         totalAum = pricingService.getTotalAum().toCoinStr(USD_UPPER)
                     )
@@ -174,7 +175,7 @@ class ExplorerService(
         }
 
     fun getBondedTokenRatio() = let {
-        val totalBlockChainTokens = assetService.getCurrentSupply(NHASH)
+        val totalBlockChainTokens = assetService.getCurrentSupply(UTILITY_TOKEN)
         val totalBondedTokens = validatorService.getStakingValidators(ACTIVE).sumOf { it.tokenCount }
         Pair<BigDecimal, String>(totalBondedTokens, totalBlockChainTokens)
     }

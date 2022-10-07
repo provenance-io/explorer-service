@@ -2,6 +2,7 @@ package io.provenance.explorer.service.async
 
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
@@ -27,7 +28,6 @@ import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.CacheService
 import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.service.GovService
-import io.provenance.explorer.service.NHASH
 import io.provenance.explorer.service.PricingService
 import io.provenance.explorer.service.TokenService
 import io.provenance.explorer.service.getBlock
@@ -165,7 +165,7 @@ class AsyncService(
     @Scheduled(cron = "0 0 1 * * ?") // Everyday at 1 am
     fun updateTokenDistributionAmounts() = transaction {
         logger.info("Updating token distribution amounts")
-        tokenService.updateTokenDistributionStats(NHASH)
+        tokenService.updateTokenDistributionStats(UTILITY_TOKEN)
     }
 
     @Scheduled(cron = "0/5 * * * * ?") // Every 5 seconds

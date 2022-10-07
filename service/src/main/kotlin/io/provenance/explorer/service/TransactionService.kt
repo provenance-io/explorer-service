@@ -2,6 +2,7 @@ package io.provenance.explorer.service
 
 import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.getParentForType
 import io.provenance.explorer.domain.core.isMAddress
@@ -131,7 +132,7 @@ class TransactionService(
                 MsgInfo(transaction { rec.txMessages.count() }, displayMsgType),
                 getMonikers(rec.id),
                 rec.txTimestamp.toString(),
-                transaction { rec.txFees.filter { fee -> fee.marker == NHASH }.toFeePaid(NHASH) },
+                transaction { rec.txFees.filter { fee -> fee.marker == UTILITY_TOKEN }.toFeePaid(UTILITY_TOKEN) },
                 TxCacheRecord.findSigsByHash(rec.hash).toSigObj(props.provAccPrefix()),
                 if (rec.errorCode == null) "success" else "failed",
                 transaction { rec.txFeepayer.getFeepayer() }
@@ -166,7 +167,7 @@ class TransactionService(
             gas = Gas(
                 tx.txV2.txResponse.gasUsed,
                 tx.txV2.txResponse.gasWanted,
-                ValidatorMarketRateRecord.getRateByTxId(tx.id.value).toCoinStr(NHASH)
+                ValidatorMarketRateRecord.getRateByTxId(tx.id.value).toCoinStr(UTILITY_TOKEN)
             ),
             time = asyncV2.getBlock(tx.txV2.txResponse.height.toInt())!!.block.header.time.formattedString(),
             status = if (tx.txV2.txResponse.code > 0) "failed" else "success",
@@ -254,7 +255,7 @@ class TransactionService(
                     govDetail.proposalTitle,
                     msg.blockHeight,
                     msg.txHashId.txTimestamp.toString(),
-                    transaction { msg.txHashId.txFees.filter { fee -> fee.marker == NHASH }.toFeePaid(NHASH) },
+                    transaction { msg.txHashId.txFees.filter { fee -> fee.marker == UTILITY_TOKEN }.toFeePaid(UTILITY_TOKEN) },
                     TxCacheRecord.findSigsByHash(msg.txHash).toSigObj(props.provAccPrefix()),
                     if (msg.txHashId.errorCode == null) "success" else "failed",
                     transaction { msg.txHashId.txFeepayer.getFeepayer() }
@@ -292,7 +293,7 @@ class TransactionService(
                 scDetail.second,
                 msg.blockHeight,
                 msg.txHashId.txTimestamp.toString(),
-                transaction { msg.txHashId.txFees.filter { fee -> fee.marker == NHASH }.toFeePaid(NHASH) },
+                transaction { msg.txHashId.txFees.filter { fee -> fee.marker == UTILITY_TOKEN }.toFeePaid(UTILITY_TOKEN) },
                 TxCacheRecord.findSigsByHash(msg.txHash).toSigObj(props.provAccPrefix()),
                 if (msg.txHashId.errorCode == null) "success" else "failed",
                 transaction { msg.txHashId.txFeepayer.getFeepayer() }
