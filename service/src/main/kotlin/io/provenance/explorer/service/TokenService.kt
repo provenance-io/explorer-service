@@ -11,6 +11,7 @@ import io.ktor.http.ContentType
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.CacheKeys
@@ -146,25 +147,25 @@ class TokenService(
     }
 
     fun getTokenBreakdown() = runBlocking {
-        val bonded = accountClient.getStakingPool().pool.bondedTokens.toBigDecimal().roundWhole().toCoinStr(NHASH)
+        val bonded = accountClient.getStakingPool().pool.bondedTokens.toBigDecimal().roundWhole().toCoinStr(UTILITY_TOKEN)
         TokenSupply(
-            maxSupply().toCoinStr(NHASH),
-            totalSupply().toCoinStr(NHASH),
-            circulatingSupply().toCoinStr(NHASH),
-            communityPoolSupply().toCoinStr(NHASH),
+            maxSupply().toCoinStr(UTILITY_TOKEN),
+            totalSupply().toCoinStr(UTILITY_TOKEN),
+            circulatingSupply().toCoinStr(UTILITY_TOKEN),
+            communityPoolSupply().toCoinStr(UTILITY_TOKEN),
             bonded,
-            burnedSupply().toCoinStr(NHASH)
+            burnedSupply().toCoinStr(UTILITY_TOKEN)
         )
     }
 
-    fun nhashMarkerAddr() = MarkerCacheRecord.findByDenom(NHASH)?.markerAddress!!
-    fun burnedSupply() = runBlocking { accountClient.getMarkerBalance(nhashMarkerAddr(), NHASH).toBigDecimal().roundWhole() }
+    fun nhashMarkerAddr() = MarkerCacheRecord.findByDenom(UTILITY_TOKEN)?.markerAddress!!
+    fun burnedSupply() = runBlocking { accountClient.getMarkerBalance(nhashMarkerAddr(), UTILITY_TOKEN).toBigDecimal().roundWhole() }
     fun moduleAccounts() = AccountRecord.findAccountsByType(listOf(Auth.ModuleAccount::class.java.simpleName))
     fun zeroSeqAccounts() = AccountRecord.findZeroSequenceAccounts()
     fun vestingAccounts() = AccountRecord.findAccountsByType(vestingAccountTypes)
     fun contractAccounts() = AccountRecord.findContractAccounts()
     fun allAccounts() = transaction { AccountRecord.all().toMutableList() }
-    fun communityPoolSupply() = runBlocking { accountClient.getCommunityPoolAmount(NHASH).toBigDecimal().roundWhole() }
+    fun communityPoolSupply() = runBlocking { accountClient.getCommunityPoolAmount(UTILITY_TOKEN).toBigDecimal().roundWhole() }
     fun richListAccounts() =
         allAccounts().addressList() - zeroSeqAccounts().toSet() - moduleAccounts().addressList() -
             contractAccounts().addressList() - setOf(nhashMarkerAddr())
@@ -178,7 +179,7 @@ class TokenService(
 
     fun totalSpendableBalanceForList(addresses: Set<String>) = runBlocking {
         addresses.asFlow()
-            .map { accountClient.getSpendableBalanceDenom(it, NHASH)!!.amount.toBigDecimal() }
+            .map { accountClient.getSpendableBalanceDenom(it, UTILITY_TOKEN)!!.amount.toBigDecimal() }
             .toList()
             .sumOf { it }
     }
@@ -191,7 +192,7 @@ class TokenService(
     }
 
     // max supply = supply from bank module
-    fun maxSupply() = runBlocking { accountClient.getCurrentSupply(NHASH).amount.toBigDecimal() }
+    fun maxSupply() = runBlocking { accountClient.getCurrentSupply(UTILITY_TOKEN).amount.toBigDecimal() }
 
     // total supply = max - burned -> comes from the nhash marker address
     fun totalSupply() = maxSupply() - burnedSupply().roundWhole()
@@ -254,7 +255,5 @@ class TokenService(
         VANILLA_MAPPER.readValue<CmcLatestData>(it)
     }
 }
-
-const val NHASH = "nhash"
 
 fun BigDecimal.asPercentOf(divisor: BigDecimal): BigDecimal = this.divide(divisor, 20, RoundingMode.CEILING)

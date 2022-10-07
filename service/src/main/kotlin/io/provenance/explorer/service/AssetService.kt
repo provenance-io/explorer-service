@@ -3,7 +3,7 @@ package io.provenance.explorer.service
 import com.google.protobuf.Timestamp
 import com.google.protobuf.util.JsonFormat
 import cosmos.bank.v1beta1.denomUnit
-import io.ktor.client.request.get
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BaseDenomType
@@ -61,8 +61,8 @@ class AssetService(
         val records = MarkerCacheRecord.findByStatusPaginated(statuses, page.toOffset(count), count)
         val pricing = pricingService.getPricingInfoIn(records.map { it.denom }, "assetList")
         val list = records.map {
-            val supply = if (it.denom != NHASH) it.toCoinStrWithPrice(pricing[it.denom])
-            else tokenService.totalSupply().toCoinStrWithPrice(pricing[it.denom], NHASH)
+            val supply = if (it.denom != UTILITY_TOKEN) it.toCoinStrWithPrice(pricing[it.denom])
+            else tokenService.totalSupply().toCoinStrWithPrice(pricing[it.denom], UTILITY_TOKEN)
             AssetListed(
                 it.denom,
                 it.markerAddress,
@@ -127,8 +127,8 @@ class AssetService(
                         if (record.data != null)
                             AssetManagement(record.data!!.getManagingAccounts(), record.data!!.allowGovernanceControl)
                         else null,
-                        if (record.denom != NHASH) record.toCoinStrWithPrice(price)
-                        else tokenService.totalSupply().toCoinStrWithPrice(price, NHASH),
+                        if (record.denom != UTILITY_TOKEN) record.toCoinStrWithPrice(price)
+                        else tokenService.totalSupply().toCoinStrWithPrice(price, UTILITY_TOKEN),
                         record.data?.isMintable() ?: false,
                         if (record.markerAddress != null) markerClient.getMarkerHoldersCount(unit.marker).pagination.total.toInt() else 0,
                         txCount,

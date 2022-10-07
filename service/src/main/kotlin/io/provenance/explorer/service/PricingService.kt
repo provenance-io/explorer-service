@@ -5,6 +5,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AssetPricingRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
@@ -30,7 +31,7 @@ class PricingService(
             MarkerCacheRecord.find {
                 (MarkerCacheTable.status eq MarkerStatus.MARKER_STATUS_ACTIVE.name) and
                     (MarkerCacheTable.supply greater BigDecimal.ZERO)
-            }.associate { it.denom to (if (it.denom != NHASH) it.supply else tokenService.totalSupply()) }
+            }.associate { it.denom to (if (it.denom != UTILITY_TOKEN) it.supply else tokenService.totalSupply()) }
         }
         val pricing = baseMap.keys.toList().chunked(100) { getPricingInfo(it, "totalAUM") }.flatMap { it.toList() }
             .toMap()

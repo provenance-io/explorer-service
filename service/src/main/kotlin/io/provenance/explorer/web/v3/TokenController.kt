@@ -1,7 +1,7 @@
 package io.provenance.explorer.web.v3
 
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.annotation.HiddenApi
-import io.provenance.explorer.service.NHASH
 import io.provenance.explorer.service.TokenService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -36,7 +36,7 @@ class TokenController(private val tokenService: TokenService) {
     @ApiOperation("Runs the distribution update")
     @GetMapping("/run")
     @HiddenApi
-    fun runDistribution() = ResponseEntity.ok(tokenService.updateTokenDistributionStats(NHASH))
+    fun runDistribution() = ResponseEntity.ok(tokenService.updateTokenDistributionStats(UTILITY_TOKEN))
 
     @ApiOperation("Returns distribution of hash between sets of accounts = all - nhash marker - zeroSeq - modules - contracts")
     @GetMapping("/distribution")

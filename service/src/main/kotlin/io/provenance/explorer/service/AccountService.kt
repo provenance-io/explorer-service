@@ -5,6 +5,7 @@ import cosmos.bank.v1beta1.msgSend
 import cosmos.vesting.v1beta1.msgCreateVestingAccount
 import io.provenance.attribute.v1.Attribute
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
@@ -174,7 +175,7 @@ class AccountService(
             accountClient.getDelegations(address, offset, limit).let { delegations.addAll(it.delegationResponsesList) }
         }
         delegations.sumOf { it.balance.amount.toBigDecimal() }
-            .toCoinStr(delegations.firstOrNull()?.balance?.denom ?: NHASH)
+            .toCoinStr(delegations.firstOrNull()?.balance?.denom ?: UTILITY_TOKEN)
     }
 
     fun getDelegations(address: String, page: Int, limit: Int) = runBlocking {
@@ -204,8 +205,8 @@ class AccountService(
                         list.delegatorAddress,
                         list.validatorAddress,
                         null,
-                        CoinStr(it.balance, NHASH),
-                        CoinStr(it.initialBalance, NHASH),
+                        CoinStr(it.balance, UTILITY_TOKEN),
+                        CoinStr(it.initialBalance, UTILITY_TOKEN),
                         null,
                         it.creationHeight.toInt(),
                         it.completionTime.toDateTime()
@@ -213,7 +214,7 @@ class AccountService(
                 }
             }
         }.let { recs ->
-            val total = recs.sumOf { it.amount.amount.toBigDecimal() }.toCoinStr(NHASH)
+            val total = recs.sumOf { it.amount.amount.toBigDecimal() }.toCoinStr(UTILITY_TOKEN)
             UnpaginatedDelegation(recs, mapOf(Pair("unbondingTotal", total)))
         }
     }
@@ -226,8 +227,8 @@ class AccountService(
                         list.redelegation.delegatorAddress,
                         list.redelegation.validatorSrcAddress,
                         list.redelegation.validatorDstAddress,
-                        CoinStr(it.balance, NHASH),
-                        CoinStr(it.redelegationEntry.initialBalance, NHASH),
+                        CoinStr(it.balance, UTILITY_TOKEN),
+                        CoinStr(it.redelegationEntry.initialBalance, UTILITY_TOKEN),
                         it.redelegationEntry.sharesDst.toDecimalString(),
                         it.redelegationEntry.creationHeight.toInt(),
                         it.redelegationEntry.completionTime.toDateTime()
@@ -235,7 +236,7 @@ class AccountService(
                 }
             }
         }.let { recs ->
-            val total = recs.sumOf { it.amount.amount.toBigDecimal() }.toCoinStr(NHASH)
+            val total = recs.sumOf { it.amount.amount.toBigDecimal() }.toCoinStr(UTILITY_TOKEN)
             UnpaginatedDelegation(recs, mapOf(Pair("redelegationTotal", total)))
         }
     }

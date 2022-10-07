@@ -4,6 +4,7 @@ import cosmos.base.abci.v1beta1.Abci
 import cosmos.tx.v1beta1.ServiceOuterClass
 import cosmos.tx.v1beta1.TxOuterClass.Tx
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.entities.TxFeeRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.models.explorer.FeeCoinStr
@@ -12,14 +13,13 @@ import io.provenance.explorer.domain.models.explorer.TxFeeData
 import io.provenance.explorer.grpc.extensions.denomAmountToPair
 import io.provenance.explorer.grpc.extensions.getByDefinedEvent
 import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
-import io.provenance.explorer.service.NHASH
 import io.provenance.msgfees.v1.eventMsgFees
 import io.provenance.msgfees.v1.msgAssessCustomMsgFeeRequest
 import net.pearx.kasechange.toTitleCase
 import java.math.BigDecimal
 
 fun Abci.TxResponse.getFeeTotalPaid() =
-    this.tx.unpack(Tx::class.java).authInfo.fee.amountList.first { it.denom == NHASH }.amount.toBigDecimal()
+    this.tx.unpack(Tx::class.java).authInfo.fee.amountList.first { it.denom == UTILITY_TOKEN }.amount.toBigDecimal()
 
 fun List<TxFeeRecord>.toFees() = this.groupBy { it.feeType }
     .map { (k, v) -> TxFee(k.toTitleCase(), v.map { it.toFeeCoinStr() }) }

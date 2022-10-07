@@ -23,6 +23,7 @@ import cosmwasm.wasm.v1.storeCodeProposal
 import cosmwasm.wasm.v1beta1.Proposal
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
@@ -253,7 +254,7 @@ class GovService(
     private fun getParams(param: GovParamType) = runBlocking { govClient.getParams(param) }
 
     private fun getDepositPercentage(proposalId: Long, depositParamHeight: Int) = transaction {
-        val (initial, current) = GovDepositRecord.findByProposalId(proposalId).filter { it.denom == NHASH }
+        val (initial, current) = GovDepositRecord.findByProposalId(proposalId).filter { it.denom == UTILITY_TOKEN }
             .let { list ->
                 val current = list.sumOf { it.amount }
                 val initial =
@@ -263,8 +264,8 @@ class GovService(
         val needed = (
             getParamsAtHeight(GovParamType.deposit, depositParamHeight)
                 ?: getParams(GovParamType.deposit)
-            ).depositParams.minDepositList.first { it.denom == NHASH }.amount
-        DepositPercentage(initial.stringfy(), current.stringfy(), needed, NHASH)
+            ).depositParams.minDepositList.first { it.denom == UTILITY_TOKEN }.amount
+        DepositPercentage(initial.stringfy(), current.stringfy(), needed, UTILITY_TOKEN)
     }
 
     private fun getVotingDetails(proposalId: Long) = transaction {
@@ -289,7 +290,7 @@ class GovService(
                             .mhashToNhash()
 
                     TallyParams(
-                        CoinStr(eligibleAmount.toString(), NHASH),
+                        CoinStr(eligibleAmount.toString(), UTILITY_TOKEN),
                         param.quorum.toStringUtf8().toDecimalString(),
                         param.threshold.toStringUtf8().toDecimalString(),
                         param.vetoThreshold.toStringUtf8().toDecimalString()
@@ -300,17 +301,17 @@ class GovService(
         val tallies = runBlocking { govClient.getTally(proposalId)?.tally }
         val zeroStr = 0.toString()
         val tally = VotesTally(
-            Tally(indTallies.getOrDefault(VoteOption.VOTE_OPTION_YES.name, 0), CoinStr(tallies?.yes ?: zeroStr, NHASH)),
-            Tally(indTallies.getOrDefault(VoteOption.VOTE_OPTION_NO.name, 0), CoinStr(tallies?.no ?: zeroStr, NHASH)),
+            Tally(indTallies.getOrDefault(VoteOption.VOTE_OPTION_YES.name, 0), CoinStr(tallies?.yes ?: zeroStr, UTILITY_TOKEN)),
+            Tally(indTallies.getOrDefault(VoteOption.VOTE_OPTION_NO.name, 0), CoinStr(tallies?.no ?: zeroStr, UTILITY_TOKEN)),
             Tally(
                 indTallies.getOrDefault(VoteOption.VOTE_OPTION_NO_WITH_VETO.name, 0),
-                CoinStr(tallies?.noWithVeto ?: zeroStr, NHASH)
+                CoinStr(tallies?.noWithVeto ?: zeroStr, UTILITY_TOKEN)
             ),
             Tally(
                 indTallies.getOrDefault(VoteOption.VOTE_OPTION_ABSTAIN.name, 0),
-                CoinStr(tallies?.abstain ?: zeroStr, NHASH)
+                CoinStr(tallies?.abstain ?: zeroStr, UTILITY_TOKEN)
             ),
-            Tally(dbRecords.count(), CoinStr(tallies?.sum()?.stringfy() ?: zeroStr, NHASH))
+            Tally(dbRecords.count(), CoinStr(tallies?.sum()?.stringfy() ?: zeroStr, UTILITY_TOKEN))
         )
         VotingDetails(params, tally)
     }
@@ -388,7 +389,7 @@ class GovService(
                             .sumOf { it.votingPower }
 
                     TallyParams(
-                        CoinStr(eligibleAmount.toString(), NHASH),
+                        CoinStr(eligibleAmount.toString(), UTILITY_TOKEN),
                         param.quorum.toStringUtf8().toDecimalString(),
                         param.threshold.toStringUtf8().toDecimalString(),
                         param.vetoThreshold.toStringUtf8().toDecimalString()
@@ -400,17 +401,17 @@ class GovService(
         val tallies = runBlocking { govClient.getTally(proposalId)?.tally }
         val zeroStr = 0.toString()
         val tally = VotesTally(
-            Tally(indTallies.getOrDefault(VoteOption.VOTE_OPTION_YES.name, 0), CoinStr(tallies?.yes ?: zeroStr, NHASH)),
-            Tally(indTallies.getOrDefault(VoteOption.VOTE_OPTION_NO.name, 0), CoinStr(tallies?.no ?: zeroStr, NHASH)),
+            Tally(indTallies.getOrDefault(VoteOption.VOTE_OPTION_YES.name, 0), CoinStr(tallies?.yes ?: zeroStr, UTILITY_TOKEN)),
+            Tally(indTallies.getOrDefault(VoteOption.VOTE_OPTION_NO.name, 0), CoinStr(tallies?.no ?: zeroStr, UTILITY_TOKEN)),
             Tally(
                 indTallies.getOrDefault(VoteOption.VOTE_OPTION_NO_WITH_VETO.name, 0),
-                CoinStr(tallies?.noWithVeto ?: zeroStr, NHASH)
+                CoinStr(tallies?.noWithVeto ?: zeroStr, UTILITY_TOKEN)
             ),
             Tally(
                 indTallies.getOrDefault(VoteOption.VOTE_OPTION_ABSTAIN.name, 0),
-                CoinStr(tallies?.abstain ?: zeroStr, NHASH)
+                CoinStr(tallies?.abstain ?: zeroStr, UTILITY_TOKEN)
             ),
-            Tally(dbRecords.count(), CoinStr(tallies?.sum()?.stringfy() ?: zeroStr, NHASH))
+            Tally(dbRecords.count(), CoinStr(tallies?.sum()?.stringfy() ?: zeroStr, UTILITY_TOKEN))
         )
         GovVotesDetail(params, tally, voteRecords)
     }

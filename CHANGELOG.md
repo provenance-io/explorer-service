@@ -33,6 +33,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+* Extracted `nhash` as the utility token out into an ENV to be configurable #399
+
 ## [v5.1.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.1.0) - 2022-10-07
 ### Release Name: Symon Semeonis
 

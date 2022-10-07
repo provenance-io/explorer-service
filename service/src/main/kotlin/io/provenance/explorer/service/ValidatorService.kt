@@ -9,6 +9,7 @@ import io.ktor.client.request.parameter
 import io.ktor.client.statement.HttpResponse
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AddressImageRecord
@@ -320,7 +321,7 @@ class ValidatorService(
                 totalVotingPower
             ) else null,
             commission = stakingVal.json.commission.commissionRates.rate.toDecimalString(),
-            bondedTokens = CountStrTotal(stakingVal.json.tokens, null, NHASH),
+            bondedTokens = CountStrTotal(stakingVal.json.tokens, null, UTILITY_TOKEN),
             delegators = delegatorCount,
             status = stakingVal.currentState.toString().lowercase(),
             unbondingHeight = if (stakingVal.currentState != ACTIVE) stakingVal.json.unbondingHeight else null,
@@ -358,7 +359,7 @@ class ValidatorService(
                 .let { delegations.addAll(it.delegationResponsesList) }
         }
         return delegations.sumOf { it.balance.amount.toBigDecimal() }
-            .toCoinStr(delegations.firstOrNull()?.balance?.denom ?: NHASH)
+            .toCoinStr(delegations.firstOrNull()?.balance?.denom ?: UTILITY_TOKEN)
     }
 
     fun getBondedDelegations(address: String, page: Int, limit: Int) =
@@ -387,8 +388,8 @@ class ValidatorService(
                         list.delegatorAddress,
                         list.validatorAddress,
                         null,
-                        CoinStr(it.balance, NHASH),
-                        CoinStr(it.initialBalance, NHASH),
+                        CoinStr(it.balance, UTILITY_TOKEN),
+                        CoinStr(it.initialBalance, UTILITY_TOKEN),
                         null,
                         it.creationHeight.toInt(),
                         it.completionTime.toDateTime()
@@ -396,7 +397,7 @@ class ValidatorService(
                 }
             }
         }.let { recs ->
-            val total = recs.sumOf { it.amount.amount.toBigDecimal() }.toCoinStr(NHASH)
+            val total = recs.sumOf { it.amount.amount.toBigDecimal() }.toCoinStr(UTILITY_TOKEN)
             UnpaginatedDelegation(recs, mapOf(Pair("unbondingTotal", total)))
         }
 
@@ -411,16 +412,16 @@ class ValidatorService(
             grpcClient.getStakingValidatorDelegations(validator.operatorAddress, 0, 10).pagination.total
         val rewards = getValidatorCommission(address).firstOrNull()
         return ValidatorCommission(
-            CountStrTotal(validator.tokens, null, NHASH),
+            CountStrTotal(validator.tokens, null, UTILITY_TOKEN),
             CountStrTotal(selfBonded.first, null, selfBonded.second),
             CountStrTotal(
                 validator.tokens.toBigInteger().minus(selfBonded.first.toBigInteger()).toString(),
                 null,
-                NHASH
+                UTILITY_TOKEN
             ),
             delegatorCount,
             validator.delegatorShares.toDecimalString(),
-            rewards?.amount?.toDecimalString()?.let { CoinStr(it, rewards.denom) } ?: CoinStr("0", NHASH),
+            rewards?.amount?.toDecimalString()?.let { CoinStr(it, rewards.denom) } ?: CoinStr("0", UTILITY_TOKEN),
             CommissionRate(
                 validator.commission.commissionRates.rate.toDecimalString(),
                 validator.commission.commissionRates.maxRate.toDecimalString(),

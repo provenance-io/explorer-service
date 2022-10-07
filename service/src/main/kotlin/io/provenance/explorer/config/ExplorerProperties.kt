@@ -1,6 +1,7 @@
 package io.provenance.explorer.config
 
 import io.provenance.explorer.domain.core.Bech32
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.validation.annotation.Validated
@@ -52,4 +53,13 @@ class ExplorerProperties(
         else feeBugRangeOneEleven[0]..feeBugRangeOneEleven[1]
 
     fun inOneElevenBugRange(height: Int) = oneElevenBugRange()?.contains(height) ?: false
+
+    companion object {
+        var UTILITY_TOKEN = ""
+    }
+
+    @Value("\${explorer.utility-token}")
+    fun setDatabase(utilityToken: String) {
+        UTILITY_TOKEN = utilityToken
+    }
 }
