@@ -14,6 +14,7 @@ import io.provenance.explorer.domain.entities.FeeType.CUSTOM_FEE
 import io.provenance.explorer.domain.entities.FeeType.MSG_BASED_FEE
 import io.provenance.explorer.domain.extensions.CUSTOM_FEE_MSG_TYPE
 import io.provenance.explorer.domain.extensions.exec
+import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.getCustomFeeProtoType
 import io.provenance.explorer.domain.extensions.getEventMsgFeesType
 import io.provenance.explorer.domain.extensions.identifyMsgBasedFeesOld
@@ -27,6 +28,7 @@ import io.provenance.explorer.domain.models.explorer.CustomFee
 import io.provenance.explorer.domain.models.explorer.CustomFeeList
 import io.provenance.explorer.domain.models.explorer.EventFee
 import io.provenance.explorer.domain.models.explorer.GasStats
+import io.provenance.explorer.domain.models.explorer.TxAssociatedValues
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxFeeData
 import io.provenance.explorer.domain.models.explorer.TxFeepayer
@@ -54,6 +56,7 @@ import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
@@ -89,6 +92,15 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             val txStr = txUpdate.toProcedureObject()
             val query = "CALL add_tx($txStr, $height, '${timestamp.toProcedureObject()}')"
             this.exec(query)
+        }
+
+        fun getAssociatedValues(txHash: String, txHeight: Int) = transaction {
+            val query = "SELECT * FROM get_tx_associated_values(?, ?)".trimIndent()
+            val arguments = mutableListOf<Pair<ColumnType, *>>(
+                Pair(TextColumnType(), txHash),
+                Pair(IntegerColumnType(), txHeight),
+            )
+            query.execAndMap(arguments) { TxAssociatedValues(it.getString("value"), it.getString("type")) }
         }
 
         fun buildInsert(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime) =

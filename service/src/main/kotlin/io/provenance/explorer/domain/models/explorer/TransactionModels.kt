@@ -72,8 +72,11 @@ data class TxDetails(
     val memo: String,
     val monikers: Map<String, String>,
     val feepayer: TxFeepayer,
+    val associatedValues: List<TxAssociatedValues>,
     var additionalHeights: List<Int> = emptyList()
 )
+
+data class TxAssociatedValues(val value: String, val type: String)
 
 data class TxFeepayer(val type: String, val address: String)
 

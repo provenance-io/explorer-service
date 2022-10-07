@@ -54,6 +54,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Reduces calls to Keybase so it doesnt yell at us
 * Updated the MsgTypeSet enum to include an `additionalType` list that can be included in the module-based tx list #405
   * This allows assets created and traded via smart contract to show those transactions under the asset page
+* Add list of associated values to a tx hash #340
 
 ### Bug Fixes
 * Swapped `Long` for `BigDecimal` in places that will need it, specifically for large nhash quantities #380
@@ -65,6 +66,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Updated the tx detail response to include a list of other blocks the hash was found in
 * Fixed calc for tx fees, including success, during 1.11 block range #397
 * Fixed error on validator fetch when validator is no longer in state #395
+* Fixed IBC denom ingest when its a known denom instead of `ibc/...`
 
 ### Data
 * Migration 1.67 - Adding CMC data caching support #388
@@ -97,6 +99,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Updated `current_validator_state` view to include the new table join
   * Updated `get_validator_list()` function to include new column from the view
   * Updated `get_all_validator_state()` function to include new column from the view
+* Migration 1.74 - Update known IBC denoms
+  * Identifies known IBC denoms (NOT `ibc/...`) 
+  * Finds the base, updates records as needed, and deletes the errant known IBC denoms
+* Migration 1.75 - Add function to fetch associated values to a tx hash #340
+  * Added `get_tx_associated_values()` function
  
 ## [v5.0.0](https://github.com/provenance-io/explorer-service/releases/tag/v4.3.1) - 2022-07-28
 ### Release Name: Odoric of Pordenone
