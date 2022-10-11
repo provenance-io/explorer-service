@@ -35,3 +35,28 @@ fun <T : Table, E> T.batchUpsert(
         execute(TransactionManager.current())
     }
 }
+
+class BatchInsert(
+    table: Table,
+    private val conflictKeys: List<Column<*>>,
+) : BatchInsertStatement(table, false) {
+    override fun prepareSQL(transaction: Transaction): String {
+        val tm = TransactionManager.current()
+        val onConflict = "ON CONFLICT (${conflictKeys.joinToString { tm.identity(it) }}) DO NOTHING"
+        return "${super.prepareSQL(transaction)} $onConflict"
+    }
+}
+
+fun <T : Table, E> T.batchInsert(
+    data: List<E>,
+    conflictKeys: List<Column<*>>,
+    body: T.(BatchInsert, E) -> Unit
+) {
+    BatchInsert(this, conflictKeys).apply {
+        data.forEach {
+            addBatch()
+            body(this, it)
+        }
+        execute(TransactionManager.current())
+    }
+}

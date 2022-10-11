@@ -57,7 +57,7 @@ class AsyncService(
     protected val logger = logger(AsyncService::class)
     protected var collectHistorical = true
 
-    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
+//    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateLatestBlockHeightJob() {
         val index = getBlockIndex()
         val startHeight = blockService.getLatestBlockHeight()
@@ -115,7 +115,7 @@ class AsyncService(
 
     fun BlockOuterClass.Block.day() = this.header.time.toDateTime()
 
-    @Scheduled(cron = "0 0 1 * * ?") // Everyday at 1 am
+//    @Scheduled(cron = "0 0 1 * * ?") // Everyday at 1 am
     fun updateMarketRateStats() = transaction {
         logger.info("Updating market rate stats")
         val date = DateTime.now().startOfDay().minusDays(1)
@@ -138,7 +138,7 @@ class AsyncService(
         }
     }
 
-    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
+//    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
     fun performProposalUpdates() = transaction {
         logger.info("Performing proposal updates")
         GovProposalRecord.getNonFinalProposals().forEach { govService.updateProposal(it) }
@@ -150,28 +150,28 @@ class AsyncService(
         ProposalMonitorRecord.getReadyForProcessing().forEach { govService.processProposal(it) }
     }
 
-    @Scheduled(cron = "0 0 0/1 * * ?") // At the start of every hour
+//    @Scheduled(cron = "0 0 0/1 * * ?") // At the start of every hour
     fun updateGasStats() = transaction {
         logger.info("Updating Single Msg Gas stats")
         TxSingleMessageCacheRecord.updateGasStats()
     }
 
-    @Scheduled(cron = "0 0 0/1 * * ?") // At the start of every hour
+//    @Scheduled(cron = "0 0 0/1 * * ?") // At the start of every hour
     fun updateGasVolume() = transaction {
         logger.info("Updating Gas volume")
         TxGasCacheRecord.updateGasFeeVolume()
     }
 
-    @Scheduled(cron = "0 0 1 * * ?") // Everyday at 1 am
+//    @Scheduled(cron = "0 0 1 * * ?") // Everyday at 1 am
     fun updateTokenDistributionAmounts() = transaction {
         logger.info("Updating token distribution amounts")
         tokenService.updateTokenDistributionStats(UTILITY_TOKEN)
     }
 
-    @Scheduled(cron = "0/5 * * * * ?") // Every 5 seconds
+//    @Scheduled(cron = "0/5 * * * * ?") // Every 5 seconds
     fun updateSpotlight() = explorerService.createSpotlight()
 
-    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minute
+//    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minute
     fun retryBlockTxs() {
         logger.info("Retrying block/tx records")
         BlockTxRetryRecord.getRecordsToRetry().map { height ->
@@ -187,7 +187,7 @@ class AsyncService(
         }.let { if (it.isNotEmpty()) BlockTxRetryRecord.deleteRecords(it) }
     }
 
-    @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
+//    @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
     fun updateAssetPricing() {
         logger.info("Updating asset pricing")
         val key = CacheKeys.PRICING_UPDATE.key
@@ -199,26 +199,26 @@ class AsyncService(
         }.let { cacheService.updateCacheValue(key, now) }
     }
 
-    @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
+//    @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
     fun updateReleaseVersions() = explorerService.getAllChainReleases()
 
-    @Scheduled(cron = "0 0 0/1 * * ?") // Every hour
+//    @Scheduled(cron = "0 0 0/1 * * ?") // Every hour
     fun saveChainAum() = explorerService.saveChainAum()
 
-    @Scheduled(cron = "0 0 1 * * ?") // Every day at 1 am
+//    @Scheduled(cron = "0 0 1 * * ?") // Every day at 1 am
     fun updateTokenHistorical() =
         tokenService.updateTokenHistorical()?.data?.quotes?.forEach {
             TokenHistoricalDailyRecord.save(it.time_open.startOfDay(), it)
         }
 
-    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
+//    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
     fun updateTokenLatest() =
         tokenService.updateTokenLatest()?.data?.get("19960")?.let {
             CacheUpdateRecord.updateCacheByKey(CacheKeys.UTILITY_TOKEN_LATEST.key, VANILLA_MAPPER.writeValueAsString(it))
         }
 
     // Remove once the ranges have been updated
-    @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
+//    @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
     fun feeBugOneElevenReprocess() {
         val done = "DONE"
         // Find existing record
