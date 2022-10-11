@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.validation.annotation.Validated
+import java.math.BigDecimal
 
 @ConfigurationProperties(prefix = "explorer")
 @Validated
@@ -55,11 +56,26 @@ class ExplorerProperties(
     fun inOneElevenBugRange(height: Int) = oneElevenBugRange()?.contains(height) ?: false
 
     companion object {
-        var UTILITY_TOKEN = ""
+        var UTILITY_TOKEN = "nhash"
+        var UTILITY_TOKEN_BASE_DECIMAL_PLACES = 9
+        // The number to divide the base value by to get the display value, or vice versa
+        var UTILITY_TOKEN_BASE_MULTIPLIER = BigDecimal(1000000000)
+        var VOTING_POWER_PADDING = 1000000
     }
 
     @Value("\${explorer.utility-token}")
-    fun setDatabase(utilityToken: String) {
+    fun setUtilityToken(utilityToken: String) {
         UTILITY_TOKEN = utilityToken
+    }
+
+    @Value("\${explorer.utility-token-base-decimal-places}")
+    fun setUtilityTokenBaseDecimalPlaces(utilityTokenBaseDecimalPlaces: Int) {
+        UTILITY_TOKEN_BASE_DECIMAL_PLACES = utilityTokenBaseDecimalPlaces
+        UTILITY_TOKEN_BASE_MULTIPLIER = BigDecimal("1e$UTILITY_TOKEN_BASE_DECIMAL_PLACES")
+    }
+
+    @Value("\${explorer.utility-token-base-decimal-places}")
+    fun setVotingPowerPadding(votingPowerPadding: Int) {
+        VOTING_POWER_PADDING = votingPowerPadding
     }
 }
