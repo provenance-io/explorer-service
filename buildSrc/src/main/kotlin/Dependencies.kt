@@ -41,6 +41,7 @@ object Versions {
 
     // 3rd Party
     const val ApacheCommonsText = "1.9"
+    const val ApacheCommonsCsv = "1.9.0"
     const val ApacheHttpClient = "4.5.12"
     const val BouncyCastle = "1.69"
     const val Exposed = "0.34.1"
@@ -83,6 +84,7 @@ object Libraries {
     const val Postgres = "org.postgresql:postgresql:${Versions.Postgres}"
     const val BouncyCastle = "org.bouncycastle:bcprov-jdk15on:${Versions.BouncyCastle}"
     const val ApacheCommonsText = "org.apache.commons:commons-text:${Versions.ApacheCommonsText}"
+    const val ApacheCommonsCsv = "org.apache.commons:commons-csv:${Versions.ApacheCommonsCsv}"
     const val ApacheHttpClient = "org.apache.httpcomponents:httpclient:${Versions.ApacheHttpClient}"
     const val KtorClientCore = "io.ktor:ktor-client-core:${Versions.Ktor}"
     const val KtorClientEngineJava = "io.ktor:ktor-client-java:${Versions.Ktor}"

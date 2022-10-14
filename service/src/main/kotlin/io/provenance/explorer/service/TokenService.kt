@@ -35,6 +35,7 @@ import io.provenance.explorer.domain.models.explorer.CmcLatestData
 import io.provenance.explorer.domain.models.explorer.CmcLatestResponse
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
+import io.provenance.explorer.domain.models.explorer.DlobHistBase
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.RichAccount
 import io.provenance.explorer.domain.models.explorer.TokenDistribution
@@ -49,6 +50,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -219,12 +221,25 @@ class TokenService(
             }
     }
 
-    fun updateTokenHistorical(): CmcHistoricalResponse? = runBlocking {
+    fun getHistoricalFromDlob(startTime: DateTime): DlobHistBase? = runBlocking {
+        try {
+            KTOR_CLIENT_JAVA.get("https://www.dlob.io:443/gecko/external/api/v1/exchange/historical_trades") {
+                parameter("ticker_id", "HASH_USD")
+                parameter("type", "buy")
+                parameter("start_time", DateTimeFormat.forPattern("dd-MM-yyyy").print(startTime))
+                accept(ContentType.Application.Json)
+            }
+        } catch (e: ResponseException) {
+            return@runBlocking null.also { logger.error("Error fetching from Dlob: ${e.response}") }
+        }
+    }
+
+    fun updateTokenHistorical(startTime: DateTime): CmcHistoricalResponse? = runBlocking {
         try {
             KTOR_CLIENT_JAVA.get("${props.cmcApiUrl}/v2/cryptocurrency/ohlcv/historical") {
                 parameter("id", props.cmcTokenId)
                 parameter("count", 32)
-                parameter("time_start", DateTime.now().startOfDay().minusMonths(1))
+                parameter("time_start", startTime)
                 accept(ContentType.Application.Json)
                 header("X-CMC_PRO_API_KEY", props.cmcApiKey)
             }

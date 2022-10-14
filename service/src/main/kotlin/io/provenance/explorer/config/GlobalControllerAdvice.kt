@@ -1,6 +1,7 @@
 package io.provenance.explorer.config
 
 import io.grpc.StatusRuntimeException
+import io.provenance.explorer.domain.exceptions.CsvWriteException
 import io.provenance.explorer.domain.exceptions.InvalidArgumentException
 import io.provenance.explorer.domain.exceptions.InvalidJwtException
 import io.provenance.explorer.domain.exceptions.TendermintApiException
@@ -26,6 +27,12 @@ class GlobalControllerAdvice : ResponseEntityExceptionHandler() {
     @ExceptionHandler(TendermintApiNotFoundException::class)
     fun tmApiNotFoundExceptionHandler(ex: TendermintApiNotFoundException): ResponseEntity<Any> =
         ResponseEntity<Any>(ex.message, HttpHeaders(), HttpStatus.NOT_IMPLEMENTED)
+
+    @ExceptionHandler(CsvWriteException::class)
+    fun csvWriteException(ex: CsvWriteException, request: HttpServletRequest): ResponseEntity<Any> {
+        logger.info("500 on '${request.requestURI}' with error '${ex.message}'")
+        return ResponseEntity<Any>(ex.message, HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR)
+    }
 
     @ExceptionHandler(StatusRuntimeException::class)
     fun grpcStatusException(ex: StatusRuntimeException, request: HttpServletRequest): ResponseEntity<Any> {

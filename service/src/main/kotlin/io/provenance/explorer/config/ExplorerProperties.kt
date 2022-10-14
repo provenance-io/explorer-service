@@ -57,6 +57,7 @@ class ExplorerProperties(
 
     companion object {
         var UTILITY_TOKEN = "nhash"
+        var UTILITY_TOKEN_DEFAULT_GAS_PRICE = 1905
         var UTILITY_TOKEN_BASE_DECIMAL_PLACES = 9
         // The number to divide the base value by to get the display value, or vice versa
         var UTILITY_TOKEN_BASE_MULTIPLIER = BigDecimal(1000000000)
@@ -66,6 +67,11 @@ class ExplorerProperties(
     @Value("\${explorer.utility-token}")
     fun setUtilityToken(utilityToken: String) {
         UTILITY_TOKEN = utilityToken
+    }
+
+    @Value("\${explorer.utility-token-default-gas-price}")
+    fun setUtilityTokenDefaultGasPrice(utilityTokenDefaultGasPrice: Int) {
+        UTILITY_TOKEN_DEFAULT_GAS_PRICE = utilityTokenDefaultGasPrice
     }
 
     @Value("\${explorer.utility-token-base-decimal-places}")

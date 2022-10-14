@@ -340,7 +340,8 @@ fun Any.getAssociatedAddresses(): List<String> =
         typeUrl.endsWith("MsgConnectionOpenAck") -> this.toMsgConnectionOpenAck().let { listOf(it.signer) }
         typeUrl.endsWith("MsgConnectionOpenConfirm") -> this.toMsgConnectionOpenConfirm().let { listOf(it.signer) }
         typeUrl.endsWith("MsgGrant") -> this.toMsgGrant().let { listOf(it.granter, it.grantee) }
-        typeUrl.endsWith("MsgExec") -> this.toMsgExec().let { listOf(it.grantee) }
+        typeUrl.endsWith("MsgExec") -> this.toMsgExec()
+            .let { exec -> exec.msgsList.flatMap { it.getAssociatedAddresses() } + listOf(exec.grantee) }
         typeUrl.endsWith("MsgRevoke") -> this.toMsgRevoke().let { listOf(it.granter, it.grantee) }
         typeUrl.endsWith("MsgGrantAllowance") -> this.toMsgGrantAllowance().let { listOf(it.granter, it.grantee) }
         typeUrl.endsWith("MsgRevokeAllowance") -> this.toMsgRevokeAllowance().let { listOf(it.granter, it.grantee) }

@@ -265,6 +265,7 @@ object TxMessageTable : IntIdTable(name = "tx_message") {
     val txMessage = jsonb<TxMessageTable, Any>("tx_message", OBJECT_MAPPER)
     val txMessageHash = text("tx_message_hash")
     val msgIdx = integer("msg_idx")
+    val txTimestamp = datetime("tx_timestamp")
 }
 
 class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -351,8 +352,7 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun buildInsert(
-            blockHeight: Int,
-            txHash: String,
+            txInfo: TxData,
             message: Any,
             type: String,
             module: String,
@@ -361,13 +361,14 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
             TxMessageTypeRecord.insert(type, module, message.typeUrl).let { typeId ->
                 listOf(
                     0,
-                    blockHeight,
-                    txHash,
+                    txInfo.blockHeight,
+                    txInfo.txHash,
                     typeId.value,
                     message,
                     message.value.toDbHash(),
                     0,
-                    msgIdx
+                    msgIdx,
+                    txInfo.txTimestamp
                 ).toProcedureObject() to typeId.value
             }
         }
@@ -380,6 +381,7 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
     var txMessage by TxMessageTable.txMessage
     var txMessageHash by TxMessageTable.txMessageHash
     var msgIdx by TxMessageTable.msgIdx
+    var txTimestamp by TxMessageTable.txTimestamp
 }
 
 object TxEventsTable : IntIdTable(name = "tx_msg_event") {
@@ -509,6 +511,7 @@ object TxGasCacheTable : IntIdTable(name = "tx_gas_cache") {
     val feeAmount = double("fee_amount").nullable()
     val processed = bool("processed").default(false)
     val height = integer("height")
+    val txHashId = integer("tx_hash_id")
 }
 
 class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -527,7 +530,8 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 tx.txResponse.gasUsed.toInt(),
                 totalBaseFees,
                 false,
-                txInfo.blockHeight
+                txInfo.blockHeight,
+                0
             ).toProcedureObject()
 
         fun getGasVolume(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
@@ -578,6 +582,7 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var feeAmount by TxGasCacheTable.feeAmount
     var processed by TxGasCacheTable.processed
     var height by TxGasCacheTable.height
+    var txHashId by TxGasCacheTable.txHashId
 }
 
 object TxFeepayerTable : IntIdTable(name = "tx_feepayer") {
@@ -587,6 +592,7 @@ object TxFeepayerTable : IntIdTable(name = "tx_feepayer") {
     val payerType = varchar("payer_type", 128)
     val addressId = integer("address_id")
     val address = varchar("address", 128)
+    val txTimestamp = datetime("tx_timestamp")
 }
 
 enum class FeePayer { GRANTER, PAYER, FIRST_SIGNER }
@@ -598,7 +604,7 @@ class TxFeepayerRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxFeepayerRecord>(TxFeepayerTable) {
 
         fun buildInsert(txInfo: TxData, type: String, addrId: Int, address: String) =
-            listOf(0, txInfo.blockHeight, -1, txInfo.txHash, type, addrId, address).toProcedureObject()
+            listOf(0, txInfo.blockHeight, -1, txInfo.txHash, type, addrId, address, txInfo.txTimestamp).toProcedureObject()
     }
 
     var blockHeight by TxFeepayerTable.blockHeight
@@ -607,6 +613,7 @@ class TxFeepayerRecord(id: EntityID<Int>) : IntEntity(id) {
     var payerType by TxFeepayerTable.payerType
     var addressId by TxFeepayerTable.addressId
     var address by TxFeepayerTable.address
+    var txTimestamp by TxFeepayerTable.txTimestamp
 }
 
 object TxFeeTable : IntIdTable(name = "tx_fee") {
@@ -620,9 +627,10 @@ object TxFeeTable : IntIdTable(name = "tx_fee") {
     val msgType = varchar("msg_type", 256).nullable()
     val recipient = varchar("recipient", 128).nullable()
     val origFees = jsonb<TxFeeTable, CustomFeeList>("orig_fees", OBJECT_MAPPER).nullable()
+    val txTimestamp = datetime("tx_timestamp")
 }
 
-enum class FeeType { BASE_FEE_USED, BASE_FEE_OVERAGE, PRIORITY_FEE, MSG_BASED_FEE, CUSTOM_FEE }
+enum class FeeType { BASE_FEE_USED, BASE_FEE_OVERAGE, MSG_BASED_FEE, CUSTOM_FEE }
 
 class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxFeeRecord>(TxFeeTable) {
@@ -754,7 +762,8 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
             amount,
             msgType,
             recipient,
-            origFees.stringify()
+            origFees.stringify(),
+            txInfo.txTimestamp
         ).toProcedureObject()
     }
 
@@ -768,4 +777,5 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
     var msgType by TxFeeTable.msgType
     var recipient by TxFeeTable.recipient
     var origFees by TxFeeTable.origFees
+    var txTimestamp by TxFeeTable.txTimestamp
 }

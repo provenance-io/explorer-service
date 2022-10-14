@@ -33,12 +33,30 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Added CSV downloads for the Tx History chart data #406
+  * Deprecated `/api/v2/txs/history` in favor of `/api/v3/txs/history`
+  * GET `/api/v3/txs/history/download` - Using the given filters, exports the data behind the Tx History chart
+  * GET `/api/v3/accounts/tx_history` - Returns data for the Account Tx History chart
+  * GET `/api/v3/accounts/tx_history/download` - Using the given filters, exports the data behind the Account Tx History chart
+  * Added `MONTH` as a granularity option
+
 ### Improvements
 * Extracted `nhash` as the utility token out into an ENV to be configurable #399
-  * Also extracted the base denom decimal places, voting power multiplier
+  * Also extracted the base denom decimal places, voting power multiplier, floor gas price
+* Merging DLOB and CMC volumes for more accurate values
 
 ### Bug Fixes
 * Now using the CMC price for the utility token instead of from PE #407
+
+### Data
+* Migration 1.76 - Add `tx_timestamp` to `tx_fee` #406
+* Migration 1.77 - Add `tx_timestamp` to `tx_feepayer` #406
+* Migration 1.78 - Add `tx_timestamp` to `tx_message` #406
+* Migration 1.79 - Add `tx_hash_id` to `tx_gas_cache` #406
+* Migration 1.80 - Updating ingest procedures, add materialized views #406
+  * Updated associated ingest procedures
+  * Created `tx_history_chart_data_hourly`, `tx_type_data_hourly`, `fee_type_data_hourly` materialized views, with data
 
 ## [v5.1.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.1.0) - 2022-10-07
 ### Release Name: Symon Semeonis
