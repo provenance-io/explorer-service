@@ -35,6 +35,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Improvements
 * Extracted `nhash` as the utility token out into an ENV to be configurable #399
+  * Also extracted the base denom decimal places, voting power multiplier
+
+### Bug Fixes
+* Now using the CMC price for the utility token instead of from PE #407
 
 ## [v5.1.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.1.0) - 2022-10-07
 ### Release Name: Symon Semeonis

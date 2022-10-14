@@ -2,6 +2,8 @@ package io.provenance.explorer.domain.extensions
 
 import cosmos.base.v1beta1.CoinOuterClass
 import cosmos.tx.v1beta1.ServiceOuterClass
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_DECIMAL_PLACES
+import io.provenance.explorer.config.ExplorerProperties.Companion.VOTING_POWER_PADDING
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -16,7 +18,7 @@ fun BigDecimal.toCoinStr(denom: String) = CoinStr(this.stringfy(), denom)
 fun String.toDecimalString() = this.toDecimal().toPlainString()
 
 // Used to convert voting power values from mhash (milli) to nhash (nano)
-fun BigDecimal.mhashToNhash() = this * BigDecimal(1000000)
+fun BigDecimal.mhashToNhash() = this * BigDecimal(VOTING_POWER_PADDING)
 
 fun List<CoinOuterClass.Coin>.toProtoCoin() =
     this.firstOrNull() ?: CoinOuterClass.Coin.newBuilder().setAmount("0").setDenom("").build()
@@ -27,9 +29,13 @@ fun ServiceOuterClass.GetTxResponse.toCoinStr() =
     this.tx.authInfo.fee.amountList.toProtoCoin().let { coin -> CoinStr(coin.amount, coin.denom) }
 
 // Math extensions
-fun String.toPercentage() = BigDecimal(this.toBigInteger(), 18).multiply(BigDecimal(100)).stringify() + "%"
+fun String.toPercentage() =
+    BigDecimal(this.toBigInteger(), UTILITY_TOKEN_BASE_DECIMAL_PLACES * 2)
+        .multiply(BigDecimal(100))
+        .stringify() + "%"
 
-fun String.toDecimal() = BigDecimal(this.toBigInteger(), 18).stripTrailingZeros()
+fun String.toDecimal() =
+    BigDecimal(this.toBigInteger(), UTILITY_TOKEN_BASE_DECIMAL_PLACES * 2).stripTrailingZeros()
 
 fun Double.toPercentage() = "${this * 100}%"
 // fun BigDecimal.toPercentage() = "${this * 100}%"

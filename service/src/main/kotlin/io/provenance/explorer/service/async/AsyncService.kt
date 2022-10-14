@@ -3,6 +3,7 @@ package io.provenance.explorer.service.async
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockProposerRecord
@@ -194,7 +195,21 @@ class AsyncService(
         val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC).toString()
         cacheService.getCacheValue(key)!!.let { cache ->
             pricingService.getPricingAsync(cache.cacheValue!!, "async pricing update").forEach { price ->
-                assetService.getAssetRaw(price.markerDenom).let { pricingService.insertAssetPricing(it, price) }
+                // dont set price from PE
+                if (price.markerDenom != UTILITY_TOKEN)
+                    assetService.getAssetRaw(price.markerDenom).let { pricingService.insertAssetPricing(it, price) }
+                else {
+                    // Pull price from CMC, calced to the true base denom price
+                    val cmcPrice =
+                        tokenService.getTokenLatest()?.quote?.get("USD")?.price
+                            ?.div(UTILITY_TOKEN_BASE_MULTIPLIER)?.toDouble()
+                    // If CMC data exists, use that, else use the PE value
+                    val newPriceObj = price.copy(usdPrice = cmcPrice ?: price.usdPrice!!)
+                    // Save it
+                    assetService.getAssetRaw(price.markerDenom).let {
+                        pricingService.insertAssetPricing(it, newPriceObj)
+                    }
+                }
             }
         }.let { cacheService.updateCacheValue(key, now) }
     }
@@ -213,7 +228,7 @@ class AsyncService(
 
     @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
     fun updateTokenLatest() =
-        tokenService.updateTokenLatest()?.data?.get("19960")?.let {
+        tokenService.updateTokenLatest()?.data?.get(props.cmcTokenId.toString())?.let {
             CacheUpdateRecord.updateCacheByKey(CacheKeys.UTILITY_TOKEN_LATEST.key, VANILLA_MAPPER.writeValueAsString(it))
         }
 
