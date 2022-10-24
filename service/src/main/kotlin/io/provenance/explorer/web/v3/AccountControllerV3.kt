@@ -74,13 +74,15 @@ class AccountControllerV3(private val accountService: AccountService, private va
     ) = ResponseEntity.ok(accountService.getVestingSchedule(address, continuousPeriod))
 
     @ApiOperation("Returns account balances for the account address, broken down by spendable and locked")
-    @GetMapping("/{address}/balances/{height}")
+    @GetMapping("/{address}/balances_at_height")
     @HiddenApi
     fun getAccountBalancesAtHeight(
         @ApiParam(value = "The address of the account, starting with the standard account prefix")
         @PathVariable address: String,
-        @ApiParam(value = "block height to search at") @PathVariable height: Int
-    ) = ResponseEntity.ok(accountService.getAccountBalancesAllAtHeight(address, height))
+        @ApiParam(value = "block height to search at") @RequestParam height: Int,
+        @ApiParam(value = "The marker denom, can be base or display", required = false)
+        @RequestParam denom: String?
+    ) = ResponseEntity.ok(accountService.getAccountBalancesAllAtHeight(address, height, denom))
 
     @ApiOperation("Get Account Tx History chart data")
     @GetMapping("{address}/tx_history")
@@ -143,4 +145,20 @@ class AccountControllerV3(private val accountService: AccountService, private va
         response.addHeader("Content-Disposition", "attachment; filename=\"${filters.getFileNameBase(address)}.zip\"")
         accountService.getAccountTxHistoryChartDataDownload(filters, address, response.outputStream)
     }
+
+    @ApiOperation("Returns account balance for the given denom for the account address, broken down by spendable and locked")
+    @GetMapping("/{address}/balances/{denom}")
+    fun getAccountBalanceForDenom(
+        @ApiParam(value = "The address of the account, starting with the standard account prefix")
+        @PathVariable address: String,
+        @ApiParam(value = "The marker denom, can be base or display")
+        @PathVariable denom: String
+    ) = ResponseEntity.ok(accountService.getAccountBalanceForDenomDetailed(address, denom))
+
+    @ApiOperation("Returns account balance for the utility token for the account address, broken down by spendable and locked")
+    @GetMapping("/{address}/balances/utility_token")
+    fun getAccountBalanceForUtilityToken(
+        @ApiParam(value = "The address of the account, starting with the standard account prefix")
+        @PathVariable address: String
+    ) = ResponseEntity.ok(accountService.getAccountBalanceForUtilityToken(address))
 }

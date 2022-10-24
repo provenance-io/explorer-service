@@ -1,7 +1,7 @@
 package io.provenance.explorer.domain.extensions
 
 import cosmos.base.v1beta1.CoinOuterClass
-import cosmos.tx.v1beta1.ServiceOuterClass
+import cosmos.base.v1beta1.coin
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_DECIMAL_PLACES
 import io.provenance.explorer.config.ExplorerProperties.Companion.VOTING_POWER_PADDING
 import io.provenance.explorer.domain.models.explorer.CoinStr
@@ -20,13 +20,12 @@ fun String.toDecimalString() = this.toDecimal().toPlainString()
 // Used to convert voting power values from mhash (milli) to nhash (nano)
 fun BigDecimal.mhashToNhash() = this * BigDecimal(VOTING_POWER_PADDING)
 
-fun List<CoinOuterClass.Coin>.toProtoCoin() =
-    this.firstOrNull() ?: CoinOuterClass.Coin.newBuilder().setAmount("0").setDenom("").build()
+fun BigDecimal.toProtoCoin(denom: String) = coin {
+    this.amount = this@toProtoCoin.toString()
+    this.denom = denom
+}
 
 fun List<CoinOuterClass.Coin>.toCoinStrList() = this.map { CoinStr(it.amount, it.denom) }
-
-fun ServiceOuterClass.GetTxResponse.toCoinStr() =
-    this.tx.authInfo.fee.amountList.toProtoCoin().let { coin -> CoinStr(coin.amount, coin.denom) }
 
 // Math extensions
 fun String.toPercentage() =

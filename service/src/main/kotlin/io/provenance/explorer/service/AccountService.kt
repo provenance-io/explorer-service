@@ -9,6 +9,7 @@ import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.MarkerUnitRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinTable
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheTable
@@ -33,6 +34,7 @@ import io.provenance.explorer.domain.extensions.toDecimalString
 import io.provenance.explorer.domain.extensions.toNormalCase
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
+import io.provenance.explorer.domain.extensions.toProtoCoin
 import io.provenance.explorer.domain.extensions.writeCsvEntry
 import io.provenance.explorer.domain.models.explorer.AccountDetail
 import io.provenance.explorer.domain.models.explorer.AccountRewards
@@ -166,9 +168,27 @@ class AccountService(
         }
     }
 
+    fun getAccountBalanceForUtilityToken(address: String) = getAccountBalanceForDenomDetailed(address, UTILITY_TOKEN)
+
+    fun getAccountBalanceForDenomDetailed(address: String, denom: String) = runBlocking {
+        val unit = MarkerUnitRecord.findByUnit(denom)?.marker ?: denom
+        accountClient.getAccountBalanceForDenom(address, unit).let { res ->
+            val pricing = pricingService.getPricingInfoSingle(unit) ?: BigDecimal.ZERO
+            val spendable = accountClient.getSpendableBalanceDenom(address, unit) ?: BigDecimal.ZERO.toProtoCoin(unit)
+            DenomBalanceBreakdown(
+                res.toCoinStrWithPrice(pricing),
+                spendable.toCoinStrWithPrice(pricing),
+                res.diff(spendable).toCoinStrWithPrice(pricing, unit)
+            )
+        }
+    }
+
     // Used for balance validation - this is raw data only
-    fun getAccountBalancesAllAtHeight(address: String, height: Int) = runBlocking {
-        accountClient.getAccountBalancesAllAtHeight(address, height).map { it.toCoinStr() }
+    fun getAccountBalancesAllAtHeight(address: String, height: Int, denom: String?) = runBlocking {
+        if (denom != null)
+            listOf(accountClient.getAccountBalanceForDenomAtHeight(address, denom, height).toCoinStr())
+        else
+            accountClient.getAccountBalancesAllAtHeight(address, height).map { it.toCoinStr() }
     }
 
     private fun getDelegationTotal(address: String) = runBlocking {

@@ -3,6 +3,7 @@ package io.provenance.explorer.grpc.v1
 import cosmos.auth.v1beta1.queryAccountRequest
 import cosmos.bank.v1beta1.Bank
 import cosmos.bank.v1beta1.queryAllBalancesRequest
+import cosmos.bank.v1beta1.queryBalanceRequest
 import cosmos.bank.v1beta1.queryDenomMetadataRequest
 import cosmos.bank.v1beta1.queryDenomMetadataResponse
 import cosmos.bank.v1beta1.queryDenomsMetadataRequest
@@ -103,6 +104,14 @@ class AccountGrpcClient(channelUri: URI) {
         return balances
     }
 
+    suspend fun getAccountBalanceForDenom(address: String, denom: String) =
+        bankClient.balance(
+            queryBalanceRequest {
+                this.address = address
+                this.denom = denom
+            }
+        ).balance
+
     suspend fun getAccountBalancesAllAtHeight(address: String, height: Int): MutableList<CoinOuterClass.Coin> {
         var (offset, limit) = 0 to 100
 
@@ -132,6 +141,16 @@ class AccountGrpcClient(channelUri: URI) {
         }
         return balances
     }
+
+    suspend fun getAccountBalanceForDenomAtHeight(address: String, denom: String, height: Int) =
+        bankClient
+            .addBlockHeightToQuery(height.toString())
+            .balance(
+                queryBalanceRequest {
+                    this.address = address
+                    this.denom = denom
+                }
+            ).balance
 
     suspend fun getSpendableBalancesAll(address: String): MutableList<CoinOuterClass.Coin> {
         var (offset, limit) = 0 to 100

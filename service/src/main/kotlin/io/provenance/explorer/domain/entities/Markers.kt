@@ -247,6 +247,10 @@ class AssetPricingRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findByDenomList(denoms: List<String>) = transaction {
             AssetPricingRecord.find { AssetPricingTable.denom inList denoms }.toList()
         }
+
+        fun findByDenom(denom: String) = transaction {
+            AssetPricingRecord.find { AssetPricingTable.denom eq denom }.firstOrNull()
+        }
     }
 
     var markerId by AssetPricingTable.markerId

@@ -40,7 +40,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * GET `/api/v3/accounts/tx_history` - Returns data for the Account Tx History chart
   * GET `/api/v3/accounts/tx_history/download` - Using the given filters, exports the data behind the Account Tx History chart
   * Added `MONTH` as a granularity option
-
+* Added APIs to get account balance for a single denom #418
+  * GET `/api/v3/accounts/{address}/balances/{denom}` - Returns balance for the given account and denom
+  * GET `/api/v3/accounts/{address}/balances/utility_token` - Returns balance for the utility token for the given account
+  * `/api/v3/accounts/{address}/balances/{height}` -> `/api/v3/accounts/{address}/balances_at_height` - Added `denom` as query param
+  
 ### Improvements
 * Extracted `nhash` as the utility token out into an ENV to be configurable #399
   * Also extracted the base denom decimal places, voting power multiplier, floor gas price

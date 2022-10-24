@@ -53,6 +53,8 @@ class PricingService(
         AssetPricingRecord.findByDenomList(denoms).associate { it.denom to it.pricing.toBigDecimal() }.toMutableMap()
     }
 
+    fun getPricingInfoSingle(denom: String) = AssetPricingRecord.findByDenom(denom)?.pricing?.toBigDecimal()
+
     fun insertAssetPricing(marker: Pair<EntityID<Int>, MarkerCacheRecord>, data: AssetPricing) = transaction {
         marker.first.value.let { AssetPricingRecord.upsert(it, data) }
     }
