@@ -50,11 +50,12 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Now using the CMC price for the utility token instead of from PE #407
 
 ### Data
-* Migration 1.76 - Add `tx_timestamp` to `tx_fee` #406
-* Migration 1.77 - Add `tx_timestamp` to `tx_feepayer` #406
-* Migration 1.78 - Add `tx_timestamp` to `tx_message` #406
-* Migration 1.79 - Add `tx_hash_id` to `tx_gas_cache` #406
-* Migration 1.80 - Updating ingest procedures, add materialized views #406
+* Migration 1.74 - Add index on `hash` to `tx_cache`
+* Migration 1.77 - Add `tx_timestamp` to `tx_fee` #406
+* Migration 1.78 - Add `tx_timestamp` to `tx_feepayer` #406
+* Migration 1.79 - Add `tx_timestamp` to `tx_message` #406
+* Migration 1.80 - Add `tx_hash_id` to `tx_gas_cache` #406
+* Migration 1.81 - Updating ingest procedures, add materialized views #406
   * Updated associated ingest procedures
   * Created `tx_history_chart_data_hourly`, `tx_type_data_hourly`, `fee_type_data_hourly` materialized views, with data
 
