@@ -121,3 +121,16 @@ data class CmcLatestQuote(
     val market_cap_by_total_supply: BigDecimal?,
     val last_updated: DateTime,
 )
+
+data class DlobHistBase(
+    val buy: List<DlobHistorical>
+)
+
+data class DlobHistorical(
+    val trade_id: Long,
+    val price: BigDecimal,
+    val base_volume: Long,
+    val target_volume: BigDecimal,
+    val trade_timestamp: Long,
+    val type: String
+)

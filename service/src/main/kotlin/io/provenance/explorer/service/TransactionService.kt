@@ -16,11 +16,13 @@ import io.provenance.explorer.domain.entities.SmContractRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinType
 import io.provenance.explorer.domain.entities.TxCacheRecord
+import io.provenance.explorer.domain.entities.TxHistoryDataViews
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.getFeepayer
+import io.provenance.explorer.domain.exceptions.validate
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toCoinStr
@@ -29,6 +31,7 @@ import io.provenance.explorer.domain.extensions.toFees
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toSigObj
+import io.provenance.explorer.domain.extensions.writeCsvEntry
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.Gas
 import io.provenance.explorer.domain.models.explorer.MsgInfo
@@ -36,13 +39,18 @@ import io.provenance.explorer.domain.models.explorer.MsgTypeSet
 import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.TxDetails
 import io.provenance.explorer.domain.models.explorer.TxGov
+import io.provenance.explorer.domain.models.explorer.TxHistoryChartData
+import io.provenance.explorer.domain.models.explorer.TxHistoryDataRequest
 import io.provenance.explorer.domain.models.explorer.TxMessage
 import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.domain.models.explorer.TxSmartContract
 import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.domain.models.explorer.TxSummary
 import io.provenance.explorer.domain.models.explorer.TxType
+import io.provenance.explorer.domain.models.explorer.datesValidation
+import io.provenance.explorer.domain.models.explorer.getFileList
 import io.provenance.explorer.domain.models.explorer.getValuesPlusAddtnl
+import io.provenance.explorer.domain.models.explorer.granularityValidation
 import io.provenance.explorer.grpc.extensions.getModuleAccName
 import io.provenance.explorer.service.async.AsyncCachingV2
 import io.provenance.explorer.service.async.getAddressType
@@ -50,6 +58,9 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+import javax.servlet.ServletOutputStream
 
 @Service
 class TransactionService(
@@ -201,6 +212,7 @@ class TransactionService(
 
     fun getTxHeatmap() = BlockCacheHourlyTxCountsRecord.getTxHeatmap()
 
+    @Deprecated("Use TransactionService.getTxHistoryChartData", ReplaceWith("TransactionService.getTxHistoryChartData"))
     fun getTxHistoryByQuery(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity) =
         BlockCacheHourlyTxCountsRecord.getTxCountsForParams(fromDate, toDate, granularity)
 
@@ -299,6 +311,36 @@ class TransactionService(
                 transaction { msg.txHashId.txFeepayer.getFeepayer() }
             )
         }.let { PagedResults(total.pageCountOfResults(count), it, total.toLong()) }
+    }
+
+    fun getTxHistoryChartData(filters: TxHistoryDataRequest): List<TxHistoryChartData> {
+        validate(
+            granularityValidation(filters.granularity),
+            datesValidation(filters.fromDate, filters.toDate)
+        )
+        return TxHistoryDataViews.getTxHistoryChartData(filters.granularity, filters.fromDate, filters.toDate)
+    }
+
+    fun getTxHistoryChartDataDownload(filters: TxHistoryDataRequest, resp: ServletOutputStream): ZipOutputStream {
+        validate(
+            granularityValidation(filters.granularity),
+            datesValidation(filters.fromDate, filters.toDate)
+        )
+        val baseFileName = filters.getFileNameBase(null)
+        val fileList = getFileList(filters, null)
+
+        val zos = ZipOutputStream(resp)
+        fileList.forEach { file ->
+            zos.putNextEntry(ZipEntry("$baseFileName - ${file.fileName}.csv"))
+            zos.write(file.writeCsvEntry())
+            zos.closeEntry()
+        }
+        // Adding in a txt file with the applied filters
+        zos.putNextEntry(ZipEntry("$baseFileName - FILTERS.txt"))
+        zos.write(filters.writeFilters(null))
+        zos.closeEntry()
+        zos.close()
+        return zos
     }
 }
 

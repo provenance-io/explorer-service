@@ -37,6 +37,7 @@ dependencies {
     implementation(Libraries.KotlinXCoRoutinesCore)
     implementation(Libraries.KotlinXCoRoutinesGuava)
     implementation(Libraries.ApacheCommonsText)
+    implementation(Libraries.ApacheCommonsCsv)
     implementation(Libraries.KaseChange)
     implementation(Libraries.ApacheHttpClient)
     implementation(Libraries.KtorClientCore)

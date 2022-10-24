@@ -29,7 +29,7 @@ import javax.validation.constraints.Min
     consumes = MediaType.APPLICATION_JSON_VALUE,
     tags = ["Transactions"]
 )
-class TransactionController(private val transactionService: TransactionService) {
+class TransactionControllerV2(private val transactionService: TransactionService) {
 
     @ApiOperation("Return the latest transactions with query params")
     @GetMapping("/recent")
@@ -98,6 +98,8 @@ class TransactionController(private val transactionService: TransactionService) 
 
     @ApiOperation("Get X-Day Transaction Count History")
     @GetMapping("/history")
+    @Deprecated("Use /api/v3/txs/history")
+    @java.lang.Deprecated
     fun txHistory(
         @ApiParam(
             type = "DateTime",
@@ -109,7 +111,12 @@ class TransactionController(private val transactionService: TransactionService) 
             value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = true
         ) @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime,
-        @ApiParam(value = "The granularity of data, either DAY or HOUR", defaultValue = "DAY", required = false, allowableValues = "DAY,HOUR")
+        @ApiParam(
+            value = "The granularity of data, either MONTH, DAY or HOUR",
+            defaultValue = "DAY",
+            required = false,
+            allowableValues = "MONTH,DAY,HOUR"
+        )
         @RequestParam(defaultValue = "DAY") granularity: DateTruncGranularity
     ) = ResponseEntity.ok(transactionService.getTxHistoryByQuery(fromDate, toDate, granularity))
 

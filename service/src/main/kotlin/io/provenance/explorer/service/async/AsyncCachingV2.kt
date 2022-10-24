@@ -314,7 +314,7 @@ class AsyncCachingV2(
     fun saveMessages(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse, txUpdate: TxUpdate) = transaction {
         tx.tx.body.messagesList.forEachIndexed { idx, msg ->
             val (_, module, type) = msg.getMsgType()
-            val msgRec = TxMessageRecord.buildInsert(txInfo.blockHeight, txInfo.txHash, msg, type, module, idx)
+            val msgRec = TxMessageRecord.buildInsert(txInfo, msg, type, module, idx)
             var single: String? = null
             var events = listOf<String>()
             if (tx.txResponse.logsCount > 0) {

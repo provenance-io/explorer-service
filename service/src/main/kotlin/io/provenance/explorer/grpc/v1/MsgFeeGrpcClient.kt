@@ -1,6 +1,7 @@
 package io.provenance.explorer.grpc.v1
 
 import io.grpc.ManagedChannelBuilder
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_DEFAULT_GAS_PRICE
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.addBlockHeightToQuery
 import io.provenance.explorer.grpc.extensions.getPagination
@@ -66,5 +67,5 @@ class MsgFeeGrpcClient(channelUri: URI) {
         }
     }
 
-    fun getFloorGasPriceOrDefault(height: Int) = getFloorGasPriceAtHeight(height) ?: 1905
+    fun getFloorGasPriceOrDefault(height: Int) = getFloorGasPriceAtHeight(height) ?: UTILITY_TOKEN_DEFAULT_GAS_PRICE.toLong()
 }

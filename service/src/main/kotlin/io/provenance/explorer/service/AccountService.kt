@@ -12,6 +12,7 @@ import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinTable
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheTable
+import io.provenance.explorer.domain.entities.TxHistoryDataViews
 import io.provenance.explorer.domain.entities.TxMessageTable
 import io.provenance.explorer.domain.entities.TxMessageTypeTable
 import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
@@ -32,6 +33,7 @@ import io.provenance.explorer.domain.extensions.toDecimalString
 import io.provenance.explorer.domain.extensions.toNormalCase
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
+import io.provenance.explorer.domain.extensions.writeCsvEntry
 import io.provenance.explorer.domain.models.explorer.AccountDetail
 import io.provenance.explorer.domain.models.explorer.AccountRewards
 import io.provenance.explorer.domain.models.explorer.AttributeObj
@@ -43,7 +45,11 @@ import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.PeriodInSeconds
 import io.provenance.explorer.domain.models.explorer.Reward
 import io.provenance.explorer.domain.models.explorer.TokenCounts
+import io.provenance.explorer.domain.models.explorer.TxHistoryDataRequest
 import io.provenance.explorer.domain.models.explorer.UnpaginatedDelegation
+import io.provenance.explorer.domain.models.explorer.datesValidation
+import io.provenance.explorer.domain.models.explorer.getFileList
+import io.provenance.explorer.domain.models.explorer.granularityValidation
 import io.provenance.explorer.domain.models.explorer.mapToProtoCoin
 import io.provenance.explorer.domain.models.explorer.toCoinStr
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
@@ -63,6 +69,9 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+import javax.servlet.ServletOutputStream
 
 @Service
 class AccountService(
@@ -301,6 +310,42 @@ class AccountService(
             .let { TxCacheRecord.wrapRows(it) }
             .firstOrNull()
             ?.txTimestamp
+    }
+
+    fun getAccountTxHistoryChartData(feepayer: String, filters: TxHistoryDataRequest) {
+        validate(
+            granularityValidation(filters.granularity),
+            datesValidation(filters.fromDate, filters.toDate)
+        )
+        TxHistoryDataViews.getTxHistoryChartData(filters.granularity, filters.fromDate, filters.toDate, feepayer)
+    }
+
+    fun getAccountTxHistoryChartDataDownload(
+        filters: TxHistoryDataRequest,
+        feepayer: String,
+        outputStream: ServletOutputStream
+    ): ZipOutputStream {
+        validate(
+            granularityValidation(filters.granularity),
+            datesValidation(filters.fromDate, filters.toDate),
+            validateAddress(feepayer)
+        )
+        val baseFileName = filters.getFileNameBase(feepayer)
+        val fileList = getFileList(filters, feepayer)
+
+        val zos = ZipOutputStream(outputStream)
+        fileList.forEach { file ->
+            zos.putNextEntry(ZipEntry("$baseFileName - ${file.fileName}.csv"))
+            zos.write(file.writeCsvEntry())
+            zos.closeEntry()
+        }
+        // Adding in a txt file with the applied filters
+        zos.putNextEntry(ZipEntry("$baseFileName - FILTERS.txt"))
+        zos.write(filters.writeFilters(feepayer))
+        zos.closeEntry()
+
+        zos.close()
+        return zos
     }
 }
 

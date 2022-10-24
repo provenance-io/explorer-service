@@ -20,6 +20,7 @@ import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity.DAY
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity.HOUR
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity.MINUTE
+import io.provenance.explorer.domain.models.explorer.DateTruncGranularity.MONTH
 import io.provenance.explorer.domain.models.explorer.MissedBlockPeriod
 import io.provenance.explorer.domain.models.explorer.TxHeatmap
 import io.provenance.explorer.domain.models.explorer.TxHeatmapDay
@@ -338,8 +339,8 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
 
         fun getTxCountsForParams(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity) = transaction {
             when (granularity) {
+                DAY, MONTH -> getGranularityCounts(fromDate, toDate, granularity)
                 HOUR -> getHourlyCounts(fromDate, toDate)
-                DAY -> getDailyCounts(fromDate, toDate)
                 MINUTE -> emptyList()
             }
         }
@@ -389,8 +390,8 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
             TxHeatmapRes(result, dayTotals, hourTotals)
         }
 
-        private fun getDailyCounts(fromDate: DateTime, toDate: DateTime) = transaction {
-            val dateTrunc = DateTrunc(DAY.name, BlockCacheHourlyTxCountsTable.blockTimestamp)
+        private fun getGranularityCounts(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity) = transaction {
+            val dateTrunc = DateTrunc(granularity.name, BlockCacheHourlyTxCountsTable.blockTimestamp)
             val txSum = BlockCacheHourlyTxCountsTable.txCount.sum()
             BlockCacheHourlyTxCountsTable.slice(dateTrunc, txSum)
                 .select {
