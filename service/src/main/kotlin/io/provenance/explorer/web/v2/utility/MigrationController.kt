@@ -64,5 +64,5 @@ class MigrationController(private val migrationService: MigrationService, privat
 
     @ApiOperation(value = "inserts the dlob data")
     @PostMapping("/insert/dlob")
-    fun insertDlobRecords() = ResponseEntity.ok(migrationService.populateBack())
+    fun insertDlobRecords() = ResponseEntity.ok(migrationService.getFromDlob())
 }

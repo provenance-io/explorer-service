@@ -12,6 +12,7 @@ import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockCacheTable
 import io.provenance.explorer.domain.entities.TokenHistoricalDailyRecord
 import io.provenance.explorer.domain.entities.TokenHistoricalDailyTable
+import io.provenance.explorer.domain.extensions.USD_UPPER
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.CmcHistoricalQuote
 import io.provenance.explorer.domain.models.explorer.CmcQuote
@@ -87,8 +88,8 @@ class MigrationService(
             KTOR_CLIENT_JAVA.get("https://www.dlob.io:443/gecko/external/api/v1/exchange/historical_trades") {
                 parameter("ticker_id", "HASH_USD")
                 parameter("type", "buy")
-                parameter("start_time", "18-05-2021")
-                parameter("end_time", "09-10-2021")
+                parameter("start_time", "04-05-2022")
+                parameter("end_time", "19-10-2022")
                 accept(ContentType.Application.Json)
             }
         } catch (e: ResponseException) {
@@ -98,41 +99,16 @@ class MigrationService(
     }
 
     fun getFromDlob() = transaction {
-        var openInit: BigDecimal? = null
         fromDlob()?.buy?.groupBy { DateTime(it.trade_timestamp * 1000).startOfDay() }
             ?.toSortedMap()
-            ?.map { (k,v) ->
-                val high = v.maxByOrNull { it.price }!!
-                val low = v.minByOrNull { it.price }!!
-                val open = v.minByOrNull { DateTime(it.trade_timestamp * 1000) }!!.price
-                val close = v.maxByOrNull { DateTime(it.trade_timestamp * 1000) }!!.price
-                val closeDate = k.plusDays(1).minusMillis(1)
-                val usdVolume = v.sumOf { it.target_volume }.stripTrailingZeros()
-                CmcHistoricalQuote(
-                    time_open = k,
-                    time_close = closeDate,
-                    time_high = DateTime(high.trade_timestamp * 1000),
-                    time_low = DateTime(low.trade_timestamp * 1000),
-                    quote = mapOf("USD" to
-                        CmcQuote(
-                            open = openInit ?: open,
-                            high = high.price,
-                            low = low.price,
-                            close = close,
-                            volume = usdVolume,
-                            market_cap = BigDecimal.ZERO,
-                            timestamp = closeDate
-                        )
-                    )
-                ).also { openInit = close }
-            }?.let { list ->
-                val timestamp = TokenHistoricalDailyTable.timestamp
-                val data = TokenHistoricalDailyTable.data
-                TokenHistoricalDailyTable
-                    .batchInsert(list, listOf(timestamp)) { batch, quote ->
-                        batch[timestamp] = quote.time_open.startOfDay()
-                        batch[data] = quote
-                    }
+            ?.mapValues { (_,v) -> v.sumOf { it.target_volume }.stripTrailingZeros() }
+            ?.forEach { (k,v) ->
+                TokenHistoricalDailyRecord.findById(k)?.let {rec ->
+                    val savedVol = rec.data.quote[USD_UPPER]!!.volume
+                    val quoteCopy = rec.data.quote["USD"]!!.copy(volume = savedVol.plus(v))
+                    val dataCopy = rec.data.copy(quote = mapOf(USD_UPPER to quoteCopy))
+                    rec.apply { this.data = dataCopy }
+                }
             }
     }
 
