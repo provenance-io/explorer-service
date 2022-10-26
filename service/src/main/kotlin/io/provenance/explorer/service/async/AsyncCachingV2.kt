@@ -304,7 +304,7 @@ class AsyncCachingV2(
     ) =
         txUpdate.apply {
             val msgBasedFeeMap = TxFeeRecord.identifyMsgBasedFees(tx, msgFeeClient, proposerRec.blockHeight)
-            val totalBaseFees = tx.txResponse.getTotalBaseFees(msgFeeClient, proposerRec.blockHeight, props)
+            val totalBaseFees = tx.txResponse.getTotalBaseFees(msgFeeClient, proposerRec.blockHeight, props, msgBasedFeeMap.isNotEmpty())
             this.txFees.addAll(TxFeeRecord.buildInserts(txInfo, tx, assetService, msgBasedFeeMap, totalBaseFees))
             this.txGasFee = TxGasCacheRecord.buildInsert(tx, txInfo, totalBaseFees)
             this.validatorMarketRate =
