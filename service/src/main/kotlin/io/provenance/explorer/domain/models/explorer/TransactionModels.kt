@@ -9,7 +9,7 @@ import io.provenance.explorer.domain.entities.GovVoteTable
 import io.provenance.explorer.domain.entities.IbcLedgerAckTable
 import io.provenance.explorer.domain.entities.IbcLedgerTable
 import io.provenance.explorer.domain.entities.ProposalMonitorTable
-import io.provenance.explorer.domain.entities.SignatureJoinTable
+import io.provenance.explorer.domain.entities.SignatureTxTable
 import io.provenance.explorer.domain.entities.TxAddressJoinTable
 import io.provenance.explorer.domain.entities.TxFeeTable
 import io.provenance.explorer.domain.entities.TxFeepayerTable
@@ -68,7 +68,7 @@ data class TxDetails(
     val codespace: String?,
     val errorLog: String?,
     val fee: List<TxFee>,
-    val signers: Signatures,
+    val signers: List<TxSignature>,
     val memo: String,
     val monikers: Map<String, String>,
     val feepayer: TxFeepayer,
@@ -288,7 +288,7 @@ data class TxSummary(
     val monikers: Map<String, String>,
     val time: String,
     val fee: CoinStr,
-    val signers: Signatures,
+    val signers: List<TxSignature>,
     val status: String,
     val feepayer: TxFeepayer
 )
@@ -317,7 +317,7 @@ data class TxGov(
     val block: Int,
     val txTime: String,
     val txFee: CoinStr,
-    val signers: Signatures,
+    val signers: List<TxSignature>,
     val txStatus: String,
     val feepayer: TxFeepayer
 )
@@ -337,7 +337,7 @@ data class TxSmartContract(
     val block: Int,
     val txTime: String,
     val txFee: CoinStr,
-    val signers: Signatures,
+    val signers: List<TxSignature>,
     val txStatus: String,
     val feepayer: TxFeepayer
 )
@@ -390,7 +390,7 @@ fun TxUpdate.toProcedureObject() =
         this.ibcLedgerAcks.toArray(IbcLedgerAckTable.tableName),
         this.smCodes.toArray(TxSmCodeTable.tableName),
         this.smContracts.toArray(TxSmContractTable.tableName),
-        this.sigs.toArray(SignatureJoinTable.tableName),
+        this.sigs.toArray(SignatureTxTable.tableName),
         this.feePayers.toArray(TxFeepayerTable.tableName),
         this.validatorMarketRate!!
     ).toObject()

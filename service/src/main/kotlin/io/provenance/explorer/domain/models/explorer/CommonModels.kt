@@ -22,16 +22,6 @@ data class Addresses(
     val consensusAccountAddr: String
 )
 
-data class Signatures(
-    val signers: List<String>,
-    val threshold: Int?
-)
-
-data class AccountSignature(
-    val pubKey: String?,
-    val type: String?
-)
-
 data class CoinStr(val amount: String, val denom: String)
 data class CoinStrWithPrice(
     val amount: String,
