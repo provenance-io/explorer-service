@@ -43,12 +43,13 @@ fun getEventMsgFeesType() = eventMsgFees { }.getType()
 fun Abci.TxResponse.defaultBaseFees(msgFeeClient: MsgFeeGrpcClient, height: Int) =
     BigDecimal(this.gasWanted * msgFeeClient.getFloorGasPriceOrDefault(height))
 
-// If block lands in bug range, use wanted * gas price param
+// If block lands in bug range and no msg fees, use wanted * gas price param
 // If basefee event is present, use that
 // If not, if fee event is present, use that
 // If not, use the total fee paid (usually used for older txs)
-fun Abci.TxResponse.getSuccessTotalBaseFee(msgFeeClient: MsgFeeGrpcClient, height: Int, props: ExplorerProperties) =
-    if (props.inOneElevenBugRange(height)) this.defaultBaseFees(msgFeeClient, height)
+fun Abci.TxResponse.getSuccessTotalBaseFee(msgFeeClient: MsgFeeGrpcClient, height: Int, props: ExplorerProperties, hasMsgFees: Boolean) =
+    if (props.inOneElevenBugRange(height) && !hasMsgFees)
+        this.defaultBaseFees(msgFeeClient, height)
     else
         this.eventsList
             .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("basefee") }
@@ -90,8 +91,8 @@ fun Abci.TxResponse.getFailureTotalBaseFee(msgFeeClient: MsgFeeGrpcClient, heigh
 
 val sigErrorComboList = listOf("sdk" to 8, "sdk" to 32)
 
-fun Abci.TxResponse.getTotalBaseFees(msgFeeClient: MsgFeeGrpcClient, height: Int, props: ExplorerProperties) =
-    if (this.code == 0) this.getSuccessTotalBaseFee(msgFeeClient, height, props)
+fun Abci.TxResponse.getTotalBaseFees(msgFeeClient: MsgFeeGrpcClient, height: Int, props: ExplorerProperties, hasMsgFees: Boolean) =
+    if (this.code == 0) this.getSuccessTotalBaseFee(msgFeeClient, height, props, hasMsgFees)
     else this.getFailureTotalBaseFee(msgFeeClient, height)
 
 // Old way to find msg fees, before the events were in place

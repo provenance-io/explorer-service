@@ -52,6 +52,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Bug Fixes
 * Now using the CMC price for the utility token instead of from PE #407
+* Hotfix - Fixed fee calc on success with msg fees
 
 ### Data
 * Migration 1.74 - Add index on `hash` to `tx_cache`
