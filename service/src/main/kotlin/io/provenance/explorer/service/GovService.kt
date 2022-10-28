@@ -480,12 +480,12 @@ class GovService(
     }
 
     private fun validateProposal(proposalId: Long, status: List<Gov.ProposalStatus>) =
-        GovProposalRecord.findByProposalId(proposalId).let {
+        GovProposalRecord.findByProposalId(proposalId).let { rec ->
             listOf(
-                requireNotNullToMessage(it) { "Proposal ID $proposalId does not exist." },
+                requireNotNullToMessage(rec) { "Proposal ID $proposalId does not exist." },
                 requireToMessage(
                     status.map { it.name }
-                        .contains(it.status)
+                        .contains(rec.status)
                 ) { "Proposal ID $proposalId is not in the correct status for this action." }
             )
         }

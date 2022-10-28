@@ -41,7 +41,8 @@ fun Double.toPercentage() = "${this * 100}%"
 
 fun List<Int>.avg() = this.sum() / this.size
 
-fun Int.padToDecString() = (this * 1e16).toString()
+fun Int.padToDecString() =
+    BigDecimal(this).multiply(BigDecimal("1e${(UTILITY_TOKEN_BASE_DECIMAL_PLACES - 1) * 2}")).toPlainString()
 
 fun List<CoinOuterClass.DecCoin>.isZero(): Boolean {
     this.forEach {
