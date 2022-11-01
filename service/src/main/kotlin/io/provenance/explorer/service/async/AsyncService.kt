@@ -3,6 +3,7 @@ package io.provenance.explorer.service.async
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_DECIMAL_PLACES
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
@@ -206,7 +207,11 @@ class AsyncService(
                     // Pull price from CMC, calced to the true base denom price
                     val cmcPrice =
                         tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price
-                            ?.div(UTILITY_TOKEN_BASE_MULTIPLIER)?.toDouble()
+                            ?.let {
+                                val scale = it.scale()
+                                it.setScale(scale + UTILITY_TOKEN_BASE_DECIMAL_PLACES)
+                                    .div(UTILITY_TOKEN_BASE_MULTIPLIER)
+                            }
                     // If CMC data exists, use that, else use the PE value
                     val newPriceObj = price.copy(usdPrice = cmcPrice ?: price.usdPrice!!)
                     // Save it
