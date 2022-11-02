@@ -33,6 +33,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Bug Fixes
+* Updated the field type on asset pricing price
+
 ## [v5.2.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.2.0) - 2022-10-28
 ### Release Name: Diogo Afonso
 

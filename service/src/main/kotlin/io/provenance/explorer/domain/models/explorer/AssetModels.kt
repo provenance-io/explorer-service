@@ -3,6 +3,7 @@ package io.provenance.explorer.domain.models.explorer
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.provenance.explorer.domain.extensions.USD_LOWER
 import org.joda.time.DateTime
+import java.math.BigDecimal
 import java.math.BigInteger
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -95,10 +96,10 @@ data class AssetPricing(
     val id: UUID,
     val markerAddress: String,
     val markerDenom: String,
-    val price: Double?,
+    val price: BigDecimal?,
     val priceDenomination: String = USD_LOWER,
     val priceTimestamp: OffsetDateTime,
-    val usdPrice: Double?
+    val usdPrice: BigDecimal?
 )
 
 data class DenomBalanceBreakdown(

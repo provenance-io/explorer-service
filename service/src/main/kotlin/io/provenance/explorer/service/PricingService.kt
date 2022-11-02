@@ -50,10 +50,10 @@ class PricingService(
 
     fun getPricingInfo(denoms: List<String>, comingFrom: String): MutableMap<String, BigDecimal?> = runBlocking {
         if (denoms.isEmpty()) return@runBlocking mutableMapOf<String, BigDecimal?>()
-        AssetPricingRecord.findByDenomList(denoms).associate { it.denom to it.pricing.toBigDecimal() }.toMutableMap()
+        AssetPricingRecord.findByDenomList(denoms).associate { it.denom to it.pricing }.toMutableMap()
     }
 
-    fun getPricingInfoSingle(denom: String) = AssetPricingRecord.findByDenom(denom)?.pricing?.toBigDecimal()
+    fun getPricingInfoSingle(denom: String) = AssetPricingRecord.findByDenom(denom)?.pricing
 
     fun insertAssetPricing(marker: Pair<EntityID<Int>, MarkerCacheRecord>, data: AssetPricing) = transaction {
         marker.first.value.let { AssetPricingRecord.upsert(it, data) }
