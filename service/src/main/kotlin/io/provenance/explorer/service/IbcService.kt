@@ -10,6 +10,7 @@ import ibc.core.channel.v1.Tx.MsgRecvPacket
 import ibc.core.channel.v1.Tx.MsgTimeout
 import ibc.core.channel.v1.Tx.MsgTimeoutOnClose
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.IbcAckType
@@ -57,7 +58,7 @@ class IbcService(
     fun saveIbcChannel(port: String, channel: String) = runBlocking {
         val channelRes = async { ibcClient.getChannel(port, channel) }
         val client = async { ibcClient.getClientForChannel(port, channel) }
-        val escrowAddr = async { ibcClient.getEscrowAddress(port, channel, props.provAccPrefix()) }
+        val escrowAddr = async { ibcClient.getEscrowAddress(port, channel, PROV_ACC_PREFIX) }
         val escrowAccount = accountService.getAccountRaw(escrowAddr.await())
         IbcChannelRecord.getOrInsert(port, channel, channelRes.await(), client.await(), escrowAccount)
     }

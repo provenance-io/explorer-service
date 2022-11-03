@@ -1,8 +1,8 @@
 package io.provenance.explorer.domain
 
 import com.google.protobuf.Any
+import io.provenance.explorer.domain.extensions.sigToAddress
 import io.provenance.explorer.domain.extensions.toByteString
-import io.provenance.explorer.grpc.extensions.toAddress
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -17,7 +17,7 @@ class ExtensionsTest {
         val key = Base64.getDecoder().decode("Ar2rEV/s88aWyU8CMX+ipwL7/XNI5Z6gexrWv6n1Dxx6")
         val proto = cosmos.crypto.secp256k1.Keys.PubKey.newBuilder().setKey(key.toByteString()).build()
         val any = Any.pack(proto, "")
-        assertEquals(bech32address, any.toAddress("tp"))
+        assertEquals(bech32address, any.sigToAddress("tp"))
     }
 
     @Test
@@ -27,6 +27,6 @@ class ExtensionsTest {
         val key = Base64.getDecoder().decode("Angqd50SIljag/sk8T+2eo/7vLyAvodInF8E3SKDdnmN")
         val proto = cosmos.crypto.secp256r1.Keys.PubKey.newBuilder().setKey(key.toByteString()).build()
         val any = Any.pack(proto, "")
-        assertEquals(bech32address, any.toAddress("cosmos"))
+        assertEquals(bech32address, any.sigToAddress("cosmos"))
     }
 }

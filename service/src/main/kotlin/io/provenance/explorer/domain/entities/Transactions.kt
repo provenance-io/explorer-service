@@ -125,8 +125,6 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 .toList()
         }
 
-        fun findSigsByHash(hash: String) = transaction { SignatureRecord.findByJoin(SigJoinType.TRANSACTION, hash) }
-
         fun getTotalTxCount() = transaction {
             TxCacheTable.selectAll().count().toBigInteger()
         }

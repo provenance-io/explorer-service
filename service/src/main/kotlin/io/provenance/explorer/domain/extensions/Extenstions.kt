@@ -16,7 +16,9 @@ import cosmos.base.abci.v1beta1.Abci
 import cosmos.staking.v1beta1.Staking
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
-import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
+import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_VAL_CONS_PREFIX
+import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_VAL_OPER_PREFIX
 import io.provenance.explorer.domain.core.Bech32
 import io.provenance.explorer.domain.core.toBech32Data
 import io.provenance.explorer.domain.core.toMAddress
@@ -99,21 +101,21 @@ fun BigInteger.pageCountOfResults(count: Int): Int =
 
 fun String.isAddressAsType(type: String) = this.toBech32Data().hrp == type
 
-fun String.translateAddress(props: ExplorerProperties) = this.toBech32Data().let {
+fun String.translateAddress() = this.toBech32Data().let {
     Addresses(
         it.hexData,
-        Bech32.encode(props.provAccPrefix(), it.data),
-        Bech32.encode(props.provValOperPrefix(), it.data),
-        Bech32.encode(props.provValConsPrefix(), it.data)
+        Bech32.encode(PROV_ACC_PREFIX, it.data),
+        Bech32.encode(PROV_VAL_OPER_PREFIX, it.data),
+        Bech32.encode(PROV_VAL_CONS_PREFIX, it.data)
     )
 }
 
-fun ByteString.translateByteArray(props: ExplorerProperties) = this.toByteArray().toBech32Data().let {
+fun ByteString.translateByteArray() = this.toByteArray().toBech32Data().let {
     Addresses(
         it.hexData,
-        Bech32.encode(props.provAccPrefix(), it.data),
-        Bech32.encode(props.provValOperPrefix(), it.data),
-        Bech32.encode(props.provValConsPrefix(), it.data)
+        Bech32.encode(PROV_ACC_PREFIX, it.data),
+        Bech32.encode(PROV_VAL_OPER_PREFIX, it.data),
+        Bech32.encode(PROV_VAL_CONS_PREFIX, it.data)
     )
 }
 

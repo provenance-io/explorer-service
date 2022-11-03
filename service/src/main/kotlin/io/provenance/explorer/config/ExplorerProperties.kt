@@ -34,21 +34,6 @@ class ExplorerProperties(
 
     fun hiddenApis() = hiddenApis.toBoolean()
 
-    // tp or pb
-    fun provAccPrefix() =
-        if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_ACCOUNT_PREFIX
-        else Bech32.PROVENANCE_TESTNET_ACCOUNT_PREFIX
-
-    // valoper
-    fun provValOperPrefix() =
-        if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_VALIDATOR_ACCOUNT_PREFIX
-        else Bech32.PROVENANCE_TESTNET_VALIDATOR_ACCOUNT_PREFIX
-
-    // valcons
-    fun provValConsPrefix() =
-        if (mainnet.toBoolean()) Bech32.PROVENANCE_MAINNET_CONSENSUS_ACCOUNT_PREFIX
-        else Bech32.PROVENANCE_TESTNET_CONSENSUS_ACCOUNT_PREFIX
-
     fun oneElevenBugRange() =
         if (feeBugRangeOneEleven[0] == 0) null
         else feeBugRangeOneEleven[0]..feeBugRangeOneEleven[1]
@@ -62,6 +47,9 @@ class ExplorerProperties(
         // The number to divide the base value by to get the display value, or vice versa
         var UTILITY_TOKEN_BASE_MULTIPLIER = BigDecimal(1000000000)
         var VOTING_POWER_PADDING = 1000000
+        var PROV_ACC_PREFIX = Bech32.PROVENANCE_TESTNET_ACCOUNT_PREFIX
+        var PROV_VAL_OPER_PREFIX = Bech32.PROVENANCE_TESTNET_VALIDATOR_ACCOUNT_PREFIX
+        var PROV_VAL_CONS_PREFIX = Bech32.PROVENANCE_TESTNET_CONSENSUS_ACCOUNT_PREFIX
     }
 
     @Value("\${explorer.utility-token}")
@@ -83,5 +71,18 @@ class ExplorerProperties(
     @Value("\${explorer.utility-token-base-decimal-places}")
     fun setVotingPowerPadding(votingPowerPadding: Int) {
         VOTING_POWER_PADDING = votingPowerPadding
+    }
+
+    @Value("\${explorer.mainnet}")
+    fun setAddressPrefixes(mainnet: String) {
+        if (mainnet.toBoolean()) {
+            PROV_ACC_PREFIX = Bech32.PROVENANCE_MAINNET_ACCOUNT_PREFIX
+            PROV_VAL_OPER_PREFIX = Bech32.PROVENANCE_MAINNET_VALIDATOR_ACCOUNT_PREFIX
+            PROV_VAL_CONS_PREFIX = Bech32.PROVENANCE_MAINNET_CONSENSUS_ACCOUNT_PREFIX
+        } else {
+            PROV_ACC_PREFIX = Bech32.PROVENANCE_TESTNET_ACCOUNT_PREFIX
+            PROV_VAL_OPER_PREFIX = Bech32.PROVENANCE_TESTNET_VALIDATOR_ACCOUNT_PREFIX
+            PROV_VAL_CONS_PREFIX = Bech32.PROVENANCE_TESTNET_CONSENSUS_ACCOUNT_PREFIX
+        }
     }
 }

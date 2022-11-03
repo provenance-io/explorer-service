@@ -81,7 +81,7 @@ class AccountControllerV3(private val accountService: AccountService, private va
         @PathVariable address: String,
         @ApiParam(value = "block height to search at") @RequestParam height: Int,
         @ApiParam(value = "The marker denom, can be base or display", required = false)
-        @RequestParam denom: String?
+        @RequestParam(required = false) denom: String?
     ) = ResponseEntity.ok(accountService.getAccountBalancesAllAtHeight(address, height, denom))
 
     @ApiOperation("Get Account Tx History chart data")
