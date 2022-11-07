@@ -18,7 +18,7 @@ fun BigDecimal.toCoinStr(denom: String) = CoinStr(this.stringfy(), denom)
 fun String.toDecimalString() = this.toDecimal().toPlainString()
 
 // Used to convert voting power values from mhash (milli) to nhash (nano)
-fun BigDecimal.mhashToNhash() = this * BigDecimal(VOTING_POWER_PADDING)
+fun BigDecimal.mhashToNhash() = this.multiply(BigDecimal(VOTING_POWER_PADDING))
 
 fun BigDecimal.toProtoCoin(denom: String) = coin {
     this.amount = this@toProtoCoin.toString()

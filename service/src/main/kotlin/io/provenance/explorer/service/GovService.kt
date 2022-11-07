@@ -288,7 +288,7 @@ class GovService(
                             .mhashToNhash()
 
                     TallyParams(
-                        CoinStr(eligibleAmount.toString(), UTILITY_TOKEN),
+                        CoinStr(eligibleAmount.toPlainString(), UTILITY_TOKEN),
                         param.quorum.toStringUtf8().toDecimalString(),
                         param.threshold.toStringUtf8().toDecimalString(),
                         param.vetoThreshold.toStringUtf8().toDecimalString()
@@ -646,13 +646,13 @@ class GovService(
 
 fun Any.getGovMsgDetail(txHash: String) =
     when {
-        typeUrl.endsWith("MsgSubmitProposal") ->
+        typeUrl.endsWith("gov.v1beta1.MsgSubmitProposal") ->
             transaction {
                 val proposalId = GovProposalRecord.findByTxHash(txHash)!!.proposalId
                 val deposit = GovDepositRecord.findByTxHash(txHash)!!
                 GovMsgDetail(deposit.amount.toCoinStr(deposit.denom), "", proposalId, "")
             }
-        typeUrl.endsWith("MsgVote") ->
+        typeUrl.endsWith("gov.v1beta1.MsgVote") ->
             this.toMsgVote().let { GovMsgDetail(null, "", it.proposalId, "") }
         typeUrl.endsWith("MsgVoteWeighted") ->
             this.toMsgVoteWeighted().let { GovMsgDetail(null, "", it.proposalId, "") }

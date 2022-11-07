@@ -19,6 +19,7 @@ import io.provenance.explorer.domain.models.explorer.getCategoryForType
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.async.AsyncCachingV2
+import io.provenance.explorer.service.firstMatchLabel
 import kotlinx.coroutines.runBlocking
 import net.pearx.kasechange.toSnakeCase
 import net.pearx.kasechange.universalWordSplitter
@@ -56,7 +57,7 @@ class UtilityService(
             .first()
             .let {
                 MsgObj(
-                    it.txMessageType.type,
+                    it.txMessageType.firstMatchLabel(),
                     OBJECT_MAPPER.readValue(protoPrinter.print(it.txMessage), ObjectNode::class.java)
                         .let { node ->
                             node.remove("@type")

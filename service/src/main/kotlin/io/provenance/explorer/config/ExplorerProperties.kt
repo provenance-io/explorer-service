@@ -68,7 +68,7 @@ class ExplorerProperties(
         UTILITY_TOKEN_BASE_MULTIPLIER = BigDecimal("1e$UTILITY_TOKEN_BASE_DECIMAL_PLACES")
     }
 
-    @Value("\${explorer.utility-token-base-decimal-places}")
+    @Value("\${explorer.voting-power-padding}")
     fun setVotingPowerPadding(votingPowerPadding: Int) {
         VOTING_POWER_PADDING = votingPowerPadding
     }

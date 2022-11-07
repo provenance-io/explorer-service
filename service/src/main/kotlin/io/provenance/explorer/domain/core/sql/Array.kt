@@ -75,6 +75,8 @@ class AnyOp(val expr1: Expression<*>, val expr2: Expression<*>) : Op<Boolean>() 
 
 class ContainsOp(expr1: Expression<*>, expr2: Expression<*>) : ComparisonOp(expr1, expr2, "@>")
 
+class IntersectsOp(expr1: Expression<*>, expr2: Expression<*>) : ComparisonOp(expr1, expr2, "&&")
+
 infix fun <T, S> ExpressionWithColumnType<T>.any(t: S): Op<Boolean> {
     if (t == null) {
         return IsNullOp(this)
@@ -83,3 +85,4 @@ infix fun <T, S> ExpressionWithColumnType<T>.any(t: S): Op<Boolean> {
 }
 
 infix fun <T, S> ExpressionWithColumnType<T>.contains(arry: Array<in S>): Op<Boolean> = ContainsOp(this, QueryParameter(arry, columnType))
+infix fun <T, S> ExpressionWithColumnType<T>.intersects(arry: ArrayRaw<S>): Op<Boolean> = IntersectsOp(this, arry)

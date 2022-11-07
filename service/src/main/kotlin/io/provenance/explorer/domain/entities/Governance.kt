@@ -193,7 +193,7 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun findByProposalIdPaginated(proposalId: Long, limit: Int, offset: Int) = transaction {
-            val array = Array(listOf(GovVoteTable.vote.castTo(TextColumnType()), GovVoteTable.weight.castTo(TextColumnType())))
+            val array = Array<String>(TextColumnType(), GovVoteTable.vote.castTo(TextColumnType()), GovVoteTable.weight.castTo(TextColumnType()))
             val arrayAgg = ArrayAgg(array)
             GovVoteTable.slice(
                 listOf(
@@ -232,7 +232,7 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun findByProposalIdCount(proposalId: Long) = transaction {
-            val array = Array(listOf(GovVoteTable.vote.castTo(TextColumnType()), GovVoteTable.weight.castTo(TextColumnType())))
+            val array = Array<String>(TextColumnType(), GovVoteTable.vote.castTo(TextColumnType()), GovVoteTable.weight.castTo(TextColumnType()))
             val arrayAgg = ArrayAgg(array)
             GovVoteTable.slice(listOf(GovVoteTable.proposalId, GovVoteTable.address, arrayAgg))
                 .select { GovVoteTable.proposalId eq proposalId }

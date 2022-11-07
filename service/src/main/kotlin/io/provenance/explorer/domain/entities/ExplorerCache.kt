@@ -171,7 +171,8 @@ enum class CacheKeys(val key: String) {
     SPOTLIGHT_PROCESSING("spotlight_processing"),
     STANDARD_BLOCK_TIME("standard_block_time"),
     UTILITY_TOKEN_LATEST("utility_token_latest"),
-    FEE_BUG_ONE_ELEVEN_START_BLOCK("fee_bug_one_eleven_start_block")
+    FEE_BUG_ONE_ELEVEN_START_BLOCK("fee_bug_one_eleven_start_block"),
+    AUTHZ_PROCESSING("authz_processing")
 }
 
 class CacheUpdateRecord(id: EntityID<Int>) : IntEntity(id) {

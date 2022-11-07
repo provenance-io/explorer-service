@@ -1,6 +1,8 @@
 package io.provenance.explorer.domain.core.sql
 
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.dao.id.IdTable
+import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.DecimalColumnType
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.Function
@@ -71,7 +73,11 @@ fun Expression<*>.nullsLast() = ColumnNullsLast(this)
 
 fun EntityID<Int>?.getOrNull() = try { this?.value } catch (e: Exception) { null }
 
-class Array(val exprs: List<Expression<String>>) : Function<Array<String>>(ArrayColumnType(TextColumnType())) {
+class Array<T>(colType: ColumnType, vararg val exprs: Expression<T>) : Function<Array<T>>(ArrayColumnType(colType)) {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) = queryBuilder { append("ARRAY [", exprs.joinToString(","), "]") }
+}
+
+class ArrayRaw<T>(colType: ColumnType, val exprs: List<T>) : Function<Array<T>>(ArrayColumnType(colType)) {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) = queryBuilder { append("ARRAY [", exprs.joinToString(","), "]") }
 }
 
@@ -80,3 +86,5 @@ fun List<Expression<*>>.joinToList() = this.joinToString(",") { "$it::text" }
 class ArrayAgg(val expr: Expression<Array<String>>) : Function<Array<Array<String>>>(ArrayColumnType(ArrayColumnType(TextColumnType()))) {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) = queryBuilder { append("array_agg(", expr, ")") }
 }
+
+fun <C1 : IdTable<Int>> List<Int>.toEntities(table: C1) = this.map { EntityID(it, table) }

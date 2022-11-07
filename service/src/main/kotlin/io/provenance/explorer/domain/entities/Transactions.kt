@@ -29,6 +29,7 @@ import io.provenance.explorer.domain.models.explorer.CustomFee
 import io.provenance.explorer.domain.models.explorer.CustomFeeList
 import io.provenance.explorer.domain.models.explorer.EventFee
 import io.provenance.explorer.domain.models.explorer.GasStats
+import io.provenance.explorer.domain.models.explorer.MsgProtoBreakout
 import io.provenance.explorer.domain.models.explorer.TxAssociatedValues
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxFeeData
@@ -53,7 +54,6 @@ import org.jetbrains.exposed.sql.ColumnSet
 import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.IntegerColumnType
-import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.TextColumnType
@@ -130,12 +130,10 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
-            val columns: MutableList<Expression<*>> = mutableListOf()
-            if (!txQueryParams.onlyTxQuery())
-                columns.add(Distinct(TxCacheTable.id, IntegerColumnType()).alias("dist"))
-            columns.addAll(TxCacheTable.columns.toMutableList())
+            val columns = TxCacheTable.columns.toMutableList()
             val query =
                 findByQueryParams(txQueryParams, columns)
+                    .groupBy(*TxCacheTable.columns.toTypedArray())
                     .orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
                     .limit(txQueryParams.count, txQueryParams.offset.toLong())
             TxCacheRecord.wrapRows(query).toSet()
@@ -154,7 +152,7 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             var join: ColumnSet = TxCacheTable
 
             if (tqp.msgTypes.isNotEmpty())
-                join = join.innerJoin(TxMessageTable, { TxCacheTable.id }, { TxMessageTable.txHashId })
+                join = join.innerJoin(TxMsgTypeQueryTable, { TxCacheTable.id }, { TxMsgTypeQueryTable.txHashId })
             if ((tqp.addressId != null && tqp.addressType != null) || tqp.address != null)
                 join = join.innerJoin(TxAddressJoinTable, { TxCacheTable.id }, { TxAddressJoinTable.txHashId })
             if (tqp.markerId != null || tqp.denom != null)
@@ -167,7 +165,7 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             val query = if (distinctQuery != null) join.slice(distinctQuery).selectAll() else join.selectAll()
 
             if (tqp.msgTypes.isNotEmpty())
-                query.andWhere { TxMessageTable.txMessageType inList tqp.msgTypes }
+                query.andWhere { TxMsgTypeQueryTable.typeId inList tqp.msgTypes }
             if (tqp.txHeight != null)
                 query.andWhere { TxCacheTable.height eq tqp.txHeight }
             if (tqp.txStatus != null)
@@ -226,6 +224,10 @@ class TxMessageTypeRecord(id: EntityID<Int>) : IntEntity(id) {
             TxMessageTypeRecord.find { TxMessageTypeTable.protoType eq protoType }.firstOrNull()
         }
 
+        fun findByProtoTypeIn(protoType: List<String>) = transaction {
+            TxMessageTypeRecord.find { TxMessageTypeTable.protoType inList protoType }.map { it.id.value }
+        }
+
         fun findByType(types: List<String>) = transaction {
             TxMessageTypeRecord.find { TxMessageTypeTable.type inList types }
         }
@@ -255,11 +257,70 @@ class TxMessageTypeRecord(id: EntityID<Int>) : IntEntity(id) {
     var category by TxMessageTypeTable.category
 }
 
+object TxMsgTypeSubtypeTable : IntIdTable(name = "tx_msg_type_subtype") {
+    val txTimestamp = datetime("tx_timestamp")
+    val blockHeight = integer("block_height")
+    val txHash = varchar("tx_hash", 64)
+    val txHashId = reference("tx_hash_id", TxCacheTable)
+    val txMsgId = reference("tx_msg_id", TxMessageTable)
+    val primaryType = reference("primary_type_id", TxMessageTypeTable)
+    val secondaryType = optReference("secondary_type_id", TxMessageTypeTable)
+}
+
+class TxMsgTypeSubtypeRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxMsgTypeSubtypeRecord>(TxMsgTypeSubtypeTable) {
+
+        fun buildInserts(primary: MsgProtoBreakout, secondaries: List<MsgProtoBreakout>, txInfo: TxData) = transaction {
+            val primId = TxMessageTypeRecord.insert(primary.type, primary.module, primary.proto)
+            val recs =
+                if (secondaries.isNotEmpty())
+                    secondaries.map {
+                        listOf(
+                            0,
+                            0,
+                            primId.value,
+                            TxMessageTypeRecord.insert(it.type, it.module, it.proto).value,
+                            txInfo.txTimestamp,
+                            0,
+                            txInfo.blockHeight,
+                            txInfo.txHash
+                        ).toProcedureObject()
+                    }
+                else listOf(
+                    listOf(
+                        0,
+                        0,
+                        primId.value,
+                        null,
+                        txInfo.txTimestamp,
+                        0,
+                        txInfo.blockHeight,
+                        txInfo.txHash
+                    ).toProcedureObject()
+                )
+            primId to recs
+        }
+    }
+
+    var txMsgId by TxMsgTypeSubtypeTable.txMsgId
+    var primaryType by TxMessageTypeRecord referencedOn TxMsgTypeSubtypeTable.primaryType
+    var secondaryType by TxMessageTypeRecord optionalReferencedOn TxMsgTypeSubtypeTable.secondaryType
+    var blockHeight by TxMsgTypeSubtypeTable.blockHeight
+    var txHashId by TxCacheRecord referencedOn TxMsgTypeSubtypeTable.txHashId
+    var txHash by TxMsgTypeSubtypeTable.txHash
+    var txTimestamp by TxMsgTypeSubtypeTable.txTimestamp
+}
+
+object TxMsgTypeQueryTable : IntIdTable(name = "tx_msg_type_query") {
+    val txHashId = integer("tx_hash_id")
+    val txMsgId = integer("tx_msg_id")
+    val typeId = integer("type_id")
+}
+
 object TxMessageTable : IntIdTable(name = "tx_message") {
     val blockHeight = integer("block_height")
     val txHash = varchar("tx_hash", 64)
     val txHashId = reference("tx_hash_id", TxCacheTable)
-    val txMessageType = reference("tx_message_type_id", TxMessageTypeTable)
     val txMessage = jsonb<TxMessageTable, Any>("tx_message", OBJECT_MAPPER)
     val txMessageHash = text("tx_message_hash")
     val msgIdx = integer("msg_idx")
@@ -269,40 +330,52 @@ object TxMessageTable : IntIdTable(name = "tx_message") {
 class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxMessageRecord>(TxMessageTable) {
 
+        val distId = Distinct(TxMessageTable.id, IntegerColumnType()).alias("dist")
+        val tableColSet = TxMessageTable.columns.toMutableList()
+
         fun findByHash(hash: String) = transaction {
             TxMessageRecord.find { TxMessageTable.txHash eq hash }
         }
 
         fun getCountByHashId(hashId: Int, msgTypes: List<Int>) = transaction {
-            TxMessageRecord.find {
-                (TxMessageTable.txHashId eq hashId) and
-                    (if (msgTypes.isNotEmpty()) (TxMessageTable.txMessageType inList msgTypes) else (Op.TRUE))
-            }
-                .count()
+            val distinctCount = TxMsgTypeQueryTable.txMsgId.countDistinct()
+            val query = TxMsgTypeQueryTable
+                .slice(distinctCount)
+                .select { TxMsgTypeQueryTable.txHashId eq hashId }
+            if (msgTypes.isNotEmpty())
+                query.andWhere { TxMsgTypeQueryTable.typeId inList msgTypes }
+            query.first()[distinctCount].toBigInteger()
         }
 
         fun findByHashIdPaginated(hashId: Int, msgTypes: List<Int>, limit: Int, offset: Int) = transaction {
-            TxMessageRecord.find {
-                (TxMessageTable.txHashId eq hashId) and
-                    (if (msgTypes.isNotEmpty()) (TxMessageTable.txMessageType inList msgTypes) else (Op.TRUE))
-            }
+            val query = TxMessageTable
+                .innerJoin(TxMsgTypeSubtypeTable, { TxMessageTable.id }, { TxMsgTypeSubtypeTable.txMsgId })
+                .slice(listOf(distId) + tableColSet)
+                .select { TxMessageTable.txHashId eq hashId }
+            if (msgTypes.isNotEmpty())
+                query.andWhere { TxMsgTypeQueryTable.typeId inList msgTypes }
+            query
                 .orderBy(Pair(TxMessageTable.msgIdx, SortOrder.ASC))
                 .limit(limit, offset.toLong())
-                .toMutableList()
+                .let { TxMessageRecord.wrapRows(it).toMutableList() }
         }
 
         fun getDistinctTxMsgTypesByTxHash(txHashId: EntityID<Int>) = transaction {
-            val msgIdDist = Distinct(TxMessageTable.txMessageType, IntegerColumnType()).alias("dist")
-            TxMessageTable.slice(msgIdDist, TxMessageTable.txMessageType).select { TxMessageTable.txHashId eq txHashId }
-                .map { it[TxMessageTable.txMessageType].value }
+            val query = """
+                select c.tx_type
+                from tx_message tm
+                      join tx_msg_type_subtype tmts on tm.id = tmts.tx_msg_id
+                      cross join lateral ( values (primary_type_id), (secondary_type_id) ) c(tx_type)
+                where tm.tx_hash_id = ?;
+            """.trimIndent()
+            val arguments = mutableListOf(Pair(IntegerColumnType(), txHashId.value))
+            query.execAndMap(arguments) { it.getInt("tx_type") }
         }
 
         fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
-            val columns = TxMessageTable.columns.toMutableList()
-            val query =
-                findByQueryParams(txQueryParams, columns)
-                    .orderBy(Pair(TxMessageTable.blockHeight, SortOrder.DESC))
-                    .limit(txQueryParams.count, txQueryParams.offset.toLong())
+            val query = findByQueryParams(txQueryParams, listOf(distId) + tableColSet)
+                .orderBy(Pair(TxMessageTable.blockHeight, SortOrder.DESC))
+                .limit(txQueryParams.count, txQueryParams.offset.toLong())
             TxMessageRecord.wrapRows(query).toSet()
         }
 
@@ -312,23 +385,25 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         private fun findByQueryParams(tqp: TxQueryParams, distinctQuery: List<Expression<*>>?) = transaction {
-            var join: ColumnSet = TxCacheTable
+            var join: ColumnSet = TxMessageTable
 
             if (tqp.msgTypes.isNotEmpty())
-                join = join.innerJoin(TxMessageTable, { TxCacheTable.id }, { TxMessageTable.txHashId })
+                join = join.innerJoin(TxMsgTypeQueryTable, { TxMessageTable.txHashId }, { TxMsgTypeQueryTable.txHashId })
+            if (tqp.txStatus != null)
+                join = join.innerJoin(TxCacheTable, { TxMessageTable.txHashId }, { TxCacheTable.id })
             if ((tqp.addressId != null && tqp.addressType != null) || tqp.address != null)
-                join = join.innerJoin(TxAddressJoinTable, { TxCacheTable.id }, { TxAddressJoinTable.txHashId })
+                join = join.innerJoin(TxAddressJoinTable, { TxMessageTable.txHashId }, { TxAddressJoinTable.txHashId })
             if (tqp.smCodeId != null)
-                join = join.innerJoin(TxSmCodeTable, { TxCacheTable.id }, { TxSmCodeTable.txHashId })
+                join = join.innerJoin(TxSmCodeTable, { TxMessageTable.txHashId }, { TxSmCodeTable.txHashId })
             if (tqp.smContractAddrId != null)
-                join = join.innerJoin(TxSmContractTable, { TxCacheTable.id }, { TxSmContractTable.txHashId })
+                join = join.innerJoin(TxSmContractTable, { TxMessageTable.txHashId }, { TxSmContractTable.txHashId })
 
             val query = if (distinctQuery != null) join.slice(distinctQuery).selectAll() else join.selectAll()
 
             if (tqp.msgTypes.isNotEmpty())
-                query.andWhere { TxMessageTable.txMessageType inList tqp.msgTypes }
+                query.andWhere { TxMsgTypeQueryTable.typeId inList tqp.msgTypes }
             if (tqp.txHeight != null)
-                query.andWhere { TxCacheTable.height eq tqp.txHeight }
+                query.andWhere { TxMessageTable.blockHeight eq tqp.txHeight }
             if (tqp.txStatus != null)
                 query.andWhere {
                     if (tqp.txStatus == TxStatus.FAILURE) TxCacheTable.errorCode neq 0 else TxCacheTable.errorCode.isNull()
@@ -342,40 +417,22 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
             if (tqp.smContractAddrId != null)
                 query.andWhere { (TxSmContractTable.contractId eq tqp.smContractAddrId) }
             if (tqp.fromDate != null)
-                query.andWhere { TxCacheTable.txTimestamp greaterEq tqp.fromDate.startOfDay() }
+                query.andWhere { TxMessageTable.txTimestamp greaterEq tqp.fromDate.startOfDay() }
             if (tqp.toDate != null)
-                query.andWhere { TxCacheTable.txTimestamp lessEq tqp.toDate.startOfDay().plusDays(1) }
+                query.andWhere { TxMessageTable.txTimestamp lessEq tqp.toDate.startOfDay().plusDays(1) }
 
             query
         }
 
-        fun buildInsert(
-            txInfo: TxData,
-            message: Any,
-            type: String,
-            module: String,
-            msgIdx: Int
-        ) = transaction {
-            TxMessageTypeRecord.insert(type, module, message.typeUrl).let { typeId ->
-                listOf(
-                    0,
-                    txInfo.blockHeight,
-                    txInfo.txHash,
-                    typeId.value,
-                    message,
-                    message.value.toDbHash(),
-                    0,
-                    msgIdx,
-                    txInfo.txTimestamp
-                ).toProcedureObject() to typeId.value
-            }
+        fun buildInsert(txInfo: TxData, message: Any, msgIdx: Int) = transaction {
+            listOf(0, txInfo.blockHeight, txInfo.txHash, message, message.value.toDbHash(), 0, msgIdx, txInfo.txTimestamp).toProcedureObject()
         }
     }
 
     var blockHeight by TxMessageTable.blockHeight
     var txHashId by TxCacheRecord referencedOn TxMessageTable.txHashId
     var txHash by TxMessageTable.txHash
-    var txMessageType by TxMessageTypeRecord referencedOn TxMessageTable.txMessageType
+    val txMessageType by TxMsgTypeSubtypeRecord referrersOn TxMsgTypeSubtypeTable.txMsgId
     var txMessage by TxMessageTable.txMessage
     var txMessageHash by TxMessageTable.txMessageHash
     var msgIdx by TxMessageTable.msgIdx

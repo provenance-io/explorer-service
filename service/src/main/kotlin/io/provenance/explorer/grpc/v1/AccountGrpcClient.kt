@@ -181,15 +181,18 @@ class AccountGrpcClient(channelUri: URI) {
     suspend fun getSpendableBalanceDenom(address: String, denom: String): CoinOuterClass.Coin? {
         var (offset, limit) = 0 to 100
         var balance: CoinOuterClass.Coin?
+        var noInfo = false
         do {
-            balance = bankClient.spendableBalances(
+            val req = bankClient.spendableBalances(
                 querySpendableBalancesRequest {
                     this.address = address
                     this.pagination = getPagination(offset, limit)
                 }
-            ).balancesList.firstOrNull { it.denom == denom }
+            ).balancesList
+            if (req.size == 0) noInfo = true
+            balance = req.firstOrNull { it.denom == denom }
             offset += limit
-        } while (balance == null)
+        } while (!noInfo && balance == null)
         return balance
     }
 

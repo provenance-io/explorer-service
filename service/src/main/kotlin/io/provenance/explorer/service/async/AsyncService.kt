@@ -1,5 +1,8 @@
 package io.provenance.explorer.service.async
 
+import cosmos.authz.v1beta1.msgExec
+import cosmos.authz.v1beta1.msgGrant
+import cosmos.authz.v1beta1.msgRevoke
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
@@ -20,13 +23,20 @@ import io.provenance.explorer.domain.entities.TokenHistoricalDailyRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxHistoryDataViews
+import io.provenance.explorer.domain.entities.TxMessageRecord
+import io.provenance.explorer.domain.entities.TxMessageTable
+import io.provenance.explorer.domain.entities.TxMessageTypeRecord
+import io.provenance.explorer.domain.entities.TxMsgTypeSubtypeTable
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
 import io.provenance.explorer.domain.entities.ValidatorMarketRateStatsRecord
 import io.provenance.explorer.domain.extensions.USD_UPPER
+import io.provenance.explorer.domain.extensions.getType
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
+import io.provenance.explorer.grpc.extensions.getMsgSubTypes
+import io.provenance.explorer.grpc.extensions.getMsgType
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.CacheService
@@ -35,6 +45,12 @@ import io.provenance.explorer.service.GovService
 import io.provenance.explorer.service.PricingService
 import io.provenance.explorer.service.TokenService
 import io.provenance.explorer.service.getBlock
+import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.innerJoin
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
@@ -297,5 +313,44 @@ class AsyncService(
     fun refreshMaterializedViews() {
         logger.info("Refreshing fee-based views")
         TxHistoryDataViews.refreshViews()
+    }
+
+    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
+    fun processAuthzMessages() = transaction {
+        if (cacheService.getCacheValue(CacheKeys.AUTHZ_PROCESSING.key)!!.cacheValue.toBoolean()) {
+            val types = listOf(msgGrant { }.getType(), msgExec { }.getType(), msgRevoke { }.getType())
+            val typeIds = TxMessageTypeRecord.findByProtoTypeIn(types)
+            val msgs = TxMessageTable
+                .innerJoin(TxMsgTypeSubtypeTable, { TxMessageTable.id }, { TxMsgTypeSubtypeTable.txMsgId })
+                .slice(TxMessageTable.columns)
+                .select { TxMsgTypeSubtypeTable.primaryType inList typeIds }
+                .andWhere { TxMsgTypeSubtypeTable.secondaryType.isNull() }
+                .orderBy(Pair(TxMessageTable.blockHeight, SortOrder.DESC))
+                .limit(5000)
+                .let { TxMessageRecord.wrapRows(it).toList() }
+            if (msgs.isEmpty()) cacheService.updateCacheValue(CacheKeys.AUTHZ_PROCESSING.key, false.toString())
+            else
+                msgs.forEach { msgRec ->
+                    val secondaries = msgRec.txMessage.getMsgSubTypes().filterNotNull()
+                        .map { it.getMsgType() }
+                        .map { TxMessageTypeRecord.insert(it.type, it.module, it.proto) }
+                    val (msgId, primId) = msgRec.txMessageType.toList()[0].let { it to it.primaryType.id }
+                    msgRec.txMessageType.map { it.id.value }.let {
+                        TxMsgTypeSubtypeTable.deleteWhere { TxMsgTypeSubtypeTable.id inList it }
+                    }
+                    secondaries.forEach { secId ->
+                        TxMsgTypeSubtypeTable.insert {
+                            it[this.txMsgId] = msgId.txMsgId
+                            it[this.primaryType] = primId
+                            it[this.secondaryType] = secId
+                            it[this.txTimestamp] = msgId.txTimestamp
+                            it[this.txHashId] = msgId.txHashId.id.value
+                            it[this.blockHeight] = msgId.blockHeight
+                            it[this.txHash] = msgId.txHash
+                        }
+                    }
+                }
+            logger.info("Updating AUTHZ subtypes")
+        }
     }
 }

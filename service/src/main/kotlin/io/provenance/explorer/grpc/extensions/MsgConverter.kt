@@ -1,7 +1,14 @@
 package io.provenance.explorer.grpc.extensions
 
 import com.google.protobuf.Any
+import cosmos.authz.v1beta1.Authz.CountAuthorization
+import cosmos.authz.v1beta1.Authz.GenericAuthorization
 import cosmos.bank.v1beta1.Tx
+import cosmos.bank.v1beta1.msgSend
+import cosmos.staking.v1beta1.Authz.AuthorizationType
+import cosmos.staking.v1beta1.msgBeginRedelegate
+import cosmos.staking.v1beta1.msgDelegate
+import cosmos.staking.v1beta1.msgUndelegate
 import cosmwasm.wasm.v1.msgExecuteContract
 import cosmwasm.wasm.v1.msgInstantiateContract
 import cosmwasm.wasm.v1.msgMigrateContract
@@ -42,6 +49,7 @@ import io.provenance.explorer.domain.core.toMAddressScopeSpec
 import io.provenance.explorer.domain.core.toMAddressSession
 import io.provenance.explorer.domain.core.toUuidOrNull
 import io.provenance.explorer.domain.extensions.getType
+import io.provenance.explorer.domain.models.explorer.MsgProtoBreakout
 import io.provenance.explorer.domain.models.explorer.TxIbcData
 import io.provenance.explorer.grpc.extensions.MdEvents.AA
 import io.provenance.explorer.grpc.extensions.MdEvents.AD
@@ -78,6 +86,7 @@ import io.provenance.marker.v1.MsgMintRequest
 import io.provenance.marker.v1.MsgSetDenomMetadataRequest
 import io.provenance.marker.v1.MsgTransferRequest
 import io.provenance.marker.v1.MsgWithdrawRequest
+import io.provenance.marker.v1.msgTransferRequest
 import io.provenance.metadata.v1.MsgAddContractSpecToScopeSpecRequest
 import io.provenance.metadata.v1.MsgAddScopeDataAccessRequest
 import io.provenance.metadata.v1.MsgAddScopeOwnerRequest
@@ -103,6 +112,8 @@ import io.provenance.metadata.v1.MsgWriteSessionRequest
 import io.provenance.metadata.v1.SessionIdComponents
 import io.provenance.name.v1.MsgBindNameRequest
 import io.provenance.name.v1.MsgDeleteNameRequest
+import net.pearx.kasechange.toSnakeCase
+import net.pearx.kasechange.universalWordSplitter
 
 /**
  * Ginormous file meant to convert a Msg object to the proper format, and do stuff with it.
@@ -228,8 +239,8 @@ fun Any.getAssociatedAddresses(): List<String> =
             .let { listOf(it.validatorAddress) }
         typeUrl.endsWith("MsgFundCommunityPool") -> this.toMsgFundCommunityPool().let { listOf(it.depositor) }
         typeUrl.endsWith("MsgSubmitEvidence") -> this.toMsgSubmitEvidence().let { listOf(it.submitter) }
-        typeUrl.endsWith("MsgSubmitProposal") -> this.toMsgSubmitProposal().let { listOf(it.proposer) }
-        typeUrl.endsWith("MsgVote") -> this.toMsgVote().let { listOf(it.voter) }
+        typeUrl.endsWith("gov.v1beta1.MsgSubmitProposal") -> this.toMsgSubmitProposal().let { listOf(it.proposer) }
+        typeUrl.endsWith("gov.v1beta1.MsgVote") -> this.toMsgVote().let { listOf(it.voter) }
         typeUrl.endsWith("MsgVoteWeighted") -> this.toMsgVoteWeighted().let { listOf(it.voter) }
         typeUrl.endsWith("MsgDeposit") -> this.toMsgDeposit().let { listOf(it.depositor) }
         typeUrl.endsWith("MsgUnjail") -> this.toMsgUnjail().let { listOf(it.validatorAddr) }
@@ -340,7 +351,7 @@ fun Any.getAssociatedAddresses(): List<String> =
         typeUrl.endsWith("MsgConnectionOpenAck") -> this.toMsgConnectionOpenAck().let { listOf(it.signer) }
         typeUrl.endsWith("MsgConnectionOpenConfirm") -> this.toMsgConnectionOpenConfirm().let { listOf(it.signer) }
         typeUrl.endsWith("MsgGrant") -> this.toMsgGrant().let { listOf(it.granter, it.grantee) }
-        typeUrl.endsWith("MsgExec") -> this.toMsgExec()
+        typeUrl.endsWith("authz.v1beta1.MsgExec") -> this.toMsgExec()
             .let { exec -> exec.msgsList.flatMap { it.getAssociatedAddresses() } + listOf(exec.grantee) }
         typeUrl.endsWith("MsgRevoke") -> this.toMsgRevoke().let { listOf(it.granter, it.grantee) }
         typeUrl.endsWith("MsgGrantAllowance") -> this.toMsgGrantAllowance().let { listOf(it.granter, it.grantee) }
@@ -388,7 +399,7 @@ fun Any.getAssociatedDenoms(): List<String> =
         typeUrl.endsWith("MsgTransfer") -> this.toMsgTransfer().let { listOf(it.token.denom) }
         typeUrl.endsWith("MsgCreateVestingAccount") -> this.toMsgCreateVestingAccount()
             .let { it.amountList.map { c -> c.denom } }
-
+        typeUrl.endsWith("authz.v1beta1.MsgExec") -> this.toMsgExec().msgsList.flatMap { it.getAssociatedDenoms() }
         else -> listOf<String>()
             .also { logger().debug("This typeUrl is not yet supported as an asset-based msg: $typeUrl") }
     }
@@ -561,7 +572,7 @@ fun Any.getAssociatedMetadataEvents() =
 
 fun MetadataAddress.toList() = listOf(this)
 
-fun Any.getAssociatedMetadata() =
+fun Any.getAssociatedMetadata(): List<MetadataAddress?> =
     when {
         typeUrl.endsWith("MsgWriteScopeRequest") -> this.toMsgWriteScopeRequest()
             .let {
@@ -625,6 +636,7 @@ fun Any.getAssociatedMetadata() =
             .let { if (it.account.isMAddress()) it.account.toMAddress().toList() else listOf(null) }
         typeUrl.endsWith("MsgDeleteDistinctAttributeRequest") -> this.toMsgDeleteDistinctAttributeRequest()
             .let { if (it.account.isMAddress()) it.account.toMAddress().toList() else listOf(null) }
+        typeUrl.endsWith("authz.v1beta1.MsgExec") -> this.toMsgExec().msgsList.flatMap { it.getAssociatedMetadata() }
         else -> listOf(null)
             .also { logger().debug("This typeUrl is not yet supported in as an metadata-based msg: $typeUrl") }
     }
@@ -646,8 +658,8 @@ enum class GovMsgType { PROPOSAL, VOTE, WEIGHTED, DEPOSIT }
 
 fun Any.getAssociatedGovMsgs() =
     when {
-        typeUrl.endsWith("MsgSubmitProposal") -> GovMsgType.PROPOSAL to this
-        typeUrl.endsWith("MsgVote") -> GovMsgType.VOTE to this
+        typeUrl.endsWith("gov.v1beta1.MsgSubmitProposal") -> GovMsgType.PROPOSAL to this
+        typeUrl.endsWith("gov.v1beta1.MsgVote") -> GovMsgType.VOTE to this
         typeUrl.endsWith("MsgVoteWeighted") -> GovMsgType.WEIGHTED to this
         typeUrl.endsWith("MsgDeposit") -> GovMsgType.DEPOSIT to this
         else -> null.also { logger().debug("This typeUrl is not a governance-based msg: $typeUrl") }
@@ -656,7 +668,7 @@ fun Any.getAssociatedGovMsgs() =
 //endregion
 
 //region SMART CONTRACTS
-fun Any.getAssociatedSmContractMsgs() =
+fun Any.getAssociatedSmContractMsgs(): List<Pair<SmContractValue, kotlin.Any>>? =
     when {
         typeUrl.endsWith("v1.MsgStoreCode") -> null
         typeUrl.endsWith("v1beta1.MsgStoreCode") -> null
@@ -680,6 +692,7 @@ fun Any.getAssociatedSmContractMsgs() =
             .let { listOf(SmContractValue.CONTRACT to it.contract) }
         typeUrl.endsWith("v1beta1.MsgClearAdmin") -> this.toMsgClearAdminOld()
             .let { listOf(SmContractValue.CONTRACT to it.contract) }
+        typeUrl.endsWith("authz.v1beta1.MsgExec") -> this.toMsgExec().msgsList.mapNotNull { it.getAssociatedSmContractMsgs() }.flatten()
         else -> null.also { logger().debug("This typeUrl is not a smart-contract-based msg: $typeUrl") }
     }
 
@@ -806,5 +819,41 @@ fun getByDefinedEvent() = MsgToDefinedEvent.values().associateBy { it.definedEve
 
 fun getContractTypeUrlList() =
     setOf(msgExecuteContract { }.getType(), msgInstantiateContract { }.getType(), msgMigrateContract { }.getType())
+
+//endregion
+
+//region MSG TO SUB MSGS
+fun String.getMsgType(): MsgProtoBreakout {
+    val module = if (!this.startsWith("/ibc")) this.split(".")[1]
+    else this.split(".").let { list -> "${list[0].drop(1)}_${list[2]}" }
+    val type = this.split("Msg")[1].removeSuffix("Request").toSnakeCase(universalWordSplitter(false))
+    return MsgProtoBreakout(this, module, type)
+}
+
+fun Any.getMsgSubTypes(): List<String?> =
+    when {
+        typeUrl.endsWith("authz.v1beta1.MsgExec") -> this.toMsgExec().msgsList.mapNotNull { it.typeUrl }
+        typeUrl.endsWith("MsgGrant") -> listOf(this.toMsgGrant().grant.authorization.getGrantAuthType())
+        typeUrl.endsWith("MsgRevoke") -> listOf(this.toMsgRevoke().msgTypeUrl)
+        else -> listOf<String?>().also { logger().debug("This typeUrl is not a smart-contract-based msg: $typeUrl") }
+    }
+
+fun Any.getGrantAuthType() =
+    when {
+        typeUrl.endsWith("GenericAuthorization") -> this.unpack(GenericAuthorization::class.java).msg
+        typeUrl.endsWith("CountAuthorization") -> this.unpack(CountAuthorization::class.java).msg
+        typeUrl.endsWith("v1beta1.SendAuthorization") -> msgSend { }.getType()
+        typeUrl.endsWith("v1beta1.StakeAuthorization") ->
+            this.unpack(cosmos.staking.v1beta1.Authz.StakeAuthorization::class.java).authorizationType.let {
+                when (it) {
+                    AuthorizationType.AUTHORIZATION_TYPE_DELEGATE -> msgDelegate { }.getType()
+                    AuthorizationType.AUTHORIZATION_TYPE_UNDELEGATE -> msgUndelegate { }.getType()
+                    AuthorizationType.AUTHORIZATION_TYPE_REDELEGATE -> msgBeginRedelegate { }.getType()
+                    else -> null
+                }
+            }
+        typeUrl.endsWith("v1.MarkerTransferAuthorization") -> msgTransferRequest { }.getType()
+        else -> null.also { logger().debug("This typeUrl is not known to have a msg subtype: $typeUrl") }
+    }
 
 //endregion
