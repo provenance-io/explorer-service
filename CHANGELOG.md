@@ -33,6 +33,12 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Bug Fixes
+* Removed invalid msg fee case, deleted invalid records
+
+### Data
+* Migration 1.82 - Deleted incorrect fees
+
 ## [v5.2.1](https://github.com/provenance-io/explorer-service/releases/tag/v5.2.1) - 2022-11-02
 ### Release Name: Gonçalo Álvares
 
