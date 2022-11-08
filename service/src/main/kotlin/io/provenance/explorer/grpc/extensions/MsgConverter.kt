@@ -795,11 +795,6 @@ enum class MsgToDefinedEvent(val msg: String, val definedEvent: String, val uniq
         "provenance.metadata.v1.EventScopeCreated",
         "scope_addr"
     ),
-    SCOPE_UPDATED(
-        "/provenance.metadata.v1.MsgWriteScopeRequest",
-        "provenance.metadata.v1.EventScopeUpdated",
-        "scope_addr"
-    ),
     NAME_BIND("/provenance.name.v1.MsgBindNameRequest", "provenance.name.v1.EventNameBound", "address"),
     PROPOSAL_SUBMIT("/cosmos.gov.v1beta1.MsgSubmitProposal", "submit_proposal", "proposal_id"),
     MARKER_ADD("/provenance.marker.v1.MsgAddMarkerRequest", "provenance.marker.v1.EventMarkerAdd", "denom"),
