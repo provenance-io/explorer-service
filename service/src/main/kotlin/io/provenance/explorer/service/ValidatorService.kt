@@ -8,7 +8,9 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.HttpResponse
 import io.provenance.explorer.KTOR_CLIENT_JAVA
-import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
+import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_VAL_CONS_PREFIX
+import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_VAL_OPER_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
@@ -29,6 +31,8 @@ import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.avg
 import io.provenance.explorer.domain.extensions.get24HrBlockHeight
 import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.sigToAddress
+import io.provenance.explorer.domain.extensions.sigToBase64
 import io.provenance.explorer.domain.extensions.stringfy
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
@@ -36,7 +40,6 @@ import io.provenance.explorer.domain.extensions.toDecimal
 import io.provenance.explorer.domain.extensions.toDecimalString
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toPercentage
-import io.provenance.explorer.domain.extensions.toSingleSigKeyValue
 import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.extensions.translateByteArray
 import io.provenance.explorer.domain.extensions.validatorMissedBlocks
@@ -67,7 +70,6 @@ import io.provenance.explorer.domain.models.explorer.ValidatorSummaryAbbrev
 import io.provenance.explorer.domain.models.explorer.ValidatorUptimeStats
 import io.provenance.explorer.domain.models.explorer.hourlyBlockCount
 import io.provenance.explorer.domain.models.explorer.zeroOutValidatorObj
-import io.provenance.explorer.grpc.extensions.toAddress
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -79,7 +81,6 @@ import java.math.BigInteger
 
 @Service
 class ValidatorService(
-    private val props: ExplorerProperties,
     private val blockService: BlockService,
     private val grpcClient: ValidatorGrpcClient,
     private val cacheService: CacheService
@@ -111,9 +112,9 @@ class ValidatorService(
             .let {
                 StakingValidatorCacheRecord.insertIgnore(
                     address,
-                    it.operatorAddress.translateAddress(props).accountAddr,
-                    it.consensusPubkey.toSingleSigKeyValue()!!,
-                    it.consensusPubkey.toAddress(props.provValConsPrefix())!!
+                    it.operatorAddress.translateAddress().accountAddr,
+                    it.consensusPubkey.sigToBase64(),
+                    it.consensusPubkey.sigToAddress(PROV_VAL_CONS_PREFIX)!!
                 ).also { record ->
                     ValidatorStateRecord.insertIgnore(
                         blockService.getLatestBlockHeightIndex(),
@@ -173,9 +174,9 @@ class ValidatorService(
 
     // Finds a validator address record from whatever address is passed in
     fun getValidatorOperatorAddress(address: String) = when {
-        address.startsWith(props.provValOperPrefix()) -> findAddressByOperator(address)
-        address.startsWith(props.provValConsPrefix()) -> findAddressByConsensus(address)
-        address.startsWith(props.provAccPrefix()) -> findAddressByAccount(address)
+        address.startsWith(PROV_VAL_OPER_PREFIX) -> findAddressByOperator(address)
+        address.startsWith(PROV_VAL_CONS_PREFIX) -> findAddressByConsensus(address)
+        address.startsWith(PROV_ACC_PREFIX) -> findAddressByAccount(address)
         else -> null
     }
 
@@ -215,9 +216,9 @@ class ValidatorService(
                 if (!stakingVals.contains(validator.operatorAddress))
                     StakingValidatorCacheRecord.insertIgnore(
                         validator.operatorAddress,
-                        validator.operatorAddress.translateAddress(props).accountAddr,
-                        validator.consensusPubkey.toSingleSigKeyValue()!!,
-                        validator.consensusPubkey.toAddress(props.provValConsPrefix())!!
+                        validator.operatorAddress.translateAddress().accountAddr,
+                        validator.consensusPubkey.sigToBase64(),
+                        validator.consensusPubkey.sigToAddress(PROV_VAL_CONS_PREFIX)!!
                     ).also {
                         ValidatorStateRecord.insertIgnore(
                             blockHeight,
@@ -338,7 +339,7 @@ class ValidatorService(
         try {
             grpcClient.getValidatorSelfDelegations(
                 stakingVal.operatorAddress,
-                stakingVal.operatorAddress.translateAddress(props).accountAddr
+                stakingVal.operatorAddress.translateAddress().accountAddr
             ).delegationResponse.balance.let { it.amount to it.denom }
         } catch (e: Exception) {
             "0" to ""
@@ -445,7 +446,7 @@ class ValidatorService(
     }
 
     fun getProposerConsensusAddr(blockMeta: Query.GetBlockByHeightResponse) =
-        blockMeta.block.header.proposerAddress.translateByteArray(props).consensusAccountAddr
+        blockMeta.block.header.proposerAddress.translateByteArray().consensusAccountAddr
 
     fun buildProposerInsert(
         blockMeta: Query.GetBlockByHeightResponse,
@@ -461,7 +462,7 @@ class ValidatorService(
         val lastBlock = blockMeta.block.lastCommit
         if (lastBlock.height.toInt() > 0) {
             val signatures = lastBlock.signaturesList
-                .map { it.validatorAddress.translateByteArray(props).consensusAccountAddr }
+                .map { it.validatorAddress.translateByteArray().consensusAccountAddr }
             val currentVals = ValidatorsCacheRecord.findById(lastBlock.height.toInt())?.validators
                 ?: grpcClient.getValidatorsAtHeight(lastBlock.height.toInt())
 
@@ -538,8 +539,8 @@ class ValidatorService(
     fun getMissedBlocksForValidatorInTimeframe(timeframe: Timeframe, validatorAddr: String?): MissedBlocksTimeframe {
         if (timeframe == Timeframe.FOREVER && validatorAddr == null)
             throw IllegalArgumentException("If timeframe is FOREVER, you must have a validator operator address specified.")
-        if (validatorAddr != null && !validatorAddr.startsWith(props.provValOperPrefix()))
-            throw IllegalArgumentException("'validatorAddr' must begin with the validator operator address prefix : ${props.provValOperPrefix()}")
+        if (validatorAddr != null && !validatorAddr.startsWith(PROV_VAL_OPER_PREFIX))
+            throw IllegalArgumentException("'validatorAddr' must begin with the validator operator address prefix : $PROV_VAL_OPER_PREFIX")
 
         val currentHeight = getLatestHeight()
         val frame = when (timeframe) {

@@ -48,7 +48,7 @@ data class AccountDetail(
     val address: String,
     val accountNumber: Long?,
     val sequence: Int?,
-    val publicKeys: AccountSignature,
+    val publicKey: AccountSigInfo,
     val accountName: String?,
     val attributes: List<AttributeObj>,
     val tokens: TokenCounts,

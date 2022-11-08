@@ -12,6 +12,8 @@ import io.ktor.client.statement.HttpResponse
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
+import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_VAL_OPER_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.core.PREFIX_SCOPE
 import io.provenance.explorer.domain.core.logger
@@ -132,7 +134,7 @@ class ExplorerService(
     ) = let {
         val proposer = transaction { BlockProposerRecord.findById(blockResponse.block.height())!! }
         val stakingValidator = validatorService.getStakingValidator(proposer.proposerOperatorAddress)
-        val votingVals = nextBlock?.getVotingSet(props, Types.BlockIDFlag.BLOCK_ID_FLAG_ABSENT_VALUE)?.keys
+        val votingVals = nextBlock?.getVotingSet(Types.BlockIDFlag.BLOCK_ID_FLAG_ABSENT_VALUE)?.keys
         BlockSummary(
             height = blockResponse.block.height(),
             hash = blockResponse.blockId.hash.toHash(),
@@ -297,8 +299,8 @@ class ExplorerService(
     }
 
     fun getChainPrefixes() = listOf(
-        ChainPrefix(PrefixType.VALIDATOR, props.provValOperPrefix()),
-        ChainPrefix(PrefixType.ACCOUNT, props.provAccPrefix()),
+        ChainPrefix(PrefixType.VALIDATOR, PROV_VAL_OPER_PREFIX),
+        ChainPrefix(PrefixType.ACCOUNT, PROV_ACC_PREFIX),
         ChainPrefix(PrefixType.SCOPE, PREFIX_SCOPE)
     )
 
@@ -364,7 +366,7 @@ class ExplorerService(
         val valFilter = validatorSet.map { it.address }
         val stakingValidators = validatorService.getStakingValidators(status, valFilter, page.toOffset(count), count)
         val votingSet = asyncV2.getBlock(height + 1)!!
-            .getVotingSet(props, Types.BlockIDFlag.BLOCK_ID_FLAG_ABSENT_VALUE).keys
+            .getVotingSet(Types.BlockIDFlag.BLOCK_ID_FLAG_ABSENT_VALUE).keys
         val proposer = transaction { BlockProposerRecord.findById(height)!! }
         val results =
             validatorService.hydrateValidators(validatorSet, listOf(), stakingValidators, height.toLong()).map {
@@ -402,9 +404,9 @@ class ExplorerService(
     }
 }
 
-fun Query.GetBlockByHeightResponse.getVotingSet(props: ExplorerProperties, filter: Int? = null) =
+fun Query.GetBlockByHeightResponse.getVotingSet(filter: Int? = null) =
     this.block.lastCommit.signaturesList
         .filter { if (filter != null) it.blockIdFlagValue != filter else true }
-        .associate { it.validatorAddress.translateByteArray(props).consensusAccountAddr to it.blockIdFlag }
+        .associate { it.validatorAddress.translateByteArray().consensusAccountAddr to it.blockIdFlag }
 
 fun String.getChainVersionFromUrl(regex: String) = Regex(regex).find(this)?.value!!

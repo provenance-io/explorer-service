@@ -11,6 +11,7 @@ import io.ktor.http.ContentType
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
@@ -70,7 +71,7 @@ class TokenService(
         records.asFlow().map {
             AccountRecord.saveAccount(
                 it.ownerAddress,
-                props.provAccPrefix(),
+                PROV_ACC_PREFIX,
                 accountClient.getAccountInfo(it.ownerAddress)
             )
         }.collect()
@@ -231,6 +232,10 @@ class TokenService(
             }
         } catch (e: ResponseException) {
             return@runBlocking null.also { logger.error("Error fetching from Dlob: ${e.response}") }
+        } catch (e: Exception) {
+            return@runBlocking null.also { logger.error("Error fetching from Dlob: ${e.message}") }
+        } catch (e: Throwable) {
+            return@runBlocking null.also { logger.error("Error fetching from Dlob: ${e.message}") }
         }
     }
 
@@ -244,8 +249,11 @@ class TokenService(
                 header("X-CMC_PRO_API_KEY", props.cmcApiKey)
             }
         } catch (e: ResponseException) {
-            return@runBlocking null
-                .also { logger.error("Error updating Token Historical Pricing: ${e.response}") }
+            return@runBlocking null.also { logger.error("Error updating Token Historical Pricing: ${e.response}") }
+        } catch (e: Exception) {
+            return@runBlocking null.also { logger.error("Error updating Token Historical Pricing: ${e.message}") }
+        } catch (e: Throwable) {
+            return@runBlocking null.also { logger.error("Error updating Token Historical Pricing: ${e.message}") }
         }
     }
 
@@ -258,8 +266,11 @@ class TokenService(
                 header("X-CMC_PRO_API_KEY", props.cmcApiKey)
             }
         } catch (e: ResponseException) {
-            return@runBlocking null
-                .also { logger.error("Error updating Token Latest Pricing: ${e.response}") }
+            return@runBlocking null.also { logger.error("Error updating Token Latest Pricing: ${e.response}") }
+        } catch (e: Exception) {
+            return@runBlocking null.also { logger.error("Error updating Token Latest Pricing: ${e.message}") }
+        } catch (e: Throwable) {
+            return@runBlocking null.also { logger.error("Error updating Token Latest Pricing: ${e.message}") }
         }
     }
 

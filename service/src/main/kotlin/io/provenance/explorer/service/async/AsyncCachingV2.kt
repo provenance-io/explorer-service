@@ -19,8 +19,8 @@ import io.provenance.explorer.domain.entities.IbcAckType
 import io.provenance.explorer.domain.entities.IbcLedgerRecord
 import io.provenance.explorer.domain.entities.IbcRelayerRecord
 import io.provenance.explorer.domain.entities.NameRecord
-import io.provenance.explorer.domain.entities.SigJoinType
-import io.provenance.explorer.domain.entities.SignatureJoinRecord
+import io.provenance.explorer.domain.entities.SignatureRecord
+import io.provenance.explorer.domain.entities.SignatureTxRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinType
 import io.provenance.explorer.domain.entities.TxCacheRecord
@@ -42,11 +42,13 @@ import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.buildInsert
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.exceptions.InvalidArgumentException
-import io.provenance.explorer.domain.extensions.getSigners
+import io.provenance.explorer.domain.extensions.TX_ACC_SEQ
+import io.provenance.explorer.domain.extensions.TX_EVENT
+import io.provenance.explorer.domain.extensions.getAddrFromAccSeq
+import io.provenance.explorer.domain.extensions.getFirstSigner
 import io.provenance.explorer.domain.extensions.getTotalBaseFees
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
-import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.BlockUpdate
 import io.provenance.explorer.domain.models.explorer.MsgProtoBreakout
@@ -80,6 +82,7 @@ import io.provenance.explorer.grpc.extensions.isMetadataDeletionMsg
 import io.provenance.explorer.grpc.extensions.isStandardAddress
 import io.provenance.explorer.grpc.extensions.isValidatorAddress
 import io.provenance.explorer.grpc.extensions.mapEventAttrValues
+import io.provenance.explorer.grpc.extensions.mapTxEventAttrValues
 import io.provenance.explorer.grpc.extensions.scrubQuotes
 import io.provenance.explorer.grpc.extensions.toMsgAcknowledgement
 import io.provenance.explorer.grpc.extensions.toMsgBindNameRequest
@@ -357,20 +360,20 @@ class AsyncCachingV2(
     }
 
     private fun saveAddr(addr: String, txInfo: TxData, txUpdate: TxUpdate): Pair<String, Int?>? {
-        val addrPair = addr.getAddressType(validatorService.getActiveSet(), props) ?: return null
+        val addrPair = addr.getAddressType(validatorService.getActiveSet()) ?: return null
         var pairCopy = addrPair.copy()
-        if (addrPair.second == null) {
-            try {
-                when (addrPair.first) {
-                    TxAddressJoinType.OPERATOR.name ->
+        try {
+            when (addrPair.first) {
+                TxAddressJoinType.OPERATOR.name ->
+                    if (addrPair.second == null) {
                         validatorService.saveValidator(addr)
                             .let { pairCopy = addrPair.copy(second = it.operatorAddrId) }
-                    TxAddressJoinType.ACCOUNT.name -> accountService.saveAccount(addr)
-                        .let { pairCopy = addrPair.copy(second = it.id.value) }
-                }
-            } catch (ex: Exception) {
-                BlockTxRetryRecord.insertNonRetry(txInfo.blockHeight, ex)
+                    }
+                TxAddressJoinType.ACCOUNT.name -> accountService.saveAccount(addr)
+                    .let { pairCopy = addrPair.copy(second = it.id.value) }
             }
+        } catch (ex: Exception) {
+            BlockTxRetryRecord.insertNonRetry(txInfo.blockHeight, ex)
         }
         if (pairCopy.second != null)
             txUpdate.apply { this.addressJoin.add(TxAddressJoinRecord.buildInsert(txInfo, pairCopy, addr)) }
@@ -525,7 +528,7 @@ class AsyncCachingV2(
 
                 val msg = tx.tx.body.messagesList[idx]
                 if (!msg.isIbcTransferMsg() && client != null) {
-                    val relayer = msg.getSigners().first()
+                    val relayer = tx.getFirstSigner()
                     val account = accountService.saveAccount(relayer)
                     IbcRelayerRecord.insertIgnore(client, channel?.id?.value, account)
                 }
@@ -706,8 +709,12 @@ class AsyncCachingV2(
     }
 
     fun saveSignaturesTx(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, txUpdate: TxUpdate) = transaction {
-        tx.tx.authInfo.signerInfosList.flatMap { sig ->
-            SignatureJoinRecord.buildInsert(sig.publicKey, SigJoinType.TRANSACTION, tx.txResponse.txhash)
+        val signerEvents = tx.mapTxEventAttrValues(TX_EVENT, TX_ACC_SEQ)
+
+        tx.tx.authInfo.signerInfosList.mapIndexedNotNull { idx, sig ->
+            val pubKey = sig.publicKey
+                ?: SignatureRecord.findByAddressSingle(signerEvents[idx]!!.getAddrFromAccSeq()).pubkeyObject
+            SignatureTxRecord.buildInsert(pubKey, idx, txInfo, sig.sequence.toInt())
         }.let { txUpdate.apply { this.sigs.addAll(it) } }
 
         AccountRecord.findByAddress(tx.tx.authInfo.fee.granter)
@@ -718,33 +725,15 @@ class AsyncCachingV2(
             ?.let { TxFeepayerRecord.buildInsert(txInfo, FeePayer.PAYER.name, it.id.value, it.accountAddress) }
             ?.let { txUpdate.apply { this.feePayers.add(it) } }
 
-        // get signers
-        tx.tx.body.messagesList.flatMap { it.getSigners() }.toSet()
-            .mapNotNull {
-                when {
-                    it.startsWith(props.provValOperPrefix()) -> it.translateAddress(props).accountAddr
-                    it.startsWith(props.provAccPrefix()) -> it
-                    else -> logger().debug("Address type is not supported: Addr $this").let { null }
-                }
-            }.map { accountService.saveAccount(it) }
-            .also {
-                TxFeepayerRecord.buildInsert(txInfo, FeePayer.FIRST_SIGNER.name, it[0].id.value, it[0].accountAddress)
-                    .let { txUpdate.apply { this.feePayers.add(it) } }
-            }
-            .flatMap {
-                SignatureJoinRecord.buildInsert(
-                    it.baseAccount!!.pubKey,
-                    SigJoinType.TRANSACTION,
-                    tx.txResponse.txhash
-                )
-            }.let { txUpdate.apply { this.sigs.addAll(it) } }
+        AccountRecord.findByAddress(tx.getFirstSigner())
+            ?.let { TxFeepayerRecord.buildInsert(txInfo, FeePayer.FIRST_SIGNER.name, it.id.value, it.accountAddress) }
+            ?.let { txUpdate.apply { this.feePayers.add(it) } }
     }
 }
 
-fun String.getAddressType(activeSet: Int, props: ExplorerProperties) = when {
-    this.isValidatorAddress(props) ->
+fun String.getAddressType(activeSet: Int) = when {
+    this.isValidatorAddress() ->
         Pair(TxAddressJoinType.OPERATOR.name, ValidatorStateRecord.findByOperator(activeSet, this)?.operatorAddrId)
-    this.isStandardAddress(props) ->
-        Pair(TxAddressJoinType.ACCOUNT.name, AccountRecord.findByAddress(this)?.id?.value)
+    this.isStandardAddress() -> Pair(TxAddressJoinType.ACCOUNT.name, AccountRecord.findByAddress(this)?.id?.value)
     else -> logger().debug("Address type is not supported: Addr $this").let { null }
 }

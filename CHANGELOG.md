@@ -33,6 +33,21 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+* Redesign of signature ingestion #416
+  * Now tracks idx, sequence of sigs on txs
+  * Now properly tracks base signature, idx for multisig keys
+  * Returns more informative signature objects on txs, accounts
+
+### Data
+* Migration 1.83 - Update `signature`, redo join tables #416
+  * Dropped `signature.multi_sig_object`, Added `signature.address` columns
+  * Updated `signature` with new data
+  * Added `signature_multi_join`, `signature_tx` tables, updated with data
+* Migration 1.84 - Update ingest procedure with new signature info #416
+  * Updated the ingest procedures
+  * Dropped `signature_join` table
+
 ## [v5.2.2](https://github.com/provenance-io/explorer-service/releases/tag/v5.2.2) - 2022-11-07
 ### Release Name: Diogo de Azambuja
 

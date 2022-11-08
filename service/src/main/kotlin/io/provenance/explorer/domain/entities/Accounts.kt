@@ -61,8 +61,6 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
             AccountRecord.find { AccountTable.isContract eq Op.TRUE }.toList()
         }
 
-        fun findSigsByAddress(address: String) = SignatureRecord.findByJoin(SigJoinType.ACCOUNT, address)
-
         fun findByAddress(addr: String) = AccountRecord.find { AccountTable.accountAddress eq addr }.firstOrNull()
 
         fun saveAccount(address: String, accPrefix: String, accountData: Any?, isContract: Boolean = false) =
@@ -186,7 +184,7 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.data] = data
                     it[this.isContract] = isContract
                 }.let { findById(it)!! }
-                ).also { SignatureJoinRecord.insert(baseAccount.pubKey, SigJoinType.ACCOUNT, address) }
+                ).also { SignatureRecord.insertAndGet(baseAccount.pubKey, address) }
         }
     }
 

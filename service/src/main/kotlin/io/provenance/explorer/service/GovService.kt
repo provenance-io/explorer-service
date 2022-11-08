@@ -22,7 +22,6 @@ import cosmwasm.wasm.v1.instantiateContractProposal
 import cosmwasm.wasm.v1.storeCodeProposal
 import cosmwasm.wasm.v1beta1.Proposal
 import io.provenance.explorer.VANILLA_MAPPER
-import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
@@ -112,8 +111,7 @@ class GovService(
     private val smService: SmartContractService,
     private val cacheService: CacheService,
     private val accountService: AccountService,
-    private val assetService: AssetService,
-    private val props: ExplorerProperties
+    private val assetService: AssetService
 ) {
     protected val logger = logger(GovService::class)
 
@@ -596,8 +594,8 @@ class GovService(
                     VANILLA_MAPPER.readValue<StoreCodeData>(request.content).let { content ->
                         prevalidates.addAll(
                             listOf(
-                                requireToMessage(content.runAs.isStandardAddress(props)) { "runAs must be a standard address format" },
-                                requireToMessage(content.accessConfig?.address?.isStandardAddress(props) ?: true) { "accessConfig.address must be a standard address format" }
+                                requireToMessage(content.runAs.isStandardAddress()) { "runAs must be a standard address format" },
+                                requireToMessage(content.accessConfig?.address?.isStandardAddress() ?: true) { "accessConfig.address must be a standard address format" }
                             )
                         )
                         storeCodeProposal {
@@ -619,8 +617,8 @@ class GovService(
                         prevalidates.addAll(content.funds.map { assetService.validateDenom(it.denom) })
                         prevalidates.addAll(
                             listOf(
-                                requireToMessage(content.runAs.isStandardAddress(props)) { "runAs must be a standard address format" },
-                                requireToMessage(content.admin?.isStandardAddress(props) ?: true) { "admin must be a standard address format" },
+                                requireToMessage(content.runAs.isStandardAddress()) { "runAs must be a standard address format" },
+                                requireToMessage(content.admin?.isStandardAddress() ?: true) { "admin must be a standard address format" },
                                 requireNotNullToMessage(smService.getSmCodeFromNode(content.codeId.toLong())) { "codeId is not valid for instantiation" }
                             )
                         )

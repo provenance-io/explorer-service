@@ -13,13 +13,10 @@ import cosmos.vesting.v1beta1.Vesting
 import io.grpc.Metadata
 import io.grpc.stub.AbstractStub
 import io.grpc.stub.MetadataUtils
-import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
+import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_VAL_OPER_PREFIX
 import io.provenance.explorer.config.ResourceNotFoundException
-import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.extensions.diff
-import io.provenance.explorer.domain.extensions.edPubKeyToBech32
-import io.provenance.explorer.domain.extensions.secp256k1PubKeyToBech32
-import io.provenance.explorer.domain.extensions.secp256r1PubKeyToBech32
 import io.provenance.explorer.domain.extensions.toCoinStrList
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toPercentage
@@ -110,23 +107,9 @@ fun Any.getModuleAccName() =
         this.unpack(Auth.ModuleAccount::class.java).name
     else null
 
-fun Any.toAddress(hrpPrefix: String) =
-    when {
-        typeUrl.contains("secp256k1") ->
-            this.unpack(cosmos.crypto.secp256k1.Keys.PubKey::class.java).key.secp256k1PubKeyToBech32(hrpPrefix)
-        typeUrl.contains("secp256r1") ->
-            this.unpack(cosmos.crypto.secp256r1.Keys.PubKey::class.java).key.secp256r1PubKeyToBech32(
-                hrpPrefix,
-                typeUrl.removeFirstSlash()
-            )
-        typeUrl.contains("ed25519") ->
-            this.unpack(cosmos.crypto.ed25519.Keys.PubKey::class.java).key.edPubKeyToBech32(hrpPrefix)
-        else -> null.also { logger().error("This typeUrl is not supported as a consensus address: $typeUrl") }
-    }
-
-fun String.isStandardAddress(props: ExplorerProperties) =
-    this.startsWith(props.provAccPrefix()) && !this.startsWith(props.provValOperPrefix())
-fun String.isValidatorAddress(props: ExplorerProperties) = this.startsWith(props.provValOperPrefix())
+fun String.isStandardAddress() =
+    this.startsWith(PROV_ACC_PREFIX) && !this.startsWith(PROV_VAL_OPER_PREFIX)
+fun String.isValidatorAddress() = this.startsWith(PROV_VAL_OPER_PREFIX)
 
 // Ref https://docs.cosmos.network/master/modules/auth/05_vesting.html#continuousvestingaccount
 // for info on how the periods are calced

@@ -1,7 +1,6 @@
 package io.provenance.explorer.service
 
 import com.google.protobuf.util.JsonFormat
-import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.getParentForType
@@ -12,6 +11,7 @@ import io.provenance.explorer.domain.core.toMAddressScope
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
+import io.provenance.explorer.domain.entities.SignatureTxRecord
 import io.provenance.explorer.domain.entities.SmContractRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinType
@@ -30,7 +30,6 @@ import io.provenance.explorer.domain.extensions.toFeePaid
 import io.provenance.explorer.domain.extensions.toFees
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
-import io.provenance.explorer.domain.extensions.toSigObj
 import io.provenance.explorer.domain.extensions.writeCsvEntry
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.Gas
@@ -65,7 +64,6 @@ import javax.servlet.ServletOutputStream
 @Service
 class TransactionService(
     private val protoPrinter: JsonFormat.Printer,
-    private val props: ExplorerProperties,
     private val asyncV2: AsyncCachingV2,
     private val nftService: NftService,
     private val valService: ValidatorService,
@@ -111,7 +109,7 @@ class TransactionService(
     ): PagedResults<TxSummary> {
         val msgTypes = if (msgType != null) listOf(msgType) else module?.getValuesPlusAddtnl() ?: listOf()
         val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
-        val addr = transaction { address?.getAddressType(valService.getActiveSet(), props) }
+        val addr = transaction { address?.getAddressType(valService.getActiveSet()) }
         val markerId = if (denom != null) MarkerCacheRecord.findByDenom(denom)?.id?.value else null
         val nftMAddress = if (nftAddr != null && nftAddr.isMAddress()) nftAddr.toMAddress() else nftAddr?.toMAddressScope()
         val nft = nftMAddress?.let { Triple(it.getParentForType()?.name, nftService.getNftDbId(it), it.getPrimaryUuid().toString()) }
@@ -144,12 +142,14 @@ class TransactionService(
                 getMonikers(rec.id),
                 rec.txTimestamp.toString(),
                 transaction { rec.txFees.filter { fee -> fee.marker == UTILITY_TOKEN }.toFeePaid(UTILITY_TOKEN) },
-                TxCacheRecord.findSigsByHash(rec.hash).toSigObj(props.provAccPrefix()),
+                getTxSignatures(rec.id.value),
                 if (rec.errorCode == null) "success" else "failed",
                 transaction { rec.txFeepayer.getFeepayer() }
             )
         }.let { return PagedResults(total.pageCountOfResults(count), it, total.toLong()) }
     }
+
+    private fun getTxSignatures(txHashId: Int) = SignatureTxRecord.findByTxHashId(txHashId)
 
     fun MutableList<TxMessageRecord>.mapToTxMessages() =
         this.map { msg -> TxMessage(msg.txMessageType.type, msg.txMessage.toObjectNode(protoPrinter)) }
@@ -186,7 +186,7 @@ class TransactionService(
             codespace = tx.txV2.txResponse.codespace,
             errorLog = if (tx.txV2.txResponse.code > 0) tx.txV2.txResponse.rawLog else null,
             fee = tx.txFees.toList().toFees(),
-            signers = TxCacheRecord.findSigsByHash(tx.txV2.txResponse.txhash).toSigObj(props.provAccPrefix()),
+            signers = getTxSignatures(tx.id.value),
             memo = tx.txV2.tx.body.memo,
             monikers = getMonikers(tx.id),
             feepayer = tx.txFeepayer.getFeepayer(),
@@ -240,7 +240,7 @@ class TransactionService(
             val msgTypes = if (msgType != null) listOf(msgType) else MsgTypeSet.GOVERNANCE.types
             val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
             val addr = transaction {
-                var pair = address?.getAddressType(valService.getActiveSet(), props)
+                var pair = address?.getAddressType(valService.getActiveSet())
                 if (pair?.first == TxAddressJoinType.OPERATOR.name) {
                     val accAddr = ValidatorStateRecord.findByOperator(valService.getActiveSet(), address!!)?.accountAddr
                     val accId = AccountRecord.findByAddress(accAddr!!)?.id?.value
@@ -268,7 +268,7 @@ class TransactionService(
                     msg.blockHeight,
                     msg.txHashId.txTimestamp.toString(),
                     transaction { msg.txHashId.txFees.filter { fee -> fee.marker == UTILITY_TOKEN }.toFeePaid(UTILITY_TOKEN) },
-                    TxCacheRecord.findSigsByHash(msg.txHash).toSigObj(props.provAccPrefix()),
+                    getTxSignatures(msg.txHashId.id.value),
                     if (msg.txHashId.errorCode == null) "success" else "failed",
                     transaction { msg.txHashId.txFeepayer.getFeepayer() }
                 )
@@ -306,7 +306,7 @@ class TransactionService(
                 msg.blockHeight,
                 msg.txHashId.txTimestamp.toString(),
                 transaction { msg.txHashId.txFees.filter { fee -> fee.marker == UTILITY_TOKEN }.toFeePaid(UTILITY_TOKEN) },
-                TxCacheRecord.findSigsByHash(msg.txHash).toSigObj(props.provAccPrefix()),
+                getTxSignatures(msg.txHashId.id.value),
                 if (msg.txHashId.errorCode == null) "success" else "failed",
                 transaction { msg.txHashId.txFeepayer.getFeepayer() }
             )

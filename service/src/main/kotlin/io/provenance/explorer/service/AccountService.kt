@@ -4,12 +4,13 @@ import com.google.protobuf.Any
 import cosmos.bank.v1beta1.msgSend
 import cosmos.vesting.v1beta1.msgCreateVestingAccount
 import io.provenance.attribute.v1.Attribute
-import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.MarkerUnitRecord
+import io.provenance.explorer.domain.entities.SignatureRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinTable
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheTable
@@ -26,7 +27,6 @@ import io.provenance.explorer.domain.extensions.getType
 import io.provenance.explorer.domain.extensions.pack
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.pageOfResults
-import io.provenance.explorer.domain.extensions.toAccountPubKey
 import io.provenance.explorer.domain.extensions.toBase64
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
@@ -35,9 +35,12 @@ import io.provenance.explorer.domain.extensions.toNormalCase
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toProtoCoin
+import io.provenance.explorer.domain.extensions.typeToLabel
 import io.provenance.explorer.domain.extensions.writeCsvEntry
 import io.provenance.explorer.domain.models.explorer.AccountDetail
 import io.provenance.explorer.domain.models.explorer.AccountRewards
+import io.provenance.explorer.domain.models.explorer.AccountSigInfo
+import io.provenance.explorer.domain.models.explorer.AccountSignature
 import io.provenance.explorer.domain.models.explorer.AttributeObj
 import io.provenance.explorer.domain.models.explorer.BankSendRequest
 import io.provenance.explorer.domain.models.explorer.CoinStr
@@ -78,7 +81,6 @@ import javax.servlet.ServletOutputStream
 @Service
 class AccountService(
     private val accountClient: AccountGrpcClient,
-    private val props: ExplorerProperties,
     private val attrClient: AttributeGrpcClient,
     private val metadataClient: MetadataGrpcClient,
     private val pricingService: PricingService,
@@ -90,7 +92,7 @@ class AccountService(
     fun getAccountRaw(address: String) = transaction { AccountRecord.findByAddress(address) } ?: saveAccount(address)
 
     fun saveAccount(address: String, isContract: Boolean = false) = runBlocking {
-        AccountRecord.saveAccount(address, props.provAccPrefix(), accountClient.getAccountInfo(address), isContract)
+        AccountRecord.saveAccount(address, PROV_ACC_PREFIX, accountClient.getAccountInfo(address), isContract)
     }
 
     fun validateAddress(address: String) = transaction {
@@ -107,7 +109,7 @@ class AccountService(
                 it.accountAddress,
                 it.accountNumber,
                 it.baseAccount?.sequence?.toInt(),
-                AccountRecord.findSigsByAddress(it.accountAddress).firstOrNull().toAccountPubKey(),
+                getAccountSignatures(address),
                 it.data?.getModuleAccName(),
                 attributes.await().map { attr -> attr.toResponse() },
                 TokenCounts(
@@ -124,6 +126,22 @@ class AccountService(
             )
         }
     }
+
+    private fun getAccountSignatures(address: String) =
+        SignatureRecord.findByAddress(address)
+            .let { list ->
+                val firstRec = list.getOrNull(0)
+                AccountSigInfo(
+                    firstRec?.pubkeyType?.typeToLabel(),
+                    firstRec?.base64Sig,
+                    list.map {
+                        AccountSignature(
+                            it.childSigIdx ?: 0,
+                            it.childSigAddress ?: address,
+                        )
+                    }
+                )
+            }
 
     @Deprecated("Use NameService.getNamesOwnedByAddress")
     fun getNamesOwnedByAccount(address: String, page: Int, limit: Int) = runBlocking {
@@ -293,7 +311,7 @@ class AccountService(
     fun createSend(request: BankSendRequest): Any {
         validate(
             validateAddress(request.from),
-            requireToMessage(request.to.isStandardAddress(props)) { "to must be a standard address format" },
+            requireToMessage(request.to.isStandardAddress()) { "to must be a standard address format" },
             requireToMessage(request.to != request.from) { "The to address must be different that the from address" },
             *request.funds.map { assetService.validateDenom(it.denom) }.toTypedArray(),
             requireToMessage(request.funds.none { it.amount.toBigDecimal() == BigDecimal.ZERO }) { "At least one deposit must have an amount greater than zero." }
