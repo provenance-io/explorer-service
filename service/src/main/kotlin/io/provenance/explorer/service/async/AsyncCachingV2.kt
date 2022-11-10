@@ -1,7 +1,6 @@
 package io.provenance.explorer.service.async
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.google.protobuf.Any
 import com.google.protobuf.Timestamp
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.tx.v1beta1.ServiceOuterClass
@@ -33,6 +32,8 @@ import io.provenance.explorer.domain.entities.TxGasCacheRecord
 import io.provenance.explorer.domain.entities.TxIbcRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
+import io.provenance.explorer.domain.entities.TxMsgTypeSubtypeRecord
+import io.provenance.explorer.domain.entities.TxMsgTypeSubtypeTable
 import io.provenance.explorer.domain.entities.TxNftJoinRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.entities.TxSmCodeRecord
@@ -51,7 +52,6 @@ import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.BlockUpdate
-import io.provenance.explorer.domain.models.explorer.MsgProtoBreakout
 import io.provenance.explorer.domain.models.explorer.Name
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxUpdate
@@ -73,6 +73,8 @@ import io.provenance.explorer.grpc.extensions.getAssociatedMetadataEvents
 import io.provenance.explorer.grpc.extensions.getAssociatedSmContractMsgs
 import io.provenance.explorer.grpc.extensions.getDenomEventByEvent
 import io.provenance.explorer.grpc.extensions.getIbcLedgerMsgs
+import io.provenance.explorer.grpc.extensions.getMsgSubTypes
+import io.provenance.explorer.grpc.extensions.getMsgType
 import io.provenance.explorer.grpc.extensions.getNameEventTypes
 import io.provenance.explorer.grpc.extensions.getNameMsgs
 import io.provenance.explorer.grpc.extensions.getSmContractEventByEvent
@@ -108,8 +110,6 @@ import io.provenance.explorer.service.SmartContractService
 import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.service.splitChildParent
 import io.provenance.explorer.service.unchainDenom
-import net.pearx.kasechange.toSnakeCase
-import net.pearx.kasechange.universalWordSplitter
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
@@ -276,29 +276,6 @@ class AsyncCachingV2(
         return TxUpdatedItems(addrs, markers, txUpdate)
     }
 
-    private fun saveEvents(
-        txInfo: TxData,
-        tx: ServiceOuterClass.GetTxResponse,
-        msgTypeId: Int,
-        idx: Int
-    ) = transaction {
-        tx.txResponse.logsList[idx].eventsList.map { event ->
-            val eventStr = TxEventRecord.buildInsert(
-                txInfo.blockHeight,
-                txInfo.txHash,
-                event.type,
-                msgTypeId
-            )
-            val attrs = event.attributesList.mapIndexed { idx, attr ->
-                TxEventAttrRecord.buildInsert(idx, attr.key, attr.value)
-            }
-            listOf(
-                eventStr,
-                attrs.toArray(TxEventAttrTable.tableName)
-            ).toObject()
-        }
-    }
-
     private fun saveTxFees(
         tx: ServiceOuterClass.GetTxResponse,
         txInfo: TxData,
@@ -316,28 +293,46 @@ class AsyncCachingV2(
 
     fun saveMessages(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse, txUpdate: TxUpdate) = transaction {
         tx.tx.body.messagesList.forEachIndexed { idx, msg ->
-            val (_, module, type) = msg.getMsgType()
-            val msgRec = TxMessageRecord.buildInsert(txInfo, msg, type, module, idx)
+            val primaryType = msg.typeUrl.getMsgType()
+            val secondaryTypes = msg.getMsgSubTypes().filterNotNull().map { it.getMsgType() }
+            val (primTypeId, subTypeRecs) = TxMsgTypeSubtypeRecord.buildInserts(primaryType, secondaryTypes, txInfo)
+            val msgRec = TxMessageRecord.buildInsert(txInfo, msg, idx)
             var single: String? = null
             var events = listOf<String>()
             if (tx.txResponse.logsCount > 0) {
-                events = saveEvents(txInfo, tx, msgRec.second, idx)
+                events = saveEvents(txInfo, tx, primTypeId.value, idx)
                 if (tx.tx.body.messagesCount == 1)
-                    single = TxSingleMessageCacheRecord.buildInsert(txInfo, tx.txResponse.gasUsed.toInt(), type)
+                    single = TxSingleMessageCacheRecord.buildInsert(txInfo, tx.txResponse.gasUsed.toInt(), primaryType.type)
             }
             txUpdate.apply {
                 if (single != null) this.singleMsgs.add(single)
-                this.txMsgs.add(listOf(msgRec.first, events.toArray("tx_event")).toObject())
+                this.txMsgs.add(
+                    listOf(
+                        msgRec,
+                        subTypeRecs.toArray(TxMsgTypeSubtypeTable.tableName),
+                        events.toArray("tx_event")
+                    ).toObject()
+                )
             }
         }
     }
 
-    fun Any.getMsgType(): MsgProtoBreakout {
-        val protoType = this.typeUrl
-        val module = if (!protoType.startsWith("/ibc")) protoType.split(".")[1]
-        else protoType.split(".").let { list -> "${list[0].drop(1)}_${list[2]}" }
-        val type = protoType.split("Msg")[1].removeSuffix("Request").toSnakeCase(universalWordSplitter(false))
-        return MsgProtoBreakout(protoType, module, type)
+    private fun saveEvents(
+        txInfo: TxData,
+        tx: ServiceOuterClass.GetTxResponse,
+        msgTypeId: Int,
+        idx: Int
+    ) = transaction {
+        tx.txResponse.logsList[idx].eventsList.map { event ->
+            val eventStr = TxEventRecord.buildInsert(
+                txInfo.blockHeight,
+                txInfo.txHash,
+                event.type,
+                msgTypeId
+            )
+            val attrs = event.attributesList.mapIndexed { idx, attr -> TxEventAttrRecord.buildInsert(idx, attr.key, attr.value) }
+            listOf(eventStr, attrs.toArray(TxEventAttrTable.tableName)).toObject()
+        }
     }
 
     private fun saveAddresses(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse, txUpdate: TxUpdate) = transaction {

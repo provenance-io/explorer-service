@@ -8,6 +8,7 @@ import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFI
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.core.sql.toEntities
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.MarkerUnitRecord
 import io.provenance.explorer.domain.entities.SignatureRecord
@@ -16,7 +17,8 @@ import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheTable
 import io.provenance.explorer.domain.entities.TxHistoryDataViews
 import io.provenance.explorer.domain.entities.TxMessageTable
-import io.provenance.explorer.domain.entities.TxMessageTypeTable
+import io.provenance.explorer.domain.entities.TxMessageTypeRecord
+import io.provenance.explorer.domain.entities.TxMsgTypeSubtypeTable
 import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
 import io.provenance.explorer.domain.exceptions.requireToMessage
 import io.provenance.explorer.domain.exceptions.validate
@@ -50,6 +52,7 @@ import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.PeriodInSeconds
 import io.provenance.explorer.domain.models.explorer.Reward
 import io.provenance.explorer.domain.models.explorer.TokenCounts
+import io.provenance.explorer.domain.models.explorer.TxHistoryChartData
 import io.provenance.explorer.domain.models.explorer.TxHistoryDataRequest
 import io.provenance.explorer.domain.models.explorer.UnpaginatedDelegation
 import io.provenance.explorer.domain.models.explorer.datesValidation
@@ -70,6 +73,7 @@ import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.innerJoin
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
@@ -334,13 +338,19 @@ class AccountService(
     // Gets the origination dateTime for the account. Currently only applicable to vesting accounts
     private fun getInitializationDate(account: AccountRecord) = transaction {
         val types = listOf(msgCreateVestingAccount { }.getType())
+        val typeIds = TxMessageTypeRecord.findByProtoTypeIn(types)
 
         TxAddressJoinTable
             .innerJoin(TxMessageTable, { TxAddressJoinTable.txHashId }, { TxMessageTable.txHashId })
-            .innerJoin(TxMessageTypeTable, { TxMessageTable.txMessageType }, { TxMessageTypeTable.id })
+            .innerJoin(TxMsgTypeSubtypeTable, { TxMessageTable.id }, { TxMsgTypeSubtypeTable.txMsgId })
             .innerJoin(TxCacheTable, { TxAddressJoinTable.txHashId }, { TxCacheTable.id })
             .slice(TxCacheTable.columns)
-            .select { TxMessageTypeTable.protoType inList types }
+            .select {
+                (
+                    (TxMsgTypeSubtypeTable.primaryType inList typeIds)
+                        or (TxMsgTypeSubtypeTable.secondaryType inList typeIds.toEntities(TxMsgTypeSubtypeTable))
+                    )
+            }
             .andWhere { TxAddressJoinTable.addressId eq account.id.value }
             .andWhere { TxCacheTable.errorCode.isNull() }
             .orderBy(Pair(TxCacheTable.txTimestamp, SortOrder.ASC))
@@ -350,12 +360,12 @@ class AccountService(
             ?.txTimestamp
     }
 
-    fun getAccountTxHistoryChartData(feepayer: String, filters: TxHistoryDataRequest) {
+    fun getAccountTxHistoryChartData(feepayer: String, filters: TxHistoryDataRequest): List<TxHistoryChartData> {
         validate(
             granularityValidation(filters.granularity),
             datesValidation(filters.fromDate, filters.toDate)
         )
-        TxHistoryDataViews.getTxHistoryChartData(filters.granularity, filters.fromDate, filters.toDate, feepayer)
+        return TxHistoryDataViews.getTxHistoryChartData(filters.granularity, filters.fromDate, filters.toDate, feepayer)
     }
 
     fun getAccountTxHistoryChartDataDownload(

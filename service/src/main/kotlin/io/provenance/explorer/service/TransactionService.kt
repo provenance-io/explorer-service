@@ -19,6 +19,7 @@ import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxHistoryDataViews
 import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
+import io.provenance.explorer.domain.entities.TxMsgTypeSubtypeRecord
 import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.getFeepayer
@@ -54,6 +55,7 @@ import io.provenance.explorer.grpc.extensions.getModuleAccName
 import io.provenance.explorer.service.async.AsyncCachingV2
 import io.provenance.explorer.service.async.getAddressType
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
@@ -132,8 +134,8 @@ class TransactionService(
             val rec = it
             val displayMsgType = transaction {
                 if (msgTypes.isNotEmpty())
-                    rec.txMessages.map { msg -> msg.txMessageType.type }.first { type -> msgTypes.contains(type) }
-                else rec.txMessages.first().txMessageType.type
+                    rec.txMessages.flatMap { msg -> msg.txMessageType }.firstMatchLabel(msgTypes)
+                else rec.txMessages.first().txMessageType.firstMatchLabel()
             }
             TxSummary(
                 rec.hash,
@@ -152,7 +154,7 @@ class TransactionService(
     private fun getTxSignatures(txHashId: Int) = SignatureTxRecord.findByTxHashId(txHashId)
 
     fun MutableList<TxMessageRecord>.mapToTxMessages() =
-        this.map { msg -> TxMessage(msg.txMessageType.type, msg.txMessage.toObjectNode(protoPrinter)) }
+        this.map { msg -> TxMessage(msg.txMessageType.toList().firstMatchLabel(), msg.txMessage.toObjectNode(protoPrinter)) }
 
     private fun getTxByHash(hash: String) = getTxByHashFromCache(hash)
 
@@ -206,7 +208,7 @@ class TransactionService(
                     val msgs = TxMessageRecord.findByHashIdPaginated(id, msgTypeIds, count, page.toOffset(count))
                         .mapToTxMessages()
                     val total = TxMessageRecord.getCountByHashId(id, msgTypeIds)
-                    PagedResults(total.pageCountOfResults(count), msgs, total)
+                    PagedResults(total.pageCountOfResults(count), msgs, total.toLong())
                 }
         }
 
@@ -260,7 +262,7 @@ class TransactionService(
                 val govDetail = msg.txMessage.getGovMsgDetail(msg.txHash)!!
                 TxGov(
                     msg.txHash,
-                    msg.txMessageType.type,
+                    msg.txMessageType.firstMatchLabel(msgTypes),
                     govDetail.depositAmount,
                     govDetail.proposalType,
                     govDetail.proposalId,
@@ -300,7 +302,7 @@ class TransactionService(
             val scDetail = msg.txMessage.getScMsgDetail(msg.msgIdx, msg.txHashId.txV2)!!
             TxSmartContract(
                 msg.txHash,
-                msg.txMessageType.type,
+                msg.txMessageType.firstMatchLabel(msgTypes),
                 scDetail.first,
                 scDetail.second,
                 msg.blockHeight,
@@ -346,6 +348,30 @@ class TransactionService(
 
 fun List<TxMessageTypeRecord>.mapToRes() =
     this.map { TxType(it.category ?: it.module, it.type) }.toSet().sortedWith(compareBy(TxType::module, TxType::type))
+
+fun SizedIterable<TxMsgTypeSubtypeRecord>.firstMatchLabel(filter: List<String> = emptyList()) = this.toList().firstMatchLabel(filter)
+
+fun List<TxMsgTypeSubtypeRecord>.firstMatchLabel(filter: List<String> = emptyList()) =
+    if (filter.isNotEmpty())
+        this.toList().groupedByTxMsg()
+            .filter { (_, v) -> filter.intersect((v.mapPieces(true) + v.mapPieces(false)).toSet()).isNotEmpty() }
+            .groupedByType().makeLabels()[0]
+    else this.toList().groupedByTxMsg().groupedByType().makeLabels()[0]
+
+fun Map<TxMessageTypeRecord, List<TxMessageTypeRecord?>>.makeLabels() =
+    this.map { (k, v) ->
+        v.filterNotNull().let { list ->
+            if (list.isNotEmpty()) list.joinToString(", ", " - ") { it.type }
+            else ""
+        }.let { "${k.type}$it" }
+    }
+
+fun List<TxMsgTypeSubtypeRecord>.mapPieces(mapFirst: Boolean) =
+    if (mapFirst) this.map { it.primaryType.type } else this.mapNotNull { it.secondaryType?.type }
+
+fun List<TxMsgTypeSubtypeRecord>.groupedByTxMsg() = this.groupBy { it.txMsgId }
+fun Map<EntityID<Int>, List<TxMsgTypeSubtypeRecord>>.groupedByType() =
+    this.entries.first().value.groupBy({ it.primaryType }, { it.secondaryType })
 
 fun List<TxCacheRecord>.getMainState(blockHeight: Int? = null) =
     if (blockHeight != null) this.first { it.height == blockHeight } else this.first()
