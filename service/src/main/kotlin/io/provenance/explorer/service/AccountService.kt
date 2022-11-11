@@ -24,7 +24,6 @@ import io.provenance.explorer.domain.exceptions.requireToMessage
 import io.provenance.explorer.domain.exceptions.validate
 import io.provenance.explorer.domain.extensions.USD_UPPER
 import io.provenance.explorer.domain.extensions.diff
-import io.provenance.explorer.domain.extensions.fromBase64
 import io.provenance.explorer.domain.extensions.getType
 import io.provenance.explorer.domain.extensions.pack
 import io.provenance.explorer.domain.extensions.pageCountOfResults
@@ -34,7 +33,6 @@ import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDecimalString
 import io.provenance.explorer.domain.extensions.toNormalCase
-import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toProtoCoin
 import io.provenance.explorer.domain.extensions.typeToLabel
@@ -399,22 +397,4 @@ class AccountService(
 
 fun String.getAccountType() = this.split(".").last()
 
-fun Attribute.toResponse(): AttributeObj {
-    val data = when {
-        this.name.contains("passport") -> this.value.toStringUtf8().fromBase64().toObjectNode().let { node ->
-            try {
-                // Try to parse out passport details
-                when {
-                    node["pending"].asBoolean() -> "pending"
-                    node["expirationDate"].asText().toDateTime().isBeforeNow -> "expired"
-                    else -> "active"
-                }
-            } catch (e: Exception) {
-                // If it fails, just pass back the encoded string
-                this.value.toStringUtf8().toBase64()
-            }
-        }
-        else -> this.value.toStringUtf8().toBase64()
-    }
-    return AttributeObj(this.name, data)
-}
+fun Attribute.toResponse() = AttributeObj(this.name, this.value.toStringUtf8().toBase64())

@@ -42,11 +42,14 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Saving tx subtypes for specific msg types #417
   * Allows for searching within those subtypes as well
   * Async task to update older msgs with the newly identified subtypes
+* Swapped CMC pricing out in favor of DLOB pricing #436
 
 ### Bug Fixes
 * Fixed unending do-while loop on getting account balance for denom #433
 * Fixed Proposal `eligibileAmount` for quorum percentages #432
 * Fixed `/api/v3/accounts/tx_history` not returning any data #431
+* Removed Account attribute parsing
+  * Now returning the object as seen on chain
 
 ### Data
 * Migration 1.83 - Update `signature`, redo join tables #416
