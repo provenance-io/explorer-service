@@ -286,7 +286,7 @@ class AsyncService(
                             low = low?.price ?: prevPrice,
                             close = close,
                             volume = usdVolume,
-                            market_cap = close.multiply(tokenService.totalSupply()),
+                            market_cap = close.multiply(tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)),
                             timestamp = closeDate
                         )
                 )
@@ -309,7 +309,7 @@ class AsyncService(
                 else price.percentChange(prevRecord.price)
                 val vol24Hr = if (prevRecIdx == list.lastIndex) BigDecimal.ZERO
                 else list.subList(prevRecIdx + 1, list.lastIndex + 1).sumOf { it.target_volume }.stripTrailingZeros()
-                val marketCap = price.multiply(tokenService.totalSupply())
+                val marketCap = price.multiply(tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER))
                 val rec = CmcLatestDataAbbrev(
                     today,
                     mapOf(USD_UPPER to CmcLatestQuoteAbbrev(price, percentChg, vol24Hr, marketCap, today))
