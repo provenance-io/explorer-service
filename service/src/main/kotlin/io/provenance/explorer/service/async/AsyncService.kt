@@ -33,8 +33,14 @@ import io.provenance.explorer.domain.entities.ValidatorMarketRateStatsRecord
 import io.provenance.explorer.domain.extensions.USD_UPPER
 import io.provenance.explorer.domain.extensions.getType
 import io.provenance.explorer.domain.extensions.height
+import io.provenance.explorer.domain.extensions.percentChange
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
+import io.provenance.explorer.domain.models.explorer.CmcHistoricalQuote
+import io.provenance.explorer.domain.models.explorer.CmcLatestDataAbbrev
+import io.provenance.explorer.domain.models.explorer.CmcLatestQuoteAbbrev
+import io.provenance.explorer.domain.models.explorer.CmcQuote
+import io.provenance.explorer.domain.models.explorer.DlobHistorical
 import io.provenance.explorer.grpc.extensions.getMsgSubTypes
 import io.provenance.explorer.grpc.extensions.getMsgType
 import io.provenance.explorer.service.AssetService
@@ -54,12 +60,12 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
+import org.joda.time.Interval
 import org.joda.time.LocalDate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import tendermint.types.BlockOuterClass
 import java.math.BigDecimal
-import java.math.RoundingMode
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
@@ -247,36 +253,69 @@ class AsyncService(
 
     @Scheduled(cron = "0 0 1 * * ?") // Every day at 1 am
     fun updateTokenHistorical() {
-        val startDate = DateTime.now().startOfDay().minusMonths(1)
-        val dlob = tokenService.getHistoricalFromDlob(startDate)?.buy
-            ?.groupBy { DateTime(it.trade_timestamp * 1000).startOfDay() }
-            ?.map { (k, v) -> k to v.sumOf { it.target_volume }.stripTrailingZeros() }?.toMap()
-        tokenService.updateTokenHistorical(startDate)?.data?.quotes?.forEach { record ->
-            val dlobVolume = dlob?.get(record.time_open.startOfDay())
-            val recordVolume = record.quote[USD_UPPER]!!.volume
-            val quoteCopy = record.quote[USD_UPPER]!!.copy(volume = recordVolume.add(dlobVolume ?: BigDecimal.ZERO))
-            val recordCopy = record.copy(quote = mapOf(USD_UPPER to quoteCopy))
-            TokenHistoricalDailyRecord.save(record.time_open.startOfDay(), recordCopy)
+        val today = DateTime.now().startOfDay()
+        val startDate = today.minusMonths(1)
+        val dlobRes = tokenService.getHistoricalFromDlob(startDate) ?: return
+        val baseMap = Interval(startDate, today)
+            .let { int -> generateSequence(int.start) { dt -> dt.plusDays(1) }.takeWhile { dt -> dt < int.end } }
+            .map { it to emptyList<DlobHistorical>() }.toMap().toMutableMap()
+        var prevPrice = TokenHistoricalDailyRecord.lastKnownPriceForDate(startDate)
+
+        baseMap.putAll(
+            dlobRes.buy
+                .filter { DateTime(it.trade_timestamp * 1000).startOfDay() != today }
+                .groupBy { DateTime(it.trade_timestamp * 1000).startOfDay() }
+        )
+        baseMap.forEach { (k, v) ->
+            val high = v.maxByOrNull { it.price }
+            val low = v.minByOrNull { it.price }
+            val open = v.minByOrNull { DateTime(it.trade_timestamp * 1000) }?.price ?: prevPrice
+            val close = v.maxByOrNull { DateTime(it.trade_timestamp * 1000) }?.price ?: prevPrice
+            val closeDate = k.plusDays(1).minusMillis(1)
+            val usdVolume = v.sumOf { it.target_volume }.stripTrailingZeros()
+            val record = CmcHistoricalQuote(
+                time_open = k,
+                time_close = closeDate,
+                time_high = if (high != null) DateTime(high.trade_timestamp * 1000) else k,
+                time_low = if (low != null) DateTime(low.trade_timestamp * 1000) else k,
+                quote = mapOf(
+                    USD_UPPER to
+                        CmcQuote(
+                            open = open,
+                            high = high?.price ?: prevPrice,
+                            low = low?.price ?: prevPrice,
+                            close = close,
+                            volume = usdVolume,
+                            market_cap = close.multiply(tokenService.totalSupply()),
+                            timestamp = closeDate
+                        )
+                )
+            ).also { prevPrice = close }
+            TokenHistoricalDailyRecord.save(record.time_open.startOfDay(), record)
         }
     }
 
     @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
     fun updateTokenLatest() {
-        val startDate = DateTime.now().withZone(DateTimeZone.UTC).minusDays(1)
-        val dlobVolume =
-            tokenService.getHistoricalFromDlob(startDate)?.buy
-                ?.filter { DateTime(it.trade_timestamp * 1000) >= startDate }
-                ?.sumOf { it.target_volume }?.stripTrailingZeros()
-        tokenService.updateTokenLatest()?.data?.get(props.cmcTokenId.toString())?.let { record ->
-            val quoteVolume = record.quote[USD_UPPER]!!.volume_24h
-            val quoteVolumeReported = record.quote[USD_UPPER]!!.volume_24h_reported
-            val quoteCopy = record.quote[USD_UPPER]!!.copy(
-                volume_24h = quoteVolume.add(dlobVolume ?: BigDecimal.ZERO),
-                volume_24h_reported = quoteVolumeReported.add(dlobVolume ?: BigDecimal.ZERO).setScale(4, RoundingMode.HALF_UP)
-            )
-            val recordCopy = record.copy(quote = mapOf(USD_UPPER to quoteCopy))
-            CacheUpdateRecord.updateCacheByKey(CacheKeys.UTILITY_TOKEN_LATEST.key, VANILLA_MAPPER.writeValueAsString(recordCopy))
-        }
+        val today = DateTime.now().withZone(DateTimeZone.UTC)
+        val startDate = today.minusDays(7)
+        tokenService.getHistoricalFromDlob(startDate)?.buy
+            ?.sortedBy { it.trade_timestamp }
+            ?.let { list ->
+                val prevRecIdx = list.indexOfLast { DateTime(it.trade_timestamp * 1000).isBefore(today.minusDays(1)) }
+                val prevRecord = list[prevRecIdx]
+                val price = list.last().price
+                val percentChg = if (prevRecIdx == list.lastIndex) BigDecimal.ZERO
+                else price.percentChange(prevRecord.price)
+                val vol24Hr = if (prevRecIdx == list.lastIndex) BigDecimal.ZERO
+                else list.subList(prevRecIdx + 1, list.lastIndex + 1).sumOf { it.target_volume }.stripTrailingZeros()
+                val marketCap = price.multiply(tokenService.totalSupply())
+                val rec = CmcLatestDataAbbrev(
+                    today,
+                    mapOf(USD_UPPER to CmcLatestQuoteAbbrev(price, percentChg, vol24Hr, marketCap, today))
+                )
+                CacheUpdateRecord.updateCacheByKey(CacheKeys.UTILITY_TOKEN_LATEST.key, VANILLA_MAPPER.writeValueAsString(rec))
+            }
     }
 
     // Remove once the ranges have been updated

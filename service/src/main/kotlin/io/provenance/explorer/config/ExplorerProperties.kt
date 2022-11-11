@@ -22,9 +22,6 @@ class ExplorerProperties(
     val swaggerUrl: String,
     val swaggerProtocol: String,
     val pricingUrl: String,
-    val cmcApiKey: String,
-    val cmcApiUrl: String,
-    val cmcTokenId: Int,
     val feeBugRangeOneEleven: List<Int> // [0] is the beginning of the range, [1] is the end of the range, inclusive
 ) {
 

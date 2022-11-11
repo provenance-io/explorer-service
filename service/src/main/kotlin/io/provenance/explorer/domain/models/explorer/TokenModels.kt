@@ -73,53 +73,17 @@ data class CmcQuote(
     val timestamp: DateTime
 )
 
-data class CmcLatestResponse(
-    val status: CmcStatus,
-    val data: Map<String, CmcLatestData>
-)
-
-data class CmcLatestData(
-    val id: Int,
-    val name: String,
-    val symbol: String,
-    val slug: String,
-    val num_market_pairs: Int,
-    val date_added: DateTime,
-    val tags: List<String>,
-    val max_supply: BigDecimal,
-    val circulating_supply: BigDecimal,
-    val is_active: Boolean,
-    val platform: String?,
-    val cmc_rank: Int,
-    val is_fiat: Boolean,
-    val self_reported_circulating_supply: BigDecimal?,
-    val self_reported_market_cap: BigDecimal?,
-    val tvl_ratio: BigDecimal?,
+data class CmcLatestDataAbbrev(
     val last_updated: DateTime,
-    val quote: Map<String, CmcLatestQuote>
+    val quote: Map<String, CmcLatestQuoteAbbrev>
 )
 
-data class CmcLatestQuote(
+data class CmcLatestQuoteAbbrev(
     val price: BigDecimal,
-    val volume_24h: BigDecimal,
-    val volume_24h_reported: BigDecimal,
-    val volume_7d: BigDecimal,
-    val volume_7d_reported: BigDecimal,
-    val volume_30d: BigDecimal,
-    val volume_30d_reported: BigDecimal,
-    val volume_change_24h: BigDecimal,
-    val percent_change_1h: BigDecimal,
     val percent_change_24h: BigDecimal,
-    val percent_change_7d: BigDecimal,
-    val percent_change_30d: BigDecimal,
-    val percent_change_60d: BigDecimal,
-    val percent_change_90d: BigDecimal,
-    val market_cap: BigDecimal,
-    val market_cap_dominance: BigDecimal,
-    val fully_diluted_market_cap: BigDecimal,
-    val tvl: BigDecimal?,
+    val volume_24h: BigDecimal,
     val market_cap_by_total_supply: BigDecimal?,
-    val last_updated: DateTime,
+    val last_updated: DateTime
 )
 
 data class DlobHistBase(

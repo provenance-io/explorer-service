@@ -2,6 +2,7 @@ package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.extensions.USD_UPPER
 import io.provenance.explorer.domain.models.explorer.ChainAum
 import io.provenance.explorer.domain.models.explorer.ChainMarketRate
 import io.provenance.explorer.domain.models.explorer.CmcHistoricalQuote
@@ -255,6 +256,13 @@ class TokenHistoricalDailyRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) 
 
             query.orderBy(TokenHistoricalDailyTable.timestamp, SortOrder.ASC)
             TokenHistoricalDailyRecord.wrapRows(query).map { it.data }.toList()
+        }
+
+        fun lastKnownPriceForDate(date: DateTime) = transaction {
+            TokenHistoricalDailyRecord
+                .find { TokenHistoricalDailyTable.timestamp lessEq date }
+                .orderBy(Pair(TokenHistoricalDailyTable.timestamp, SortOrder.DESC))
+                .firstOrNull()?.data?.quote?.get(USD_UPPER)?.close ?: BigDecimal.ZERO
         }
     }
 

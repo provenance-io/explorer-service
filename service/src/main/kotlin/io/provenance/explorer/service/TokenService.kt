@@ -5,7 +5,6 @@ import cosmos.auth.v1beta1.Auth
 import io.ktor.client.features.ResponseException
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
-import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.http.ContentType
 import io.provenance.explorer.KTOR_CLIENT_JAVA
@@ -31,9 +30,7 @@ import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toPercentage
 import io.provenance.explorer.domain.models.explorer.AssetHolder
-import io.provenance.explorer.domain.models.explorer.CmcHistoricalResponse
-import io.provenance.explorer.domain.models.explorer.CmcLatestData
-import io.provenance.explorer.domain.models.explorer.CmcLatestResponse
+import io.provenance.explorer.domain.models.explorer.CmcLatestDataAbbrev
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.CountStrTotal
 import io.provenance.explorer.domain.models.explorer.DlobHistBase
@@ -239,46 +236,11 @@ class TokenService(
         }
     }
 
-    fun updateTokenHistorical(startTime: DateTime): CmcHistoricalResponse? = runBlocking {
-        try {
-            KTOR_CLIENT_JAVA.get("${props.cmcApiUrl}/v2/cryptocurrency/ohlcv/historical") {
-                parameter("id", props.cmcTokenId)
-                parameter("count", 32)
-                parameter("time_start", startTime)
-                accept(ContentType.Application.Json)
-                header("X-CMC_PRO_API_KEY", props.cmcApiKey)
-            }
-        } catch (e: ResponseException) {
-            return@runBlocking null.also { logger.error("Error updating Token Historical Pricing: ${e.response}") }
-        } catch (e: Exception) {
-            return@runBlocking null.also { logger.error("Error updating Token Historical Pricing: ${e.message}") }
-        } catch (e: Throwable) {
-            return@runBlocking null.also { logger.error("Error updating Token Historical Pricing: ${e.message}") }
-        }
-    }
-
-    fun updateTokenLatest(): CmcLatestResponse? = runBlocking {
-        try {
-            KTOR_CLIENT_JAVA.get("${props.cmcApiUrl}/v2/cryptocurrency/quotes/latest") {
-                parameter("id", props.cmcTokenId)
-                parameter("aux", "num_market_pairs,cmc_rank,date_added,tags,platform,max_supply,circulating_supply,total_supply,market_cap_by_total_supply,volume_24h_reported,volume_7d,volume_7d_reported,volume_30d,volume_30d_reported,is_active,is_fiat")
-                accept(ContentType.Application.Json)
-                header("X-CMC_PRO_API_KEY", props.cmcApiKey)
-            }
-        } catch (e: ResponseException) {
-            return@runBlocking null.also { logger.error("Error updating Token Latest Pricing: ${e.response}") }
-        } catch (e: Exception) {
-            return@runBlocking null.also { logger.error("Error updating Token Latest Pricing: ${e.message}") }
-        } catch (e: Throwable) {
-            return@runBlocking null.also { logger.error("Error updating Token Latest Pricing: ${e.message}") }
-        }
-    }
-
     fun getTokenHistorical(fromDate: DateTime?, toDate: DateTime?) =
         TokenHistoricalDailyRecord.findForDates(fromDate?.startOfDay(), toDate?.startOfDay())
 
     fun getTokenLatest() = CacheUpdateRecord.fetchCacheByKey(CacheKeys.UTILITY_TOKEN_LATEST.key)?.cacheValue?.let {
-        VANILLA_MAPPER.readValue<CmcLatestData>(it)
+        VANILLA_MAPPER.readValue<CmcLatestDataAbbrev>(it)
     }
 }
 
