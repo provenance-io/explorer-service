@@ -237,7 +237,10 @@ class AsyncCachingV2(
         pullFromDb: Boolean = false
     ): List<TxUpdatedItems> = try {
         if (pullFromDb)
-            TxCacheRecord.findByHeight(blockHeight).map { addTxToCacheWithTimestamp(it.txV2, blockTime, proposerRec) }
+            transaction {
+                TxCacheRecord.findByHeight(blockHeight)
+                    .map { addTxToCacheWithTimestamp(it.txV2, blockTime, proposerRec) }
+            }
         else
             txClient.getTxsByHeight(blockHeight, txCount)
                 .map { addTxToCacheWithTimestamp(txClient.getTxByHash(it.txhash), blockTime, proposerRec) }

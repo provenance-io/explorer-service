@@ -131,11 +131,11 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
             val columns = TxCacheTable.columns.toMutableList()
-            val query =
-                findByQueryParams(txQueryParams, columns)
-                    .groupBy(*TxCacheTable.columns.toTypedArray())
-                    .orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
-                    .limit(txQueryParams.count, txQueryParams.offset.toLong())
+            val query = findByQueryParams(txQueryParams, columns)
+            if (!txQueryParams.onlyTxQuery())
+                query.groupBy(*TxCacheTable.columns.toTypedArray())
+            query.orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
+                .limit(txQueryParams.count, txQueryParams.offset.toLong())
             TxCacheRecord.wrapRows(query).toSet()
         }
 
@@ -388,7 +388,8 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
             var join: ColumnSet = TxMessageTable
 
             if (tqp.msgTypes.isNotEmpty())
-                join = join.innerJoin(TxMsgTypeQueryTable, { TxMessageTable.txHashId }, { TxMsgTypeQueryTable.txHashId })
+                join =
+                    join.innerJoin(TxMsgTypeQueryTable, { TxMessageTable.txHashId }, { TxMsgTypeQueryTable.txHashId })
             if (tqp.txStatus != null)
                 join = join.innerJoin(TxCacheTable, { TxMessageTable.txHashId }, { TxCacheTable.id })
             if ((tqp.addressId != null && tqp.addressType != null) || tqp.address != null)
@@ -425,7 +426,16 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun buildInsert(txInfo: TxData, message: Any, msgIdx: Int) = transaction {
-            listOf(0, txInfo.blockHeight, txInfo.txHash, message, message.value.toDbHash(), 0, msgIdx, txInfo.txTimestamp).toProcedureObject()
+            listOf(
+                0,
+                txInfo.blockHeight,
+                txInfo.txHash,
+                message,
+                message.value.toDbHash(),
+                0,
+                msgIdx,
+                txInfo.txTimestamp
+            ).toProcedureObject()
         }
     }
 
@@ -659,7 +669,16 @@ class TxFeepayerRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxFeepayerRecord>(TxFeepayerTable) {
 
         fun buildInsert(txInfo: TxData, type: String, addrId: Int, address: String) =
-            listOf(0, txInfo.blockHeight, -1, txInfo.txHash, type, addrId, address, txInfo.txTimestamp).toProcedureObject()
+            listOf(
+                0,
+                txInfo.blockHeight,
+                -1,
+                txInfo.txHash,
+                type,
+                addrId,
+                address,
+                txInfo.txTimestamp
+            ).toProcedureObject()
     }
 
     var blockHeight by TxFeepayerTable.blockHeight
