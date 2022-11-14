@@ -33,6 +33,12 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+* Slightly improved performance for processing the 1.11 fee bug range
+
+### Big Fixes
+* Fixed migration 1.83 to actually insert signature_tx records
+
 ## [v5.3.1](https://github.com/provenance-io/explorer-service/releases/tag/v5.3.1) - 2022-11-11
 ### Release Name: Giosafat Barbaro
 

@@ -116,6 +116,12 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
             val arguments = listOf(Pair(DateColumnType(true), time))
             query.execAndMap(arguments) { it.getInt("get_last_block_before_timestamp") }.first()
         }
+
+        fun getBlocksForRange(from: Int, to: Int) = transaction {
+            BlockCacheRecord.find { BlockCacheTable.height.between(from, to) }
+                .orderBy(Pair(BlockCacheTable.height, SortOrder.ASC))
+                .toList()
+        }
     }
 
     var height by BlockCacheTable.height

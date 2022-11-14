@@ -17,13 +17,13 @@ where sj.id = sj_join.id
 alter table signature
     drop column if exists multi_sig_object,
     alter column base_64_sig DROP NOT NULL,
-    add column if not exists address            varchar(128);
+    add column if not exists address varchar(128);
 
 drop index if exists signature_idx;
 
 -- update the object hash
 update signature
-set address            = q.account_address
+set address = q.account_address
 from (select a.account_address,
              sj.signature_id
       from signature_join sj
@@ -35,7 +35,8 @@ delete
 from signature
 where address is null;
 
-DELETE FROM signature
+DELETE
+FROM signature
 WHERE id IN
       (SELECT id
        FROM (SELECT id,
@@ -94,13 +95,17 @@ with base as (select tc.id,
                        left join signature_join sj on sj.join_type = 'TRANSACTION' and sj.join_key = tc.hash,
                    jsonb_array_elements(tc.tx_v2 -> 'tx' -> 'auth_info' -> 'signer_infos') with ordinality infos("signer", idx),
                    jsonb_to_record(infos.signer) info("sequence" integer, "mode_info" jsonb, "public_key" jsonb))
+insert
+into signature_tx (tx_hash_id, block_height, tx_hash, sig_idx, sig_id, sequence)
 select base.id,
        base.height,
        base.hash,
        base.idx,
        CASE
            WHEN base.public_key is null THEN base.signature_id
-           ELSE sig.id END,
+           ELSE sig.id END sig_id,
        base.sequence
 from base
-         left join signature sig on base.public_key = sig.pubkey_object;
+         left join signature sig on base.public_key = sig.pubkey_object
+group by base.id, base.height, base.hash, base.idx, sig_id, base.sequence
+on conflict (tx_hash_id, sig_idx) do nothing;

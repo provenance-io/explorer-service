@@ -333,22 +333,22 @@ class AsyncService(
         if (startBlock == done) return
         var lastBlock = 0
         // Create range, and process next 200 blocks or until the end of the fee bug range, whichever is less
-        (startBlock.toInt()..minOf(props.oneElevenBugRange()!!.last, startBlock.toInt().plus(1000))).toList()
+        (startBlock.toInt()..minOf(props.oneElevenBugRange()!!.last, startBlock.toInt().plus(100))).toList()
+            .let { BlockCacheRecord.getBlocksForRange(it.first(), it.last()) }
             .forEach { block ->
-                (blockService.getBlockAtHeight(block)?.block ?: blockService.getBlockAtHeightFromChain(block))
-                    ?.let { asyncCache.saveBlockEtc(it, Pair(true, false)) }
+                if (block.txCount > 0) asyncCache.saveBlockEtc(block.block, Pair(true, false))
                 // Check if the last processed block equals the end of the fee bug range
-                if (block == props.oneElevenBugRange()!!.last)
+                if (block.height == props.oneElevenBugRange()!!.last)
                     cacheService.updateCacheValue(CacheKeys.FEE_BUG_ONE_ELEVEN_START_BLOCK.key, done)
                 else
-                    lastBlock = block
+                    lastBlock = block.height
             }
         // Update the cache value to the last block processed
         cacheService.updateCacheValue(CacheKeys.FEE_BUG_ONE_ELEVEN_START_BLOCK.key, lastBlock.toString())
         logger.info("Updated fee bug range")
     }
 
-    @Scheduled(cron = "0 7 0/1 * * ?") // Every hour at the 7-minute mark
+    @Scheduled(cron = "0 0 2 * * ?") // Every day at 2 AM
     fun refreshMaterializedViews() {
         logger.info("Refreshing fee-based views")
         TxHistoryDataViews.refreshViews()
