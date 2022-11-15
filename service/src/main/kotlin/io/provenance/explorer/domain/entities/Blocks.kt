@@ -433,7 +433,7 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
     var txCount by BlockCacheHourlyTxCountsTable.txCount
 }
 
-object BlockTxCountsCacheTable : IntIdTable(name = "block_tx_count_cache") {
+object BlockTxCountsCacheTable : IdTable<Int>(name = "block_tx_count_cache") {
     val blockHeight = integer("block_height")
     val blockTimestamp = datetime("block_timestamp")
     val txCount = integer("tx_count").default(0)

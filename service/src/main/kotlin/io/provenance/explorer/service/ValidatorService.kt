@@ -2,11 +2,10 @@ package io.provenance.explorer.service
 
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.staking.v1beta1.Staking
-import io.ktor.client.call.receive
-import io.ktor.client.features.ResponseException
+import io.ktor.client.call.body
+import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
-import io.ktor.client.statement.HttpResponse
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_VAL_CONS_PREFIX
@@ -476,7 +475,7 @@ class ValidatorService(
     fun getImgUrl(identityStr: String) = runBlocking {
         if (identityStr.isNotBlank()) {
             val res = try {
-                KTOR_CLIENT_JAVA.get<HttpResponse>("https://keybase.io/_/api/1.0/user/lookup.json") {
+                KTOR_CLIENT_JAVA.get("https://keybase.io/_/api/1.0/user/lookup.json") {
                     parameter("key_suffix", identityStr)
                     parameter("fields", "pictures")
                 }
@@ -486,7 +485,7 @@ class ValidatorService(
 
             if (res.status.value in 200..299) {
                 try {
-                    JSONObject(res.receive<String>()).getJSONArray("them").let {
+                    JSONObject(res.body<String>()).getJSONArray("them").let {
                         if (it.length() > 0) {
                             val them = it.getJSONObject(0)
                             if (them.has("pictures"))

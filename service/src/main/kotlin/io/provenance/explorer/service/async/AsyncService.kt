@@ -55,7 +55,7 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.innerJoin
-import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -378,7 +378,7 @@ class AsyncService(
                         TxMsgTypeSubtypeTable.deleteWhere { TxMsgTypeSubtypeTable.id inList it }
                     }
                     secondaries.forEach { secId ->
-                        TxMsgTypeSubtypeTable.insert {
+                        TxMsgTypeSubtypeTable.insertIgnore {
                             it[this.txMsgId] = msgId.txMsgId
                             it[this.primaryType] = primId
                             it[this.secondaryType] = secId

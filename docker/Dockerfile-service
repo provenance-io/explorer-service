@@ -1,4 +1,4 @@
-FROM gradle:7.3.3-jdk11 AS build
+FROM gradle:7.4.2-jdk11 AS build
 RUN gradle --version && java -version
 WORKDIR /app
 

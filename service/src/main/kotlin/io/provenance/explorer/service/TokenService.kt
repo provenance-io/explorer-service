@@ -2,7 +2,8 @@ package io.provenance.explorer.service
 
 import com.fasterxml.jackson.module.kotlin.readValue
 import cosmos.auth.v1beta1.Auth
-import io.ktor.client.features.ResponseException
+import io.ktor.client.call.body
+import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
@@ -226,7 +227,7 @@ class TokenService(
                 parameter("type", "buy")
                 parameter("start_time", DateTimeFormat.forPattern("dd-MM-yyyy").print(startTime))
                 accept(ContentType.Application.Json)
-            }
+            }.body()
         } catch (e: ResponseException) {
             return@runBlocking null.also { logger.error("Error fetching from Dlob: ${e.response}") }
         } catch (e: Exception) {
