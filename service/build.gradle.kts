@@ -43,6 +43,7 @@ dependencies {
     implementation(Libraries.KtorClientCore)
     implementation(Libraries.KtorClientEngineJava)
     implementation(Libraries.KtorClientSerialization)
+    implementation(Libraries.KtorClientContentNeg)
     implementation(Libraries.Json)
 
     implementation(Libraries.GrpcNetty)

@@ -21,7 +21,7 @@ object PluginIds { // please keep this sorted in sections
 
 object PluginVersions { // please keep this sorted in sections
     // Kotlin
-    const val Kotlin = "1.5.31"
+    const val Kotlin = "1.6.21"
 
     // 3rd Party
     const val Flyway = "7.15.0"
@@ -31,32 +31,32 @@ object PluginVersions { // please keep this sorted in sections
     const val GoryLenkoGitProps = "1.5.2"
 
     const val SpringDependency = "1.0.11.RELEASE"
-    const val SpringBoot = "2.5.6"
+    const val SpringBoot = "2.6.6"
 }
 
 object Versions {
     // kotlin
     const val Kotlin = PluginVersions.Kotlin
-    const val KotlinXCoroutines = "1.5.2"
+    const val KotlinXCoroutines = "1.6.4"
 
     // 3rd Party
-    const val ApacheCommonsText = "1.9"
+    const val ApacheCommonsText = "1.10.0"
     const val ApacheCommonsCsv = "1.9.0"
-    const val ApacheHttpClient = "4.5.12"
-    const val BouncyCastle = "1.69"
-    const val Exposed = "0.34.1"
+    const val ApacheHttpClient = "5.2"
+    const val BouncyCastle = "1.70"
+    const val Exposed = "0.38.2"
     const val Flyway = PluginVersions.Flyway
-    const val Jackson = "2.12.5"
-    const val JacksonProtobuf = "0.9.12"
+    const val Jackson = "2.13.2"
+    const val JacksonProtobuf = "0.9.13"
     const val Json = "20211205"
     const val KaseChange = "1.3.0"
-    const val Ktor = "1.6.7"
+    const val Ktor = "2.1.3"
     const val SpringBoot = PluginVersions.SpringBoot
     const val Swagger = "3.0.0"
-    const val Grpc = "1.40.1"
+    const val Grpc = "1.50.2"
     const val ProvProto = "1.12.0"
     const val Postgres = "42.2.23"
-    const val Protobuf = "3.19.1"
+    const val Protobuf = "3.21.9"
 
     // Testing
     const val Jupiter = "5.7.1"
@@ -85,10 +85,11 @@ object Libraries {
     const val BouncyCastle = "org.bouncycastle:bcprov-jdk15on:${Versions.BouncyCastle}"
     const val ApacheCommonsText = "org.apache.commons:commons-text:${Versions.ApacheCommonsText}"
     const val ApacheCommonsCsv = "org.apache.commons:commons-csv:${Versions.ApacheCommonsCsv}"
-    const val ApacheHttpClient = "org.apache.httpcomponents:httpclient:${Versions.ApacheHttpClient}"
+    const val ApacheHttpClient = "org.apache.httpcomponents.client5:httpclient5:${Versions.ApacheHttpClient}"
     const val KtorClientCore = "io.ktor:ktor-client-core:${Versions.Ktor}"
     const val KtorClientEngineJava = "io.ktor:ktor-client-java:${Versions.Ktor}"
-    const val KtorClientSerialization = "io.ktor:ktor-client-jackson:${Versions.Ktor}"
+    const val KtorClientSerialization = "io.ktor:ktor-serialization-jackson:${Versions.Ktor}"
+    const val KtorClientContentNeg = "io.ktor:ktor-client-content-negotiation:${Versions.Ktor}"
     const val KaseChange = "net.pearx.kasechange:kasechange:${Versions.KaseChange}"
     const val Json = "org.json:json:${Versions.Json}"
 

@@ -33,6 +33,23 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+* Updated Kotlin version `1.5.31` -> `1.6.21` #342
+  * Gradle `7.3.3` -> `7.4.2`
+  * SpringBoot `2.5.6` -> `2.6.6`
+  * Kotlin Coroutines `1.5.2` -> `1.6.4`
+  * Apache commons-text `1.9` -> `1.10`
+  * Apache HttClient `4.5.12` -> `5.2`
+  * BouncyCastle `1.69` -> `1.70`
+  * Exposed `0.34.1` -> `0.38.2`
+  * Jackson `2.12.5` -> `2.13.2`
+  * Jackson Protobuf `0.9.12` -> `0.9.13`
+  * Ktor `1.5.7` -> `2.1.3`
+  * Grpc `1.40.1` -> `1.50.2`
+  * Protobuf `3.19.1` -> `3.21.9`
+  * NOTE: These updates had minimal impact, but Springfox 3.0.0 and Springboot 2.6.x do not play nicely. Had
+     to add a hacky fix; will probably set some time aside to switch to SpringDoc.
+
 ## [v5.3.2](https://github.com/provenance-io/explorer-service/releases/tag/v5.3.2) - 2022-11-14
 ### Release Name: Afonso Gonçalves Baldaia
 

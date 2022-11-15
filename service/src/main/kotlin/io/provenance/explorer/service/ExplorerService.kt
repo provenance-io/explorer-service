@@ -5,10 +5,9 @@ import com.google.protobuf.util.JsonFormat
 import cosmos.bank.v1beta1.params
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.gov.v1beta1.Gov
-import io.ktor.client.call.receive
-import io.ktor.client.features.ResponseException
+import io.ktor.client.call.body
+import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.get
-import io.ktor.client.statement.HttpResponse
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
@@ -260,14 +259,14 @@ class ExplorerService(
     fun getChainReleases(page: Int, count: Int): MutableList<GithubReleaseData> = runBlocking {
         val url = "https://api.github.com/repos/${props.upgradeGithubRepo}/releases?per_page=$count&page=$page"
         val res = try {
-            KTOR_CLIENT_JAVA.get<HttpResponse>(url)
+            KTOR_CLIENT_JAVA.get(url)
         } catch (e: ResponseException) {
             return@runBlocking mutableListOf<GithubReleaseData>().also { logger.error("Error: ${e.response}") }
         }
 
         if (res.status.value == 200) {
             try {
-                JSONArray(res.receive<String>()).mapNotNull { ele ->
+                JSONArray(res.body<String>()).mapNotNull { ele ->
                     if (ele is JSONObject) {
                         GithubReleaseData(
                             ele.getString("tag_name"),
