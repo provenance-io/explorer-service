@@ -38,6 +38,7 @@ import io.provenance.explorer.domain.extensions.toProtoCoin
 import io.provenance.explorer.domain.extensions.typeToLabel
 import io.provenance.explorer.domain.extensions.writeCsvEntry
 import io.provenance.explorer.domain.models.explorer.AccountDetail
+import io.provenance.explorer.domain.models.explorer.AccountFlags
 import io.provenance.explorer.domain.models.explorer.AccountRewards
 import io.provenance.explorer.domain.models.explorer.AccountSigInfo
 import io.provenance.explorer.domain.models.explorer.AccountSignature
@@ -101,6 +102,14 @@ class AccountService(
         requireNotNullToMessage(AccountRecord.findByAddress(address)) { "Address $address does not exist." }
     }
 
+    fun getAccountFlags(address: String) =
+        getAccountRaw(address).let {
+            AccountFlags(
+                it.isContract,
+                it.data?.isVesting() ?: false
+            )
+        }
+
     fun getAccountDetail(address: String) = runBlocking {
         getAccountRaw(address).let {
             val attributes = async { attrClient.getAllAttributesForAddress(it.accountAddress) }
@@ -124,7 +133,8 @@ class AccountService(
                     "accountAUM"
                 )
                     .toCoinStr(USD_UPPER),
-                it.data?.isVesting() ?: false
+                it.data?.isVesting() ?: false,
+                AccountFlags(it.isContract, it.data?.isVesting() ?: false)
             )
         }
     }
