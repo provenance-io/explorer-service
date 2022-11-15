@@ -49,6 +49,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Protobuf `3.19.1` -> `3.21.9`
   * NOTE: These updates had minimal impact, but Springfox 3.0.0 and Springboot 2.6.x do not play nicely. Had
      to add a hacky fix; will probably set some time aside to switch to SpringDoc.
+* Added API to return only Account flags #447
+  * GET `/api/v3/accounts/{address}/flags` - returns `isContract`, `isVesting` flags on the account
 
 ## [v5.3.2](https://github.com/provenance-io/explorer-service/releases/tag/v5.3.2) - 2022-11-14
 ### Release Name: Afonso Gonçalves Baldaia

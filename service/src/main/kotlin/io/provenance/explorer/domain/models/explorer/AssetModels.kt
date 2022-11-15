@@ -43,6 +43,11 @@ data class AssetHolder(
     val balance: CountStrTotal
 )
 
+data class AccountFlags(
+    val isContract: Boolean,
+    val isVesting: Boolean
+)
+
 data class AccountDetail(
     val accountType: String,
     val address: String,
@@ -52,9 +57,10 @@ data class AccountDetail(
     val accountName: String?,
     val attributes: List<AttributeObj>,
     val tokens: TokenCounts,
-    val isContract: Boolean,
+    @Deprecated("Use this.flags.isContract instead") val isContract: Boolean,
     val accountAum: CoinStr,
-    val isVesting: Boolean
+    @Deprecated("Use this.flags.isVesting instead") val isVesting: Boolean,
+    val flags: AccountFlags // added to eventually remove the standalone vals in this object
 )
 
 data class AccountVestingInfo(

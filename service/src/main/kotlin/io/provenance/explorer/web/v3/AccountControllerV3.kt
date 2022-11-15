@@ -161,4 +161,11 @@ class AccountControllerV3(private val accountService: AccountService, private va
         @ApiParam(value = "The address of the account, starting with the standard account prefix")
         @PathVariable address: String
     ) = ResponseEntity.ok(accountService.getAccountBalanceForUtilityToken(address))
+
+    @ApiOperation("Returns standard flags about the account (ie, isContract, isVesting)")
+    @GetMapping("/{address}/flags")
+    fun getAccountFlags(
+        @ApiParam(value = "The address of the account, starting with the standard account prefix")
+        @PathVariable address: String
+    ) = ResponseEntity.ok(accountService.getAccountFlags(address))
 }
