@@ -1,5 +1,6 @@
 package io.provenance.explorer.domain.models.explorer
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.provenance.explorer.domain.core.sql.toArray
 import io.provenance.explorer.domain.core.sql.toObject
@@ -73,7 +74,8 @@ data class TxDetails(
     val monikers: Map<String, String>,
     val feepayer: TxFeepayer,
     val associatedValues: List<TxAssociatedValues>,
-    var additionalHeights: List<Int> = emptyList()
+    var additionalHeights: List<Int> = emptyList(),
+    val events: List<JsonNode>
 )
 
 data class TxAssociatedValues(val value: String, val type: String)
@@ -300,7 +302,8 @@ data class MsgInfo(
 
 data class TxMessage(
     val type: String,
-    val msg: ObjectNode
+    val msg: ObjectNode,
+    val logs: List<JsonNode>
 )
 
 enum class DateTruncGranularity { MONTH, DAY, HOUR, MINUTE }

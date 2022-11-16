@@ -5,9 +5,11 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.google.protobuf.Message
 import com.google.protobuf.util.JsonFormat
+import cosmos.base.abci.v1beta1.Abci
 import io.provenance.explorer.JSON_NODE_FACTORY
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.isMAddress
+import tendermint.abci.Types
 
 val protoTypesToCheckForMetadata = listOf(
     "/provenance.metadata.v1.MsgWriteScopeRequest",
@@ -131,3 +133,25 @@ fun fromBase64ToMAddress(jsonNode: JsonNode, fieldName: String) {
         jsonNode.forEach { fromBase64ToMAddress(it, fieldName) }
     }
 }
+
+fun List<Abci.StringEvent>.msgEventsToObjectNodePrint(protoPrinter: JsonFormat.Printer) =
+    this.map { OBJECT_MAPPER.readTree(protoPrinter.preservingProtoFieldNames().print(it)) }
+
+fun List<Types.Event>.txEventsToObjectNodePrint(protoPrinter: JsonFormat.Printer) =
+    this.map { event ->
+        OBJECT_MAPPER.readTree(protoPrinter.preservingProtoFieldNames().print(event))
+            .let { node ->
+                val oldArray = (node.get("attributes") as ArrayNode)
+                val newArray = JSON_NODE_FACTORY.arrayNode()
+                oldArray.forEach {
+                    val newNode = JSON_NODE_FACTORY.objectNode()
+                    val newKey = it.get("key").asText().fromBase64()
+                    val newValue = it.get("value").asText().fromBase64()
+                    newNode.put("key", newKey)
+                    newNode.put("value", newValue)
+                    newArray.add(newNode)
+                }
+                (node as ObjectNode).replace("attributes", newArray)
+                node
+            }
+    }
