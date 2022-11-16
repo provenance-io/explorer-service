@@ -51,6 +51,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
      to add a hacky fix; will probably set some time aside to switch to SpringDoc.
 * Added API to return only Account flags #447
   * GET `/api/v3/accounts/{address}/flags` - returns `isContract`, `isVesting` flags on the account
+* Added Tx Msg logs to `/api/v2/txs/{hash}/msgs` #400
+* Added Tx-level event logs to `/api/v2/txs/{hash}` #401
+  * Decodes the data to human-readable strings
 
 ## [v5.3.2](https://github.com/provenance-io/explorer-service/releases/tag/v5.3.2) - 2022-11-14
 ### Release Name: Afonso Gonçalves Baldaia

@@ -1,6 +1,7 @@
 package io.provenance.explorer.service
 
 import com.google.protobuf.util.JsonFormat
+import cosmos.base.abci.v1beta1.Abci
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.getParentForType
@@ -25,12 +26,14 @@ import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.getFeepayer
 import io.provenance.explorer.domain.exceptions.validate
 import io.provenance.explorer.domain.extensions.formattedString
+import io.provenance.explorer.domain.extensions.msgEventsToObjectNodePrint
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toFeePaid
 import io.provenance.explorer.domain.extensions.toFees
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
+import io.provenance.explorer.domain.extensions.txEventsToObjectNodePrint
 import io.provenance.explorer.domain.extensions.writeCsvEntry
 import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.Gas
@@ -153,8 +156,15 @@ class TransactionService(
 
     private fun getTxSignatures(txHashId: Int) = SignatureTxRecord.findByTxHashId(txHashId)
 
-    fun MutableList<TxMessageRecord>.mapToTxMessages() =
-        this.map { msg -> TxMessage(msg.txMessageType.toList().firstMatchLabel(), msg.txMessage.toObjectNode(protoPrinter)) }
+    fun MutableList<TxMessageRecord>.mapToTxMessages(logs: MutableList<Abci.ABCIMessageLog>) =
+        this.map { msg ->
+            val logSet = logs[msg.msgIdx].eventsList
+            TxMessage(
+                msg.txMessageType.toList().firstMatchLabel(),
+                msg.txMessage.toObjectNode(protoPrinter),
+                logSet.msgEventsToObjectNodePrint(protoPrinter)
+            )
+        }
 
     private fun getTxByHash(hash: String) = getTxByHashFromCache(hash)
 
@@ -192,7 +202,8 @@ class TransactionService(
             memo = tx.txV2.tx.body.memo,
             monikers = getMonikers(tx.id),
             feepayer = tx.txFeepayer.getFeepayer(),
-            associatedValues = TxCacheRecord.getAssociatedValues(tx.hash, tx.height)
+            associatedValues = TxCacheRecord.getAssociatedValues(tx.hash, tx.height),
+            events = tx.txV2.txResponse.eventsList.txEventsToObjectNodePrint(protoPrinter)
         )
     }
 
@@ -204,10 +215,11 @@ class TransactionService(
             TxCacheRecord.findByHash(hash)
                 .ifEmpty { throw ResourceNotFoundException("Invalid transaction hash: '$hash'") }
                 .getMainState(blockHeight)
-                .id.value.let { id ->
-                    val msgs = TxMessageRecord.findByHashIdPaginated(id, msgTypeIds, count, page.toOffset(count))
-                        .mapToTxMessages()
-                    val total = TxMessageRecord.getCountByHashId(id, msgTypeIds)
+                .let { tx ->
+                    val msgs =
+                        TxMessageRecord.findByHashIdPaginated(tx.id.value, msgTypeIds, count, page.toOffset(count))
+                            .mapToTxMessages(tx.txV2.txResponse.logsList)
+                    val total = TxMessageRecord.getCountByHashId(tx.id.value, msgTypeIds)
                     PagedResults(total.pageCountOfResults(count), msgs, total.toLong())
                 }
         }
