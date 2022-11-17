@@ -6,6 +6,7 @@ import cosmos.bank.v1beta1.denomUnit
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.BaseDenomType
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.MarkerUnitRecord
@@ -28,7 +29,6 @@ import io.provenance.explorer.grpc.extensions.isMintable
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
-import io.provenance.explorer.grpc.v1.MetadataGrpcClient
 import io.provenance.marker.v1.MarkerStatus
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.asFlow
@@ -42,7 +42,6 @@ import org.springframework.stereotype.Service
 class AssetService(
     private val markerClient: MarkerGrpcClient,
     private val attrClient: AttributeGrpcClient,
-    private val metadataClient: MetadataGrpcClient,
     private val accountClient: AccountGrpcClient,
     private val protoPrinter: JsonFormat.Printer,
     private val pricingService: PricingService,
@@ -115,11 +114,12 @@ class AssetService(
             MarkerUnitRecord.findByUnit(denom)?.let { unit ->
                 getAssetFromDB(unit.marker)?.let { (id, record) ->
                     val txCount = TxMarkerJoinRecord.findCountByDenom(id.value)
+                    val (ftCount, nftCount) = transaction {
+                        val markerAccount =
+                            if (record.markerAddress != null) AccountRecord.findByAddress(record.markerAddress!!) else null
+                        markerAccount?.tokenCounts?.firstOrNull()?.let { it.ftCount to it.nftCount } ?: (0 to 0)
+                    }
                     val attributes = async { attrClient.getAllAttributesForAddress(record.markerAddress) }
-                    val balances =
-                        if (record.markerAddress != null)
-                            async { accountClient.getAccountBalances(record.markerAddress!!, 0, 1) }
-                        else null
                     val price = pricingService.getPricingInfoIn(listOf(unit.marker), "assetDetail")[unit.marker]
                     AssetDetail(
                         record.denom,
@@ -134,10 +134,7 @@ class AssetService(
                         txCount,
                         attributes.await().map { attr -> attr.toResponse() },
                         getDenomMetadataSingle(unit.marker).toObjectNode(protoPrinter),
-                        TokenCounts(
-                            balances?.await()?.pagination?.total ?: 0,
-                            if (record.markerAddress != null) metadataClient.getScopesByOwner(record.markerAddress!!).pagination.total.toInt() else 0
-                        ),
+                        TokenCounts(ftCount, nftCount),
                         record.status.prettyStatus(),
                         record.markerType.prettyMarkerType()
                     )

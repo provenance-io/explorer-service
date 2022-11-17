@@ -1,7 +1,6 @@
 package io.provenance.explorer.service
 
 import io.ktor.client.call.body
-import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.provenance.explorer.KTOR_CLIENT_JAVA
@@ -65,9 +64,9 @@ class PricingService(
             KTOR_CLIENT_JAVA.get("${props.pricingUrl}/api/v1/pricing/marker/new") {
                 parameter("time", time)
             }.body()
-        } catch (e: ResponseException) {
+        } catch (e: Exception) {
             return@runBlocking listOf<AssetPricing>()
-                .also { logger.error("Error coming from $comingFrom: ${e.response}") }
+                .also { logger.error("Error coming from $comingFrom: ${e.message}") }
         }
     }
 }

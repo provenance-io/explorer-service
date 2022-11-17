@@ -18,6 +18,8 @@ import io.provenance.explorer.domain.entities.IbcAckType
 import io.provenance.explorer.domain.entities.IbcLedgerRecord
 import io.provenance.explorer.domain.entities.IbcRelayerRecord
 import io.provenance.explorer.domain.entities.NameRecord
+import io.provenance.explorer.domain.entities.ProcessQueueRecord
+import io.provenance.explorer.domain.entities.ProcessQueueType
 import io.provenance.explorer.domain.entities.SignatureRecord
 import io.provenance.explorer.domain.entities.SignatureTxRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
@@ -98,6 +100,7 @@ import io.provenance.explorer.grpc.extensions.toMsgTransfer
 import io.provenance.explorer.grpc.extensions.toMsgVote
 import io.provenance.explorer.grpc.extensions.toMsgVoteWeighted
 import io.provenance.explorer.grpc.extensions.toWeightedVote
+import io.provenance.explorer.grpc.v1.MetadataGrpcClient
 import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
 import io.provenance.explorer.grpc.v1.TransactionGrpcClient
 import io.provenance.explorer.service.AccountService
@@ -126,7 +129,8 @@ class AsyncCachingV2(
     private val ibcService: IbcService,
     private val smContractService: SmartContractService,
     private val props: ExplorerProperties,
-    private val msgFeeClient: MsgFeeGrpcClient
+    private val msgFeeClient: MsgFeeGrpcClient,
+    private val metadataClient: MetadataGrpcClient
 ) {
 
     protected val logger = logger(AsyncCachingV2::class)
@@ -373,8 +377,11 @@ class AsyncCachingV2(
         } catch (ex: Exception) {
             BlockTxRetryRecord.insertNonRetry(txInfo.blockHeight, ex)
         }
-        if (pairCopy.second != null)
+        if (pairCopy.second != null) {
             txUpdate.apply { this.addressJoin.add(TxAddressJoinRecord.buildInsert(txInfo, pairCopy, addr)) }
+            if (pairCopy.first == TxAddressJoinType.ACCOUNT.name)
+                ProcessQueueRecord.insertIgnore(ProcessQueueType.ACCOUNT, addr)
+        }
         return pairCopy
     }
 
@@ -645,7 +652,10 @@ class AsyncCachingV2(
             codesToBeSaved.map { smContractService.saveCode(it, txInfo) }
                 .map { code -> TxSmCodeRecord.buildInsert(txInfo, code) }
                 .let { txUpdate.apply { this.smCodes.addAll(it) } }
-            contractsToBeSaved.associateBy { contract -> smContractService.saveContract(contract, txInfo) }
+            contractsToBeSaved.associateBy { contract ->
+                smContractService.saveContract(contract, txInfo)
+                    .also { ProcessQueueRecord.insertIgnore(ProcessQueueType.ACCOUNT, contract) }
+            }
                 .map { contract -> TxSmContractRecord.buildInsert(txInfo, contract.key, contract.value) }
                 .let { txUpdate.apply { this.smContracts.addAll(it) } }
         }

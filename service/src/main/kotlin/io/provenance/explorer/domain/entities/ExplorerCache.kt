@@ -16,14 +16,17 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.jodatime.date
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import org.joda.time.DateTime
 import java.math.BigDecimal
 
@@ -268,4 +271,48 @@ class TokenHistoricalDailyRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) 
 
     var timestamp by TokenHistoricalDailyTable.timestamp
     var data by TokenHistoricalDailyTable.data
+}
+
+object ProcessQueueTable : IntIdTable(name = "process_queue") {
+    val processType = varchar("process_type", 128)
+    val processValue = text("process_value")
+    val processing = bool("processing").default(false)
+}
+
+enum class ProcessQueueType { ACCOUNT }
+
+class ProcessQueueRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<ProcessQueueRecord>(ProcessQueueTable) {
+
+        fun findByType(processType: ProcessQueueType) = transaction {
+            ProcessQueueRecord.find {
+                (ProcessQueueTable.processType eq processType.name) and
+                    (ProcessQueueTable.processing eq false)
+            }.toList()
+        }
+
+        fun reset(processType: ProcessQueueType) = transaction {
+            ProcessQueueTable.update({ ProcessQueueTable.processType eq processType.name }) {
+                it[this.processing] = false
+            }
+        }
+
+        fun delete(processType: ProcessQueueType, value: String) = transaction {
+            ProcessQueueTable.deleteWhere {
+                (ProcessQueueTable.processType eq processType.name) and
+                    (ProcessQueueTable.processValue eq value)
+            }
+        }
+
+        fun insertIgnore(processType: ProcessQueueType, processValue: String) = transaction {
+            ProcessQueueTable.insertIgnore {
+                it[this.processType] = processType.name
+                it[this.processValue] = processValue
+            }
+        }
+    }
+
+    var processType by ProcessQueueTable.processType
+    var processValue by ProcessQueueTable.processValue
+    var processing by ProcessQueueTable.processing
 }
