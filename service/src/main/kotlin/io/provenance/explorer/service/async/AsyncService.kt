@@ -17,6 +17,8 @@ import io.provenance.explorer.domain.entities.CacheKeys
 import io.provenance.explorer.domain.entities.CacheUpdateRecord
 import io.provenance.explorer.domain.entities.ChainMarketRateStatsRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
+import io.provenance.explorer.domain.entities.ProcessQueueRecord
+import io.provenance.explorer.domain.entities.ProcessQueueType
 import io.provenance.explorer.domain.entities.ProposalMonitorRecord
 import io.provenance.explorer.domain.entities.ProposalMonitorRecord.Companion.checkIfProposalReadyForProcessing
 import io.provenance.explorer.domain.entities.TokenHistoricalDailyRecord
@@ -43,6 +45,7 @@ import io.provenance.explorer.domain.models.explorer.CmcQuote
 import io.provenance.explorer.domain.models.explorer.DlobHistorical
 import io.provenance.explorer.grpc.extensions.getMsgSubTypes
 import io.provenance.explorer.grpc.extensions.getMsgType
+import io.provenance.explorer.service.AccountService
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.CacheService
@@ -51,7 +54,15 @@ import io.provenance.explorer.service.GovService
 import io.provenance.explorer.service.PricingService
 import io.provenance.explorer.service.TokenService
 import io.provenance.explorer.service.getBlock
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.channels.produce
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.innerJoin
@@ -79,7 +90,8 @@ class AsyncService(
     private val explorerService: ExplorerService,
     private val cacheService: CacheService,
     private val tokenService: TokenService,
-    private val pricingService: PricingService
+    private val pricingService: PricingService,
+    private val accountService: AccountService
 ) {
 
     protected val logger = logger(AsyncService::class)
@@ -374,8 +386,8 @@ class AsyncService(
                         .map { it.getMsgType() }
                         .map { TxMessageTypeRecord.insert(it.type, it.module, it.proto) }
                     val (msgId, primId) = msgRec.txMessageType.toList()[0].let { it to it.primaryType.id }
-                    msgRec.txMessageType.map { it.id.value }.let {
-                        TxMsgTypeSubtypeTable.deleteWhere { TxMsgTypeSubtypeTable.id inList it }
+                    msgRec.txMessageType.map { it.id.value }.let { idList ->
+                        TxMsgTypeSubtypeTable.deleteWhere { TxMsgTypeSubtypeTable.id inList idList }
                     }
                     secondaries.forEach { secId ->
                         TxMsgTypeSubtypeTable.insertIgnore {
@@ -390,6 +402,32 @@ class AsyncService(
                     }
                 }
             logger.info("Updating AUTHZ subtypes")
+        }
+    }
+
+    @Scheduled(initialDelay = 5000L, fixedDelay = 5000L)
+    fun startAccountProcess() = runBlocking {
+        ProcessQueueRecord.reset(ProcessQueueType.ACCOUNT)
+        val producer = startAccountProcess()
+        repeat(5) { accountProcessor(producer) }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun CoroutineScope.startAccountProcess() = produce {
+        while (true) {
+            ProcessQueueRecord.findByType(ProcessQueueType.ACCOUNT).firstOrNull()?.let {
+                try {
+                    transaction { it.apply { this.processing = true } }
+                    send(it.processValue)
+                } catch (_: Exception) { }
+            }
+        }
+    }
+
+    fun CoroutineScope.accountProcessor(channel: ReceiveChannel<String>) = launch(Dispatchers.IO) {
+        for (msg in channel) {
+            accountService.updateTokenCounts(msg)
+            ProcessQueueRecord.delete(ProcessQueueType.ACCOUNT, msg)
         }
     }
 }

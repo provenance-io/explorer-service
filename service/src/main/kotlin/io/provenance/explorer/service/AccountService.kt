@@ -10,6 +10,7 @@ import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.toEntities
 import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.AccountTokenCountRecord
 import io.provenance.explorer.domain.entities.MarkerUnitRecord
 import io.provenance.explorer.domain.entities.SignatureRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinTable
@@ -113,8 +114,8 @@ class AccountService(
     fun getAccountDetail(address: String) = runBlocking {
         getAccountRaw(address).let {
             val attributes = async { attrClient.getAllAttributesForAddress(it.accountAddress) }
-            val tokenCount = async { getBalances(it.accountAddress, 0, 1) }
-            val balances = async { getBalances(it.accountAddress, 1, tokenCount.await().pagination.total.toInt()) }
+            val tokenCounts = transaction { it.tokenCounts.firstOrNull() }
+            val balances = async { getBalances(it.accountAddress, 1, tokenCounts?.ftCount ?: 100) }
             AccountDetail(
                 it.type.toNormalCase(),
                 it.accountAddress,
@@ -123,10 +124,7 @@ class AccountService(
                 getAccountSignatures(address),
                 it.data?.getModuleAccName(),
                 attributes.await().map { attr -> attr.toResponse() },
-                TokenCounts(
-                    tokenCount.await().pagination.total,
-                    metadataClient.getScopesByOwner(it.accountAddress).pagination.total.toInt()
-                ),
+                TokenCounts(tokenCounts?.ftCount ?: 0, tokenCounts?.nftCount ?: 0),
                 it.isContract,
                 pricingService.getAumForList(
                     balances.await().balancesList.associate { bal -> bal.denom to bal.amount },
@@ -402,6 +400,16 @@ class AccountService(
 
         zos.close()
         return zos
+    }
+
+    suspend fun updateTokenCounts(addr: String) {
+        try {
+            val nftCount = metadataClient.getScopesByOwnerTotal(addr)
+            val ftCount = getBalances(addr, 0, 1).pagination.total.toInt()
+            AccountTokenCountRecord.upsert(addr, ftCount, nftCount)
+        } catch (e: Exception) {
+            logger.error("Failed to update token counts for $addr : ${e.message}")
+        }
     }
 }
 

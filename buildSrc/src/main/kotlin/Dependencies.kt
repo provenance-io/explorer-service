@@ -14,9 +14,6 @@ object PluginIds { // please keep this sorted in sections
 
     const val SpringDependency = "io.spring.dependency-management"
     const val SpringBoot = "org.springframework.boot"
-
-    // Provenance
-    const val ProvenanceDownloadProtos = "io.provenance.download-protos"
 }
 
 object PluginVersions { // please keep this sorted in sections
@@ -25,12 +22,12 @@ object PluginVersions { // please keep this sorted in sections
 
     // 3rd Party
     const val Flyway = "7.15.0"
-    const val TaskTree = "1.5"
-    const val TestLogger = "2.1.1"
-    const val DependencyAnalysis = "0.56.0"
-    const val GoryLenkoGitProps = "1.5.2"
+    const val TaskTree = "2.1.0"
+    const val TestLogger = "3.2.0"
+    const val DependencyAnalysis = "1.14.1"
+    const val GoryLenkoGitProps = "2.4.1"
 
-    const val SpringDependency = "1.0.11.RELEASE"
+    const val SpringDependency = "1.1.0"
     const val SpringBoot = "2.6.6"
 }
 
@@ -44,9 +41,9 @@ object Versions {
     const val ApacheCommonsCsv = "1.9.0"
     const val ApacheHttpClient = "5.2"
     const val BouncyCastle = "1.70"
-    const val Exposed = "0.38.2"
+    const val Exposed = "0.41.1"
     const val Flyway = PluginVersions.Flyway
-    const val Jackson = "2.13.2"
+    const val Jackson = "2.14.0"
     const val JacksonProtobuf = "0.9.13"
     const val Json = "20211205"
     const val KaseChange = "1.3.0"
@@ -59,17 +56,17 @@ object Versions {
     const val Protobuf = "3.21.9"
 
     // Testing
-    const val Jupiter = "5.7.1"
-    const val SpringMockk = "3.0.1"
-    const val Kotest = "4.4.3"
+    const val Jupiter = "5.9.1"
+    const val SpringMockk = "3.1.1"
+    const val Kotest = "5.5.4"
 }
 
 object Libraries {
     // Kotlin
     const val KotlinReflect = "org.jetbrains.kotlin:kotlin-reflect:${Versions.Kotlin}"
     const val KotlinStdlib = "org.jetbrains.kotlin:kotlin-stdlib:${Versions.Kotlin}"
+    const val KotlinXCoRoutinesCoreJvm = "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:${Versions.KotlinXCoroutines}"
     const val KotlinXCoRoutinesCore = "org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.KotlinXCoroutines}"
-    const val KotlinXCoRoutinesGuava = "org.jetbrains.kotlinx:kotlinx-coroutines-guava:${Versions.KotlinXCoroutines}"
 
     // 3rd Party
     const val Exposed = "org.jetbrains.exposed:exposed-core:${Versions.Exposed}"

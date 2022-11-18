@@ -54,6 +54,13 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added Tx Msg logs to `/api/v2/txs/{hash}/msgs` #400
 * Added Tx-level event logs to `/api/v2/txs/{hash}` #401
   * Decodes the data to human-readable strings
+* Now caching FT/NFT counts per address #448
+  * This is done on the fly, asynchronously
+  * The Account detail API pulls from the cached values 
+
+### Data
+* Migration 1.86 - Add `process_queue`, `account_token_counts` #448
+  * Adds both tables, inserts records for all accounts in the `account` table 
 
 ## [v5.3.2](https://github.com/provenance-io/explorer-service/releases/tag/v5.3.2) - 2022-11-14
 ### Release Name: Afonso Gonçalves Baldaia

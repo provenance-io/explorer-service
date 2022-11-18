@@ -1,7 +1,9 @@
 package io.provenance.explorer.grpc.v1
 
+import cosmos.base.query.v1beta1.pageRequest
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
+import io.provenance.explorer.domain.extensions.toByteString
 import io.provenance.explorer.grpc.extensions.getPagination
 import io.provenance.metadata.v1.QueryGrpcKt.QueryCoroutineStub
 import io.provenance.metadata.v1.contractSpecificationRequest
@@ -49,6 +51,31 @@ class MetadataGrpcClient(channelUri: URI, private val semaphore: Semaphore) {
                     this.pagination = getPagination(offset, limit)
                 }
             )
+        }
+
+    suspend fun getScopesByOwnerTotal(address: String) =
+        semaphore.withPermit {
+            val limit = 300
+            var nextKey = "".toByteString()
+            var count = 0
+
+            do {
+                metadataClient.ownership(
+                    ownershipRequest {
+                        this.address = address
+                        this.pagination = pageRequest {
+                            this.limit = limit.toLong()
+                            if (nextKey.toStringUtf8().isNotBlank())
+                                this.key = nextKey
+                        }
+                    }
+                ).let {
+                    nextKey = it.pagination.nextKey
+                    count += it.scopeUuidsCount
+                }
+            } while (nextKey.toStringUtf8().isNotBlank())
+
+            count
         }
 
     suspend fun getScopeById(uuid: String, includeRecords: Boolean = false, includeSessions: Boolean = false) =

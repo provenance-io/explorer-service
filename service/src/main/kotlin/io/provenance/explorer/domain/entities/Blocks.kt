@@ -41,6 +41,8 @@ import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.Max
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.Sum
 import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.and

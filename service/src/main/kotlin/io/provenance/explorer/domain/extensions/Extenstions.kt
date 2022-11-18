@@ -38,6 +38,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Base64
 import kotlin.math.ceil
 
+fun String.toByteString() = ByteString.copyFromUtf8(this)
 fun ByteArray.toByteString() = ByteString.copyFrom(this)
 fun ByteString.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
 fun String.fromBase64() = Base64.getDecoder().decode(this).decodeToString()

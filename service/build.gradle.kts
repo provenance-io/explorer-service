@@ -22,10 +22,10 @@ sourceSets {
 
 dependencies {
     implementation(project(":database"))
-    implementation(Libraries.ProtobufKotlin)
-    implementation(Libraries.ProvenanceProto)
     implementation(Libraries.KotlinReflect)
     implementation(Libraries.KotlinStdlib)
+    implementation(Libraries.ProtobufKotlin)
+    implementation(Libraries.ProvenanceProto)
 
     implementation(Libraries.SpringBootStarterWeb)
     implementation(Libraries.SpringBootStarterJdbc)
@@ -34,8 +34,10 @@ dependencies {
     kapt(Libraries.SpringBootConfigProcessor)
 
     implementation(Libraries.BouncyCastle)
+    implementation(Libraries.KotlinXCoRoutinesCoreJvm) {
+        exclude(module = "kotlinx-coroutines-bom")
+    }
     implementation(Libraries.KotlinXCoRoutinesCore)
-    implementation(Libraries.KotlinXCoRoutinesGuava)
     implementation(Libraries.ApacheCommonsText)
     implementation(Libraries.ApacheCommonsCsv)
     implementation(Libraries.KaseChange)

@@ -68,6 +68,7 @@ class MarkerCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.lastTx] = txTimestamp
                     it[this.data] = marker
                 }.let { Pair(it!!, findById(it)!!) }
+                    .also { if (addr != null) ProcessQueueRecord.insertIgnore(ProcessQueueType.ACCOUNT, addr) }
             }
 
         fun findByDenom(denom: String) = transaction {

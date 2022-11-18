@@ -34,7 +34,7 @@ data class AssetDetail(
 )
 
 data class TokenCounts(
-    val fungibleCount: Long,
+    val fungibleCount: Int,
     val nonFungibleCount: Int
 )
 

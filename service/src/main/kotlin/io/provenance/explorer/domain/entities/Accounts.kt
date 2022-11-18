@@ -21,6 +21,7 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
+import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.transactions.transaction
 
 object AccountTable : IntIdTable(name = "account") {
@@ -184,7 +185,10 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.data] = data
                     it[this.isContract] = isContract
                 }.let { findById(it)!! }
-                ).also { SignatureRecord.insertAndGet(baseAccount.pubKey, address) }
+                ).also {
+                SignatureRecord.insertAndGet(baseAccount.pubKey, address)
+                ProcessQueueRecord.insertIgnore(ProcessQueueType.ACCOUNT, address)
+            }
         }
     }
 
@@ -194,6 +198,7 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
     var baseAccount by AccountTable.baseAccount
     var data by AccountTable.data
     var isContract by AccountTable.isContract
+    val tokenCounts by AccountTokenCountRecord referrersOn AccountTokenCountTable.addressId
 }
 
 object AddressImageTable : IdTable<String>(name = "address_image") {
@@ -218,4 +223,39 @@ class AddressImageRecord(id: EntityID<String>) : Entity<String>(id) {
 
     var address by AddressImageTable.address
     var imageUrl by AddressImageTable.imageUrl
+}
+
+object AccountTokenCountTable : IntIdTable(name = "account_token_count") {
+    val addressId = reference("address_id", AccountTable)
+    val address = varchar("address", 128)
+    val ftCount = integer("ft_count").default(0)
+    val nftCount = integer("nft_count").default(0)
+}
+
+class AccountTokenCountRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<AccountTokenCountRecord>(AccountTokenCountTable) {
+
+        fun findByAddress(addr: String) = transaction {
+            AccountTokenCountRecord.find { AccountTokenCountTable.address eq addr }.firstOrNull()
+        }
+
+        fun upsert(addr: String, ftCount: Int, nftCount: Int) = transaction {
+            findByAddress(addr)?.apply {
+                this.ftCount = ftCount
+                this.nftCount = nftCount
+            } ?: AccountRecord.findByAddress(addr)!!.let { rec ->
+                AccountTokenCountTable.insertIgnore {
+                    it[this.addressId] = rec.id
+                    it[this.address] = addr
+                    it[this.ftCount] = ftCount
+                    it[this.nftCount] = nftCount
+                }
+            }
+        }
+    }
+
+    var address by AccountTokenCountTable.address
+    var addressId by AccountRecord referencedOn AccountTokenCountTable.addressId
+    var ftCount by AccountTokenCountTable.ftCount
+    var nftCount by AccountTokenCountTable.nftCount
 }
