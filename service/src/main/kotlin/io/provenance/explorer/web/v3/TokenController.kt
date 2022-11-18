@@ -2,6 +2,7 @@ package io.provenance.explorer.web.v3
 
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.annotation.HiddenApi
+import io.provenance.explorer.domain.models.explorer.TokenHistoricalDataRequest
 import io.provenance.explorer.service.TokenService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import javax.servlet.http.HttpServletResponse
 import javax.validation.constraints.Max
 import javax.validation.constraints.Min
 
@@ -77,4 +79,25 @@ class TokenController(private val tokenService: TokenService) {
     @ApiOperation("Returns CoinMarketCap latest token pricing")
     @GetMapping("/latest_pricing")
     fun getLatestPricing() = ResponseEntity.ok(tokenService.getTokenLatest())
+
+    @ApiOperation("Get Token Historical data as a ZIP download, containing CSVs")
+    @GetMapping("/historical_pricing/download", produces = ["application/zip"])
+    fun tokenHistoricalDownload(
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?,
+        response: HttpServletResponse
+    ) {
+        val filters = TokenHistoricalDataRequest(fromDate, toDate)
+        response.status = HttpServletResponse.SC_OK
+        response.addHeader("Content-Disposition", "attachment; filename=\"${filters.getFileNameBase()}.zip\"")
+        tokenService.getHashPricingDataDownload(filters, response.outputStream)
+    }
 }

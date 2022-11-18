@@ -228,13 +228,13 @@ data class TxHistoryDataRequest(
         val full = if (fromDate != null) "${dateFormat.print(fromDate)} thru $to" else "ALL"
         val metrics = if (advancedMetrics) " WITH Advanced Metrics" else ""
         val payer = if (feepayer != null) " FOR $feepayer" else ""
-        return "$full BY ${granularity.name}$payer$metrics"
+        return "$full BY ${granularity.name}$payer$metrics - Tx History Data"
     }
 
     fun writeFilters(feepayer: String?): ByteArray {
         val baos = ByteArrayOutputStream()
         PrintWriter(baos).use { writer ->
-            writer.println("Filter used --")
+            writer.println("Filters used --")
             writer.println("fromDate: ${if (fromDate != null) dateFormat.print(fromDate) else "NULL"}")
             writer.println("toDate: ${if (toDate != null) dateFormat.print(toDate) else "NULL"}")
             writer.println("granularity: ${granularity.name}")

@@ -24,12 +24,14 @@ import io.provenance.explorer.domain.entities.TokenDistributionPaginatedResultsR
 import io.provenance.explorer.domain.entities.TokenHistoricalDailyRecord
 import io.provenance.explorer.domain.entities.addressList
 import io.provenance.explorer.domain.entities.vestingAccountTypes
+import io.provenance.explorer.domain.exceptions.validate
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.roundWhole
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toPercentage
+import io.provenance.explorer.domain.extensions.writeCsvEntry
 import io.provenance.explorer.domain.models.explorer.AssetHolder
 import io.provenance.explorer.domain.models.explorer.CmcLatestDataAbbrev
 import io.provenance.explorer.domain.models.explorer.CoinStr
@@ -39,7 +41,10 @@ import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.RichAccount
 import io.provenance.explorer.domain.models.explorer.TokenDistribution
 import io.provenance.explorer.domain.models.explorer.TokenDistributionAmount
+import io.provenance.explorer.domain.models.explorer.TokenHistoricalDataRequest
 import io.provenance.explorer.domain.models.explorer.TokenSupply
+import io.provenance.explorer.domain.models.explorer.datesValidation
+import io.provenance.explorer.domain.models.explorer.getFileListToken
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
 import kotlinx.coroutines.flow.asFlow
@@ -53,6 +58,9 @@ import org.joda.time.format.DateTimeFormat
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+import javax.servlet.ServletOutputStream
 
 @Service
 class TokenService(
@@ -242,6 +250,25 @@ class TokenService(
 
     fun getTokenLatest() = CacheUpdateRecord.fetchCacheByKey(CacheKeys.UTILITY_TOKEN_LATEST.key)?.cacheValue?.let {
         VANILLA_MAPPER.readValue<CmcLatestDataAbbrev>(it)
+    }
+
+    fun getHashPricingDataDownload(filters: TokenHistoricalDataRequest, resp: ServletOutputStream): ZipOutputStream {
+        validate(datesValidation(filters.fromDate, filters.toDate))
+        val baseFileName = filters.getFileNameBase()
+        val fileList = getFileListToken(filters)
+
+        val zos = ZipOutputStream(resp)
+        fileList.forEach { file ->
+            zos.putNextEntry(ZipEntry("$baseFileName - ${file.fileName}.csv"))
+            zos.write(file.writeCsvEntry())
+            zos.closeEntry()
+        }
+        // Adding in a txt file with the applied filters
+        zos.putNextEntry(ZipEntry("$baseFileName - FILTERS.txt"))
+        zos.write(filters.writeFilters())
+        zos.closeEntry()
+        zos.close()
+        return zos
     }
 }
 
