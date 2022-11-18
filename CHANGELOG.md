@@ -33,6 +33,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Add CSV download for Token Historical Pricing #453
+  * GET `/api/v3/utility_token/historical_pricing/download` - Using the given filters, exports the data behind the Hash Price History Chart
+
 ### Improvements
 * Updated Kotlin version `1.5.31` -> `1.6.21` #342
   * Gradle `7.3.3` -> `7.4.2`
