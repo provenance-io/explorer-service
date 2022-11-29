@@ -1,8 +1,9 @@
 package io.provenance.explorer.grpc.v1
 
-import cosmos.gov.v1beta1.queryParamsRequest
-import cosmos.gov.v1beta1.queryProposalRequest
-import cosmos.gov.v1beta1.queryTallyResultRequest
+import cosmos.auth.v1beta1.queryModuleAccountByNameRequest
+import cosmos.gov.v1.queryParamsRequest
+import cosmos.gov.v1.queryProposalRequest
+import cosmos.gov.v1.queryTallyResultRequest
 import cosmos.upgrade.v1beta1.queryAppliedPlanRequest
 import cosmos.upgrade.v1beta1.queryCurrentPlanRequest
 import io.grpc.ManagedChannelBuilder
@@ -12,7 +13,8 @@ import io.provenance.explorer.grpc.extensions.addBlockHeightToQuery
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
-import cosmos.gov.v1beta1.QueryGrpcKt as GovQueryGrpc
+import cosmos.auth.v1beta1.QueryGrpcKt as AuthQueryGrpc
+import cosmos.gov.v1.QueryGrpcKt as GovQueryGrpc
 import cosmos.upgrade.v1beta1.QueryGrpcKt as UpgradeQueryGrpc
 
 @Component
@@ -20,6 +22,7 @@ class GovGrpcClient(channelUri: URI) {
 
     private val govClient: GovQueryGrpc.QueryCoroutineStub
     private val upgradeClient: UpgradeQueryGrpc.QueryCoroutineStub
+    private val authClient: AuthQueryGrpc.QueryCoroutineStub
 
     init {
         val channel =
@@ -39,6 +42,7 @@ class GovGrpcClient(channelUri: URI) {
 
         govClient = GovQueryGrpc.QueryCoroutineStub(channel)
         upgradeClient = UpgradeQueryGrpc.QueryCoroutineStub(channel)
+        authClient = AuthQueryGrpc.QueryCoroutineStub(channel)
     }
 
     suspend fun getProposal(proposalId: Long) =
@@ -76,4 +80,6 @@ class GovGrpcClient(channelUri: URI) {
         } catch (e: Exception) {
             null
         }
+
+    suspend fun getGovModuleAccount() = authClient.moduleAccountByName(queryModuleAccountByNameRequest { name = "gov" })
 }

@@ -20,6 +20,7 @@ import io.provenance.explorer.domain.entities.TxHistoryDataViews
 import io.provenance.explorer.domain.entities.TxMessageTable
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.entities.TxMsgTypeSubtypeTable
+import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
 import io.provenance.explorer.domain.exceptions.requireToMessage
 import io.provenance.explorer.domain.exceptions.validate
@@ -32,7 +33,7 @@ import io.provenance.explorer.domain.extensions.pageOfResults
 import io.provenance.explorer.domain.extensions.toBase64
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
-import io.provenance.explorer.domain.extensions.toDecimalString
+import io.provenance.explorer.domain.extensions.toDecimalStringOld
 import io.provenance.explorer.domain.extensions.toNormalCase
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toProtoCoin
@@ -43,6 +44,7 @@ import io.provenance.explorer.domain.models.explorer.AccountFlags
 import io.provenance.explorer.domain.models.explorer.AccountRewards
 import io.provenance.explorer.domain.models.explorer.AccountSigInfo
 import io.provenance.explorer.domain.models.explorer.AccountSignature
+import io.provenance.explorer.domain.models.explorer.AddrData
 import io.provenance.explorer.domain.models.explorer.AttributeObj
 import io.provenance.explorer.domain.models.explorer.BankSendRequest
 import io.provenance.explorer.domain.models.explorer.CoinStr
@@ -62,6 +64,7 @@ import io.provenance.explorer.domain.models.explorer.mapToProtoCoin
 import io.provenance.explorer.domain.models.explorer.toCoinStr
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
 import io.provenance.explorer.grpc.extensions.getModuleAccName
+import io.provenance.explorer.grpc.extensions.isIca
 import io.provenance.explorer.grpc.extensions.isStandardAddress
 import io.provenance.explorer.grpc.extensions.isVesting
 import io.provenance.explorer.grpc.extensions.toVestingData
@@ -88,15 +91,16 @@ class AccountService(
     private val attrClient: AttributeGrpcClient,
     private val metadataClient: MetadataGrpcClient,
     private val pricingService: PricingService,
-    private val assetService: AssetService
+    private val assetService: AssetService,
+    private val valService: ValidatorService
 ) {
 
     protected val logger = logger(AccountService::class)
 
     fun getAccountRaw(address: String) = transaction { AccountRecord.findByAddress(address) } ?: saveAccount(address)
 
-    fun saveAccount(address: String, isContract: Boolean = false) = runBlocking {
-        AccountRecord.saveAccount(address, PROV_ACC_PREFIX, accountClient.getAccountInfo(address), isContract)
+    fun saveAccount(address: String, isContract: Boolean = false, isGroupPolicy: Boolean = false) = runBlocking {
+        AccountRecord.saveAccount(address, PROV_ACC_PREFIX, accountClient.getAccountInfo(address), isContract, isGroupPolicy)
     }
 
     fun validateAddress(address: String) = transaction {
@@ -107,9 +111,16 @@ class AccountService(
         getAccountRaw(address).let {
             AccountFlags(
                 it.isContract,
-                it.data?.isVesting() ?: false
+                it.data?.isVesting() ?: false,
+                it.data?.isIca() ?: false
             )
         }
+
+    fun getAddressDetails(addr: String) = transaction {
+        val addrId = AccountRecord.findByAddress(addr)!!.id.value
+        val isValidator = ValidatorStateRecord.findByAccount(valService.getActiveSet(), addr) != null
+        AddrData(addr, addrId, isValidator)
+    }
 
     fun getAccountDetail(address: String) = runBlocking {
         getAccountRaw(address).let {
@@ -132,7 +143,8 @@ class AccountService(
                 )
                     .toCoinStr(USD_UPPER),
                 it.data?.isVesting() ?: false,
-                AccountFlags(it.isContract, it.data?.isVesting() ?: false)
+                AccountFlags(it.isContract, it.data?.isVesting() ?: false, it.data?.isIca() ?: false),
+                it.owner // /// do not link to anything, this is a third party chain address
             )
         }
     }
@@ -244,7 +256,7 @@ class AccountService(
                     null,
                     CoinStr(it.balance.amount, it.balance.denom),
                     null,
-                    it.delegation.shares.toDecimalString(),
+                    it.delegation.shares.toDecimalStringOld(),
                     null,
                     null
                 )
@@ -286,7 +298,7 @@ class AccountService(
                         list.redelegation.validatorDstAddress,
                         CoinStr(it.balance, UTILITY_TOKEN),
                         CoinStr(it.redelegationEntry.initialBalance, UTILITY_TOKEN),
-                        it.redelegationEntry.sharesDst.toDecimalString(),
+                        it.redelegationEntry.sharesDst.toDecimalStringOld(),
                         it.redelegationEntry.creationHeight.toInt(),
                         it.redelegationEntry.completionTime.toDateTime()
                     )

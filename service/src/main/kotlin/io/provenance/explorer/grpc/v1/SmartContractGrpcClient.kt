@@ -1,8 +1,11 @@
 package io.provenance.explorer.grpc.v1
 
 import com.google.protobuf.util.JsonFormat
-import cosmwasm.wasm.v1.QueryGrpc
-import cosmwasm.wasm.v1.QueryOuterClass
+import cosmwasm.wasm.v1.QueryGrpcKt
+import cosmwasm.wasm.v1.queryCodeRequest
+import cosmwasm.wasm.v1.queryContractHistoryRequest
+import cosmwasm.wasm.v1.queryContractInfoRequest
+import cosmwasm.wasm.v1.queryParamsRequest
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
@@ -17,7 +20,7 @@ class SmartContractGrpcClient(
     private val explorerProps: ExplorerProperties
 ) {
 
-    private val smcClient: QueryGrpc.QueryBlockingStub
+    private val smcClient: QueryGrpcKt.QueryCoroutineStub
 
     init {
         val channel =
@@ -35,19 +38,21 @@ class SmartContractGrpcClient(
                 .intercept(GrpcLoggingInterceptor())
                 .build()
 
-        smcClient = QueryGrpc.newBlockingStub(channel)
+        smcClient = QueryGrpcKt.QueryCoroutineStub(channel)
     }
 
-    fun getSmCode(code: Long) =
+    suspend fun getSmCode(code: Long) =
         try {
-            smcClient.code(QueryOuterClass.QueryCodeRequest.newBuilder().setCodeId(code).build())
+            smcClient.code(queryCodeRequest { this.codeId = code })
         } catch (e: Exception) {
             null // handles old, non-migrated stored codes.
         }
 
-    fun getSmContract(contractAddr: String) =
-        smcClient.contractInfo(QueryOuterClass.QueryContractInfoRequest.newBuilder().setAddress(contractAddr).build())
+    suspend fun getSmContract(contractAddr: String) =
+        smcClient.contractInfo(queryContractInfoRequest { this.address = contractAddr })
 
-    fun getSmContractHistory(contractAddr: String) =
-        smcClient.contractHistory(QueryOuterClass.QueryContractHistoryRequest.newBuilder().setAddress(contractAddr).build())
+    suspend fun getSmContractHistory(contractAddr: String) =
+        smcClient.contractHistory(queryContractHistoryRequest { this.address = contractAddr })
+
+    suspend fun getWasmParams() = smcClient.params(queryParamsRequest { })
 }

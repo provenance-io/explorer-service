@@ -45,7 +45,8 @@ data class AssetHolder(
 
 data class AccountFlags(
     val isContract: Boolean,
-    val isVesting: Boolean
+    val isVesting: Boolean,
+    val isIca: Boolean
 )
 
 data class AccountDetail(
@@ -60,7 +61,8 @@ data class AccountDetail(
     @Deprecated("Use this.flags.isContract instead") val isContract: Boolean,
     val accountAum: CoinStr,
     @Deprecated("Use this.flags.isVesting instead") val isVesting: Boolean,
-    val flags: AccountFlags // added to eventually remove the standalone vals in this object
+    val flags: AccountFlags, // added to eventually remove the standalone vals in this object
+    val accountOwner: String?
 )
 
 data class AccountVestingInfo(

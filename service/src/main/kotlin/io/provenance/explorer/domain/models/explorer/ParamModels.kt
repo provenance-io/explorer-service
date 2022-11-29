@@ -16,6 +16,7 @@ data class CosmosParams(
     val slashing: SlashingParams,
     val staking: JsonNode,
     val ibc: IBCParams,
+    val wasm: JsonNode
 )
 
 data class DistParams(
@@ -57,6 +58,8 @@ data class SlashingParams(
 data class IBCParams(
     val transfer: JsonNode,
     val client: JsonNode,
+    val icaController: JsonNode?,
+    val icaHost: JsonNode
 )
 
 data class ProvParams(

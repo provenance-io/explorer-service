@@ -5,6 +5,7 @@ import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockIndexRecord
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.grpc.v1.BlockGrpcClient
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 
@@ -20,11 +21,11 @@ class BlockService(private val blockClient: BlockGrpcClient) {
 
     fun getLatestBlockHeightIndexOrFromChain() = getBlockIndexFromCache()?.maxHeightRead ?: getLatestBlockHeight()
 
-    fun getBlockAtHeightFromChain(height: Int) = blockClient.getBlockAtHeight(height)
+    fun getBlockAtHeightFromChain(height: Int) = runBlocking { blockClient.getBlockAtHeight(height) }
 
     fun getBlockAtHeight(height: Int) = transaction { BlockCacheRecord.findById(height) }
 
-    fun getLatestBlockHeight(): Int = blockClient.getLatestBlock().block.height()
+    fun getLatestBlockHeight(): Int = runBlocking { blockClient.getLatestBlock().block.height() }
 
     fun updateBlockMaxHeightIndex(maxHeightRead: Int) = BlockIndexRecord.save(maxHeightRead, null)
 

@@ -88,8 +88,19 @@ class GrantService(
     }
 
     // Feegrant grants
-    fun getAllowancesByGranterPaginated(granter: String, page: Int, limit: Int): Nothing =
-        feegrantClient.getGrantsByGranter(granter, page.toOffset(limit), limit)
+    fun getAllowancesByGranterPaginated(granter: String, page: Int, limit: Int) = runBlocking {
+        feegrantClient.getGrantsByGranter(granter, page.toOffset(limit), limit).let { res ->
+            val list = res.allowancesList.map {
+                FeegrantData(
+                    it.granter,
+                    it.grantee,
+                    it.allowance.getShortType().toNormalCase(),
+                    it.allowance.toFeegrantAllowance()
+                )
+            }
+            PagedResults(res.pagination.total.pageCountOfResults(limit), list, res.pagination.total)
+        }
+    }
 }
 
 fun Any.toFeegrantAllowance(): Allowance? =

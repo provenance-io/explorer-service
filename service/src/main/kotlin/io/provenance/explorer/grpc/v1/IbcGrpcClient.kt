@@ -12,6 +12,10 @@ import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
+import ibc.applications.interchain_accounts.controller.v1.QueryGrpcKt as IcaControllerQueryGrpc
+import ibc.applications.interchain_accounts.controller.v1.queryParamsRequest as icaControllerParamsRequest
+import ibc.applications.interchain_accounts.host.v1.QueryGrpcKt as IcaHostQueryGrpc
+import ibc.applications.interchain_accounts.host.v1.queryParamsRequest as icaHostParamsRequest
 import ibc.applications.transfer.v1.QueryGrpcKt as TransferQueryGrpc
 import ibc.core.channel.v1.QueryGrpcKt as ChannelQueryGrpc
 import ibc.core.client.v1.QueryGrpcKt as ClientQueryGrpc
@@ -24,6 +28,8 @@ class IbcGrpcClient(channelUri: URI) {
     private val channelClient: ChannelQueryGrpc.QueryCoroutineStub
     private val clientClient: ClientQueryGrpc.QueryCoroutineStub
     private val connectionClient: ConnectionQueryGrpc.QueryCoroutineStub
+    private val icaControllerClient: IcaControllerQueryGrpc.QueryCoroutineStub
+    private val icaHostClient: IcaHostQueryGrpc.QueryCoroutineStub
 
     init {
         val channel =
@@ -45,6 +51,8 @@ class IbcGrpcClient(channelUri: URI) {
         channelClient = ChannelQueryGrpc.QueryCoroutineStub(channel)
         clientClient = ClientQueryGrpc.QueryCoroutineStub(channel)
         connectionClient = ConnectionQueryGrpc.QueryCoroutineStub(channel)
+        icaControllerClient = IcaControllerQueryGrpc.QueryCoroutineStub(channel)
+        icaHostClient = IcaHostQueryGrpc.QueryCoroutineStub(channel)
     }
 
     suspend fun getDenomTrace(hash: String) =
@@ -80,4 +88,8 @@ class IbcGrpcClient(channelUri: URI) {
     suspend fun getTransferParams() = transferClient.params(queryParamsRequest { })
 
     suspend fun getClientParams() = clientClient.clientParams(queryClientParamsRequest { })
+
+    suspend fun getIcaControllerParams() = icaControllerClient.params(icaControllerParamsRequest { })
+
+    suspend fun getIcaHostParams() = icaHostClient.params(icaHostParamsRequest { })
 }

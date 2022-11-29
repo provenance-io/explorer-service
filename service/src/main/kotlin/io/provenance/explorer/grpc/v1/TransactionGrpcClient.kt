@@ -1,13 +1,15 @@
 package io.provenance.explorer.grpc.v1
 
-import cosmos.base.abci.v1beta1.Abci
-import cosmos.tx.v1beta1.ServiceGrpc
+import cosmos.tx.v1beta1.ServiceGrpcKt
 import cosmos.tx.v1beta1.ServiceOuterClass
+import cosmos.tx.v1beta1.getTxRequest
+import cosmos.tx.v1beta1.getTxResponse
+import cosmos.tx.v1beta1.getTxsEventRequest
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.exceptions.TendermintApiException
-import io.provenance.explorer.grpc.extensions.getPaginationBuilder
+import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -15,7 +17,7 @@ import java.util.concurrent.TimeUnit
 @Component
 class TransactionGrpcClient(channelUri: URI) {
 
-    private val txClient: ServiceGrpc.ServiceBlockingStub
+    private val txClient: ServiceGrpcKt.ServiceCoroutineStub
     protected val logger = logger(TransactionGrpcClient::class)
 
     init {
@@ -35,41 +37,43 @@ class TransactionGrpcClient(channelUri: URI) {
                 .maxInboundMessageSize((25 * 1e6).toInt())
                 .build()
 
-        txClient = ServiceGrpc.newBlockingStub(channel)
+        txClient = ServiceGrpcKt.ServiceCoroutineStub(channel)
     }
 
-    fun getTxByHash(hash: String) = txClient.getTx(ServiceOuterClass.GetTxRequest.newBuilder().setHash(hash).build())
+    fun getTxByHash(hash: String) = runBlocking { txClient.getTx(getTxRequest { this.hash = hash }) }
 
-    fun getTxsByHeight(height: Int, total: Int): MutableList<Abci.TxResponse> {
-        var offset = 0
+    suspend fun getTxsByHeight(height: Int, total: Int): List<ServiceOuterClass.GetTxResponse> {
+        var page = 1
         val limit = 10
 
-        val results = txClient.getTxsEvent(
-            ServiceOuterClass.GetTxsEventRequest.newBuilder()
-                .addEvents("tx.height=$height")
-                .setPagination(getPaginationBuilder(offset, limit))
-                .build()
-        )
+        val txResps = mutableListOf<ServiceOuterClass.GetTxsEventResponse>()
+        var txRespCount = 0
 
-        val txResps = results.txResponsesList.toMutableList()
-
-        if (txResps.isEmpty())
-            throw TendermintApiException(
-                "Blockchain failed to retrieve txs for height $height. Expected $total, " +
-                    "Returned 0. This happens sometimes. The block will retry."
-            )
-
-        while (txResps.count() < total) {
-            offset += limit
+        do {
             txClient.getTxsEvent(
-                ServiceOuterClass.GetTxsEventRequest.newBuilder()
-                    .addEvents("tx.height=$height")
-                    .setPagination(getPaginationBuilder(offset, limit))
-                    .build()
-            )
-                .let { txResps.addAll(it.txResponsesList) }
-        }
+                getTxsEventRequest {
+                    this.events.add("tx.height=$height")
+                    this.limit = limit.toLong()
+                }
+            ).let {
+                if (it.txResponsesList.isEmpty())
+                    throw TendermintApiException(
+                        "Blockchain failed to retrieve txs for height $height. Expected $total, " +
+                            "Returned 0. This happens sometimes. The block will retry."
+                    )
+                txResps.add(it)
+                txRespCount += it.txResponsesList.size
+            }
+            page++
+        } while (txRespCount < total)
 
-        return txResps
+        return txResps.flatMap {
+            it.txsList.zip(it.txResponsesList) { tx, res ->
+                getTxResponse {
+                    this.tx = tx
+                    this.txResponse = res
+                }
+            }
+        }
     }
 }

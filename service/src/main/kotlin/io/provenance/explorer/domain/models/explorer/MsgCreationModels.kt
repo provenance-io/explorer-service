@@ -1,7 +1,7 @@
 package io.provenance.explorer.domain.models.explorer
 
 import cosmos.base.v1beta1.coin
-import cosmos.gov.v1beta1.Gov
+import cosmos.gov.v1.Gov
 import cosmwasm.wasm.v1.Types
 import java.math.BigDecimal
 
@@ -121,6 +121,13 @@ data class StakingUndelegateRequest(
     val delegator: String,
     val validator: String,
     val amount: CoinStr
+)
+
+data class StakingCancelUnbondingRequest(
+    val delegator: String,
+    val validator: String,
+    val amount: CoinStr,
+    val unbondingCreateHeight: Int
 )
 
 data class StakingWithdrawRewardsRequest(

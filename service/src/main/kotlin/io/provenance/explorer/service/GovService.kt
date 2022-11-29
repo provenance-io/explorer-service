@@ -1,17 +1,18 @@
 package io.provenance.explorer.service
 
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.google.protobuf.Any
 import com.google.protobuf.util.JsonFormat
-import cosmos.gov.v1beta1.Gov
-import cosmos.gov.v1beta1.Gov.VoteOption
-import cosmos.gov.v1beta1.Tx
-import cosmos.gov.v1beta1.msgDeposit
-import cosmos.gov.v1beta1.msgSubmitProposal
-import cosmos.gov.v1beta1.msgVote
-import cosmos.gov.v1beta1.msgVoteWeighted
+import cosmos.gov.v1.Gov
+import cosmos.gov.v1.Gov.VoteOption
+import cosmos.gov.v1.msgDeposit
+import cosmos.gov.v1.msgExecLegacyContent
+import cosmos.gov.v1.msgSubmitProposal
+import cosmos.gov.v1.msgVote
+import cosmos.gov.v1.msgVoteWeighted
+import cosmos.gov.v1.weightedVoteOption
 import cosmos.gov.v1beta1.textProposal
-import cosmos.gov.v1beta1.weightedVoteOption
 import cosmos.params.v1beta1.paramChange
 import cosmos.params.v1beta1.parameterChangeProposal
 import cosmos.upgrade.v1beta1.cancelSoftwareUpgradeProposal
@@ -21,6 +22,10 @@ import cosmwasm.wasm.v1.accessConfig
 import cosmwasm.wasm.v1.instantiateContractProposal
 import cosmwasm.wasm.v1.storeCodeProposal
 import cosmwasm.wasm.v1beta1.Proposal
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import io.provenance.explorer.KTOR_CLIENT_JAVA
+import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
@@ -57,14 +62,16 @@ import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.CoinStr
 import io.provenance.explorer.domain.models.explorer.DepositPercentage
 import io.provenance.explorer.domain.models.explorer.DepositRecord
-import io.provenance.explorer.domain.models.explorer.GovAddrData
 import io.provenance.explorer.domain.models.explorer.GovAddress
+import io.provenance.explorer.domain.models.explorer.GovContentV1List
 import io.provenance.explorer.domain.models.explorer.GovDepositRequest
 import io.provenance.explorer.domain.models.explorer.GovMsgDetail
 import io.provenance.explorer.domain.models.explorer.GovParamType
 import io.provenance.explorer.domain.models.explorer.GovProposalDetail
+import io.provenance.explorer.domain.models.explorer.GovProposalMetadata
 import io.provenance.explorer.domain.models.explorer.GovSubmitProposalRequest
 import io.provenance.explorer.domain.models.explorer.GovTimeFrame
+import io.provenance.explorer.domain.models.explorer.GovVoteMetadata
 import io.provenance.explorer.domain.models.explorer.GovVoteRequest
 import io.provenance.explorer.domain.models.explorer.GovVotesDetail
 import io.provenance.explorer.domain.models.explorer.InstantiateContractData
@@ -93,12 +100,25 @@ import io.provenance.explorer.domain.models.explorer.VotingDetails
 import io.provenance.explorer.domain.models.explorer.mapToProtoCoin
 import io.provenance.explorer.domain.models.explorer.toCoinStr
 import io.provenance.explorer.grpc.extensions.isStandardAddress
+import io.provenance.explorer.grpc.extensions.toModuleAccount
 import io.provenance.explorer.grpc.extensions.toMsgDeposit
+import io.provenance.explorer.grpc.extensions.toMsgDepositOld
+import io.provenance.explorer.grpc.extensions.toMsgExecLegacyContent
+import io.provenance.explorer.grpc.extensions.toMsgSoftwareUpgrade
+import io.provenance.explorer.grpc.extensions.toMsgStoreCode
+import io.provenance.explorer.grpc.extensions.toMsgSubmitProposal
+import io.provenance.explorer.grpc.extensions.toMsgSubmitProposalOld
 import io.provenance.explorer.grpc.extensions.toMsgVote
+import io.provenance.explorer.grpc.extensions.toMsgVoteOld
 import io.provenance.explorer.grpc.extensions.toMsgVoteWeighted
+import io.provenance.explorer.grpc.extensions.toMsgVoteWeightedOld
+import io.provenance.explorer.grpc.extensions.toShortType
+import io.provenance.explorer.grpc.extensions.toSoftwareUpgradeProposal
 import io.provenance.explorer.grpc.v1.GovGrpcClient
+import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
 import java.math.BigDecimal
@@ -121,7 +141,7 @@ class GovService(
                 it.proposal,
                 protoPrinter,
                 txInfo,
-                getAddressDetails(addr),
+                accountService.getAddressDetails(addr),
                 isSubmit,
                 getParamHeights(it.proposal)
             )
@@ -147,9 +167,18 @@ class GovService(
                     val paramHeights = getParamHeights(res.proposal)
                     record.apply {
                         this.status = res.proposal.status.name
-                        this.data = res.proposal
+                        this.dataV1 = res.proposal
                         this.depositParamCheckHeight = paramHeights.depositCheckHeight
                         this.votingParamCheckHeight = paramHeights.votingCheckHeight
+                    }
+                    ProposalMonitorRecord.getByProposalId(record.proposalId)?.apply {
+                        this.votingEndTime = res.proposal.votingEndTime.toDateTime()
+                        this.proposedCompletionHeight =
+                            calcProposedCompletionHeight(
+                                res.proposal.votingEndTime.toDateTime(),
+                                record.txTimestamp,
+                                this.submittedHeight
+                            )
                     }
                 }
             } // Assumes it is gone due to no deposit
@@ -157,33 +186,53 @@ class GovService(
         }
     }
 
-    fun buildProposalMonitor(txMsg: Tx.MsgSubmitProposal, proposalId: Long, txInfo: TxData) = runBlocking {
-        val proposal = govClient.getProposal(proposalId) ?: return@runBlocking null
-        val (proposalType, dataHash) = when {
-            txMsg.content.typeUrl.endsWith("v1beta1.StoreCodeProposal") ->
-                MonitorProposalType.STORE_CODE to
-                    // base64(sha256(gzipUncompress(wasmByteCode))) == base64(storedCode.data_hash)
-                    txMsg.content.unpack(Proposal.StoreCodeProposal::class.java)
-                        .wasmByteCode.gzipUncompress().to256Hash()
-            txMsg.content.typeUrl.endsWith("v1.StoreCodeProposal") ->
-                MonitorProposalType.STORE_CODE to
-                    // base64(sha256(gzipUncompress(wasmByteCode))) == base64(storedCode.data_hash)
-                    txMsg.content.unpack(cosmwasm.wasm.v1.Proposal.StoreCodeProposal::class.java)
-                        .wasmByteCode.gzipUncompress().to256Hash()
-            else -> return@runBlocking null
-        }
-        val votingEndTime = proposal.proposal.votingEndTime.toDateTime()
+    private fun calcProposedCompletionHeight(
+        votingEndTime: DateTime,
+        submitTimestamp: DateTime,
+        submitHeight: Int
+    ): Int {
         val avgBlockTime = cacheService.getAvgBlockTime().multiply(BigDecimal(1000)).toLong()
-        val blocksUntilCompletion = (votingEndTime.millis - txInfo.txTimestamp.millis).floorDiv(avgBlockTime).toInt()
+        val blocksUntilCompletion = (votingEndTime.millis - submitTimestamp.millis).floorDiv(avgBlockTime).toInt()
+        return submitHeight + blocksUntilCompletion
+    }
 
-        ProposalMonitorRecord.buildInsert(
-            proposalId,
-            txInfo.blockHeight,
-            txInfo.blockHeight + blocksUntilCompletion,
-            votingEndTime,
-            proposalType,
-            dataHash
-        )
+    fun buildProposalMonitor(txMsg: Any, proposalId: Long, txInfo: TxData) = runBlocking {
+        val contentList = when {
+            txMsg.typeUrl.endsWith("gov.v1beta1.MsgSubmitProposal") ->
+                listOf(txMsg.toMsgSubmitProposalOld().content)
+            txMsg.typeUrl.endsWith("gov.v1.MsgSubmitProposal") ->
+                txMsg.toMsgSubmitProposal().messagesList
+            else -> return@runBlocking listOf()
+        }
+
+        val proposal = govClient.getProposal(proposalId) ?: return@runBlocking listOf()
+        contentList.mapNotNull { content ->
+            val (proposalType, dataHash) = when {
+                content.typeUrl.endsWith("v1beta1.StoreCodeProposal") ->
+                    MonitorProposalType.STORE_CODE to
+                        // base64(sha256(gzipUncompress(wasmByteCode))) == base64(storedCode.data_hash)
+                        content.unpack(Proposal.StoreCodeProposal::class.java)
+                            .wasmByteCode.gzipUncompress().to256Hash()
+                content.typeUrl.endsWith("v1.StoreCodeProposal") ->
+                    MonitorProposalType.STORE_CODE to
+                        // base64(sha256(gzipUncompress(wasmByteCode))) == base64(storedCode.data_hash)
+                        content.unpack(cosmwasm.wasm.v1.Proposal.StoreCodeProposal::class.java)
+                            .wasmByteCode.gzipUncompress().to256Hash()
+                content.typeUrl.endsWith("v1.MsgStoreCode") ->
+                    MonitorProposalType.STORE_CODE to content.toMsgStoreCode().wasmByteCode.gzipUncompress().to256Hash()
+                else -> return@mapNotNull null
+            }
+            val votingEndTime = proposal.proposal.votingEndTime.toDateTime()
+
+            ProposalMonitorRecord.buildInsert(
+                proposalId,
+                txInfo.blockHeight,
+                calcProposedCompletionHeight(votingEndTime, txInfo.txTimestamp, txInfo.blockHeight),
+                votingEndTime,
+                proposalType,
+                dataHash
+            )
+        }
     }
 
     fun processProposal(proposalMon: ProposalMonitorRecord) = transaction {
@@ -228,23 +277,32 @@ class GovService(
         }
     }
 
-    private fun getAddressDetails(addr: String) = transaction {
-        val addrId = AccountRecord.findByAddress(addr)!!.id.value
-        val isValidator = ValidatorStateRecord.findByAccount(valService.getActiveSet(), addr) != null
-        GovAddrData(addr, addrId, isValidator)
-    }
-
-    fun buildDeposit(proposalId: Long, txInfo: TxData, deposit: Tx.MsgDeposit?, initial: Tx.MsgSubmitProposal?) =
+    fun buildDeposit(proposalId: Long, txInfo: TxData, deposit: Any?, initial: Any?) =
         transaction {
-            val addrInfo = getAddressDetails(deposit?.depositor ?: initial!!.proposer)
-            val amountList = deposit?.amountList?.toList() ?: initial!!.initialDepositList.toList()
+            val (depositor, depositList) = when {
+                initial != null && initial.typeUrl.endsWith("gov.v1beta1.MsgSubmitProposal") ->
+                    initial.toMsgSubmitProposalOld().let { it.proposer to it.initialDepositList.toList() }
+                initial != null && initial.typeUrl.endsWith("gov.v1.MsgSubmitProposal") ->
+                    initial.toMsgSubmitProposal().let { it.proposer to it.initialDepositList.toList() }
+                deposit != null && deposit.typeUrl.endsWith("gov.v1beta1.MsgDeposit") ->
+                    deposit.toMsgDepositOld().let { it.depositor to it.amountList.toList() }
+                deposit != null && deposit.typeUrl.endsWith("gov.v1.MsgDeposit") ->
+                    deposit.toMsgDeposit().let { it.depositor to it.amountList.toList() }
+                else -> return@transaction null
+            }
+            val addrInfo = accountService.getAddressDetails(depositor)
             val depositType = if (deposit != null) DepositType.DEPOSIT else DepositType.INITIAL_DEPOSIT
-
-            GovDepositRecord.buildInserts(txInfo, proposalId, depositType, amountList, addrInfo)
+            GovDepositRecord.buildInserts(txInfo, proposalId, depositType, depositList, addrInfo)
         }
 
-    fun buildVote(txInfo: TxData, votes: List<Gov.WeightedVoteOption>, voter: String, proposalId: Long) =
-        GovVoteRecord.buildInsert(txInfo, votes, getAddressDetails(voter), proposalId)
+    fun buildVote(
+        txInfo: TxData,
+        votes: List<Gov.WeightedVoteOption>,
+        voter: String,
+        proposalId: Long,
+        justification: String?
+    ) =
+        GovVoteRecord.buildInsert(txInfo, votes, accountService.getAddressDetails(voter), proposalId, justification)
 
     private fun getParamsAtHeight(param: GovParamType, height: Int) =
         runBlocking { govClient.getParamsAtHeight(param, height) }
@@ -289,9 +347,9 @@ class GovService(
 
                     TallyParams(
                         CoinStr(eligibleAmount.toPlainString(), UTILITY_TOKEN),
-                        param.quorum.toStringUtf8().toDecimalString(),
-                        param.threshold.toStringUtf8().toDecimalString(),
-                        param.vetoThreshold.toStringUtf8().toDecimalString()
+                        param.quorum.toDecimalString(),
+                        param.threshold.toDecimalString(),
+                        param.vetoThreshold.toDecimalString()
                     )
                 }
         val dbRecords = GovVoteRecord.findByProposalId(proposalId)
@@ -299,15 +357,21 @@ class GovService(
         val tallies = runBlocking { govClient.getTally(proposalId)?.tally }
         val zeroStr = 0.toString()
         val tally = VotesTally(
-            Tally(indTallies.getOrDefault(VoteOption.VOTE_OPTION_YES.name, 0), CoinStr(tallies?.yes ?: zeroStr, UTILITY_TOKEN)),
-            Tally(indTallies.getOrDefault(VoteOption.VOTE_OPTION_NO.name, 0), CoinStr(tallies?.no ?: zeroStr, UTILITY_TOKEN)),
+            Tally(
+                indTallies.getOrDefault(VoteOption.VOTE_OPTION_YES.name, 0),
+                CoinStr(tallies?.yesCount ?: zeroStr, UTILITY_TOKEN)
+            ),
+            Tally(
+                indTallies.getOrDefault(VoteOption.VOTE_OPTION_NO.name, 0),
+                CoinStr(tallies?.noCount ?: zeroStr, UTILITY_TOKEN)
+            ),
             Tally(
                 indTallies.getOrDefault(VoteOption.VOTE_OPTION_NO_WITH_VETO.name, 0),
-                CoinStr(tallies?.noWithVeto ?: zeroStr, UTILITY_TOKEN)
+                CoinStr(tallies?.noWithVetoCount ?: zeroStr, UTILITY_TOKEN)
             ),
             Tally(
                 indTallies.getOrDefault(VoteOption.VOTE_OPTION_ABSTAIN.name, 0),
-                CoinStr(tallies?.abstain ?: zeroStr, UTILITY_TOKEN)
+                CoinStr(tallies?.abstainCount ?: zeroStr, UTILITY_TOKEN)
             ),
             Tally(dbRecords.count(), CoinStr(tallies?.sum()?.stringfy() ?: zeroStr, UTILITY_TOKEN))
         )
@@ -331,14 +395,14 @@ class GovService(
             record.proposalType,
             record.title,
             record.description,
-            record.content
+            record.getContentToPrint(protoPrinter)
         ),
         ProposalTimings(
             getDepositPercentage(record.proposalId, record.depositParamCheckHeight),
             getVotingDetails(record.proposalId),
-            record.data.submitTime.formattedString(),
-            record.data.depositEndTime.formattedString(),
-            GovTimeFrame(record.data.votingStartTime.formattedString(), record.data.votingEndTime.formattedString())
+            record.getDataTimings().submitTime.formattedString(),
+            record.getDataTimings().depositEndTime.formattedString(),
+            GovTimeFrame(record.getDataTimings().voteStart.formattedString(), record.getDataTimings().voteEnd.formattedString())
         )
     )
 
@@ -346,7 +410,24 @@ class GovService(
 
     fun getProposalsList(page: Int, count: Int) =
         GovProposalRecord.getAllPaginated(page.toOffset(count), count)
-            .map { mapProposalRecord(it) }
+            .let { list ->
+                runBlocking {
+                    val filtered = list.filter { it.dataV1 == null }
+                    if (filtered.isNotEmpty()) {
+                        filtered.asFlow().collect { prop ->
+                            govClient.getProposal(prop.proposalId).let {
+                                transaction {
+                                    prop.apply {
+                                        this.dataV1 = it?.proposal
+                                        this.contentV1 = it?.proposal?.toProposalContent()
+                                    }
+                                }
+                            }
+                        }
+                        GovProposalRecord.getAllPaginated(page.toOffset(count), count)
+                    } else list
+                }
+            }.map { mapProposalRecord(it) }
             .let {
                 val total = GovProposalRecord.getAllCount()
                 PagedResults(total.pageCountOfResults(count), it, total)
@@ -388,9 +469,9 @@ class GovService(
 
                     TallyParams(
                         CoinStr(eligibleAmount.toString(), UTILITY_TOKEN),
-                        param.quorum.toStringUtf8().toDecimalString(),
-                        param.threshold.toStringUtf8().toDecimalString(),
-                        param.vetoThreshold.toStringUtf8().toDecimalString()
+                        param.quorum.toDecimalString(),
+                        param.threshold.toDecimalString(),
+                        param.vetoThreshold.toDecimalString()
                     )
                 }
         val dbRecords = GovVoteRecord.findByProposalId(proposalId)
@@ -399,15 +480,21 @@ class GovService(
         val tallies = runBlocking { govClient.getTally(proposalId)?.tally }
         val zeroStr = 0.toString()
         val tally = VotesTally(
-            Tally(indTallies.getOrDefault(VoteOption.VOTE_OPTION_YES.name, 0), CoinStr(tallies?.yes ?: zeroStr, UTILITY_TOKEN)),
-            Tally(indTallies.getOrDefault(VoteOption.VOTE_OPTION_NO.name, 0), CoinStr(tallies?.no ?: zeroStr, UTILITY_TOKEN)),
+            Tally(
+                indTallies.getOrDefault(VoteOption.VOTE_OPTION_YES.name, 0),
+                CoinStr(tallies?.yesCount ?: zeroStr, UTILITY_TOKEN)
+            ),
+            Tally(
+                indTallies.getOrDefault(VoteOption.VOTE_OPTION_NO.name, 0),
+                CoinStr(tallies?.noCount ?: zeroStr, UTILITY_TOKEN)
+            ),
             Tally(
                 indTallies.getOrDefault(VoteOption.VOTE_OPTION_NO_WITH_VETO.name, 0),
-                CoinStr(tallies?.noWithVeto ?: zeroStr, UTILITY_TOKEN)
+                CoinStr(tallies?.noWithVetoCount ?: zeroStr, UTILITY_TOKEN)
             ),
             Tally(
                 indTallies.getOrDefault(VoteOption.VOTE_OPTION_ABSTAIN.name, 0),
-                CoinStr(tallies?.abstain ?: zeroStr, UTILITY_TOKEN)
+                CoinStr(tallies?.abstainCount ?: zeroStr, UTILITY_TOKEN)
             ),
             Tally(dbRecords.count(), CoinStr(tallies?.sum()?.stringfy() ?: zeroStr, UTILITY_TOKEN))
         )
@@ -415,8 +502,8 @@ class GovService(
     }
 
     fun Gov.TallyResult.sum() =
-        this.yes.toBigDecimal().plus(this.no.toBigDecimal()).plus(this.noWithVeto.toBigDecimal())
-            .plus(this.abstain.toBigDecimal())
+        this.yesCount.toBigDecimal().plus(this.noCount.toBigDecimal()).plus(this.noWithVetoCount.toBigDecimal())
+            .plus(this.abstainCount.toBigDecimal())
 
     private fun mapVoteRecord(voter: String, records: List<VoteDbRecord>) =
         records[0].let { voteData ->
@@ -428,7 +515,8 @@ class GovService(
                 voteData.txTimestamp.toString(),
                 voteData.proposalId,
                 voteData.proposalTitle,
-                voteData.proposalStatus
+                voteData.proposalStatus,
+                voteData.justification
             )
         }
 
@@ -441,7 +529,8 @@ class GovService(
             record.txTimestamp.toString(),
             record.proposalId,
             record.proposalTitle,
-            record.proposalStatus
+            record.proposalStatus,
+            record.justification
         )
 
     private fun Map<String, Double>.fillVoteSet() =
@@ -636,7 +725,12 @@ class GovService(
             }.let { msg ->
                 validate(*prevalidates.toTypedArray())
                 msgSubmitProposal {
-                    content = msg
+                    messages.add(
+                        msgExecLegacyContent {
+                            content = msg
+                            authority = runBlocking { govClient.getGovModuleAccount().account.toModuleAccount().baseAccount.address }
+                        }.pack()
+                    )
                     proposer = request.submitter
                     request.initialDeposit.mapToProtoCoin().let { if (it.isNotEmpty()) initialDeposit.addAll(it) }
                 }.pack()
@@ -646,17 +740,24 @@ class GovService(
 
 fun Any.getGovMsgDetail(txHash: String) =
     when {
-        typeUrl.endsWith("gov.v1beta1.MsgSubmitProposal") ->
+        typeUrl.endsWith("gov.v1beta1.MsgSubmitProposal")
+            || typeUrl.endsWith("gov.v1.MsgSubmitProposal") ->
             transaction {
                 val proposalId = GovProposalRecord.findByTxHash(txHash)!!.proposalId
                 val deposit = GovDepositRecord.findByTxHash(txHash)!!
                 GovMsgDetail(deposit.amount.toCoinStr(deposit.denom), "", proposalId, "")
             }
         typeUrl.endsWith("gov.v1beta1.MsgVote") ->
+            this.toMsgVoteOld().let { GovMsgDetail(null, "", it.proposalId, "") }
+        typeUrl.endsWith("gov.v1.MsgVote") ->
             this.toMsgVote().let { GovMsgDetail(null, "", it.proposalId, "") }
-        typeUrl.endsWith("MsgVoteWeighted") ->
+        typeUrl.endsWith("gov.v1beta1.MsgVoteWeighted") ->
+            this.toMsgVoteWeightedOld().let { GovMsgDetail(null, "", it.proposalId, "") }
+        typeUrl.endsWith("gov.v1.MsgVoteWeighted") ->
             this.toMsgVoteWeighted().let { GovMsgDetail(null, "", it.proposalId, "") }
-        typeUrl.endsWith("MsgDeposit") ->
+        typeUrl.endsWith("gov.v1beta1.MsgDeposit") ->
+            this.toMsgDepositOld().let { GovMsgDetail(it.amountList.first().toCoinStr(), "", it.proposalId, "") }
+        typeUrl.endsWith("gov.v1.MsgDeposit") ->
             this.toMsgDeposit().let { GovMsgDetail(it.amountList.first().toCoinStr(), "", it.proposalId, "") }
         else -> null.also { logger().debug("This typeUrl is not a governance-based msg: $typeUrl") }
     }?.let { detail ->
@@ -668,4 +769,85 @@ fun Any.getGovMsgDetail(txHash: String) =
                 }
             }
         }
+    }
+
+fun Gov.Proposal.toProposalTitleAndDescription(protoPrinter: JsonFormat.Printer) =
+    this.messagesList.firstOrNull { it.typeUrl.contains("gov.v1.MsgExecLegacyContent") }
+        ?.toMsgExecLegacyContent()?.content?.let { cont ->
+            OBJECT_MAPPER.readValue(protoPrinter.print(cont), ObjectNode::class.java)
+                .let { it.get("title").asText() to it.get("description").asText() }
+        } ?: (
+        this.metadata.getProposalMetadata("parsing-title-description")?.let { it.title to it.summary }
+            ?: ("Proposal ${this.id}" to "No Description")
+        )
+
+fun String.getProposalMetadata(comingFrom: String): GovProposalMetadata? = runBlocking {
+    try {
+        if (this@getProposalMetadata.isBlank()) return@runBlocking null
+        KTOR_CLIENT_JAVA.get(this@getProposalMetadata).body()
+    } catch (e: Exception) {
+        return@runBlocking null.also { logger().error("Error coming from $comingFrom: ${e.message}") }
+    }
+}
+
+fun Gov.Proposal.toProposalContent() = GovContentV1List(this.messagesList)
+
+fun Any.getProposalType() = when {
+    this.typeUrl.contains("gov.v1.MsgExecLegacyContent") ->
+        this.toMsgExecLegacyContent().content.typeUrl.getProposalTypeLegacy()
+    else -> this.typeUrl.toShortType()
+}
+
+fun String.getProposalTypeLegacy() = this.split(".").last().removeSuffix("Proposal")
+
+fun List<Any>.getProposalTypeList() = this.joinToString(", ") { msg -> msg.getProposalType() }
+
+fun String.toProposalTypeList() = this.split(", ")
+
+fun GovProposalRecord?.getUpgradePlan() =
+    this?.contentV1?.list
+        ?.mapNotNull { msg ->
+            when {
+                msg.typeUrl.contains("MsgSoftwareUpgrade") -> msg.toMsgSoftwareUpgrade().plan
+                msg.typeUrl.contains("gov.v1.MsgExecLegacyContent") ->
+                    msg.toMsgExecLegacyContent().content.let {
+                        if (it.typeUrl.contains("SoftwareUpgradeProposal"))
+                            it.toSoftwareUpgradeProposal().plan
+                        else null
+                    }
+
+                else -> null
+            }
+        }?.first()
+        ?: this?.dataV1beta1?.content?.toSoftwareUpgradeProposal()?.plan
+
+fun String.toVoteMetadata() =
+    if (this.isBlank()) null
+    else OBJECT_MAPPER.readValue<GovVoteMetadata>(this).justification
+
+fun Any.toWeightedVoteList() =
+    when {
+        this.typeUrl.endsWith("gov.v1beta1.MsgVote") ->
+            listOf(
+                weightedVoteOption {
+                    this.weight = "1000000000000000000"
+                    this.option = VoteOption.valueOf(this@toWeightedVoteList.toMsgVoteOld().option.name)
+                }
+            )
+        this.typeUrl.endsWith("gov.v1.MsgVote") ->
+            listOf(
+                weightedVoteOption {
+                    this.weight = "1000000000000000000"
+                    this.option = this@toWeightedVoteList.toMsgVote().option
+                }
+            )
+        this.typeUrl.endsWith("gov.v1beta1.MsgVoteWeighted") ->
+            this.toMsgVoteWeightedOld().optionsList.map {
+                weightedVoteOption {
+                    this.weight = it.weight
+                    this.option = VoteOption.valueOf(it.option.name)
+                }
+            }.toList()
+        this.typeUrl.endsWith("gov.v1.MsgVoteWeighted") -> this.toMsgVoteWeighted().optionsList
+        else -> throw InvalidArgumentException("Invalid gov vote msg type: ${this.typeUrl}")
     }

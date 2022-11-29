@@ -10,7 +10,6 @@ import io.ktor.client.request.parameter
 import io.ktor.http.ContentType
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.VANILLA_MAPPER
-import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.core.logger
@@ -46,7 +45,6 @@ import io.provenance.explorer.domain.models.explorer.TokenSupply
 import io.provenance.explorer.domain.models.explorer.datesValidation
 import io.provenance.explorer.domain.models.explorer.getFileListToken
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
-import io.provenance.explorer.grpc.v1.MarkerGrpcClient
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
@@ -63,11 +61,7 @@ import java.util.zip.ZipOutputStream
 import javax.servlet.ServletOutputStream
 
 @Service
-class TokenService(
-    private val accountClient: AccountGrpcClient,
-    private val markerClient: MarkerGrpcClient,
-    private val props: ExplorerProperties
-) {
+class TokenService(private val accountClient: AccountGrpcClient) {
 
     protected val logger = logger(TokenService::class)
 
@@ -121,13 +115,11 @@ class TokenService(
     private fun getAssetHolders(denom: String, page: Int, count: Int) = runBlocking {
         val unit = MarkerUnitRecord.findByUnit(denom)?.marker ?: denom
         val supply = maxSupply().toString()
-        val res = markerClient.getMarkerHolders(unit, page.toOffset(count), count)
-        val list = res?.balancesList?.asFlow()?.map { bal ->
-            val balance = bal.coinsList.first { coin -> coin.denom == unit }.amount
-            AssetHolder(bal.address, CountStrTotal(balance, supply, unit))
-        }?.toList()?.sortedWith(compareBy { it.balance.count.toBigDecimal() })?.asReversed()
-            ?: listOf()
-        PagedResults(res?.pagination?.total?.pageCountOfResults(count) ?: 0, list, res?.pagination?.total ?: 0)
+        val res = accountClient.getDenomHolders(unit, page.toOffset(count), count)
+        val list = res.denomOwnersList.asFlow().map { bal ->
+            AssetHolder(bal.address, CountStrTotal(bal.balance.amount, supply, unit))
+        }.toList().sortedWith(compareBy { it.balance.count.toBigDecimal() }).asReversed()
+        PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
     }
 
     private fun calculateTokenDistributionStats() {

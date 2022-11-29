@@ -112,7 +112,7 @@ class TransactionService(
         ibcSrcPort: String? = null,
         ibcSrcChannel: String? = null
     ): PagedResults<TxSummary> {
-        val msgTypes = if (msgType != null) listOf(msgType) else module?.getValuesPlusAddtnl() ?: listOf()
+        val msgTypes = if (msgType != null) listOf(msgType) else (module?.getValuesPlusAddtnl() ?: listOf())
         val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
         val addr = transaction { address?.getAddressType(valService.getActiveSet()) }
         val markerId = if (denom != null) MarkerCacheRecord.findByDenom(denom)?.id?.value else null
@@ -158,7 +158,7 @@ class TransactionService(
 
     fun MutableList<TxMessageRecord>.mapToTxMessages(logs: MutableList<Abci.ABCIMessageLog>) =
         this.map { msg ->
-            val logSet = logs[msg.msgIdx].eventsList
+            val logSet = logs.getOrNull(msg.msgIdx)?.eventsList ?: emptyList()
             TxMessage(
                 msg.txMessageType.toList().firstMatchLabel(),
                 msg.txMessage.toObjectNode(protoPrinter),

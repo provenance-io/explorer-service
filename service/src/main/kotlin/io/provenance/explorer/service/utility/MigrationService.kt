@@ -41,13 +41,12 @@ class MigrationService(
         logger.info("End height: $endHeight")
     }
 
-    fun insertBlocks(blocks: List<Int>, pullFromDb: Boolean) = transaction {
+    fun insertBlocks(blocks: List<Int>, pullFromDb: Boolean) =
         blocks.forEach { block ->
             blockService.getBlockAtHeightFromChain(block)?.let {
                 asyncCaching.saveBlockEtc(it, Pair(true, pullFromDb))
             }
         }
-    }
 
     fun updateMissedBlocks(startHeight: Int, endHeight: Int, inc: Int) {
         logger.info("Start height: $startHeight")

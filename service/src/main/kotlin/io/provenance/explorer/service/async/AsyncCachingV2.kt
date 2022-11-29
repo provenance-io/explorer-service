@@ -3,6 +3,9 @@ package io.provenance.explorer.service.async
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.google.protobuf.Timestamp
 import cosmos.base.tendermint.v1beta1.Query
+import cosmos.group.v1.Types
+import cosmos.group.v1.Types.ProposalStatus
+import cosmos.group.v1.vote
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.isMAddress
@@ -31,6 +34,7 @@ import io.provenance.explorer.domain.entities.TxEventRecord
 import io.provenance.explorer.domain.entities.TxFeeRecord
 import io.provenance.explorer.domain.entities.TxFeepayerRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
+import io.provenance.explorer.domain.entities.TxGroupsPolicyTable
 import io.provenance.explorer.domain.entities.TxIbcRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
@@ -54,6 +58,7 @@ import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.BlockUpdate
+import io.provenance.explorer.domain.models.explorer.GroupsProposalData
 import io.provenance.explorer.domain.models.explorer.Name
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxUpdate
@@ -61,6 +66,10 @@ import io.provenance.explorer.domain.models.explorer.toProcedureObject
 import io.provenance.explorer.grpc.extensions.AddressEvents
 import io.provenance.explorer.grpc.extensions.DenomEvents
 import io.provenance.explorer.grpc.extensions.GovMsgType
+import io.provenance.explorer.grpc.extensions.GroupEvents
+import io.provenance.explorer.grpc.extensions.GroupGovMsgType
+import io.provenance.explorer.grpc.extensions.GroupPolicyEvents
+import io.provenance.explorer.grpc.extensions.GroupProposalEvents
 import io.provenance.explorer.grpc.extensions.NameEvents
 import io.provenance.explorer.grpc.extensions.SmContractEventKeys
 import io.provenance.explorer.grpc.extensions.SmContractValue
@@ -70,10 +79,17 @@ import io.provenance.explorer.grpc.extensions.getAddressEventByEvent
 import io.provenance.explorer.grpc.extensions.getAssociatedAddresses
 import io.provenance.explorer.grpc.extensions.getAssociatedDenoms
 import io.provenance.explorer.grpc.extensions.getAssociatedGovMsgs
+import io.provenance.explorer.grpc.extensions.getAssociatedGroupPolicies
+import io.provenance.explorer.grpc.extensions.getAssociatedGroupProposals
+import io.provenance.explorer.grpc.extensions.getAssociatedGroups
 import io.provenance.explorer.grpc.extensions.getAssociatedMetadata
 import io.provenance.explorer.grpc.extensions.getAssociatedMetadataEvents
 import io.provenance.explorer.grpc.extensions.getAssociatedSmContractMsgs
 import io.provenance.explorer.grpc.extensions.getDenomEventByEvent
+import io.provenance.explorer.grpc.extensions.getGroupEventByEvent
+import io.provenance.explorer.grpc.extensions.getGroupPolicyEventByEvent
+import io.provenance.explorer.grpc.extensions.getGroupsExecutorResult
+import io.provenance.explorer.grpc.extensions.getGroupsProposalStatus
 import io.provenance.explorer.grpc.extensions.getIbcLedgerMsgs
 import io.provenance.explorer.grpc.extensions.getMsgSubTypes
 import io.provenance.explorer.grpc.extensions.getMsgType
@@ -92,27 +108,38 @@ import io.provenance.explorer.grpc.extensions.toMsgAcknowledgement
 import io.provenance.explorer.grpc.extensions.toMsgBindNameRequest
 import io.provenance.explorer.grpc.extensions.toMsgDeleteNameRequest
 import io.provenance.explorer.grpc.extensions.toMsgDeposit
+import io.provenance.explorer.grpc.extensions.toMsgDepositOld
+import io.provenance.explorer.grpc.extensions.toMsgExecGroup
+import io.provenance.explorer.grpc.extensions.toMsgIbcTransferRequest
 import io.provenance.explorer.grpc.extensions.toMsgRecvPacket
 import io.provenance.explorer.grpc.extensions.toMsgSubmitProposal
+import io.provenance.explorer.grpc.extensions.toMsgSubmitProposalGroup
+import io.provenance.explorer.grpc.extensions.toMsgSubmitProposalOld
 import io.provenance.explorer.grpc.extensions.toMsgTimeout
 import io.provenance.explorer.grpc.extensions.toMsgTimeoutOnClose
 import io.provenance.explorer.grpc.extensions.toMsgTransfer
 import io.provenance.explorer.grpc.extensions.toMsgVote
+import io.provenance.explorer.grpc.extensions.toMsgVoteGroup
+import io.provenance.explorer.grpc.extensions.toMsgVoteOld
 import io.provenance.explorer.grpc.extensions.toMsgVoteWeighted
-import io.provenance.explorer.grpc.extensions.toWeightedVote
-import io.provenance.explorer.grpc.v1.MetadataGrpcClient
+import io.provenance.explorer.grpc.extensions.toMsgVoteWeightedOld
+import io.provenance.explorer.grpc.extensions.toMsgWithdrawProposalGroup
 import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
 import io.provenance.explorer.grpc.v1.TransactionGrpcClient
 import io.provenance.explorer.service.AccountService
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.GovService
+import io.provenance.explorer.service.GroupService
 import io.provenance.explorer.service.IbcService
 import io.provenance.explorer.service.NftService
 import io.provenance.explorer.service.SmartContractService
 import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.service.splitChildParent
+import io.provenance.explorer.service.toVoteMetadata
+import io.provenance.explorer.service.toWeightedVoteList
 import io.provenance.explorer.service.unchainDenom
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.springframework.stereotype.Service
@@ -130,7 +157,7 @@ class AsyncCachingV2(
     private val smContractService: SmartContractService,
     private val props: ExplorerProperties,
     private val msgFeeClient: MsgFeeGrpcClient,
-    private val metadataClient: MetadataGrpcClient
+    private val groupService: GroupService
 ) {
 
     protected val logger = logger(AsyncCachingV2::class)
@@ -246,8 +273,8 @@ class AsyncCachingV2(
                     .map { addTxToCacheWithTimestamp(it.txV2, blockTime, proposerRec) }
             }
         else
-            txClient.getTxsByHeight(blockHeight, txCount)
-                .map { addTxToCacheWithTimestamp(txClient.getTxByHash(it.txhash), blockTime, proposerRec) }
+            runBlocking { txClient.getTxsByHeight(blockHeight, txCount) }
+                .map { addTxToCacheWithTimestamp(it, blockTime, proposerRec) }
     } catch (e: Exception) {
         logger.error("Failed to retrieve transactions at block: $blockHeight", e.message)
         BlockTxRetryRecord.insert(blockHeight, e)
@@ -279,6 +306,7 @@ class AsyncCachingV2(
         saveIbcChannelData(res, txInfo, txUpdate)
         saveSmartContractData(res, txInfo, txUpdate)
         saveNameData(res, txInfo)
+        saveGroups(res, txInfo, txUpdate)
         saveSignaturesTx(res, txInfo, txUpdate)
         return TxUpdatedItems(addrs, markers, txUpdate)
     }
@@ -459,39 +487,73 @@ class AsyncCachingV2(
                                 .attributesList.first { it.key == "proposal_id" }
                                 .value.toLong()
                                 .let { id ->
-                                    pair.second.toMsgSubmitProposal().let {
-                                        txUpdate.apply {
-                                            govService.buildProposal(id, txInfo, it.proposer, true)
-                                                ?.let { this.proposals.add(it) }
-                                            this.deposits.addAll(govService.buildDeposit(id, txInfo, null, it))
-                                            govService.buildProposalMonitor(it, id, txInfo).let { mon ->
-                                                if (mon != null) this.proposalMonitors.add(mon)
-                                            }
+                                    val proposer = when {
+                                        pair.second.typeUrl.endsWith("gov.v1beta1.MsgSubmitProposal") -> pair.second.toMsgSubmitProposalOld().proposer
+                                        pair.second.typeUrl.endsWith("gov.v1.MsgSubmitProposal") -> pair.second.toMsgSubmitProposal().proposer
+                                        else -> throw InvalidArgumentException("Invalid gov proposal msg type: ${pair.second.typeUrl}")
+                                    }
+                                    txUpdate.apply {
+                                        govService.buildProposal(id, txInfo, proposer, true)?.let { this.proposals.add(it) }
+                                        govService.buildDeposit(id, txInfo, null, pair.second)?.let { this.deposits.addAll(it) }
+                                        govService.buildProposalMonitor(pair.second, id, txInfo).let { mon ->
+                                            if (mon.isNotEmpty()) this.proposalMonitors.addAll(mon)
                                         }
                                     }
                                 }
-                        GovMsgType.DEPOSIT ->
-                            pair.second.toMsgDeposit().let {
-                                txUpdate.apply {
-                                    govService.buildProposal(it.proposalId, txInfo, it.depositor, isSubmit = false)
-                                        ?.let { this.proposals.add(it) }
-                                    this.deposits.addAll(govService.buildDeposit(it.proposalId, txInfo, it, null))
-                                }
+                        GovMsgType.DEPOSIT -> {
+                            val (proposalId, depositor) = when {
+                                pair.second.typeUrl.endsWith("gov.v1beta1.MsgDeposit") ->
+                                    pair.second.toMsgDepositOld().let { it.proposalId to it.depositor }
+                                pair.second.typeUrl.endsWith("gov.v1.MsgDeposit") ->
+                                    pair.second.toMsgDeposit().let { it.proposalId to it.depositor }
+                                else -> throw InvalidArgumentException("Invalid gov deposit msg type: ${pair.second.typeUrl}")
                             }
-                        GovMsgType.VOTE -> pair.second.toMsgVote().let {
                             txUpdate.apply {
-                                govService.buildProposal(it.proposalId, txInfo, it.voter, isSubmit = false)
-                                    ?.let { this.proposals.add(it) }
+
+                                govService.buildProposal(proposalId, txInfo, depositor, isSubmit = false)?.let { this.proposals.add(it) }
+                                govService.buildDeposit(proposalId, txInfo, pair.second, null)?.let { this.deposits.addAll(it) }
+                            }
+                        }
+                        GovMsgType.VOTE -> {
+                            val (proposalId, voter, justification) = when {
+                                pair.second.typeUrl.endsWith("gov.v1beta1.MsgVote") ->
+                                    pair.second.toMsgVoteOld().let { Triple(it.proposalId, it.voter, null) }
+                                pair.second.typeUrl.endsWith("gov.v1.MsgVote") ->
+                                    pair.second.toMsgVote().let { Triple(it.proposalId, it.voter, it.metadata.toVoteMetadata()) }
+                                else -> throw InvalidArgumentException("Invalid gov vote msg type: ${pair.second.typeUrl}")
+                            }
+                            txUpdate.apply {
+                                govService.buildProposal(proposalId, txInfo, voter, isSubmit = false)?.let { this.proposals.add(it) }
                                 this.votes.addAll(
-                                    govService.buildVote(txInfo, listOf(it.toWeightedVote()), it.voter, it.proposalId)
+                                    govService.buildVote(
+                                        txInfo,
+                                        pair.second.toWeightedVoteList(),
+                                        voter,
+                                        proposalId,
+                                        justification
+                                    )
                                 )
                             }
                         }
-                        GovMsgType.WEIGHTED -> pair.second.toMsgVoteWeighted().let {
+                        GovMsgType.WEIGHTED -> {
+                            val (proposalId, voter, justification) = when {
+                                pair.second.typeUrl.endsWith("gov.v1beta1.MsgVoteWeighted") ->
+                                    pair.second.toMsgVoteWeightedOld().let { Triple(it.proposalId, it.voter, null) }
+                                pair.second.typeUrl.endsWith("gov.v1.MsgVoteWeighted") ->
+                                    pair.second.toMsgVoteWeighted().let { Triple(it.proposalId, it.voter, it.metadata.toVoteMetadata()) }
+                                else -> throw InvalidArgumentException("Invalid gov vote weighted msg type: ${pair.second.typeUrl}")
+                            }
                             txUpdate.apply {
-                                govService.buildProposal(it.proposalId, txInfo, it.voter, isSubmit = false)
-                                    ?.let { this.proposals.add(it) }
-                                this.votes.addAll(govService.buildVote(txInfo, it.optionsList, it.voter, it.proposalId))
+                                govService.buildProposal(proposalId, txInfo, voter, isSubmit = false)?.let { this.proposals.add(it) }
+                                this.votes.addAll(
+                                    govService.buildVote(
+                                        txInfo,
+                                        pair.second.toWeightedVoteList(),
+                                        voter,
+                                        proposalId,
+                                        justification
+                                    )
+                                )
                             }
                         }
                     }
@@ -550,6 +612,11 @@ class AsyncCachingV2(
                             if (!txSuccess) return@forEachIndexed
                             val msg = any.toMsgTransfer()
                             ibcService.parseTransfer(msg, tx.txResponse.logsList[idx])
+                        }
+                        any.typeUrl.endsWith("MsgIbcTransferRequest") -> {
+                            if (!txSuccess) return@forEachIndexed
+                            val msg = any.toMsgIbcTransferRequest()
+                            ibcService.parseTransfer(msg.transfer, tx.txResponse.logsList[idx])
                         }
                         any.typeUrl.endsWith("MsgRecvPacket") -> {
                             val msg = any.toMsgRecvPacket()
@@ -716,7 +783,230 @@ class AsyncCachingV2(
         }
     }
 
-    fun saveSignaturesTx(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, txUpdate: TxUpdate) = transaction {
+    private fun saveGroups(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, txUpdate: TxUpdate) = transaction {
+        // get groups, save
+        val msgGroups = tx.tx.body.messagesList.mapNotNull { it.getAssociatedGroups() }
+        val eventGroups = tx.txResponse.logsList
+            .flatMap { it.eventsList }
+            .filter { it.type in GroupEvents.values().map { grp -> grp.event } }
+            .flatMap { e ->
+                getGroupEventByEvent(e.type)!!.let {
+                    e.attributesList
+                        .filter { attr -> attr.key in it.idField }
+                        .map { found -> found.value.scrubQuotes().toLong() }
+                }
+            }
+        (msgGroups + eventGroups).toSet().forEach { id ->
+            groupService.buildGroup(id, txInfo)?.let {
+                txUpdate.apply {
+                    if (tx.txResponse.code == 0)
+                        this.groupsList.add(it)
+                    this.groupJoin.add(groupService.buildTxGroup(id, txInfo))
+                }
+            }
+        }
+
+        // get policies, save
+        val msgPolicies = tx.tx.body.messagesList.mapNotNull { it.getAssociatedGroupPolicies() }
+        val eventPolicies = tx.txResponse.logsList
+            .flatMap { it.eventsList }
+            .filter { it.type in GroupPolicyEvents.values().map { pol -> pol.event } }
+            .flatMap { e ->
+                getGroupPolicyEventByEvent(e.type)!!.let {
+                    e.attributesList
+                        .filter { attr -> attr.key in it.idField }
+                        .map { found -> found.value.scrubQuotes() }
+                }
+            }
+        (msgPolicies + eventPolicies).toSet().forEach { addr ->
+            groupService.buildGroupPolicy(addr, txInfo)
+                ?.also { ProcessQueueRecord.insertIgnore(ProcessQueueType.ACCOUNT, addr) }
+                ?.let { policy ->
+                    val (join, savedPolicy) = groupService.buildTxGroupPolicy(addr, txInfo)
+                    txUpdate.apply {
+                        if (tx.txResponse.code == 0)
+                            this.groupPolicies
+                                .add(listOf(policy, listOf(join).toArray(TxGroupsPolicyTable.tableName)).toObject())
+                        else if (savedPolicy)
+                            this.policyJoinAlt.add(join)
+                    }
+                }
+        }
+
+        // get group gov msgs, and process
+        if (tx.txResponse.code == 0)
+            tx.tx.body.messagesList.mapNotNull { it.getAssociatedGroupProposals() }
+                .forEachIndexed { idx, pair ->
+                    when (pair.first) {
+                        GroupGovMsgType.PROPOSAL -> {
+                            // Have to find the proposalId in the log events
+                            val proposalId = tx.mapEventAttrValues(
+                                idx,
+                                GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.event,
+                                GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.idField.toList()
+                            )[GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.idField.first()]!!.toLong()
+
+                            val msg = pair.second.toMsgSubmitProposalGroup()
+                            val nodeData = groupService.proposalAtHeight(proposalId, txInfo.blockHeight)?.proposal
+                            val policy = groupService.policyAtHeight(msg.groupPolicyAddress, txInfo.blockHeight)!!.info
+                            val group = groupService.groupAtHeight(policy.groupId, txInfo.blockHeight)!!.info
+                            val tally = groupService.proposalTallyAtHeight(proposalId, txInfo.blockHeight)?.tally
+                            val data = GroupsProposalData(
+                                msg.proposersList,
+                                msg.metadata,
+                                msg.messagesList,
+                                msg.exec.name,
+                                txInfo.txTimestamp,
+                                group.version,
+                                policy.version,
+                                tally,
+                                nodeData?.votingPeriodEnd?.toDateTime()
+                            )
+                            val status = nodeData?.status ?: ProposalStatus.PROPOSAL_STATUS_ACCEPTED
+                            val execResult = nodeData?.executorResult ?: tx.mapEventAttrValues(
+                                idx,
+                                GroupProposalEvents.GROUP_EXEC.event,
+                                listOf("result")
+                            )["result"]!!.getGroupsExecutorResult()
+
+                            val proposal = groupService.buildProposal(
+                                group.id,
+                                policy.address,
+                                proposalId,
+                                data,
+                                nodeData,
+                                status,
+                                execResult,
+                                txInfo
+                            )
+                            val votes = groupService.buildVotes(
+                                group.id,
+                                group.version,
+                                msg.proposersList,
+                                vote {
+                                    this.proposalId = proposalId
+                                    this.option = Types.VoteOption.VOTE_OPTION_YES
+                                    this.metadata = ""
+                                },
+                                txInfo
+                            )
+                            txUpdate.apply {
+                                this.groupProposals.add(proposal)
+                                this.groupVotes.addAll(votes)
+                                this.policyJoinAlt.add(groupService.buildTxGroupPolicy(msg.groupPolicyAddress, txInfo).first)
+                            }
+                        }
+                        GroupGovMsgType.VOTE -> {
+                            val msg = pair.second.toMsgVoteGroup()
+                            val proposal = groupService.getProposalById(msg.proposalId)!!
+
+                            groupService.buildVotes(
+                                proposal.groupId.toLong(),
+                                proposal.proposalData.groupVersion,
+                                listOf(msg.voter),
+                                vote {
+                                    this.proposalId = msg.proposalId
+                                    this.option = msg.option
+                                    this.metadata = msg.metadata
+                                },
+                                txInfo
+                            ).let {
+                                txUpdate.apply {
+                                    this.groupVotes.addAll(it)
+                                    this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
+                                }
+                            }
+
+                            val execResult = tx.mapEventAttrValues(
+                                idx,
+                                GroupProposalEvents.GROUP_EXEC.event,
+                                listOf("result")
+                            )["result"]?.getGroupsExecutorResult()
+
+                            if (execResult != null)
+                                transaction {
+                                    proposal.apply {
+                                        if (proposal.proposalStatus.getGroupsProposalStatus() != ProposalStatus.PROPOSAL_STATUS_ACCEPTED)
+                                            this.proposalStatus = ProposalStatus.PROPOSAL_STATUS_ACCEPTED.name
+                                        if (proposal.executorResult.getGroupsExecutorResult() != execResult)
+                                            this.executorResult = execResult.name
+                                    }
+                                }
+                        }
+                        GroupGovMsgType.EXEC -> {
+                            val msg = pair.second.toMsgExecGroup()
+                            val proposal = groupService.getProposalById(msg.proposalId)!!
+
+                            txUpdate.apply {
+                                this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
+                            }
+
+                            val execResult = tx.mapEventAttrValues(
+                                idx,
+                                GroupProposalEvents.GROUP_EXEC.event,
+                                listOf("result")
+                            )["result"]?.getGroupsExecutorResult()
+
+                            if (execResult != null)
+                                transaction {
+                                    proposal.apply {
+                                        if (proposal.proposalStatus.getGroupsProposalStatus() != ProposalStatus.PROPOSAL_STATUS_ACCEPTED)
+                                            this.proposalStatus = ProposalStatus.PROPOSAL_STATUS_ACCEPTED.name
+                                        if (proposal.executorResult.getGroupsExecutorResult() != execResult)
+                                            this.executorResult = execResult.name
+                                    }
+                                }
+                        }
+                        GroupGovMsgType.WITHDRAW -> {
+                            val msg = pair.second.toMsgWithdrawProposalGroup()
+                            val proposal = groupService.getProposalById(msg.proposalId)!!
+
+                            txUpdate.apply {
+                                this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
+                            }
+
+                            transaction {
+                                proposal.apply { this.proposalStatus = ProposalStatus.PROPOSAL_STATUS_WITHDRAWN.name }
+                            }
+                        }
+                    }
+                }
+        else
+            tx.tx.body.messagesList.mapNotNull { it.getAssociatedGroupProposals() }
+                .forEachIndexed { _, pair ->
+                    when (pair.first) {
+                        GroupGovMsgType.PROPOSAL -> {
+                            val msg = pair.second.toMsgSubmitProposalGroup()
+                            txUpdate.apply {
+                                this.policyJoinAlt.add(groupService.buildTxGroupPolicy(msg.groupPolicyAddress, txInfo).first)
+                            }
+                        }
+                        GroupGovMsgType.VOTE -> {
+                            val msg = pair.second.toMsgVoteGroup()
+                            val proposal = groupService.getProposalById(msg.proposalId)!!
+                            txUpdate.apply {
+                                this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
+                            }
+                        }
+                        GroupGovMsgType.EXEC -> {
+                            val msg = pair.second.toMsgExecGroup()
+                            val proposal = groupService.getProposalById(msg.proposalId)!!
+                            txUpdate.apply {
+                                this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
+                            }
+                        }
+                        GroupGovMsgType.WITHDRAW -> {
+                            val msg = pair.second.toMsgWithdrawProposalGroup()
+                            val proposal = groupService.getProposalById(msg.proposalId)!!
+                            txUpdate.apply {
+                                this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
+                            }
+                        }
+                    }
+                }
+    }
+
+    private fun saveSignaturesTx(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, txUpdate: TxUpdate) = transaction {
         val signerEvents = tx.mapTxEventAttrValues(TX_EVENT, TX_ACC_SEQ)
 
         tx.tx.authInfo.signerInfosList.mapIndexedNotNull { idx, sig ->

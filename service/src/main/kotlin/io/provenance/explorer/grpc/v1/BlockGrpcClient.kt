@@ -1,7 +1,8 @@
 package io.provenance.explorer.grpc.v1
 
-import cosmos.base.tendermint.v1beta1.Query
-import cosmos.base.tendermint.v1beta1.ServiceGrpc
+import cosmos.base.tendermint.v1beta1.ServiceGrpcKt
+import cosmos.base.tendermint.v1beta1.getBlockByHeightRequest
+import cosmos.base.tendermint.v1beta1.getLatestBlockRequest
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import org.springframework.stereotype.Component
@@ -11,7 +12,7 @@ import java.util.concurrent.TimeUnit
 @Component
 class BlockGrpcClient(channelUri: URI) {
 
-    private val tmClient: ServiceGrpc.ServiceBlockingStub
+    private val tmClient: ServiceGrpcKt.ServiceCoroutineStub
 
     init {
         val channel =
@@ -29,15 +30,15 @@ class BlockGrpcClient(channelUri: URI) {
                 .intercept(GrpcLoggingInterceptor())
                 .build()
 
-        tmClient = ServiceGrpc.newBlockingStub(channel)
+        tmClient = ServiceGrpcKt.ServiceCoroutineStub(channel)
     }
 
-    fun getBlockAtHeight(maxHeight: Int) =
+    suspend fun getBlockAtHeight(maxHeight: Int) =
         try {
-            tmClient.getBlockByHeight(Query.GetBlockByHeightRequest.newBuilder().setHeight(maxHeight.toLong()).build())
+            tmClient.getBlockByHeight(getBlockByHeightRequest { this.height = maxHeight.toLong() })
         } catch (e: Exception) {
             null
         }
 
-    fun getLatestBlock() = tmClient.getLatestBlock(Query.GetLatestBlockRequest.getDefaultInstance())
+    suspend fun getLatestBlock() = tmClient.getLatestBlock(getLatestBlockRequest { })
 }

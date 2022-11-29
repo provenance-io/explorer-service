@@ -235,3 +235,45 @@ class TxIbcRecord(id: EntityID<Int>) : IntEntity(id) {
     var client by TxIbcTable.client
     var channelId by TxIbcTable.channelId
 }
+
+object TxGroupsTable : IntIdTable(name = "tx_groups") {
+    val blockHeight = integer("block_height")
+    val txHashId = reference("tx_hash_id", TxCacheTable)
+    val txHash = varchar("tx_hash", 64)
+    val groupsId = integer("groups_id")
+}
+
+class TxGroupsRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxGroupsRecord>(TxGroupsTable) {
+
+        fun buildInsert(txInfo: TxData, groupId: Int) =
+            listOf(0, txInfo.blockHeight, -1, txInfo.txHash, groupId).toProcedureObject()
+    }
+
+    var blockHeight by TxGroupsTable.blockHeight
+    var txHashId by TxCacheRecord referencedOn TxGroupsTable.txHashId
+    var txHash by TxGroupsTable.txHash
+    var groupsId by TxGroupsTable.groupsId
+}
+
+object TxGroupsPolicyTable : IntIdTable(name = "tx_groups_policy") {
+    val blockHeight = integer("block_height")
+    val txHashId = reference("tx_hash_id", TxCacheTable)
+    val txHash = varchar("tx_hash", 64)
+    val policyAddressId = integer("policy_address_id")
+    val policyAddress = varchar("policy_address", 128)
+}
+
+class TxGroupsPolicyRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxGroupsPolicyRecord>(TxGroupsPolicyTable) {
+
+        fun buildInsert(txInfo: TxData, policyAddrId: Int?, policyAddr: String) =
+            listOf(0, txInfo.blockHeight, -1, txInfo.txHash, policyAddrId ?: -1, policyAddr).toProcedureObject()
+    }
+
+    var blockHeight by TxGroupsPolicyTable.blockHeight
+    var txHashId by TxCacheRecord referencedOn TxGroupsPolicyTable.txHashId
+    var txHash by TxGroupsPolicyTable.txHash
+    var policyAddressId by TxGroupsPolicyTable.policyAddressId
+    var policyAddress by TxGroupsPolicyTable.policyAddress
+}
