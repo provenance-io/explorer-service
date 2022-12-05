@@ -3,12 +3,21 @@ package io.provenance.explorer.domain.entities
 import com.google.protobuf.Any
 import cosmos.auth.v1beta1.Auth
 import cosmos.vesting.v1beta1.Vesting
+import ibc.applications.interchain_accounts.v1.Account.InterchainAccount
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.isAddressAsType
 import io.provenance.explorer.grpc.extensions.getTypeShortName
+import io.provenance.explorer.grpc.extensions.toBaseAccount
+import io.provenance.explorer.grpc.extensions.toContinuousVestingAccount
+import io.provenance.explorer.grpc.extensions.toDelayedVestingAccount
+import io.provenance.explorer.grpc.extensions.toInterchainAccount
+import io.provenance.explorer.grpc.extensions.toMarkerAccount
+import io.provenance.explorer.grpc.extensions.toModuleAccount
+import io.provenance.explorer.grpc.extensions.toPeriodicVestingAccount
+import io.provenance.explorer.grpc.extensions.toPermanentLockedAccount
 import io.provenance.explorer.service.getAccountType
 import io.provenance.marker.v1.MarkerAccount
 import org.jetbrains.exposed.dao.Entity
@@ -31,6 +40,8 @@ object AccountTable : IntIdTable(name = "account") {
     val baseAccount = jsonb<AccountTable, Auth.BaseAccount>("base_account", OBJECT_MAPPER).nullable()
     val data = jsonb<AccountTable, Any>("data", OBJECT_MAPPER).nullable()
     val isContract = bool("is_contract").default(false)
+    val owner = varchar("owner", 128).nullable()
+    val isGroupPolicy = bool("is_group_policy").default(false)
 }
 
 val vestingAccountTypes = listOf(
@@ -64,98 +75,119 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findByAddress(addr: String) = AccountRecord.find { AccountTable.accountAddress eq addr }.firstOrNull()
 
-        fun saveAccount(address: String, accPrefix: String, accountData: Any?, isContract: Boolean = false) =
+        fun saveAccount(address: String, accPrefix: String, accountData: Any?, isContract: Boolean = false, isGroupPolicy: Boolean = false) =
             transaction {
                 accountData?.let { insertIgnore(it, isContract) }
-                    ?: if (address.isAddressAsType(accPrefix)) insertUnknownAccount(address, isContract)
+                    ?: if (address.isAddressAsType(accPrefix)) insertUnknownAccount(address, isContract, isGroupPolicy)
                     else throw ResourceNotFoundException("Invalid account: '$address'")
             }
 
-        private fun insertUnknownAccount(addr: String, isContract: Boolean = false) = transaction {
+        private fun insertUnknownAccount(addr: String, isContract: Boolean = false, isGroupPolicy: Boolean = false) = transaction {
             findByAddress(addr) ?: AccountTable.insertAndGetId {
                 it[this.accountAddress] = addr
                 it[this.type] = "BaseAccount"
                 it[this.isContract] = isContract
+                it[this.isGroupPolicy] = isGroupPolicy
             }.let { findById(it)!! }
         }
 
-        private fun insertIgnore(acc: Any, isContract: Boolean = false) =
+        private fun insertIgnore(acc: Any, isContract: Boolean = false, isGroupPolicy: Boolean = false) =
             when (acc.typeUrl.getTypeShortName()) {
                 Auth.ModuleAccount::class.java.simpleName ->
-                    acc.unpack(Auth.ModuleAccount::class.java).let {
+                    acc.toModuleAccount().let {
                         insertIgnore(
                             it.baseAccount.address,
                             acc.typeUrl.getAccountType(),
                             it.baseAccount.accountNumber,
                             it.baseAccount,
                             acc,
-                            isContract
+                            isContract,
+                            isGroupPolicy
                         )
                     }
                 Auth.BaseAccount::class.java.simpleName ->
-                    acc.unpack(Auth.BaseAccount::class.java).let {
+                    acc.toBaseAccount().let {
                         insertIgnore(
                             it.address,
                             acc.typeUrl.getAccountType(),
                             it.accountNumber,
                             it,
                             acc,
-                            isContract
+                            isContract,
+                            isGroupPolicy
                         )
                     }
                 MarkerAccount::class.java.simpleName ->
-                    acc.unpack(MarkerAccount::class.java).let {
+                    acc.toMarkerAccount().let {
                         insertIgnore(
                             it.baseAccount.address,
                             acc.typeUrl.getAccountType(),
                             it.baseAccount.accountNumber,
                             it.baseAccount,
                             acc,
-                            isContract
+                            isContract,
+                            isGroupPolicy
                         )
                     }
                 Vesting.ContinuousVestingAccount::class.java.simpleName ->
-                    acc.unpack(Vesting.ContinuousVestingAccount::class.java).let {
+                    acc.toContinuousVestingAccount().let {
                         insertIgnore(
                             it.baseVestingAccount.baseAccount.address,
                             acc.typeUrl.getAccountType(),
                             it.baseVestingAccount.baseAccount.accountNumber,
                             it.baseVestingAccount.baseAccount,
                             acc,
-                            isContract
+                            isContract,
+                            isGroupPolicy
                         )
                     }
                 Vesting.DelayedVestingAccount::class.java.simpleName ->
-                    acc.unpack(Vesting.DelayedVestingAccount::class.java).let {
+                    acc.toDelayedVestingAccount().let {
                         insertIgnore(
                             it.baseVestingAccount.baseAccount.address,
                             acc.typeUrl.getAccountType(),
                             it.baseVestingAccount.baseAccount.accountNumber,
                             it.baseVestingAccount.baseAccount,
                             acc,
-                            isContract
+                            isContract,
+                            isGroupPolicy
                         )
                     }
                 Vesting.PeriodicVestingAccount::class.java.simpleName ->
-                    acc.unpack(Vesting.PeriodicVestingAccount::class.java).let {
+                    acc.toPeriodicVestingAccount().let {
                         insertIgnore(
                             it.baseVestingAccount.baseAccount.address,
                             acc.typeUrl.getAccountType(),
                             it.baseVestingAccount.baseAccount.accountNumber,
                             it.baseVestingAccount.baseAccount,
                             acc,
-                            isContract
+                            isContract,
+                            isGroupPolicy
                         )
                     }
                 Vesting.PermanentLockedAccount::class.java.simpleName ->
-                    acc.unpack(Vesting.PermanentLockedAccount::class.java).let {
+                    acc.toPermanentLockedAccount().let {
                         insertIgnore(
                             it.baseVestingAccount.baseAccount.address,
                             acc.typeUrl.getAccountType(),
                             it.baseVestingAccount.baseAccount.accountNumber,
                             it.baseVestingAccount.baseAccount,
                             acc,
-                            isContract
+                            isContract,
+                            isGroupPolicy
+                        )
+                    }
+                InterchainAccount::class.java.simpleName ->
+                    acc.toInterchainAccount().let {
+                        insertIgnore(
+                            it.baseAccount.address,
+                            acc.typeUrl.getAccountType(),
+                            it.baseAccount.accountNumber,
+                            it.baseAccount,
+                            acc,
+                            isContract,
+                            isGroupPolicy,
+                            it.accountOwner
                         )
                     }
 
@@ -168,7 +200,9 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
             number: Long,
             baseAccount: Auth.BaseAccount,
             data: Any,
-            isContract: Boolean
+            isContract: Boolean,
+            isGroupPolicy: Boolean,
+            owner: String? = null
         ) = transaction {
             (
                 findByAddress(address)?.apply {
@@ -176,6 +210,7 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
                     this.accountNumber = number
                     this.data = data
                     this.isContract = isContract
+                    this.isGroupPolicy = isGroupPolicy
                     this.type = type // can change from base to marker with 1.8.0
                 } ?: AccountTable.insertAndGetId {
                     it[this.accountAddress] = address
@@ -184,6 +219,8 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
                     it[this.baseAccount] = baseAccount
                     it[this.data] = data
                     it[this.isContract] = isContract
+                    it[this.isGroupPolicy] = isGroupPolicy
+                    it[this.owner] = owner
                 }.let { findById(it)!! }
                 ).also {
                 SignatureRecord.insertAndGet(baseAccount.pubKey, address)
@@ -199,6 +236,8 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
     var data by AccountTable.data
     var isContract by AccountTable.isContract
     val tokenCounts by AccountTokenCountRecord referrersOn AccountTokenCountTable.addressId
+    var owner by AccountTable.owner
+    var isGroupPolicy by AccountTable.isGroupPolicy
 }
 
 object AddressImageTable : IdTable<String>(name = "address_image") {

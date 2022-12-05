@@ -7,6 +7,9 @@ import io.provenance.explorer.domain.core.sql.toObject
 import io.provenance.explorer.domain.entities.GovDepositTable
 import io.provenance.explorer.domain.entities.GovProposalTable
 import io.provenance.explorer.domain.entities.GovVoteTable
+import io.provenance.explorer.domain.entities.GroupsProposalTable
+import io.provenance.explorer.domain.entities.GroupsTable
+import io.provenance.explorer.domain.entities.GroupsVoteTable
 import io.provenance.explorer.domain.entities.IbcLedgerAckTable
 import io.provenance.explorer.domain.entities.IbcLedgerTable
 import io.provenance.explorer.domain.entities.ProposalMonitorTable
@@ -14,6 +17,8 @@ import io.provenance.explorer.domain.entities.SignatureTxTable
 import io.provenance.explorer.domain.entities.TxAddressJoinTable
 import io.provenance.explorer.domain.entities.TxFeeTable
 import io.provenance.explorer.domain.entities.TxFeepayerTable
+import io.provenance.explorer.domain.entities.TxGroupsPolicyTable
+import io.provenance.explorer.domain.entities.TxGroupsTable
 import io.provenance.explorer.domain.entities.TxIbcTable
 import io.provenance.explorer.domain.entities.TxMarkerJoinTable
 import io.provenance.explorer.domain.entities.TxNftJoinTable
@@ -181,7 +186,8 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>, val add
             "delegate",
             "fund_community_pool",
             "set_withdraw_address",
-            "withdraw_delegator_reward"
+            "withdraw_delegator_reward",
+            "cancel_unbonding_delegation"
         )
     ),
     VALIDATION(
@@ -372,6 +378,12 @@ data class TxUpdate(
     var sigs: MutableList<String> = mutableListOf(),
     var feePayers: MutableList<String> = mutableListOf(),
     var validatorMarketRate: String? = null,
+    var groupsList: MutableList<String> = mutableListOf(),
+    var groupJoin: MutableList<String> = mutableListOf(),
+    var groupPolicies: MutableList<String> = mutableListOf(),
+    var policyJoinAlt: MutableList<String> = mutableListOf(),
+    var groupProposals: MutableList<String> = mutableListOf(),
+    var groupVotes: MutableList<String> = mutableListOf(),
 )
 
 fun TxUpdate.toProcedureObject() =
@@ -395,7 +407,13 @@ fun TxUpdate.toProcedureObject() =
         this.smContracts.toArray(TxSmContractTable.tableName),
         this.sigs.toArray(SignatureTxTable.tableName),
         this.feePayers.toArray(TxFeepayerTable.tableName),
-        this.validatorMarketRate!!
+        this.validatorMarketRate!!,
+        this.groupsList.toArray(GroupsTable.tableName),
+        this.groupJoin.toArray(TxGroupsTable.tableName),
+        this.groupPolicies.toArray("groups_policy_data"),
+        this.policyJoinAlt.toArray(TxGroupsPolicyTable.tableName),
+        this.groupProposals.toArray(GroupsProposalTable.tableName),
+        this.groupVotes.toArray(GroupsVoteTable.tableName)
     ).toObject()
 
 data class BlockUpdate(

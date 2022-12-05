@@ -12,10 +12,13 @@ const val USD_UPPER = "USD"
 const val USD_LOWER = "usd"
 
 fun BigDecimal.stringfy() = this.stripTrailingZeros().toPlainString()
+fun BigDecimal.stringfyWithScale(scale: Int) = this.stripTrailingZeros().setScale(scale, RoundingMode.HALF_EVEN).toPlainString()
 
 fun BigDecimal.toCoinStr(denom: String) = CoinStr(this.stringfy(), denom)
 
-fun String.toDecimalString() = this.toDecimal().toPlainString()
+fun String.toDecimalStringOld() = this.toDecimal().toPlainString()
+
+fun String.toDecimalString() = BigDecimal(this).stringfy()
 
 // Used to convert voting power values from mhash (milli) to nhash (nano)
 fun BigDecimal.mhashToNhash() = this.multiply(BigDecimal(VOTING_POWER_PADDING))
@@ -28,10 +31,12 @@ fun BigDecimal.toProtoCoin(denom: String) = coin {
 fun List<CoinOuterClass.Coin>.toCoinStrList() = this.map { CoinStr(it.amount, it.denom) }
 
 // Math extensions
-fun String.toPercentage() =
+fun String.toPercentageOld() =
     BigDecimal(this.toBigInteger(), UTILITY_TOKEN_BASE_DECIMAL_PLACES * 2)
         .multiply(BigDecimal(100))
-        .stringify() + "%"
+        .stringfyWithScale(4) + "%"
+
+fun String.toPercentage() = BigDecimal(this).multiply(BigDecimal(100)).stringfyWithScale(4) + "%"
 
 fun String.toDecimal() =
     BigDecimal(this.toBigInteger(), UTILITY_TOKEN_BASE_DECIMAL_PLACES * 2).stripTrailingZeros()
@@ -70,8 +75,7 @@ fun String.toPercentage(num: BigDecimal, den: BigDecimal, scale: Int) =
     this.toBigDecimal()
         .divide(den, 100, RoundingMode.HALF_EVEN)
         .multiply(num)
-        .setScale(scale, RoundingMode.HALF_EVEN)
-        .stringify() + "%"
+        .stringfyWithScale(scale) + "%"
 
 // Calcs the difference between this (oldList) of denoms and the newList of denoms
 fun List<CoinStr>.diff(newList: List<CoinStr>) =

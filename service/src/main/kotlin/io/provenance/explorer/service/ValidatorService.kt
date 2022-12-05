@@ -36,9 +36,10 @@ import io.provenance.explorer.domain.extensions.stringfy
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDecimal
-import io.provenance.explorer.domain.extensions.toDecimalString
+import io.provenance.explorer.domain.extensions.toDecimalStringOld
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toPercentage
+import io.provenance.explorer.domain.extensions.toPercentageOld
 import io.provenance.explorer.domain.extensions.translateAddress
 import io.provenance.explorer.domain.extensions.translateByteArray
 import io.provenance.explorer.domain.extensions.validatorMissedBlocks
@@ -256,7 +257,7 @@ class ValidatorService(
             ValidatorSummaryAbbrev(
                 currVal.json.description.moniker,
                 currVal.operatorAddress,
-                currVal.json.commission.commissionRates.rate.toDecimalString(),
+                currVal.json.commission.commissionRates.rate.toDecimalStringOld(),
                 currVal.imageUrl
             )
         }
@@ -320,7 +321,7 @@ class ValidatorService(
                 validator.votingPower.toBigInteger(),
                 totalVotingPower
             ) else null,
-            commission = stakingVal.json.commission.commissionRates.rate.toDecimalString(),
+            commission = stakingVal.json.commission.commissionRates.rate.toDecimalStringOld(),
             bondedTokens = CountStrTotal(stakingVal.json.tokens, null, UTILITY_TOKEN),
             delegators = delegatorCount,
             status = stakingVal.currentState.toString().lowercase(),
@@ -371,7 +372,7 @@ class ValidatorService(
                     null,
                     CoinStr(it.balance.amount, it.balance.denom),
                     null,
-                    it.delegation.shares.toDecimalString(),
+                    it.delegation.shares.toDecimalStringOld(),
                     null,
                     null
                 )
@@ -420,12 +421,12 @@ class ValidatorService(
                 UTILITY_TOKEN
             ),
             delegatorCount,
-            validator.delegatorShares.toDecimalString(),
-            rewards?.amount?.toDecimalString()?.let { CoinStr(it, rewards.denom) } ?: CoinStr("0", UTILITY_TOKEN),
+            validator.delegatorShares.toDecimalStringOld(),
+            rewards?.amount?.toDecimalStringOld()?.let { CoinStr(it, rewards.denom) } ?: CoinStr("0", UTILITY_TOKEN),
             CommissionRate(
-                validator.commission.commissionRates.rate.toDecimalString(),
-                validator.commission.commissionRates.maxRate.toDecimalString(),
-                validator.commission.commissionRates.maxChangeRate.toDecimalString()
+                validator.commission.commissionRates.rate.toDecimalStringOld(),
+                validator.commission.commissionRates.maxRate.toDecimalStringOld(),
+                validator.commission.commissionRates.maxChangeRate.toDecimalStringOld()
             )
         )
     }
@@ -454,6 +455,7 @@ class ValidatorService(
     ): BlockProposer {
         val consAddr = getProposerConsensusAddr(blockMeta)
         val proposer = findAddressByConsensus(consAddr)!!.operatorAddress
+//        val proposer = findAddressByOperator(blockMeta.sdkBlock.header.proposerAddress)!!.operatorAddress
         return BlockProposer(blockHeight, proposer, timestamp)
     }
 
@@ -627,7 +629,7 @@ class ValidatorService(
             currentHeight.toLong(),
             window,
             slashedCount,
-            slashedAtPercent.toString(Charsets.UTF_8).toPercentage(),
+            slashedAtPercent.toString(Charsets.UTF_8).toPercentageOld(),
             avgUptime,
             (avgUptime / window.toDouble()).toPercentage(),
             records.sortedByDescending { it.missedCount }

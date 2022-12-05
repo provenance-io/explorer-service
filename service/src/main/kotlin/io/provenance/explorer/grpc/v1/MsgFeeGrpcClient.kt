@@ -45,13 +45,17 @@ class MsgFeeGrpcClient(channelUri: URI) {
     }
 
     fun getMsgFeesAtHeight(height: Int, offset: Int = 0, limit: Int = 100) = runBlocking {
-        msgFeeClient
-            .addBlockHeightToQuery(height.toString())
-            .queryAllMsgFees(
-                queryAllMsgFeesRequest {
-                    this.pagination = getPagination(offset, limit)
-                }
-            )
+        try {
+            msgFeeClient
+                .addBlockHeightToQuery(height.toString())
+                .queryAllMsgFees(
+                    queryAllMsgFeesRequest {
+                        this.pagination = getPagination(offset, limit)
+                    }
+                ).msgFeesList
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     suspend fun getMsgFeeParams() = msgFeeClient.params(io.provenance.msgfees.v1.queryParamsRequest { })

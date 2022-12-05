@@ -1,22 +1,28 @@
 package io.provenance.explorer.domain.entities
 
 import com.fasterxml.jackson.databind.node.ObjectNode
-import com.google.protobuf.Message
 import com.google.protobuf.util.JsonFormat
 import cosmos.base.v1beta1.CoinOuterClass
-import cosmos.gov.v1beta1.Gov
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.Array
 import io.provenance.explorer.domain.core.sql.ArrayAgg
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
+import io.provenance.explorer.domain.extensions.stringify
 import io.provenance.explorer.domain.extensions.toDecimal
-import io.provenance.explorer.domain.models.explorer.GovAddrData
+import io.provenance.explorer.domain.extensions.toObjectNodeList
+import io.provenance.explorer.domain.models.explorer.AddrData
+import io.provenance.explorer.domain.models.explorer.GovContentV1List
 import io.provenance.explorer.domain.models.explorer.ProposalParamHeights
+import io.provenance.explorer.domain.models.explorer.ProposalTimingData
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.VoteDbRecord
 import io.provenance.explorer.domain.models.explorer.VoteDbRecordAgg
 import io.provenance.explorer.domain.models.explorer.VoteWeightDbObj
+import io.provenance.explorer.service.getProposalTypeLegacy
+import io.provenance.explorer.service.getProposalTypeList
+import io.provenance.explorer.service.toProposalContent
+import io.provenance.explorer.service.toProposalTitleAndDescription
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -31,43 +37,33 @@ import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
+import cosmos.gov.v1.Gov as GovV1
+import cosmos.gov.v1beta1.Gov as GovV1beta1
 
 object GovProposalTable : IntIdTable(name = "gov_proposal") {
     val proposalId = long("proposal_id")
-    val proposalType = varchar("proposal_type", 128)
+    val proposalType = text("proposal_type")
     val addressId = integer("address_id")
     val address = varchar("address", 128)
     val isValidator = bool("is_validator").default(false)
     val title = text("title")
     val description = text("description")
     val status = varchar("status", 128)
-    val data = jsonb<GovProposalTable, Gov.Proposal>("data", OBJECT_MAPPER)
-    val content = jsonb<GovProposalTable, ObjectNode>("content", OBJECT_MAPPER)
+    val dataV1beta1 = jsonb<GovProposalTable, GovV1beta1.Proposal>("data_v1beta1", OBJECT_MAPPER).nullable()
+    val contentV1beta1 = jsonb<GovProposalTable, ObjectNode>("content_v1beta1", OBJECT_MAPPER).nullable()
     val blockHeight = integer("block_height")
     val txHash = varchar("tx_hash", 64)
     val txTimestamp = datetime("tx_timestamp")
     val txHashId = reference("tx_hash_id", TxCacheTable)
     val depositParamCheckHeight = integer("deposit_param_check_height")
     val votingParamCheckHeight = integer("voting_param_check_height")
+    val dataV1 = jsonb<GovProposalTable, GovV1.Proposal>("data_v1", OBJECT_MAPPER).nullable()
+    val contentV1 = jsonb<GovProposalTable, GovContentV1List>("content_v1", OBJECT_MAPPER).nullable()
 }
 
-fun String.getProposalType() = this.split(".").last().replace("Proposal", "")
-
-fun Message.toProposalTitleAndDescription(protoPrinter: JsonFormat.Printer) =
-    OBJECT_MAPPER.readValue(protoPrinter.print(this), ObjectNode::class.java)
-        .let { it.get("title").asText() to it.get("description").asText() }
-
-fun Message.toProposalContent(protoPrinter: JsonFormat.Printer) =
-    OBJECT_MAPPER.readValue(protoPrinter.print(this), ObjectNode::class.java)
-        .let { node ->
-            node.remove("title")
-            node.remove("description")
-            node
-        }
-
-val passStatuses = listOf(Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name)
+val passStatuses = listOf(GovV1.ProposalStatus.PROPOSAL_STATUS_PASSED.name)
 val failStatuses =
-    listOf(Gov.ProposalStatus.PROPOSAL_STATUS_FAILED.name, Gov.ProposalStatus.PROPOSAL_STATUS_REJECTED.name)
+    listOf(GovV1.ProposalStatus.PROPOSAL_STATUS_FAILED.name, GovV1.ProposalStatus.PROPOSAL_STATUS_REJECTED.name)
 val completeStatuses = passStatuses + failStatuses
 
 class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -91,7 +87,7 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun findByProposalType(type: String) = transaction {
-            GovProposalRecord.find { GovProposalTable.proposalType eq type.getProposalType() }
+            GovProposalRecord.find { GovProposalTable.proposalType like "%${type.getProposalTypeLegacy()}%" }
                 .orderBy(Pair(GovProposalTable.proposalId, SortOrder.ASC))
                 .toList()
         }
@@ -101,40 +97,49 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun buildInsert(
-            proposal: Gov.Proposal,
+            proposal: GovV1.Proposal,
             protoPrinter: JsonFormat.Printer,
             txInfo: TxData,
-            addrInfo: GovAddrData,
+            addrInfo: AddrData,
             isSubmit: Boolean,
             paramHeights: ProposalParamHeights
         ) = transaction {
-            proposal.content.toProposalTitleAndDescription(protoPrinter).let { (title, description) ->
-                val (hash, block, time) = findByProposalId(proposal.proposalId)?.let {
+            proposal.toProposalTitleAndDescription(protoPrinter).let { (title, description) ->
+                val (hash, block, time) = findByProposalId(proposal.id)?.let {
                     if (isSubmit) Triple(txInfo.txHash, txInfo.blockHeight, txInfo.txTimestamp)
                     else Triple(it.txHash, it.blockHeight, it.txTimestamp)
                 } ?: Triple(txInfo.txHash, txInfo.blockHeight, txInfo.txTimestamp)
                 listOf(
                     -1,
-                    proposal.proposalId,
-                    proposal.content.typeUrl.getProposalType(),
+                    proposal.id,
+                    proposal.messagesList.getProposalTypeList(),
                     addrInfo.addrId,
                     addrInfo.addr,
                     addrInfo.isValidator,
                     title,
                     description,
                     proposal.status.name,
-                    proposal,
-                    proposal.content.toProposalContent(protoPrinter),
+                    null,
+                    null,
                     block,
                     hash,
                     time,
                     0,
                     paramHeights.depositCheckHeight,
-                    paramHeights.votingCheckHeight
+                    paramHeights.votingCheckHeight,
+                    proposal,
+                    proposal.toProposalContent().stringify()
                 ).toProcedureObject()
             }
         }
     }
+
+    fun getContentToPrint(printer: JsonFormat.Printer) =
+        contentV1?.list?.toObjectNodeList(printer) ?: listOf(contentV1beta1!!)
+
+    fun getDataTimings() =
+        dataV1?.let { ProposalTimingData(it.submitTime, it.depositEndTime, it.votingStartTime, it.votingEndTime) }
+            ?: dataV1beta1!!.let { ProposalTimingData(it.submitTime, it.depositEndTime, it.votingStartTime, it.votingEndTime) }
 
     var proposalId by GovProposalTable.proposalId
     var proposalType by GovProposalTable.proposalType
@@ -144,14 +149,16 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
     var title by GovProposalTable.title
     var description by GovProposalTable.description
     var status by GovProposalTable.status
-    var data by GovProposalTable.data
-    var content by GovProposalTable.content
+    var dataV1beta1 by GovProposalTable.dataV1beta1
+    var contentV1beta1 by GovProposalTable.contentV1beta1
     var blockHeight by GovProposalTable.blockHeight
     var txHash by GovProposalTable.txHash
     var txTimestamp by GovProposalTable.txTimestamp
     var txHashId by TxCacheRecord referencedOn GovProposalTable.txHashId
     var depositParamCheckHeight by GovProposalTable.depositParamCheckHeight
     var votingParamCheckHeight by GovProposalTable.votingParamCheckHeight
+    var dataV1 by GovProposalTable.dataV1
+    var contentV1 by GovProposalTable.contentV1
 }
 
 object GovVoteTable : IntIdTable(name = "gov_vote") {
@@ -165,6 +172,7 @@ object GovVoteTable : IntIdTable(name = "gov_vote") {
     val txHash = varchar("tx_hash", 64)
     val txTimestamp = datetime("tx_timestamp")
     val txHashId = reference("tx_hash_id", TxCacheTable)
+    val justification = text("justification").nullable()
 }
 
 fun kotlin.Array<kotlin.Array<String>>.toVoteWeightObj() =
@@ -187,7 +195,8 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
                         it.txTimestamp,
                         it.proposalId,
                         "",
-                        ""
+                        "",
+                        it.justification
                     )
                 }
         }
@@ -203,7 +212,8 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
                     arrayAgg,
                     GovVoteTable.blockHeight,
                     GovVoteTable.txHash,
-                    GovVoteTable.txTimestamp
+                    GovVoteTable.txTimestamp,
+                    GovVoteTable.justification
                 )
             ).select { GovVoteTable.proposalId eq proposalId }
                 .groupBy(
@@ -212,7 +222,8 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
                     GovVoteTable.isValidator,
                     GovVoteTable.blockHeight,
                     GovVoteTable.txHash,
-                    GovVoteTable.txTimestamp
+                    GovVoteTable.txTimestamp,
+                    GovVoteTable.justification
                 )
                 .orderBy(Pair(GovVoteTable.blockHeight, SortOrder.DESC))
                 .limit(limit, offset.toLong())
@@ -226,7 +237,8 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
                         it[GovVoteTable.txTimestamp],
                         it[GovVoteTable.proposalId],
                         "",
-                        ""
+                        "",
+                        it[GovVoteTable.justification]
                     )
                 }
         }
@@ -263,7 +275,8 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
                         it[GovVoteTable.txTimestamp],
                         it[GovVoteTable.proposalId],
                         it[GovProposalTable.title],
-                        it[GovProposalTable.status]
+                        it[GovProposalTable.status],
+                        it[GovVoteTable.justification]
                     )
                 }
         }
@@ -274,9 +287,10 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun buildInsert(
             txInfo: TxData,
-            votes: List<Gov.WeightedVoteOption>,
-            addrInfo: GovAddrData,
-            proposalId: Long
+            votes: List<GovV1.WeightedVoteOption>,
+            addrInfo: AddrData,
+            proposalId: Long,
+            justification: String?
         ) = transaction {
             votes.map {
                 listOf(
@@ -290,7 +304,8 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
                     txInfo.txHash,
                     txInfo.txTimestamp,
                     0,
-                    it.weight.toDecimal()
+                    it.weight.toDecimal(),
+                    justification
                 ).toProcedureObject()
             }
         }
@@ -306,6 +321,7 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
     var txHash by GovVoteTable.txHash
     var txTimestamp by GovVoteTable.txTimestamp
     var txHashId by TxCacheRecord referencedOn GovVoteTable.txHashId
+    val justification by GovVoteTable.justification
 }
 
 object GovDepositTable : IntIdTable(name = "gov_deposit") {
@@ -351,7 +367,7 @@ class GovDepositRecord(id: EntityID<Int>) : IntEntity(id) {
             proposalId: Long,
             depositType: DepositType,
             amountList: List<CoinOuterClass.Coin>,
-            addrInfo: GovAddrData
+            addrInfo: AddrData
         ) = amountList.map { buildInsert(txInfo, proposalId, depositType, it, addrInfo) }
 
         fun buildInsert(
@@ -359,7 +375,7 @@ class GovDepositRecord(id: EntityID<Int>) : IntEntity(id) {
             proposalId: Long,
             depositType: DepositType,
             amount: CoinOuterClass.Coin,
-            addrInfo: GovAddrData
+            addrInfo: AddrData
         ) = listOf(
             -1,
             proposalId,
@@ -445,6 +461,10 @@ class ProposalMonitorRecord(id: EntityID<Int>) : IntEntity(id) {
             ProposalMonitorRecord
                 .find { (ProposalMonitorTable.readyForProcessing eq true) and (ProposalMonitorTable.processed eq false) }
                 .toList()
+        }
+
+        fun getByProposalId(proposalId: Long) = transaction {
+            ProposalMonitorRecord.find { ProposalMonitorTable.proposalId eq proposalId }.firstOrNull()
         }
     }
 

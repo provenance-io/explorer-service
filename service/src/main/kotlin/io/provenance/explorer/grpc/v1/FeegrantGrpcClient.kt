@@ -1,10 +1,10 @@
 package io.provenance.explorer.grpc.v1
 
 import cosmos.feegrant.v1beta1.QueryGrpcKt
+import cosmos.feegrant.v1beta1.queryAllowancesByGranterRequest
 import cosmos.feegrant.v1beta1.queryAllowancesRequest
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
-import io.provenance.explorer.domain.exceptions.TendermintApiNotFoundException
 import io.provenance.explorer.grpc.extensions.getPagination
 import org.springframework.stereotype.Component
 import java.net.URI
@@ -42,6 +42,11 @@ class FeegrantGrpcClient(channelUri: URI) {
             }
         )
 
-    fun getGrantsByGranter(granter: String, offset: Int, limit: Int): Nothing =
-        throw TendermintApiNotFoundException("This API is not yet implemented. Coming with upgrade to cosmos-sdk version 0.46.0")
+    suspend fun getGrantsByGranter(granter: String, offset: Int, limit: Int) =
+        feegrantClient.allowancesByGranter(
+            queryAllowancesByGranterRequest {
+                this.granter = granter
+                this.pagination = getPagination(offset, limit)
+            }
+        )
 }

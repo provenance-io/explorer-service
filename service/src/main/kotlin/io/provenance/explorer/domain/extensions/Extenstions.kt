@@ -13,6 +13,7 @@ import com.google.protobuf.ByteString
 import com.google.protobuf.Timestamp
 import com.hubspot.jackson.datatype.protobuf.ProtobufModule
 import cosmos.base.abci.v1beta1.Abci
+import cosmos.base.tendermint.v1beta1.Types.Block
 import cosmos.staking.v1beta1.Staking
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER

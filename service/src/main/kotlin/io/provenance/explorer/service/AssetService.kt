@@ -130,7 +130,7 @@ class AssetService(
                         if (record.denom != UTILITY_TOKEN) record.toCoinStrWithPrice(price)
                         else tokenService.totalSupply().toCoinStrWithPrice(price, UTILITY_TOKEN),
                         record.data?.isMintable() ?: false,
-                        if (record.markerAddress != null) markerClient.getMarkerHoldersCount(unit.marker).pagination.total.toInt() else 0,
+                        accountClient.getDenomHolders(unit.marker, 0, 1).pagination.total.toInt(),
                         txCount,
                         attributes.await().map { attr -> attr.toResponse() },
                         getDenomMetadataSingle(unit.marker).toObjectNode(protoPrinter),
@@ -145,13 +145,11 @@ class AssetService(
     fun getAssetHolders(denom: String, page: Int, count: Int) = runBlocking {
         val unit = MarkerUnitRecord.findByUnit(denom)?.marker ?: denom
         val supply = getCurrentSupply(unit)
-        val res = markerClient.getMarkerHolders(unit, page.toOffset(count), count)
-        val list = res?.balancesList?.asFlow()?.map { bal ->
-            val balance = bal.coinsList.first { coin -> coin.denom == unit }.amount
-            AssetHolder(bal.address, CountStrTotal(balance, supply, unit))
-        }?.toList()?.sortedWith(compareBy { it.balance.count.toBigDecimal() })?.asReversed()
-            ?: listOf()
-        PagedResults(res?.pagination?.total?.pageCountOfResults(count) ?: 0, list, res?.pagination?.total ?: 0)
+        val res = accountClient.getDenomHolders(unit, page.toOffset(count), count)
+        val list = res.denomOwnersList.asFlow().map { bal ->
+            AssetHolder(bal.address, CountStrTotal(bal.balance.amount, supply, unit))
+        }.toList().sortedWith(compareBy { it.balance.count.toBigDecimal() }).asReversed()
+        PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
     }
 
     fun getMetadata(denom: String?) = getDenomMetadata(denom).map { it.toObjectNode(protoPrinter) }

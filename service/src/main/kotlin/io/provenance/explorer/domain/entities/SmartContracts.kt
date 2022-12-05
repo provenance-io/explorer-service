@@ -10,6 +10,7 @@ import io.provenance.explorer.domain.models.explorer.CodeWithContractCount
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Count
 import org.jetbrains.exposed.sql.Op
@@ -21,7 +22,9 @@ import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 
-object SmCodeTable : IntIdTable(name = "sm_code") {
+object SmCodeTable : IdTable<Int>(name = "sm_code") {
+    override val id = integer("id").entityId()
+    override val primaryKey = PrimaryKey(id)
     val creationHeight = integer("creation_height")
     val creator = varchar("creator", 128).nullable()
     val dataHash = varchar("data_hash", 256).nullable()

@@ -2,13 +2,9 @@ package io.provenance.explorer.grpc.v1
 
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
-import io.provenance.explorer.grpc.extensions.getPagination
 import io.provenance.explorer.grpc.extensions.toMarker
-import io.provenance.marker.v1.Balance
 import io.provenance.marker.v1.MarkerAccount
 import io.provenance.marker.v1.QueryGrpcKt
-import io.provenance.marker.v1.QueryHoldingResponse
-import io.provenance.marker.v1.queryHoldingRequest
 import io.provenance.marker.v1.queryMarkerRequest
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -52,46 +48,5 @@ class MarkerGrpcClient(channelUri: URI, private val semaphore: Semaphore) {
             }
         }
 
-    suspend fun getMarkerHolders(denom: String, offset: Int, count: Int): QueryHoldingResponse? =
-        semaphore.withPermit {
-            try {
-                markerClient.holding(
-                    queryHoldingRequest {
-                        this.id = denom
-                        this.pagination = getPagination(offset, count)
-                    }
-                )
-            } catch (e: Exception) {
-                null
-            }
-        }
-
-    suspend fun getMarkerHoldersCount(denom: String): QueryHoldingResponse =
-        semaphore.withPermit {
-            markerClient.holding(
-                queryHoldingRequest {
-                    this.id = denom
-                    this.pagination = getPagination(0, 1)
-                }
-            )
-        }
-
     suspend fun getMarkerParams() = markerClient.params(MarkerRequest.newBuilder().build())
-
-    suspend fun getAllMarkerHolders(denom: String): MutableList<Balance> {
-        var offset = 0
-        val count = 100
-
-        val results = getMarkerHolders(denom, offset, count) ?: return mutableListOf()
-
-        val total = results.pagination?.total ?: results.balancesCount.toLong()
-        val holders = results.balancesList.toMutableList()
-
-        while (holders.count() < total) {
-            offset += count
-            getMarkerHolders(denom, offset, count).let { holders.addAll(it!!.balancesList) }
-        }
-
-        return holders
-    }
 }

@@ -5,13 +5,26 @@ import cosmos.authz.v1beta1.Authz.CountAuthorization
 import cosmos.authz.v1beta1.Authz.GenericAuthorization
 import cosmos.bank.v1beta1.Tx
 import cosmos.bank.v1beta1.msgSend
+import cosmos.gov.v1.Tx.MsgSubmitProposal
+import cosmos.gov.v1.Tx.MsgVoteWeighted
+import cosmos.group.v1.Types.ProposalExecutorResult
+import cosmos.group.v1.Types.ProposalStatus
+import cosmos.nft.v1beta1.Tx.MsgSend
 import cosmos.staking.v1beta1.Authz.AuthorizationType
+import cosmos.staking.v1beta1.Tx.MsgCancelUnbondingDelegation
 import cosmos.staking.v1beta1.msgBeginRedelegate
 import cosmos.staking.v1beta1.msgDelegate
 import cosmos.staking.v1beta1.msgUndelegate
+import cosmos.upgrade.v1beta1.Tx.MsgCancelUpgrade
+import cosmos.upgrade.v1beta1.Tx.MsgSoftwareUpgrade
+import cosmos.upgrade.v1beta1.Upgrade.SoftwareUpgradeProposal
 import cosmwasm.wasm.v1.msgExecuteContract
 import cosmwasm.wasm.v1.msgInstantiateContract
 import cosmwasm.wasm.v1.msgMigrateContract
+import ibc.applications.fee.v1.Tx.MsgPayPacketFee
+import ibc.applications.fee.v1.Tx.MsgPayPacketFeeAsync
+import ibc.applications.fee.v1.Tx.MsgRegisterCounterpartyPayee
+import ibc.applications.fee.v1.Tx.MsgRegisterPayee
 import ibc.applications.transfer.v1.Tx.MsgTransfer
 import ibc.core.channel.v1.Tx.MsgAcknowledgement
 import ibc.core.channel.v1.Tx.MsgChannelCloseConfirm
@@ -82,6 +95,8 @@ import io.provenance.marker.v1.MsgCancelRequest
 import io.provenance.marker.v1.MsgDeleteAccessRequest
 import io.provenance.marker.v1.MsgDeleteRequest
 import io.provenance.marker.v1.MsgFinalizeRequest
+import io.provenance.marker.v1.MsgGrantAllowanceRequest
+import io.provenance.marker.v1.MsgIbcTransferRequest
 import io.provenance.marker.v1.MsgMintRequest
 import io.provenance.marker.v1.MsgSetDenomMetadataRequest
 import io.provenance.marker.v1.MsgTransferRequest
@@ -118,15 +133,21 @@ import net.pearx.kasechange.universalWordSplitter
 /**
  * Ginormous file meant to convert a Msg object to the proper format, and do stuff with it.
  */
-
-// Updating this list also means updating io.provenance.explorer.domain.extensions.SigExtenstionsKt.getSigners()
-
 fun Any.toMsgSend() = this.unpack(Tx.MsgSend::class.java)
 fun Any.toMsgMultiSend() = this.unpack(Tx.MsgMultiSend::class.java)
-fun Any.toMsgSubmitProposal() = this.unpack(cosmos.gov.v1beta1.Tx.MsgSubmitProposal::class.java)
-fun Any.toMsgVote() = this.unpack(cosmos.gov.v1beta1.Tx.MsgVote::class.java)
-fun Any.toMsgVoteWeighted() = this.unpack(cosmos.gov.v1beta1.Tx.MsgVoteWeighted::class.java)
-fun Any.toMsgDeposit() = this.unpack(cosmos.gov.v1beta1.Tx.MsgDeposit::class.java)
+fun Any.toMsgSubmitProposalOld() = this.unpack(cosmos.gov.v1beta1.Tx.MsgSubmitProposal::class.java)
+fun Any.toMsgVoteOld() = this.unpack(cosmos.gov.v1beta1.Tx.MsgVote::class.java)
+fun Any.toMsgVoteWeightedOld() = this.unpack(cosmos.gov.v1beta1.Tx.MsgVoteWeighted::class.java)
+fun Any.toMsgDepositOld() = this.unpack(cosmos.gov.v1beta1.Tx.MsgDeposit::class.java)
+fun Any.toMsgSoftwareUpgrade() = this.unpack(MsgSoftwareUpgrade::class.java)
+fun Any.toMsgCancelUpgrade() = this.unpack(MsgCancelUpgrade::class.java)
+fun Any.toMsgSubmitProposal() = this.unpack(MsgSubmitProposal::class.java)
+fun Any.toMsgExecLegacyContent() = this.unpack(cosmos.gov.v1.Tx.MsgExecLegacyContent::class.java)
+fun Any.toMsgVote() = this.unpack(cosmos.gov.v1.Tx.MsgVote::class.java)
+fun Any.toMsgVoteWeighted() = this.unpack(MsgVoteWeighted::class.java)
+fun Any.toMsgDeposit() = this.unpack(cosmos.gov.v1.Tx.MsgDeposit::class.java)
+fun Any.toMsgSendNft() = this.unpack(MsgSend::class.java)
+
 fun Any.toMsgSetWithdrawAddress() = this.unpack(cosmos.distribution.v1beta1.Tx.MsgSetWithdrawAddress::class.java)
 fun Any.toMsgWithdrawDelegatorReward() =
     this.unpack(cosmos.distribution.v1beta1.Tx.MsgWithdrawDelegatorReward::class.java)
@@ -142,7 +163,14 @@ fun Any.toMsgEditValidator() = this.unpack(cosmos.staking.v1beta1.Tx.MsgEditVali
 fun Any.toMsgDelegate() = this.unpack(cosmos.staking.v1beta1.Tx.MsgDelegate::class.java)
 fun Any.toMsgBeginRedelegate() = this.unpack(cosmos.staking.v1beta1.Tx.MsgBeginRedelegate::class.java)
 fun Any.toMsgUndelegate() = this.unpack(cosmos.staking.v1beta1.Tx.MsgUndelegate::class.java)
+fun Any.toMsgCancelUnbondingDelegation() = this.unpack(MsgCancelUnbondingDelegation::class.java)
 fun Any.toMsgCreateVestingAccount() = this.unpack(cosmos.vesting.v1beta1.Tx.MsgCreateVestingAccount::class.java)
+fun Any.toMsgCreatePermanentLockedAccount() =
+    this.unpack(cosmos.vesting.v1beta1.Tx.MsgCreatePermanentLockedAccount::class.java)
+
+fun Any.toMsgCreatePeriodicVestingAccount() =
+    this.unpack(cosmos.vesting.v1beta1.Tx.MsgCreatePeriodicVestingAccount::class.java)
+
 fun Any.toMsgWithdrawRequest() = this.unpack(MsgWithdrawRequest::class.java)
 fun Any.toMsgAddMarkerRequest() = this.unpack(MsgAddMarkerRequest::class.java)
 fun Any.toMsgAddAccessRequest() = this.unpack(MsgAddAccessRequest::class.java)
@@ -181,12 +209,14 @@ fun Any.toMsgExecuteContract() = this.unpack(cosmwasm.wasm.v1.Tx.MsgExecuteContr
 fun Any.toMsgMigrateContract() = this.unpack(cosmwasm.wasm.v1.Tx.MsgMigrateContract::class.java)
 fun Any.toMsgUpdateAdmin() = this.unpack(cosmwasm.wasm.v1.Tx.MsgUpdateAdmin::class.java)
 fun Any.toMsgClearAdmin() = this.unpack(cosmwasm.wasm.v1.Tx.MsgClearAdmin::class.java)
+fun Any.toMsgInstantiateContract2() = this.unpack(cosmwasm.wasm.v1.Tx.MsgInstantiateContract2::class.java)
 fun Any.toMsgStoreCodeOld() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgStoreCode::class.java)
 fun Any.toMsgInstantiateContractOld() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgInstantiateContract::class.java)
 fun Any.toMsgExecuteContractOld() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgExecuteContract::class.java)
 fun Any.toMsgMigrateContractOld() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgMigrateContract::class.java)
 fun Any.toMsgUpdateAdminOld() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgUpdateAdmin::class.java)
 fun Any.toMsgClearAdminOld() = this.unpack(cosmwasm.wasm.v1beta1.Tx.MsgClearAdmin::class.java)
+
 fun Any.toMsgAddScopeDataAccessRequest() = this.unpack(MsgAddScopeDataAccessRequest::class.java)
 fun Any.toMsgDeleteScopeDataAccessRequest() = this.unpack(MsgDeleteScopeDataAccessRequest::class.java)
 fun Any.toMsgAddScopeOwnerRequest() = this.unpack(MsgAddScopeOwnerRequest::class.java)
@@ -197,6 +227,7 @@ fun Any.toMsgAddContractSpecToScopeSpecRequest() = this.unpack(MsgAddContractSpe
 fun Any.toMsgDeleteContractSpecFromScopeSpecRequest() =
     this.unpack(MsgDeleteContractSpecFromScopeSpecRequest::class.java)
 
+fun Any.toMsgIbcTransferRequest() = this.unpack(MsgIbcTransferRequest::class.java)
 fun Any.toMsgTransfer() = this.unpack(MsgTransfer::class.java)
 fun Any.toMsgChannelOpenInit() = this.unpack(MsgChannelOpenInit::class.java)
 fun Any.toMsgChannelOpenTry() = this.unpack(MsgChannelOpenTry::class.java)
@@ -219,16 +250,39 @@ fun Any.toMsgConnectionOpenConfirm() = this.unpack(MsgConnectionOpenConfirm::cla
 fun Any.toTendermintClientState() = this.unpack(Tendermint.ClientState::class.java)
 fun Any.toLocalhostClientState() = this.unpack(Localhost.ClientState::class.java)
 fun Any.toSoloMachineClientState() = this.unpack(Solomachine.ClientState::class.java)
+fun Any.toMsgRegisterPayee() = this.unpack(MsgRegisterPayee::class.java)
+fun Any.toMsgRegisterCounterpartyPayee() = this.unpack(MsgRegisterCounterpartyPayee::class.java)
+fun Any.toMsgPayPacketFee() = this.unpack(MsgPayPacketFee::class.java)
+fun Any.toMsgPayPacketFeeAsync() = this.unpack(MsgPayPacketFeeAsync::class.java)
+
 fun Any.toMsgGrant() = this.unpack(cosmos.authz.v1beta1.Tx.MsgGrant::class.java)
 fun Any.toMsgExec() = this.unpack(cosmos.authz.v1beta1.Tx.MsgExec::class.java)
 fun Any.toMsgRevoke() = this.unpack(cosmos.authz.v1beta1.Tx.MsgRevoke::class.java)
 fun Any.toMsgGrantAllowance() = this.unpack(cosmos.feegrant.v1beta1.Tx.MsgGrantAllowance::class.java)
 fun Any.toMsgRevokeAllowance() = this.unpack(cosmos.feegrant.v1beta1.Tx.MsgRevokeAllowance::class.java)
+fun Any.toMsgGrantAllowanceRequest() = this.unpack(MsgGrantAllowanceRequest::class.java)
+
+fun Any.toMsgCreateGroup() = this.unpack(cosmos.group.v1.Tx.MsgCreateGroup::class.java)
+fun Any.toMsgUpdateGroupMembers() = this.unpack(cosmos.group.v1.Tx.MsgUpdateGroupMembers::class.java)
+fun Any.toMsgUpdateGroupAdmin() = this.unpack(cosmos.group.v1.Tx.MsgUpdateGroupAdmin::class.java)
+fun Any.toMsgUpdateGroupMetadata() = this.unpack(cosmos.group.v1.Tx.MsgUpdateGroupMetadata::class.java)
+fun Any.toMsgCreateGroupPolicy() = this.unpack(cosmos.group.v1.Tx.MsgCreateGroupPolicy::class.java)
+fun Any.toMsgCreateGroupWithPolicy() = this.unpack(cosmos.group.v1.Tx.MsgCreateGroupWithPolicy::class.java)
+fun Any.toMsgUpdateGroupPolicyAdmin() = this.unpack(cosmos.group.v1.Tx.MsgUpdateGroupPolicyAdmin::class.java)
+fun Any.toMsgUpdateGroupPolicyDecisionPolicy() =
+    this.unpack(cosmos.group.v1.Tx.MsgUpdateGroupPolicyDecisionPolicy::class.java)
+
+fun Any.toMsgUpdateGroupPolicyMetadata() = this.unpack(cosmos.group.v1.Tx.MsgUpdateGroupPolicyMetadata::class.java)
+fun Any.toMsgSubmitProposalGroup() = this.unpack(cosmos.group.v1.Tx.MsgSubmitProposal::class.java)
+fun Any.toMsgWithdrawProposalGroup() = this.unpack(cosmos.group.v1.Tx.MsgWithdrawProposal::class.java)
+fun Any.toMsgVoteGroup() = this.unpack(cosmos.group.v1.Tx.MsgVote::class.java)
+fun Any.toMsgExecGroup() = this.unpack(cosmos.group.v1.Tx.MsgExec::class.java)
+fun Any.toMsgLeaveGroup() = this.unpack(cosmos.group.v1.Tx.MsgLeaveGroup::class.java)
 
 //region ADDRESSES
 fun Any.getAssociatedAddresses(): List<String> =
     when {
-        typeUrl.endsWith("MsgSend") -> this.toMsgSend().let { listOf(it.fromAddress, it.toAddress) }
+        typeUrl.endsWith("bank.v1beta1.MsgSend") -> this.toMsgSend().let { listOf(it.fromAddress, it.toAddress) }
         typeUrl.endsWith("MsgMultiSend") -> this.toMsgMultiSend()
             .let { it.inputsList.map { inp -> inp.address } + it.outputsList.map { out -> out.address } }
         typeUrl.endsWith("MsgSetWithdrawAddress") -> this.toMsgSetWithdrawAddress()
@@ -239,10 +293,17 @@ fun Any.getAssociatedAddresses(): List<String> =
             .let { listOf(it.validatorAddress) }
         typeUrl.endsWith("MsgFundCommunityPool") -> this.toMsgFundCommunityPool().let { listOf(it.depositor) }
         typeUrl.endsWith("MsgSubmitEvidence") -> this.toMsgSubmitEvidence().let { listOf(it.submitter) }
-        typeUrl.endsWith("gov.v1beta1.MsgSubmitProposal") -> this.toMsgSubmitProposal().let { listOf(it.proposer) }
-        typeUrl.endsWith("gov.v1beta1.MsgVote") -> this.toMsgVote().let { listOf(it.voter) }
-        typeUrl.endsWith("MsgVoteWeighted") -> this.toMsgVoteWeighted().let { listOf(it.voter) }
-        typeUrl.endsWith("MsgDeposit") -> this.toMsgDeposit().let { listOf(it.depositor) }
+        typeUrl.endsWith("gov.v1beta1.MsgSubmitProposal") -> this.toMsgSubmitProposalOld().let { listOf(it.proposer) }
+        typeUrl.endsWith("gov.v1.MsgSubmitProposal") -> this.toMsgSubmitProposal()
+            .let { listOf(it.proposer) + it.messagesList.flatMap { m -> m.getAssociatedAddresses() } }
+        typeUrl.endsWith("MsgSoftwareUpgrade") -> this.toMsgSoftwareUpgrade().let { listOf(it.authority) }
+        typeUrl.endsWith("MsgCancelUpgrade") -> this.toMsgCancelUpgrade().let { listOf(it.authority) }
+        typeUrl.endsWith("gov.v1beta1.MsgVote") -> this.toMsgVoteOld().let { listOf(it.voter) }
+        typeUrl.endsWith("gov.v1.MsgVote") -> this.toMsgVote().let { listOf(it.voter) }
+        typeUrl.endsWith("gov.v1beta1.MsgVoteWeighted") -> this.toMsgVoteWeightedOld().let { listOf(it.voter) }
+        typeUrl.endsWith("gov.v1.MsgVoteWeighted") -> this.toMsgVoteWeighted().let { listOf(it.voter) }
+        typeUrl.endsWith("gov.v1beta1.MsgDeposit") -> this.toMsgDepositOld().let { listOf(it.depositor) }
+        typeUrl.endsWith("gov.v1.MsgDeposit") -> this.toMsgDeposit().let { listOf(it.depositor) }
         typeUrl.endsWith("MsgUnjail") -> this.toMsgUnjail().let { listOf(it.validatorAddr) }
         typeUrl.endsWith("MsgCreateValidator") -> this.toMsgCreateValidator()
             .let { listOf(it.validatorAddress, it.delegatorAddress) }
@@ -252,7 +313,13 @@ fun Any.getAssociatedAddresses(): List<String> =
             .let { listOf(it.delegatorAddress, it.validatorDstAddress, it.validatorSrcAddress) }
         typeUrl.endsWith("MsgUndelegate") -> this.toMsgUndelegate()
             .let { listOf(it.delegatorAddress, it.validatorAddress) }
+        typeUrl.endsWith("MsgCancelUnbondingDelegation") -> this.toMsgCancelUnbondingDelegation()
+            .let { listOf(it.delegatorAddress, it.validatorAddress) }
         typeUrl.endsWith("MsgCreateVestingAccount") -> this.toMsgCreateVestingAccount()
+            .let { listOf(it.fromAddress, it.toAddress) }
+        typeUrl.endsWith("MsgCreatePermanentLockedAccount") -> this.toMsgCreatePermanentLockedAccount()
+            .let { listOf(it.fromAddress, it.toAddress) }
+        typeUrl.endsWith("MsgCreatePeriodicVestingAccount") -> this.toMsgCreatePeriodicVestingAccount()
             .let { listOf(it.fromAddress, it.toAddress) }
         typeUrl.endsWith("MsgWithdrawRequest") -> this.toMsgWithdrawRequest()
             .let { listOf(it.toAddress, it.administrator) }
@@ -306,6 +373,8 @@ fun Any.getAssociatedAddresses(): List<String> =
         typeUrl.endsWith("v1.MsgStoreCode") -> this.toMsgStoreCode().let { listOf(it.sender) }
         typeUrl.endsWith("v1.MsgInstantiateContract") -> this.toMsgInstantiateContract()
             .let { listOf(it.sender, it.admin) }
+        typeUrl.endsWith("v1.MsgInstantiateContract2") -> this.toMsgInstantiateContract2()
+            .let { listOf(it.sender, it.admin) }
         typeUrl.endsWith("v1.MsgExecuteContract") -> this.toMsgExecuteContract().let { listOf(it.sender) }
         typeUrl.endsWith("v1.MsgMigrateContract") -> this.toMsgMigrateContract().let { listOf(it.sender) }
         typeUrl.endsWith("v1.MsgUpdateAdmin") -> this.toMsgUpdateAdmin().let { listOf(it.sender, it.newAdmin) }
@@ -331,6 +400,8 @@ fun Any.getAssociatedAddresses(): List<String> =
             .let { listOf(it.account, it.owner) }
         typeUrl.endsWith("MsgAddContractSpecToScopeSpecRequest") -> this.toMsgAddContractSpecToScopeSpecRequest().signersList
         typeUrl.endsWith("MsgDeleteContractSpecFromScopeSpecRequest") -> this.toMsgDeleteContractSpecFromScopeSpecRequest().signersList
+        typeUrl.endsWith("MsgIbcTransferRequest") -> this.toMsgIbcTransferRequest()
+            .let { listOf(it.administrator, it.transfer.sender) }
         typeUrl.endsWith("MsgTransfer") -> this.toMsgTransfer().let { listOf(it.sender) }
         typeUrl.endsWith("MsgChannelOpenInit") -> this.toMsgChannelOpenInit().let { listOf(it.signer) }
         typeUrl.endsWith("MsgChannelOpenTry") -> this.toMsgChannelOpenTry().let { listOf(it.signer) }
@@ -350,12 +421,43 @@ fun Any.getAssociatedAddresses(): List<String> =
         typeUrl.endsWith("MsgConnectionOpenTry") -> this.toMsgConnectionOpenTry().let { listOf(it.signer) }
         typeUrl.endsWith("MsgConnectionOpenAck") -> this.toMsgConnectionOpenAck().let { listOf(it.signer) }
         typeUrl.endsWith("MsgConnectionOpenConfirm") -> this.toMsgConnectionOpenConfirm().let { listOf(it.signer) }
+        typeUrl.endsWith("MsgRegisterPayee") -> this.toMsgRegisterPayee().let { listOf(it.relayer, it.payee) }
+        typeUrl.endsWith("MsgRegisterCounterpartyPayee") -> this.toMsgRegisterCounterpartyPayee()
+            .let { listOf(it.relayer) }
+        typeUrl.endsWith("MsgPayPacketFee") -> this.toMsgPayPacketFee().let { listOf(it.signer) + it.relayersList }
+        typeUrl.endsWith("MsgPayPacketFeeAsync") -> this.toMsgPayPacketFeeAsync()
+            .let { listOf(it.packetFee.refundAddress) + it.packetFee.relayersList }
         typeUrl.endsWith("MsgGrant") -> this.toMsgGrant().let { listOf(it.granter, it.grantee) }
         typeUrl.endsWith("authz.v1beta1.MsgExec") -> this.toMsgExec()
             .let { exec -> exec.msgsList.flatMap { it.getAssociatedAddresses() } + listOf(exec.grantee) }
         typeUrl.endsWith("MsgRevoke") -> this.toMsgRevoke().let { listOf(it.granter, it.grantee) }
         typeUrl.endsWith("MsgGrantAllowance") -> this.toMsgGrantAllowance().let { listOf(it.granter, it.grantee) }
         typeUrl.endsWith("MsgRevokeAllowance") -> this.toMsgRevokeAllowance().let { listOf(it.granter, it.grantee) }
+        typeUrl.endsWith("MsgGrantAllowanceRequest") -> this.toMsgGrantAllowanceRequest()
+            .let { listOf(it.administrator, it.grantee) }
+        typeUrl.endsWith("group.v1.MsgCreateGroup") -> this.toMsgCreateGroup()
+            .let { listOf(it.admin) + it.membersList.map { mem -> mem.address } }
+        typeUrl.endsWith("group.v1.MsgUpdateGroupMembers") -> this.toMsgUpdateGroupMembers()
+            .let { listOf(it.admin) + it.memberUpdatesList.map { mem -> mem.address } }
+        typeUrl.endsWith("group.v1.MsgUpdateGroupAdmin") -> this.toMsgUpdateGroupAdmin()
+            .let { listOf(it.admin, it.newAdmin) }
+        typeUrl.endsWith("group.v1.MsgUpdateGroupMetadata") -> listOf(this.toMsgUpdateGroupMetadata().admin)
+        typeUrl.endsWith("group.v1.MsgCreateGroupPolicy") -> listOf(this.toMsgCreateGroupPolicy().admin)
+        typeUrl.endsWith("group.v1.MsgCreateGroupWithPolicy") -> this.toMsgCreateGroupWithPolicy()
+            .let { listOf(it.admin) + it.membersList.map { mem -> mem.address } }
+        typeUrl.endsWith("group.v1.MsgUpdateGroupPolicyAdmin") -> this.toMsgUpdateGroupPolicyAdmin()
+            .let { listOf(it.admin, it.groupPolicyAddress, it.newAdmin) }
+        typeUrl.endsWith("group.v1.MsgUpdateGroupPolicyDecisionPolicy") -> this.toMsgUpdateGroupPolicyDecisionPolicy()
+            .let { listOf(it.admin, it.groupPolicyAddress) }
+        typeUrl.endsWith("group.v1.MsgUpdateGroupPolicyMetadata") -> this.toMsgUpdateGroupPolicyMetadata()
+            .let { listOf(it.admin, it.groupPolicyAddress) }
+        typeUrl.endsWith("group.v1.MsgSubmitProposal") -> this.toMsgSubmitProposalGroup()
+            .let { listOf(it.groupPolicyAddress) + it.proposersList + it.messagesList.flatMap { msg -> msg.getAssociatedAddresses() } }
+        typeUrl.endsWith("group.v1.MsgWithdrawProposal") -> listOf(this.toMsgWithdrawProposalGroup().address)
+        typeUrl.endsWith("group.v1.MsgVote") -> listOf(this.toMsgVoteGroup().voter)
+        typeUrl.endsWith("group.v1.MsgExec") -> listOf(this.toMsgExecGroup().executor)
+        typeUrl.endsWith("group.v1.MsgLeaveGroup") -> listOf(this.toMsgLeaveGroup().address)
+        typeUrl.endsWith("nft.v1beta1.MsgSend") -> this.toMsgSendNft().let { listOf(it.sender, it.receiver) }
 
         else -> listOf<String>().also { logger().debug("This typeUrl is not yet supported as an address-based msg: $typeUrl") }
     }
@@ -365,7 +467,7 @@ fun Any.getAssociatedAddresses(): List<String> =
 //region DENOMS
 fun Any.getAssociatedDenoms(): List<String> =
     when {
-        typeUrl.endsWith("MsgSend") -> this.toMsgSend().let { it.amountList.map { am -> am.denom } }
+        typeUrl.endsWith("bank.v1beta1.MsgSend") -> this.toMsgSend().let { it.amountList.map { am -> am.denom } }
         typeUrl.endsWith("MsgMultiSend") -> this.toMsgMultiSend()
             .let {
                 it.inputsList.flatMap { inp -> inp.coinsList.map { c -> c.denom } } +
@@ -390,16 +492,32 @@ fun Any.getAssociatedDenoms(): List<String> =
             .let { it.account.getDenomByAddress()?.let { denom -> listOf(denom) } ?: listOf() }
         typeUrl.endsWith("v1.MsgInstantiateContract") -> this.toMsgInstantiateContract()
             .let { it.fundsList.map { c -> c.denom } }
+        typeUrl.endsWith("v1.MsgInstantiateContract2") -> this.toMsgInstantiateContract2()
+            .let { it.fundsList.map { c -> c.denom } }
         typeUrl.endsWith("v1.MsgExecuteContract") -> this.toMsgExecuteContract()
             .let { it.fundsList.map { c -> c.denom } }
         typeUrl.endsWith("v1beta1.MsgInstantiateContract") -> this.toMsgInstantiateContractOld()
             .let { it.fundsList.map { c -> c.denom } }
         typeUrl.endsWith("v1beta1.MsgExecuteContract") -> this.toMsgExecuteContractOld()
             .let { it.fundsList.map { c -> c.denom } }
+        typeUrl.endsWith("MsgIbcTransferRequest") -> this.toMsgIbcTransferRequest()
+            .let { listOf(it.transfer.token.denom) }
         typeUrl.endsWith("MsgTransfer") -> this.toMsgTransfer().let { listOf(it.token.denom) }
         typeUrl.endsWith("MsgCreateVestingAccount") -> this.toMsgCreateVestingAccount()
             .let { it.amountList.map { c -> c.denom } }
+        typeUrl.endsWith("MsgCreatePermanentLockedAccount") -> this.toMsgCreatePermanentLockedAccount()
+            .let { it.amountList.map { c -> c.denom } }
+        typeUrl.endsWith("MsgCreatePeriodicVestingAccount") -> this.toMsgCreatePeriodicVestingAccount()
+            .let { it.vestingPeriodsList.flatMap { p -> p.amountList.map { c -> c.denom } } }
         typeUrl.endsWith("authz.v1beta1.MsgExec") -> this.toMsgExec().msgsList.flatMap { it.getAssociatedDenoms() }
+        typeUrl.endsWith("MsgGrantAllowanceRequest") -> this.toMsgGrantAllowanceRequest().let { listOf(it.denom) }
+        typeUrl.endsWith("MsgPayPacketFee") -> this.toMsgPayPacketFee().fee.let { fee ->
+            fee.recvFeeList.map { it.denom } + fee.ackFeeList.map { it.denom } + fee.timeoutFeeList.map { it.denom }
+        }
+        typeUrl.endsWith("MsgPayPacketFeeAsync") -> this.toMsgPayPacketFeeAsync().packetFee.fee.let { fee ->
+            fee.recvFeeList.map { it.denom } + fee.ackFeeList.map { it.denom } + fee.timeoutFeeList.map { it.denom }
+        }
+
         else -> listOf<String>()
             .also { logger().debug("This typeUrl is not yet supported as an asset-based msg: $typeUrl") }
     }
@@ -459,6 +577,17 @@ fun Any.getTxIbcClientChannel() =
                 "packet_src_channel"
             )
         }
+        typeUrl.endsWith("MsgIbcTransferRequest") -> this.toMsgIbcTransferRequest().let {
+            TxIbcData(
+                null,
+                it.transfer.sourcePort,
+                it.transfer.sourceChannel,
+                "send_packet",
+                null,
+                "packet_src_port",
+                "packet_src_channel"
+            )
+        }
         typeUrl.endsWith("MsgRecvPacket") -> this.toMsgRecvPacket().let {
             TxIbcData(
                 null,
@@ -509,7 +638,8 @@ fun Any.getTxIbcClientChannel() =
 
 fun Any.getIbcLedgerMsgs() =
     when {
-        typeUrl.endsWith("MsgTransfer") ||
+        typeUrl.endsWith("MsgInbTransferRequest") ||
+            typeUrl.endsWith("MsgTransfer") ||
             typeUrl.endsWith("MsgRecvPacket") ||
             typeUrl.endsWith("MsgAcknowledgement") ||
             typeUrl.endsWith("MsgTimeout")
@@ -654,14 +784,20 @@ fun SessionIdComponents?.toMAddress() =
 //endregion
 
 //region GOVERNANCE
+fun Any.toSoftwareUpgradeProposal() = this.unpack(SoftwareUpgradeProposal::class.java)
+
 enum class GovMsgType { PROPOSAL, VOTE, WEIGHTED, DEPOSIT }
 
 fun Any.getAssociatedGovMsgs() =
     when {
-        typeUrl.endsWith("gov.v1beta1.MsgSubmitProposal") -> GovMsgType.PROPOSAL to this
-        typeUrl.endsWith("gov.v1beta1.MsgVote") -> GovMsgType.VOTE to this
-        typeUrl.endsWith("MsgVoteWeighted") -> GovMsgType.WEIGHTED to this
-        typeUrl.endsWith("MsgDeposit") -> GovMsgType.DEPOSIT to this
+        typeUrl.endsWith("gov.v1beta1.MsgSubmitProposal")
+            || typeUrl.endsWith("gov.v1.MsgSubmitProposal") -> GovMsgType.PROPOSAL to this
+        typeUrl.endsWith("gov.v1beta1.MsgVote")
+            || typeUrl.endsWith("gov.v1.MsgVote") -> GovMsgType.VOTE to this
+        typeUrl.endsWith("gov.v1beta1.MsgVoteWeighted")
+            || typeUrl.endsWith("gov.v1.MsgVoteWeighted") -> GovMsgType.WEIGHTED to this
+        typeUrl.endsWith("gov.v1beta1.MsgDeposit")
+            || typeUrl.endsWith("gov.v1.MsgDeposit") -> GovMsgType.DEPOSIT to this
         else -> null.also { logger().debug("This typeUrl is not a governance-based msg: $typeUrl") }
     }
 
@@ -673,6 +809,8 @@ fun Any.getAssociatedSmContractMsgs(): List<Pair<SmContractValue, kotlin.Any>>? 
         typeUrl.endsWith("v1.MsgStoreCode") -> null
         typeUrl.endsWith("v1beta1.MsgStoreCode") -> null
         typeUrl.endsWith("v1.MsgInstantiateContract") -> this.toMsgInstantiateContract()
+            .let { listOf(SmContractValue.CODE to it.codeId) }
+        typeUrl.endsWith("v1.MsgInstantiateContract2") -> this.toMsgInstantiateContract2()
             .let { listOf(SmContractValue.CODE to it.codeId) }
         typeUrl.endsWith("v1beta1.MsgInstantiateContract") -> this.toMsgInstantiateContractOld()
             .let { listOf(SmContractValue.CODE to it.codeId) }
@@ -692,7 +830,9 @@ fun Any.getAssociatedSmContractMsgs(): List<Pair<SmContractValue, kotlin.Any>>? 
             .let { listOf(SmContractValue.CONTRACT to it.contract) }
         typeUrl.endsWith("v1beta1.MsgClearAdmin") -> this.toMsgClearAdminOld()
             .let { listOf(SmContractValue.CONTRACT to it.contract) }
-        typeUrl.endsWith("authz.v1beta1.MsgExec") -> this.toMsgExec().msgsList.mapNotNull { it.getAssociatedSmContractMsgs() }.flatten()
+        typeUrl.endsWith("authz.v1beta1.MsgExec") -> this.toMsgExec().msgsList.mapNotNull { it.getAssociatedSmContractMsgs() }
+            .flatten()
+
         else -> null.also { logger().debug("This typeUrl is not a smart-contract-based msg: $typeUrl") }
     }
 
@@ -728,6 +868,66 @@ fun Any.getNameMsgs() =
         getNameMsgTypes().contains(typeUrl) -> this
         else -> null.also { logger().debug("This typeUrl is not yet supported in as a Name msg: $typeUrl") }
     }
+
+//endregion
+
+//region GROUPS
+
+fun Any.getAssociatedGroups() =
+    when {
+        typeUrl.endsWith("group.v1.MsgUpdateGroupMembers") -> this.toMsgUpdateGroupMembers().groupId
+        typeUrl.endsWith("group.v1.MsgUpdateGroupAdmin") -> this.toMsgUpdateGroupAdmin().groupId
+        typeUrl.endsWith("group.v1.MsgUpdateGroupMetadata") -> this.toMsgUpdateGroupMetadata().groupId
+        typeUrl.endsWith("group.v1.MsgCreateGroupPolicy") -> this.toMsgCreateGroupPolicy().groupId
+        typeUrl.endsWith("group.v1.MsgLeaveGroup") -> this.toMsgLeaveGroup().groupId
+        else -> null.also { logger().debug("This typeUrl is not a group-based msg: $typeUrl") }
+    }
+
+enum class GroupEvents(val event: String, vararg val idField: String) {
+    GROUP_CREATE("cosmos.group.v1.EventCreateGroup", "group_id"),
+    GROUP_UPDATE("cosmos.group.v1.EventUpdateGroup", "group_id"),
+    GROUP_LEAVE("cosmos.group.v1.EventLeaveGroup", "group_id")
+}
+
+fun getGroupEventByEvent(event: String) = GroupEvents.values().firstOrNull { it.event == event }
+
+fun Any.getAssociatedGroupPolicies() =
+    when {
+        typeUrl.endsWith("group.v1.MsgUpdateGroupPolicyAdmin") -> this.toMsgUpdateGroupPolicyAdmin().groupPolicyAddress
+        typeUrl.endsWith("group.v1.MsgUpdateGroupPolicyDecisionPolicy") -> this.toMsgUpdateGroupPolicyDecisionPolicy().groupPolicyAddress
+        typeUrl.endsWith("group.v1.MsgUpdateGroupPolicyMetadata") -> this.toMsgUpdateGroupPolicyMetadata().groupPolicyAddress
+        else -> null.also { logger().debug("This typeUrl is not a group-policy-based msg: $typeUrl") }
+    }
+
+enum class GroupPolicyEvents(val event: String, vararg val idField: String) {
+    GROUP_POLICY_CREATE("cosmos.group.v1.EventCreateGroupPolicy", "address"),
+    GROUP_POLICY_UPDATE("cosmos.group.v1.EventUpdateGroupPolicy", "address")
+}
+
+fun getGroupPolicyEventByEvent(event: String) = GroupPolicyEvents.values().firstOrNull { it.event == event }
+
+enum class GroupGovMsgType { PROPOSAL, VOTE, EXEC, WITHDRAW }
+
+fun Any.getAssociatedGroupProposals() =
+    when {
+        typeUrl.endsWith("group.v1.MsgSubmitProposal") -> GroupGovMsgType.PROPOSAL to this
+        typeUrl.endsWith("group.v1.MsgVote") -> GroupGovMsgType.VOTE to this
+        typeUrl.endsWith("group.v1.MsgExec") -> GroupGovMsgType.EXEC to this
+        typeUrl.endsWith("group.v1.MsgWithdrawProposal") -> GroupGovMsgType.WITHDRAW to this
+        else -> null.also { logger().debug("This typeUrl is not a group-governance-based msg: $typeUrl") }
+    }
+
+enum class GroupProposalEvents(val event: String, vararg val idField: String) {
+    GROUP_SUBMIT_PROPOSAL("cosmos.group.v1.EventSubmitProposal", "proposal_id"),
+    GROUP_VOTE("cosmos.group.v1.EventVote", "proposal_id"),
+    GROUP_EXEC("cosmos.group.v1.EventExec", "proposal_id"),
+    GROUP_WITHDRAW_PROPOSAL("cosmos.group.v1.EventWithdrawProposal", "proposal_id")
+}
+
+fun getGroupProposalEventByEvent(event: String) = GroupProposalEvents.values().firstOrNull { it.event == event }
+
+fun String.getGroupsProposalStatus() = ProposalStatus.valueOf(this)
+fun String.getGroupsExecutorResult() = ProposalExecutorResult.valueOf(this)
 
 //endregion
 
@@ -784,7 +984,10 @@ enum class AddressEvents(val event: String, vararg val idField: String) {
     ATTRIBUTE_ADD("provenance.attribute.v1.EventAttributeAdd", "account", "owner"),
     ATTRIBUTE_UPDATE("provenance.attribute.v1.EventAttributeUpdate", "account", "owner"),
     ATTRIBUTE_DELETE("provenance.attribute.v1.EventAttributeDelete", "account", "owner"),
-    ATTRIBUTE_DISTINCT_DELETE("provenance.attribute.v1.EventAttributeDistinctDelete", "account", "owner")
+    ATTRIBUTE_DISTINCT_DELETE("provenance.attribute.v1.EventAttributeDistinctDelete", "account", "owner"),
+    GROUP_POLICY_CREATE("cosmos.group.v1.EventCreateGroupPolicy", "address"),
+    GROUP_POLICY_UPDATE("cosmos.group.v1.EventUpdateGroupPolicy", "address"),
+    GROUP_LEAVE("cosmos.group.v1.EventLeaveGroup", "address"),
 }
 
 fun getAddressEventByEvent(event: String) = AddressEvents.values().firstOrNull { it.event == event }
@@ -809,7 +1012,8 @@ enum class MsgToDefinedEvent(val msg: String, val definedEvent: String, val uniq
         "scope_addr"
     ),
     NAME_BIND("/provenance.name.v1.MsgBindNameRequest", "provenance.name.v1.EventNameBound", "address"),
-    PROPOSAL_SUBMIT("/cosmos.gov.v1beta1.MsgSubmitProposal", "submit_proposal", "proposal_id"),
+    PROPOSAL_SUBMIT_V1BETA1("/cosmos.gov.v1beta1.MsgSubmitProposal", "submit_proposal", "proposal_id"),
+    PROPOSAL_SUBMIT_V1("/cosmos.gov.v1.MsgSubmitProposal", "submit_proposal", "proposal_id"),
     MARKER_ADD("/provenance.marker.v1.MsgAddMarkerRequest", "provenance.marker.v1.EventMarkerAdd", "denom"),
 }
 
@@ -823,10 +1027,14 @@ fun getContractTypeUrlList() =
 //endregion
 
 //region MSG TO SUB MSGS
+fun String.toShortType() = this.split("Msg")[1].removeSuffix("Request")
+
 fun String.getMsgType(): MsgProtoBreakout {
     val module = if (!this.startsWith("/ibc")) this.split(".")[1]
     else this.split(".").let { list -> "${list[0].drop(1)}_${list[2]}" }
-    val type = this.split("Msg")[1].removeSuffix("Request").toSnakeCase(universalWordSplitter(false))
+    val type = this.toShortType().let {
+        if (this.startsWith("/cosmos.group.v1") && !this.contains("Group")) "${it}ForGroup" else it // handles
+    }.toSnakeCase(universalWordSplitter(false))
     return MsgProtoBreakout(this, module, type)
 }
 

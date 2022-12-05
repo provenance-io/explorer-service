@@ -36,6 +36,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Features
 * Add CSV download for Token Historical Pricing #453
   * GET `/api/v3/utility_token/historical_pricing/download` - Using the given filters, exports the data behind the Hash Price History Chart
+* Updated to Provenance version 1.13.0 #435
+  * Added support for groups data
+  * Added support for new governance v1 actions
+  * Added minimal support for IBC updates, nft module, rewards module
+  * TODO: Add in support for rewards module
 
 ### Improvements
 * Updated Kotlin version `1.5.31` -> `1.6.21` #342
@@ -65,6 +70,12 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Data
 * Migration 1.86 - Add `process_queue`, `account_token_counts` #448
   * Adds both tables, inserts records for all accounts in the `account` table 
+* Migration 1.87 - 1.13.0 updates #435
+  * Added `owner`, `is_group_policy` fields to `account`
+  * Updated `gov_proposal`, `gov_vote` to hold new v1 data objects
+  * Groups changes
+  * Ingest procedure updates where needed
+  * Inserts already-seen groups txs into the retry table to be reprocessed
 
 ## [v5.3.2](https://github.com/provenance-io/explorer-service/releases/tag/v5.3.2) - 2022-11-14
 ### Release Name: Afonso Gonçalves Baldaia

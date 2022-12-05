@@ -1,11 +1,13 @@
 package io.provenance.explorer.domain.models.explorer
 
 import com.fasterxml.jackson.databind.node.ObjectNode
+import com.google.protobuf.Any
+import com.google.protobuf.Timestamp
 import org.joda.time.DateTime
 
 enum class GovParamType { voting, tallying, deposit }
 
-data class GovAddrData(
+data class AddrData(
     val addr: String,
     val addrId: Int,
     val isValidator: Boolean
@@ -35,7 +37,7 @@ data class ProposalHeader(
     val type: String,
     val title: String,
     val description: String,
-    val details: ObjectNode
+    val details: List<ObjectNode>
 )
 
 data class GovAddress(
@@ -91,7 +93,8 @@ data class VoteRecord(
     val txTimestamp: String,
     val proposalId: Long,
     val proposalTitle: String,
-    val proposalStatus: String
+    val proposalStatus: String,
+    val justification: String?
 )
 
 data class VoteDbRecord(
@@ -104,7 +107,8 @@ data class VoteDbRecord(
     val txTimestamp: DateTime,
     val proposalId: Long,
     val proposalTitle: String,
-    val proposalStatus: String
+    val proposalStatus: String,
+    val justification: String?
 )
 
 data class VoteDbRecordAgg(
@@ -116,7 +120,8 @@ data class VoteDbRecordAgg(
     val txTimestamp: DateTime,
     val proposalId: Long,
     val proposalTitle: String,
-    val proposalStatus: String
+    val proposalStatus: String,
+    val justification: String?
 )
 
 data class DepositRecord(
@@ -141,3 +146,23 @@ data class ProposalParamHeights(
 )
 
 data class VoteWeightDbObj(val vote: String, val weight: Double)
+
+data class GovProposalMetadata(
+    val title: String,
+    val authors: String,
+    val summary: String,
+    val details: String,
+    val proposal_forum_url: String,
+    val vote_option_context: String
+)
+
+data class GovContentV1List(val list: List<Any>)
+
+data class ProposalTimingData(
+    val submitTime: Timestamp,
+    val depositEndTime: Timestamp,
+    val voteStart: Timestamp,
+    val voteEnd: Timestamp
+)
+
+data class GovVoteMetadata(val justification: String)

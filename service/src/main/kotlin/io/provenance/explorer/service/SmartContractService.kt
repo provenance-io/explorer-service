@@ -24,6 +24,7 @@ import io.provenance.explorer.grpc.extensions.toMsgMigrateContractOld
 import io.provenance.explorer.grpc.extensions.toMsgUpdateAdmin
 import io.provenance.explorer.grpc.extensions.toMsgUpdateAdminOld
 import io.provenance.explorer.grpc.v1.SmartContractGrpcClient
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
@@ -38,7 +39,7 @@ class SmartContractService(
 ) {
     protected val logger = logger(SmartContractService::class)
 
-    fun getSmCodeFromNode(codeId: Long) = scClient.getSmCode(codeId)
+    fun getSmCodeFromNode(codeId: Long) = runBlocking { scClient.getSmCode(codeId) }
 
     fun saveCode(codeId: Long, txInfo: TxData) = transaction {
         getSmCodeFromNode(codeId).let {
@@ -46,7 +47,7 @@ class SmartContractService(
         }
     }
 
-    fun saveContract(contract: String, txInfo: TxData) = transaction {
+    fun saveContract(contract: String, txInfo: TxData) = runBlocking {
         scClient.getSmContract(contract).let {
             accountService.saveAccount(contract, true)
             SmContractRecord.getOrInsert(it, txInfo.blockHeight)
@@ -89,7 +90,7 @@ class SmartContractService(
             ?: throw ResourceNotFoundException("Invalid contract address: $contract")
     }
 
-    fun getHistoryByContract(contract: String) = transaction {
+    fun getHistoryByContract(contract: String) = runBlocking {
         scClient.getSmContractHistory(contract).entriesList.map { it.toObjectNodeNonTxMsg(protoPrinter, listOf("msg")) }
     }
 

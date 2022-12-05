@@ -7,16 +7,30 @@ import cosmos.authz.v1beta1.Authz.CountAuthorization
 import cosmos.authz.v1beta1.Authz.GrantAuthorization
 import cosmos.authz.v1beta1.Event
 import cosmos.bank.v1beta1.Tx
-import cosmos.crypto.ed25519.Keys
 import cosmos.distribution.v1beta1.Distribution
 import cosmos.feegrant.v1beta1.Feegrant
 import cosmos.gov.v1beta1.Gov
+import cosmos.group.v1.Events.EventCreateGroup
+import cosmos.group.v1.Events.EventCreateGroupPolicy
+import cosmos.group.v1.Events.EventExec
+import cosmos.group.v1.Events.EventLeaveGroup
+import cosmos.group.v1.Events.EventSubmitProposal
+import cosmos.group.v1.Events.EventUpdateGroup
+import cosmos.group.v1.Events.EventUpdateGroupPolicy
+import cosmos.group.v1.Events.EventVote
+import cosmos.group.v1.Events.EventWithdrawProposal
+import cosmos.group.v1.Types.PercentageDecisionPolicy
+import cosmos.group.v1.Types.ThresholdDecisionPolicy
+import cosmos.nft.v1beta1.Tx.MsgSend
 import cosmos.params.v1beta1.Params
+import cosmos.staking.v1beta1.Tx.MsgCancelUnbondingDelegation
 import cosmos.tx.v1beta1.TxOuterClass
 import cosmos.upgrade.v1beta1.Upgrade
 import cosmos.vesting.v1beta1.Vesting
 import cosmwasm.wasm.v1.Ibc
 import cosmwasm.wasm.v1.Proposal
+import cosmwasm.wasm.v1.Proposal.UpdateInstantiateConfigProposal
+import ibc.applications.interchain_accounts.v1.Account.InterchainAccount
 import ibc.core.client.v1.Client
 import ibc.lightclients.tendermint.v1.Tendermint
 import io.provenance.attribute.v1.EventAttributeAdd
@@ -108,6 +122,7 @@ import io.provenance.metadata.v1.MsgWriteScopeSpecificationRequest
 import io.provenance.metadata.v1.MsgWriteSessionRequest
 import io.provenance.msgfees.v1.AddMsgFeeProposal
 import io.provenance.msgfees.v1.RemoveMsgFeeProposal
+import io.provenance.msgfees.v1.UpdateConversionFeeDenomProposal
 import io.provenance.msgfees.v1.UpdateMsgFeeProposal
 import io.provenance.msgfees.v1.UpdateNhashPerUsdMilProposal
 import io.provenance.name.v1.CreateRootNameProposal
@@ -115,6 +130,10 @@ import io.provenance.name.v1.EventNameBound
 import io.provenance.name.v1.EventNameUnbound
 import io.provenance.name.v1.MsgBindNameRequest
 import io.provenance.name.v1.MsgDeleteNameRequest
+import io.provenance.reward.v1.MsgClaimAllRewardsRequest
+import io.provenance.reward.v1.MsgClaimRewardsRequest
+import io.provenance.reward.v1.MsgCreateRewardProgramRequest
+import io.provenance.reward.v1.MsgEndRewardProgramRequest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
@@ -188,13 +207,15 @@ fun accountDescriptors() =
         Vesting.ContinuousVestingAccount.getDescriptor(),
         Vesting.DelayedVestingAccount.getDescriptor(),
         Vesting.PeriodicVestingAccount.getDescriptor(),
-        Vesting.PermanentLockedAccount.getDescriptor()
+        Vesting.PermanentLockedAccount.getDescriptor(),
+        InterchainAccount.getDescriptor()
     )
 
 fun pubKeyDescriptors() =
     listOf(
-        Keys.PubKey.getDescriptor(),
+        cosmos.crypto.ed25519.Keys.PubKey.getDescriptor(),
         cosmos.crypto.secp256k1.Keys.PubKey.getDescriptor(),
+        cosmos.crypto.secp256r1.Keys.PubKey.getDescriptor(),
         cosmos.crypto.multisig.Keys.LegacyAminoPubKey.getDescriptor()
     )
 
@@ -207,6 +228,11 @@ fun msgDescriptors() =
         cosmos.gov.v1beta1.Tx.MsgVote.getDescriptor(),
         cosmos.gov.v1beta1.Tx.MsgVoteWeighted.getDescriptor(),
         cosmos.gov.v1beta1.Tx.MsgDeposit.getDescriptor(),
+        cosmos.gov.v1.Tx.MsgSubmitProposal.getDescriptor(),
+        cosmos.gov.v1.Tx.MsgVote.getDescriptor(),
+        cosmos.gov.v1.Tx.MsgVoteWeighted.getDescriptor(),
+        cosmos.gov.v1.Tx.MsgDeposit.getDescriptor(),
+        cosmos.gov.v1.Tx.MsgExecLegacyContent.getDescriptor(),
         cosmos.distribution.v1beta1.Tx.MsgSetWithdrawAddress.getDescriptor(),
         cosmos.distribution.v1beta1.Tx.MsgWithdrawDelegatorReward.getDescriptor(),
         cosmos.distribution.v1beta1.Tx.MsgWithdrawValidatorCommission.getDescriptor(),
@@ -219,6 +245,7 @@ fun msgDescriptors() =
         cosmos.staking.v1beta1.Tx.MsgBeginRedelegate.getDescriptor(),
         cosmos.staking.v1beta1.Tx.MsgUndelegate.getDescriptor(),
         cosmos.vesting.v1beta1.Tx.MsgCreateVestingAccount.getDescriptor(),
+        MsgCancelUnbondingDelegation.getDescriptor(),
         MsgWithdrawRequest.getDescriptor(),
         MsgAddMarkerRequest.getDescriptor(),
         MsgAddAccessRequest.getDescriptor(),
@@ -298,6 +325,11 @@ fun msgDescriptors() =
         cosmos.feegrant.v1beta1.Tx.MsgRevokeAllowance.getDescriptor(),
         Ibc.MsgIBCSend.getDescriptor(),
         Ibc.MsgIBCCloseChannel.getDescriptor(),
+        MsgSend.getDescriptor(),
+        MsgCreateRewardProgramRequest.getDescriptor(),
+        MsgEndRewardProgramRequest.getDescriptor(),
+        MsgClaimRewardsRequest.getDescriptor(),
+        MsgClaimAllRewardsRequest.getDescriptor()
     )
 
 fun contentDescriptors() =
@@ -326,6 +358,7 @@ fun contentDescriptors() =
         Proposal.ClearAdminProposal.getDescriptor(),
         Proposal.PinCodesProposal.getDescriptor(),
         Proposal.UnpinCodesProposal.getDescriptor(),
+        UpdateInstantiateConfigProposal.getDescriptor(),
         cosmwasm.wasm.v1beta1.Proposal.StoreCodeProposal.getDescriptor(),
         cosmwasm.wasm.v1beta1.Proposal.InstantiateContractProposal.getDescriptor(),
         cosmwasm.wasm.v1beta1.Proposal.MigrateContractProposal.getDescriptor(),
@@ -338,7 +371,8 @@ fun contentDescriptors() =
         AddMsgFeeProposal.getDescriptor(),
         UpdateMsgFeeProposal.getDescriptor(),
         RemoveMsgFeeProposal.getDescriptor(),
-        UpdateNhashPerUsdMilProposal.getDescriptor()
+        UpdateNhashPerUsdMilProposal.getDescriptor(),
+        UpdateConversionFeeDenomProposal.getDescriptor()
     )
 
 fun events() = listOf(
@@ -384,7 +418,16 @@ fun events() = listOf(
     EventAttributeDelete.getDescriptor(),
     EventAttributeDistinctDelete.getDescriptor(),
     Event.EventGrant.getDescriptor(),
-    Event.EventRevoke.getDescriptor()
+    Event.EventRevoke.getDescriptor(),
+    EventCreateGroup.getDescriptor(),
+    EventUpdateGroup.getDescriptor(),
+    EventCreateGroupPolicy.getDescriptor(),
+    EventUpdateGroupPolicy.getDescriptor(),
+    EventSubmitProposal.getDescriptor(),
+    EventWithdrawProposal.getDescriptor(),
+    EventVote.getDescriptor(),
+    EventExec.getDescriptor(),
+    EventLeaveGroup.getDescriptor()
 )
 
 fun miscAnys() = listOf(
@@ -397,5 +440,7 @@ fun miscAnys() = listOf(
     cosmos.staking.v1beta1.Authz.StakeAuthorization.getDescriptor(),
     MarkerTransferAuthorization.getDescriptor(),
     CountAuthorization.getDescriptor(),
-    GrantAuthorization.getDescriptor()
+    GrantAuthorization.getDescriptor(),
+    ThresholdDecisionPolicy.getDescriptor(),
+    PercentageDecisionPolicy.getDescriptor()
 )

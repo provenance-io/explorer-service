@@ -81,7 +81,7 @@ fun Abci.TxResponse.getFailureTotalBaseFee(msgFeeClient: MsgFeeGrpcClient, heigh
                 ?: (
                     sigErrorComboList.firstOrNull { it == Pair(this.codespace, this.code) }?.let { BigDecimal.ZERO }
                         ?: (
-                            if (msgFeeClient.getMsgFeesAtHeight(height).msgFeesList.isNotEmpty()) {
+                            if (msgFeeClient.getMsgFeesAtHeight(height).isNotEmpty()) {
                                 val baseFee = this.defaultBaseFees(msgFeeClient, height)
                                 if (baseFee > this.getFeeTotalPaid()) this.getFeeTotalPaid() else baseFee
                             } else this.getFeeTotalPaid()
@@ -99,7 +99,7 @@ fun Abci.TxResponse.getTotalBaseFees(msgFeeClient: MsgFeeGrpcClient, height: Int
 fun ServiceOuterClass.GetTxResponse.identifyMsgBasedFeesOld(msgFeeClient: MsgFeeGrpcClient, height: Int): List<TxFeeData> {
     val msgToFee = mutableMapOf<String, MutableList<Long>>()
     // get msg fee list
-    val msgFees = msgFeeClient.getMsgFeesAtHeight(height).msgFeesList.associate { it.msgTypeUrl to it.additionalFee }
+    val msgFees = msgFeeClient.getMsgFeesAtHeight(height).associate { it.msgTypeUrl to it.additionalFee }
         .ifEmpty { return emptyList() }
     // get defined events list
     val definedEvents = getByDefinedEvent()

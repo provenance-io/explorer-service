@@ -16,7 +16,7 @@ import io.provenance.explorer.domain.extensions.fromBase64
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.getCategoryForType
-import io.provenance.explorer.grpc.v1.MarkerGrpcClient
+import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.async.AsyncCachingV2
 import io.provenance.explorer.service.firstMatchLabel
@@ -31,7 +31,7 @@ import org.springframework.stereotype.Service
 class UtilityService(
     private val protoPrinter: JsonFormat.Printer,
     private val protoParser: JsonFormat.Parser,
-    private val markerClient: MarkerGrpcClient,
+    private val accountClient: AccountGrpcClient,
     private val assetService: AssetService,
     private val async: AsyncCachingV2
 ) {
@@ -73,14 +73,14 @@ class UtilityService(
             var offset = 0
             val limit = 100
 
-            val results = markerClient.getMarkerHolders(denom, offset, limit) ?: return@runBlocking emptyList()
+            val results = accountClient.getDenomHolders(denom, offset, limit)
 
-            val total = results.pagination?.total ?: results.balancesCount.toLong()
-            val holders = results.balancesList.toMutableList()
+            val total = results.pagination?.total ?: results.denomOwnersCount.toLong()
+            val holders = results.denomOwnersList.toMutableList()
 
             while (holders.count() < total) {
                 offset += limit
-                markerClient.getMarkerHolders(denom, offset, limit).let { holders.addAll(it!!.balancesList) }
+                accountClient.getDenomHolders(denom, offset, limit).let { holders.addAll(it.denomOwnersList) }
             }
 
             val map = holders.associateBy { it.address }
@@ -88,7 +88,7 @@ class UtilityService(
             accounts.toSet().map { a ->
                 mapOf(
                     "address" to a,
-                    denom to (map[a]?.coinsList?.firstOrNull { c -> c.denom == denom }?.amount ?: "Nothing")
+                    denom to (map[a]?.balance?.amount ?: "Nothing")
                 )
             }
         }

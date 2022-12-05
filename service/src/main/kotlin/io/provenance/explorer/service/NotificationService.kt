@@ -6,7 +6,6 @@ import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AnnouncementRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
-import io.provenance.explorer.domain.entities.getProposalType
 import io.provenance.explorer.domain.exceptions.InvalidArgumentException
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toOffset
@@ -36,10 +35,10 @@ class NotificationService(
     fun fetchOpenProposalBreakdown() = transaction {
         val proposals = GovProposalRecord.getNonFinalProposals().sortedBy { it.proposalId }
 
-        val typeUrl = govService.getUpgradeProtoType()
+        val typeUrl = govService.getUpgradeProtoType().getProposalTypeLegacy()
         val (upgrades, nonUpgrades) = proposals.map {
             it.proposalType to AnnouncementOut(it.proposalId.toInt(), it.title, null, null, null, null)
-        }.partition { it.first == typeUrl.getProposalType() }
+        }.partition { it.first.toProposalTypeList().contains(typeUrl) }
 
         OpenProposals(nonUpgrades.map { it.second }, upgrades.map { it.second })
     }
@@ -50,16 +49,17 @@ class NotificationService(
         val upgrades = GovProposalRecord.findByProposalType(govService.getUpgradeProtoType())
             .filter { it.status == Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name }
             .filter { proposal ->
-                val name = proposal.content.get("plan").get("name").asText()
+                val name = proposal.getUpgradePlan()!!.name
                 govClient.getIfUpgradeApplied(name).height == 0L &&
-                    proposal.content.get("plan").get("height").asLong() > currentHeight
+                    proposal.getUpgradePlan()!!.height > currentHeight
             }.sortedBy { it.proposalId }
 
         val avgBlockTime = cacheService.getAvgBlockTime()
         val currentTimeMs = DateTime.now(DateTimeZone.UTC).millis
 
         upgrades.map {
-            val plannedHeight = it.content.get("plan").get("height").asLong()
+            val plan = it.getUpgradePlan()!!
+            val plannedHeight = plan.height
             val heightDiff = plannedHeight - currentHeight
             val additionalMs = avgBlockTime.multiply(BigDecimal(1000)).multiply(BigDecimal(heightDiff)).toLong()
             val approxUpgrade = DateTime(currentTimeMs + additionalMs, DateTimeZone.UTC)
@@ -67,8 +67,8 @@ class NotificationService(
             ScheduledUpgrade(
                 it.proposalId,
                 it.title,
-                it.content.get("plan").get("name").asText(),
-                it.content.get("plan").get("info").asText().getChainVersionFromUrl(props.upgradeVersionRegex),
+                plan.name,
+                plan.info.getChainVersionFromUrl(props.upgradeVersionRegex),
                 plannedHeight,
                 approxUpgrade
             )

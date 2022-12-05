@@ -67,6 +67,7 @@ import io.provenance.explorer.grpc.v1.IbcGrpcClient
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
 import io.provenance.explorer.grpc.v1.MetadataGrpcClient
 import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
+import io.provenance.explorer.grpc.v1.SmartContractGrpcClient
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import io.provenance.explorer.service.async.AsyncCachingV2
 import kotlinx.coroutines.Dispatchers
@@ -98,7 +99,8 @@ class ExplorerService(
     private val validatorClient: ValidatorGrpcClient,
     private val protoPrinter: JsonFormat.Printer,
     private val govService: GovService,
-    private val pricingService: PricingService
+    private val pricingService: PricingService,
+    private val scClient: SmartContractGrpcClient
 ) {
 
     protected val logger = logger(ExplorerService::class)
@@ -210,7 +212,7 @@ class ExplorerService(
         val genesis = props.genesisVersionUrl.getLatestPatchVersion(
             knownReleases,
             props.upgradeVersionRegex,
-            proposals.firstOrNull()?.content?.get("plan")?.get("info")?.asText()
+            proposals.firstOrNull()?.getUpgradePlan()?.info
         ).let { (version, url) ->
             ChainUpgrade(
                 0,
@@ -224,17 +226,16 @@ class ExplorerService(
         }
         val upgrades = proposals.windowed(2, 1, true) { chunk ->
             (chunk.first() to chunk.getOrNull(1)).let { (one, two) ->
-                val nextUpgrade = two?.content?.get("plan")?.get("info")?.asText()
-                val (version, url) = one.content.get("plan").get("info").asText()
+                val nextUpgrade = two?.getUpgradePlan()?.info
+                val (version, url) = one.getUpgradePlan()!!.info
                     .getLatestPatchVersion(knownReleases, props.upgradeVersionRegex, nextUpgrade)
                 ChainUpgrade(
-                    one.content.get("plan").get("height").asInt(),
-                    one.content.get("plan").get("name").asText(),
-                    one.content.get("plan").get("info").asText().getChainVersionFromUrl(props.upgradeVersionRegex),
+                    one.getUpgradePlan()!!.height.toInt(),
+                    one.getUpgradePlan()!!.name,
+                    one.getUpgradePlan()!!.info.getChainVersionFromUrl(props.upgradeVersionRegex),
                     version,
-                    runBlocking { govClient.getIfUpgradeApplied(one.content.get("plan").get("name").asText()) }
-                        .let { it.height.toInt() != one.content.get("plan").get("height").asInt() },
-                    scheduledName?.let { name -> name == one.content.get("plan").get("name").asText() } ?: false,
+                    runBlocking { govClient.getIfUpgradeApplied(one.getUpgradePlan()!!.name) }.height.toInt() != one.getUpgradePlan()!!.height.toInt(),
+                    scheduledName?.let { name -> name == one.getUpgradePlan()!!.name } ?: false,
                     url
                 )
             }
@@ -315,10 +316,13 @@ class ExplorerService(
         val stakingParams = validatorClient.getStakingParams().params
         val transferParams = async { ibcClient.getTransferParams().params }
         val clientParams = async { ibcClient.getClientParams().params }
-        val attrParams = attrClient.getAttrParams().params
-        val markerParams = markerClient.getMarkerParams().params
-        val metadataParams = metadataClient.getMetadataParams().params
-        val nameParams = attrClient.getNameParams().params
+//        val icaControllerParams = async {ibcClient.getIcaControllerParams().params }
+        val icaHostParams = async { ibcClient.getIcaHostParams().params }
+        val wasmParams = async { scClient.getWasmParams() }
+        val attrParams = async { attrClient.getAttrParams().params }
+        val markerParams = async { markerClient.getMarkerParams().params }
+        val metadataParams = async { metadataClient.getMetadataParams().params }
+        val nameParams = async { attrClient.getNameParams().params }
         val msgParams = async { msgFeeClient.getMsgFeeParams().params }
 
         Params(
@@ -338,13 +342,17 @@ class ExplorerService(
                 IBCParams(
                     transferParams.await().toObjectNodePrint(protoPrinter),
                     clientParams.await().toObjectNodePrint(protoPrinter),
+//                    icaControllerParams.await().toObjectNodePrint(protoPrinter),
+                    null,
+                    icaHostParams.await().toObjectNodePrint(protoPrinter)
                 ),
+                wasmParams.await().toObjectNodePrint(protoPrinter)
             ),
             ProvParams(
-                attrParams.toObjectNodePrint(protoPrinter),
-                markerParams.toObjectNodePrint(protoPrinter),
-                metadataParams.toObjectNodePrint(protoPrinter),
-                nameParams.toObjectNodePrint(protoPrinter),
+                attrParams.await().toObjectNodePrint(protoPrinter),
+                markerParams.await().toObjectNodePrint(protoPrinter),
+                metadataParams.await().toObjectNodePrint(protoPrinter),
+                nameParams.await().toObjectNodePrint(protoPrinter),
                 msgParams.await().toObjectNodePrint(protoPrinter)
             ),
         )

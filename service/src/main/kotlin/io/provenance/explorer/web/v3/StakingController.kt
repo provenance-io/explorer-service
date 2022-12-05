@@ -5,6 +5,7 @@ import io.provenance.explorer.config.interceptor.JwtInterceptor.Companion.X_ADDR
 import io.provenance.explorer.domain.extensions.TxMessageBody
 import io.provenance.explorer.domain.extensions.toTxBody
 import io.provenance.explorer.domain.extensions.toTxMessageBody
+import io.provenance.explorer.domain.models.explorer.StakingCancelUnbondingRequest
 import io.provenance.explorer.domain.models.explorer.StakingDelegateRequest
 import io.provenance.explorer.domain.models.explorer.StakingRedelegateRequest
 import io.provenance.explorer.domain.models.explorer.StakingUndelegateRequest
@@ -91,5 +92,17 @@ class StakingController(private val stakingService: StakingService, private val 
         if (!stakingService.validateWithdrawCommission(request.validator, xAddress))
             throw IllegalArgumentException("Unable to process create withdraw commission; connected wallet does not match request")
         return stakingService.createWithdrawCommission(request).toTxBody().toTxMessageBody(printer)
+    }
+
+    @ApiOperation(value = "Builds a cancel unbonding delegation transaction for submission to blockchain")
+    @PostMapping("/cancel_unbonding")
+    fun createCancelUnbondingDelegation(
+        @ApiParam(value = "Data used to craft the CancelUnbondingDelegation msg type")
+        @RequestBody request: StakingCancelUnbondingRequest,
+        @ApiParam(hidden = true) @RequestAttribute(name = X_ADDRESS, required = true) xAddress: String
+    ): TxMessageBody {
+        if (xAddress != request.delegator)
+            throw IllegalArgumentException("Unable to process create cancel unbonding delegation; connected wallet does not match request")
+        return stakingService.createCancelUnbonding(request).toTxBody().toTxMessageBody(printer)
     }
 }
