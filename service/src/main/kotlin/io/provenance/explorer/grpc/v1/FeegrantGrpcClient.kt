@@ -1,9 +1,13 @@
 package io.provenance.explorer.grpc.v1
 
+import cosmos.base.query.v1beta1.pageResponse
 import cosmos.feegrant.v1beta1.QueryGrpcKt
 import cosmos.feegrant.v1beta1.queryAllowancesByGranterRequest
+import cosmos.feegrant.v1beta1.queryAllowancesByGranterResponse
 import cosmos.feegrant.v1beta1.queryAllowancesRequest
+import cosmos.feegrant.v1beta1.queryAllowancesResponse
 import io.grpc.ManagedChannelBuilder
+import io.provenance.explorer.config.ExplorerProperties.Companion.UNDER_MAINTENANCE
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.getPagination
 import org.springframework.stereotype.Component
@@ -35,18 +39,22 @@ class FeegrantGrpcClient(channelUri: URI) {
     }
 
     suspend fun getAllowancesForGrantee(grantee: String, offset: Int, limit: Int) =
-        feegrantClient.allowances(
-            queryAllowancesRequest {
-                this.grantee = grantee
-                this.pagination = getPagination(offset, limit)
-            }
-        )
+        if (UNDER_MAINTENANCE) queryAllowancesResponse { this.pagination = pageResponse { this.total = 0 } }
+        else
+            feegrantClient.allowances(
+                queryAllowancesRequest {
+                    this.grantee = grantee
+                    this.pagination = getPagination(offset, limit)
+                }
+            )
 
     suspend fun getGrantsByGranter(granter: String, offset: Int, limit: Int) =
-        feegrantClient.allowancesByGranter(
-            queryAllowancesByGranterRequest {
-                this.granter = granter
-                this.pagination = getPagination(offset, limit)
-            }
-        )
+        if (UNDER_MAINTENANCE) queryAllowancesByGranterResponse { this.pagination = pageResponse { this.total = 0 } }
+        else
+            feegrantClient.allowancesByGranter(
+                queryAllowancesByGranterRequest {
+                    this.granter = granter
+                    this.pagination = getPagination(offset, limit)
+                }
+            )
 }

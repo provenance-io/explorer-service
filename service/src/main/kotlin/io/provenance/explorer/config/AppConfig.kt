@@ -1,7 +1,9 @@
 package io.provenance.explorer.config
 
 import io.provenance.explorer.config.interceptor.JwtInterceptor
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
+import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
@@ -19,3 +21,8 @@ class AppConfig : WebMvcConfigurer {
         )
     }
 }
+
+@Configuration
+@EnableScheduling
+@ConditionalOnProperty(name = ["is-under-maintenance"], prefix = "explorer", havingValue = "false")
+class SchedulerConfig

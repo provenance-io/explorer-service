@@ -54,6 +54,12 @@ fun getPagination(offset: Int, limit: Int) =
         this.countTotal = true
     }
 
+fun getPaginationNoCount(offset: Int, limit: Int) =
+    pageRequest {
+        this.offset = offset.toLong()
+        this.limit = limit.toLong()
+    }
+
 //endregion
 
 //region Marker Extensions

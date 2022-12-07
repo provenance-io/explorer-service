@@ -40,5 +40,10 @@ class BlockGrpcClient(channelUri: URI) {
             null
         }
 
-    suspend fun getLatestBlock() = tmClient.getLatestBlock(getLatestBlockRequest { })
+    suspend fun getLatestBlock() =
+        try {
+            tmClient.getLatestBlock(getLatestBlockRequest { })
+        } catch (e: Exception) {
+            null
+        }
 }

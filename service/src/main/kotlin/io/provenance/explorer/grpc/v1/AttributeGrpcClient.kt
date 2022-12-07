@@ -4,10 +4,12 @@ import io.grpc.ManagedChannelBuilder
 import io.provenance.attribute.v1.Attribute
 import io.provenance.attribute.v1.queryAttributesRequest
 import io.provenance.attribute.v1.queryParamsRequest
+import io.provenance.explorer.config.ExplorerProperties.Companion.UNDER_MAINTENANCE
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.getPagination
 import io.provenance.name.v1.queryResolveRequest
 import io.provenance.name.v1.queryReverseLookupRequest
+import io.provenance.name.v1.queryReverseLookupResponse
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -41,6 +43,7 @@ class AttributeGrpcClient(channelUri: URI) {
     }
 
     suspend fun getAllAttributesForAddress(address: String?): MutableList<Attribute> {
+        if (UNDER_MAINTENANCE) return mutableListOf()
         if (address == null) return mutableListOf()
         var (offset, limit) = 0 to 100
 
@@ -69,12 +72,14 @@ class AttributeGrpcClient(channelUri: URI) {
     }
 
     suspend fun getNamesForAddress(address: String, offset: Int, limit: Int) =
-        nameClient.reverseLookup(
-            queryReverseLookupRequest {
-                this.address = address
-                this.pagination = getPagination(offset, limit)
-            }
-        )
+        if (UNDER_MAINTENANCE) queryReverseLookupResponse { }.defaultInstanceForType
+        else
+            nameClient.reverseLookup(
+                queryReverseLookupRequest {
+                    this.address = address
+                    this.pagination = getPagination(offset, limit)
+                }
+            )
 
     suspend fun getOwnerForName(name: String) =
         try {

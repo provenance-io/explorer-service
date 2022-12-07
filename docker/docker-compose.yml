@@ -41,6 +41,7 @@ services:
       - EXPLORER_UTILITY_TOKEN_DEFAULT_GAS_PRICE=1905
       - EXPLORER_UTILITY_TOKEN_BASE_DECIMAL_PLACES=9
       - EXPLORER_VOTING_POWER_PADDING=1000000
+      - EXPLORER_IS_UNDER_MAINTENANCE=false
     depends_on:
       - explorer-postgres
     links:

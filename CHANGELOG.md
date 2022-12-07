@@ -66,6 +66,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Now caching FT/NFT counts per address #448
   * This is done on the fly, asynchronously
   * The Account detail API pulls from the cached values 
+* Add `isUnderMaintenance` flag #459
+  * Allows the service to function properly without having to hit the node; ideal for when the node is upgrading
 
 ### Data
 * Migration 1.86 - Add `process_queue`, `account_token_counts` #448

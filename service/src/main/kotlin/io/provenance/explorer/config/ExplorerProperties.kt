@@ -22,7 +22,8 @@ class ExplorerProperties(
     val swaggerUrl: String,
     val swaggerProtocol: String,
     val pricingUrl: String,
-    val feeBugRangeOneEleven: List<Int> // [0] is the beginning of the range, [1] is the end of the range, inclusive
+    val feeBugRangeOneEleven: List<Int>, // [0] is the beginning of the range, [1] is the end of the range, inclusive
+    val isUnderMaintenance: Boolean
 ) {
 
     fun initialHistoricalDays() = initialHistoricalDayCount.toInt()
@@ -47,6 +48,7 @@ class ExplorerProperties(
         var PROV_ACC_PREFIX = Bech32.PROVENANCE_TESTNET_ACCOUNT_PREFIX
         var PROV_VAL_OPER_PREFIX = Bech32.PROVENANCE_TESTNET_VALIDATOR_ACCOUNT_PREFIX
         var PROV_VAL_CONS_PREFIX = Bech32.PROVENANCE_TESTNET_CONSENSUS_ACCOUNT_PREFIX
+        var UNDER_MAINTENANCE = false
     }
 
     @Value("\${explorer.utility-token}")
@@ -81,5 +83,10 @@ class ExplorerProperties(
             PROV_VAL_OPER_PREFIX = Bech32.PROVENANCE_TESTNET_VALIDATOR_ACCOUNT_PREFIX
             PROV_VAL_CONS_PREFIX = Bech32.PROVENANCE_TESTNET_CONSENSUS_ACCOUNT_PREFIX
         }
+    }
+
+    @Value("\${explorer.is-under-maintenance}")
+    fun setUnderMaintenance(isUnderMaintenance: Boolean) {
+        UNDER_MAINTENANCE = isUnderMaintenance
     }
 }

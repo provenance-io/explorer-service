@@ -50,7 +50,7 @@ class NotificationService(
             .filter { it.status == Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name }
             .filter { proposal ->
                 val name = proposal.getUpgradePlan()!!.name
-                govClient.getIfUpgradeApplied(name).height == 0L &&
+                (govClient.getIfUpgradeApplied(name)?.height ?: 0L) == 0L &&
                     proposal.getUpgradePlan()!!.height > currentHeight
             }.sortedBy { it.proposalId }
 

@@ -1,12 +1,14 @@
 package io.provenance.explorer.grpc.v1
 
 import io.grpc.ManagedChannelBuilder
+import io.provenance.explorer.config.ExplorerProperties.Companion.UNDER_MAINTENANCE
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_DEFAULT_GAS_PRICE
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.addBlockHeightToQuery
 import io.provenance.explorer.grpc.extensions.getPagination
 import io.provenance.msgfees.v1.QueryGrpcKt
 import io.provenance.msgfees.v1.queryAllMsgFeesRequest
+import io.provenance.msgfees.v1.queryAllMsgFeesResponse
 import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Component
 import java.net.URI
@@ -37,11 +39,13 @@ class MsgFeeGrpcClient(channelUri: URI) {
     }
 
     fun getMsgFees(offset: Int = 0, limit: Int = 100) = runBlocking {
-        msgFeeClient.queryAllMsgFees(
-            queryAllMsgFeesRequest {
-                this.pagination = getPagination(offset, limit)
-            }
-        )
+        if (UNDER_MAINTENANCE) queryAllMsgFeesResponse { }
+        else
+            msgFeeClient.queryAllMsgFees(
+                queryAllMsgFeesRequest {
+                    this.pagination = getPagination(offset, limit)
+                }
+            )
     }
 
     fun getMsgFeesAtHeight(height: Int, offset: Int = 0, limit: Int = 100) = runBlocking {

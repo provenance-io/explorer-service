@@ -1,5 +1,6 @@
 package io.provenance.explorer.grpc.v1
 
+import cosmos.base.query.v1beta1.pageResponse
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.base.tendermint.v1beta1.ServiceGrpc
 import cosmos.base.tendermint.v1beta1.getLatestValidatorSetRequest
@@ -7,17 +8,21 @@ import cosmos.base.tendermint.v1beta1.getValidatorSetByHeightRequest
 import cosmos.distribution.v1beta1.queryDelegatorWithdrawAddressRequest
 import cosmos.distribution.v1beta1.queryValidatorCommissionRequest
 import cosmos.distribution.v1beta1.queryValidatorOutstandingRewardsRequest
+import cosmos.distribution.v1beta1.validatorAccumulatedCommission
 import cosmos.slashing.v1beta1.Slashing
 import cosmos.slashing.v1beta1.queryParamsRequest
 import cosmos.slashing.v1beta1.querySigningInfosRequest
 import cosmos.staking.v1beta1.Staking
 import cosmos.staking.v1beta1.queryDelegationRequest
 import cosmos.staking.v1beta1.queryValidatorDelegationsRequest
+import cosmos.staking.v1beta1.queryValidatorDelegationsResponse
 import cosmos.staking.v1beta1.queryValidatorRequest
 import cosmos.staking.v1beta1.queryValidatorUnbondingDelegationsRequest
+import cosmos.staking.v1beta1.queryValidatorUnbondingDelegationsResponse
 import cosmos.staking.v1beta1.queryValidatorsRequest
 import cosmos.staking.v1beta1.validator
 import io.grpc.ManagedChannelBuilder
+import io.provenance.explorer.config.ExplorerProperties.Companion.UNDER_MAINTENANCE
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.addBlockHeightToQuery
 import io.provenance.explorer.grpc.extensions.getPagination
@@ -58,24 +63,27 @@ class ValidatorGrpcClient(channelUri: URI) {
         slashingClient = SlashingGrpc.newBlockingStub(channel)
     }
 
-    fun getLatestValidators(): Query.GetLatestValidatorSetResponse {
+    fun getLatestValidators(): Query.GetLatestValidatorSetResponse? {
+        if (UNDER_MAINTENANCE) return null
         val limit = getStakingParams().params.maxValidators
         return tmClient.getLatestValidatorSet(
             getLatestValidatorSetRequest { pagination = getPagination(0, limit) }
         )
     }
 
-    fun getValidatorsAtHeight(height: Int): Query.GetValidatorSetByHeightResponse {
+    fun getValidatorsAtHeight(height: Long): Query.GetValidatorSetByHeightResponse? {
+        if (UNDER_MAINTENANCE) return null
         val limit = getStakingParams().params.maxValidators
         return tmClient.getValidatorSetByHeight(
             getValidatorSetByHeightRequest {
-                this.height = height.toLong()
+                this.height = height
                 pagination = getPagination(0, limit)
             }
         )
     }
 
     fun getStakingValidators(): MutableList<Staking.Validator> {
+        if (UNDER_MAINTENANCE) return mutableListOf()
         var offset = 0
         val limit = 100
 
@@ -109,12 +117,15 @@ class ValidatorGrpcClient(channelUri: URI) {
         }
 
     fun getStakingValidatorDelegations(address: String, offset: Int, limit: Int) =
-        stakingClient.validatorDelegations(
-            queryValidatorDelegationsRequest {
-                validatorAddr = address
-                pagination = getPagination(offset, limit)
-            }
-        )
+        if (UNDER_MAINTENANCE)
+            queryValidatorDelegationsResponse { this.pagination = pageResponse { this.total = 0 } }
+        else
+            stakingClient.validatorDelegations(
+                queryValidatorDelegationsRequest {
+                    validatorAddr = address
+                    pagination = getPagination(offset, limit)
+                }
+            )
 
     fun getValidatorSelfDelegations(valAddress: String, delAddress: String) =
         stakingClient.delegation(
@@ -125,15 +136,19 @@ class ValidatorGrpcClient(channelUri: URI) {
         )
 
     fun getStakingValidatorUnbondingDels(address: String, offset: Int, limit: Int) =
-        stakingClient.validatorUnbondingDelegations(
-            queryValidatorUnbondingDelegationsRequest {
-                validatorAddr = address
-                pagination = getPagination(offset, limit)
-            }
-        )
+        if (UNDER_MAINTENANCE) queryValidatorUnbondingDelegationsResponse { }
+        else
+            stakingClient.validatorUnbondingDelegations(
+                queryValidatorUnbondingDelegationsRequest {
+                    validatorAddr = address
+                    pagination = getPagination(offset, limit)
+                }
+            )
 
     fun getValidatorCommission(address: String) =
-        distClient.validatorCommission(queryValidatorCommissionRequest { validatorAddress = address }).commission
+        if (UNDER_MAINTENANCE) validatorAccumulatedCommission { }
+        else
+            distClient.validatorCommission(queryValidatorCommissionRequest { validatorAddress = address }).commission
 
     fun getValidatorRewards(address: String) =
         distClient.validatorOutstandingRewards(
@@ -143,13 +158,16 @@ class ValidatorGrpcClient(channelUri: URI) {
         ).rewards
 
     fun getDelegatorWithdrawalAddress(delegator: String) =
-        distClient.delegatorWithdrawAddress(
-            queryDelegatorWithdrawAddressRequest {
-                delegatorAddress = delegator
-            }
-        ).withdrawAddress
+        if (UNDER_MAINTENANCE) null
+        else
+            distClient.delegatorWithdrawAddress(
+                queryDelegatorWithdrawAddressRequest {
+                    delegatorAddress = delegator
+                }
+            ).withdrawAddress
 
     fun getSigningInfos(): MutableList<Slashing.ValidatorSigningInfo> {
+        if (UNDER_MAINTENANCE) return mutableListOf()
         var offset = 0
         val limit = 100
 
@@ -165,7 +183,8 @@ class ValidatorGrpcClient(channelUri: URI) {
         return infos
     }
 
-    fun getSlashingParams() = slashingClient.params(queryParamsRequest { })
+    fun getSlashingParams() =
+        if (UNDER_MAINTENANCE) null else slashingClient.params(queryParamsRequest { })
 
     fun getDistParams() = distClient.params(cosmos.distribution.v1beta1.queryParamsRequest { })
 

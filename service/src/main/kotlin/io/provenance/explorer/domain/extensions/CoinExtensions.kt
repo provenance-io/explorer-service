@@ -90,3 +90,8 @@ fun List<CoinStr>.diff(newList: List<CoinStr>) =
             }
 
 fun BigDecimal.roundWhole() = this.setScale(0, RoundingMode.HALF_EVEN)
+
+fun defaultCoin(denom: String) = coin {
+    this.denom = denom
+    this.amount = "0"
+}

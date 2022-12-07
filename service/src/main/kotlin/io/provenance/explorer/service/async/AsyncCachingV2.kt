@@ -396,7 +396,7 @@ class AsyncCachingV2(
             when (addrPair.first) {
                 TxAddressJoinType.OPERATOR.name ->
                     if (addrPair.second == null) {
-                        validatorService.saveValidator(addr)
+                        validatorService.saveValidator(addr)!!
                             .let { pairCopy = addrPair.copy(second = it.operatorAddrId) }
                     }
                 TxAddressJoinType.ACCOUNT.name -> accountService.saveAccount(addr)

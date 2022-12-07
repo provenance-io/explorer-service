@@ -87,9 +87,15 @@ class ValidatorService(
 
     protected val logger = logger(ValidatorService::class)
 
-    fun getActiveSet() = grpcClient.getStakingParams().params.maxValidators
+    fun getActiveSet() =
+        try {
+            grpcClient.getStakingParams().params.maxValidators
+        } catch (e: Exception) {
+            100
+        }
 
-    fun getSlashingParams() = grpcClient.getSlashingParams().params
+    fun getSlashingParams() = grpcClient.getSlashingParams()?.params
+    fun getSignedBocksWindow() = getSlashingParams()?.signedBlocksWindow?.toBigInteger() ?: BigInteger.ZERO
 
     // Assumes that the returned validators are active at that height
     fun getValidatorsByHeight(blockHeight: Int) = transaction {
@@ -99,7 +105,7 @@ class ValidatorService(
     } ?: throw ResourceNotFoundException("Invalid height: '$blockHeight'")
 
     fun buildValidatorsAtHeight(blockHeight: Int) =
-        grpcClient.getValidatorsAtHeight(blockHeight).let { ValidatorsCacheRecord.buildInsert(blockHeight, it) }
+        grpcClient.getValidatorsAtHeight(blockHeight.toLong())!!.let { ValidatorsCacheRecord.buildInsert(blockHeight, it) }
 
     // Gets a single staking validator from cache
     fun getStakingValidator(operatorAddress: String) =
@@ -107,8 +113,8 @@ class ValidatorService(
             ?: saveValidator(operatorAddress)
 
     fun saveValidator(address: String, height: Int? = null) = runBlocking {
-        grpcClient.getStakingValidator(address, height)
-            .let {
+        grpcClient.getStakingValidatorOrNull(address, height)
+            ?.let {
                 StakingValidatorCacheRecord.insertIgnore(
                     address,
                     it.operatorAddress.translateAddress().accountAddr,
@@ -124,8 +130,8 @@ class ValidatorService(
                     getImgUrl(it.description.identity)
                         ?.let { img -> AddressImageRecord.upsert(it.operatorAddress, img) }
                 }
-            }.also { ValidatorStateRecord.refreshCurrentStateView() }
-            .let { ValidatorStateRecord.findByOperator(getActiveSet(), address)!! }
+            }?.also { ValidatorStateRecord.refreshCurrentStateView() }
+            ?.let { ValidatorStateRecord.findByOperator(getActiveSet(), address)!! }
     }
 
     fun validateValidator(validator: String) =
@@ -136,33 +142,32 @@ class ValidatorService(
         getValidatorOperatorAddress(address)?.let { addr ->
             val currentHeight = blockService.getLatestBlockHeight().toBigInteger()
             val signingInfo = getSigningInfos().firstOrNull { it.address == addr.consensusAddr }
-            val validatorSet = grpcClient.getLatestValidators().validatorsList
+            val validatorSet = getRecentValidatorsOrRaw().second
             val latestValidator = validatorSet.firstOrNull { it.address == addr.consensusAddr }
             val votingPowerTotal = validatorSet.sumOf { it.votingPower.toBigInteger() }
-            val slashingParams = getSlashingParams()
             validateStatus(addr, latestValidator, addr.operatorAddrId)
                 .also { if (it) ValidatorStateRecord.refreshCurrentStateView() }
             val stakingValidator = getStakingValidator(addr.operatorAddress)
             ValidatorDetails(
                 if (latestValidator != null) CountTotal(latestValidator.votingPower.toBigInteger(), votingPowerTotal)
                 else null,
-                stakingValidator.json.description.moniker,
+                stakingValidator?.json?.description?.moniker ?: "",
                 addr.operatorAddress,
                 addr.accountAddr,
-                grpcClient.getDelegatorWithdrawalAddress(addr.accountAddr),
+                grpcClient.getDelegatorWithdrawalAddress(addr.accountAddr) ?: addr.accountAddr,
                 addr.consensusAddr,
-                addr.consensusAddr.validatorMissedBlocks(slashingParams.signedBlocksWindow.toBigInteger(), currentHeight)
+                addr.consensusAddr.validatorMissedBlocks(getSignedBocksWindow(), currentHeight)
                     .let { (mbCount, window) -> CountTotal(mbCount.toBigInteger(), window) },
                 signingInfo?.startHeight ?: currentHeight.toLong(),
-                addr.consensusAddr.validatorUptime(slashingParams.signedBlocksWindow.toBigInteger(), currentHeight),
-                stakingValidator.imageUrl,
-                stakingValidator.json.description.details,
-                stakingValidator.json.description.website,
-                stakingValidator.json.description.identity,
-                stakingValidator.currentState.toString().lowercase(),
-                if (stakingValidator.currentState != ACTIVE) stakingValidator.json.unbondingHeight else null,
-                if (stakingValidator.jailed) signingInfo?.jailedUntil?.toDateTime() else null,
-                stakingValidator.removed
+                addr.consensusAddr.validatorUptime(getSignedBocksWindow(), currentHeight),
+                stakingValidator?.imageUrl,
+                stakingValidator?.json?.description?.details,
+                stakingValidator?.json?.description?.website,
+                stakingValidator?.json?.description?.identity,
+                stakingValidator?.currentState?.toString()?.lowercase() ?: ACTIVE.toString().lowercase(),
+                if (stakingValidator?.currentState != ACTIVE) stakingValidator?.json?.unbondingHeight else null,
+                if (stakingValidator != null && stakingValidator.jailed) signingInfo?.jailedUntil?.toDateTime() else null,
+                stakingValidator?.removed ?: false
             )
         } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
@@ -263,6 +268,14 @@ class ValidatorService(
         PagedResults(recs.size.toLong().pageCountOfResults(recs.size), recs, recs.size.toLong())
     }
 
+    private fun getRecentValidatorsOrRaw() =
+        grpcClient.getLatestValidators()?.let { it.blockHeight to it.validatorsList }
+            ?: ValidatorsCacheRecord.getLatestByHeight().let { it.blockHeight to it.validatorsList }
+
+    private fun getValidatorsAtHeightOrRaw(height: Long) =
+        grpcClient.getValidatorsAtHeight(height.get24HrBlockHeight(cacheService.getAvgBlockTime()))?.validatorsList
+            ?: ValidatorsCacheRecord.getAtHeight(height).validatorsList
+
     // In point to get most recent validators
     fun getRecentValidators(count: Int, page: Int, status: String) = aggregateValidatorsRecent(count, page, status)
 
@@ -272,10 +285,8 @@ class ValidatorService(
         status: String
     ): PagedResults<ValidatorSummary> {
         val statusEnum = ValidatorState.valueOf(status.uppercase())
-        val (height, validatorSet) = grpcClient.getLatestValidators().let { it.blockHeight to it.validatorsList }
-        val hr24ChangeSet = grpcClient.getValidatorsAtHeight(
-            height.get24HrBlockHeight(cacheService.getAvgBlockTime()).toInt()
-        ).validatorsList
+        val (height, validatorSet) = getRecentValidatorsOrRaw()
+        val hr24ChangeSet = getValidatorsAtHeightOrRaw(height)
         getStakingValidators(statusEnum).map { v ->
             validateStatus(v, validatorSet.firstOrNull { it.address == v.consensusAddr }, v.operatorAddrId)
         }.also { map -> if (map.contains(true)) ValidatorStateRecord.refreshCurrentStateView() }
@@ -292,12 +303,11 @@ class ValidatorService(
         height: Long
     ) = let {
         val totalVotingPower = validatorSet.sumOf { it.votingPower.toBigInteger() }
-        val slashWindow = grpcClient.getSlashingParams().params.signedBlocksWindow.toBigInteger()
         stakingVals
             .map { stakingVal ->
                 val validator = validatorSet.firstOrNull { it.address == stakingVal.consensusAddr }
                 val hr24Validator = hr24ChangeSet.firstOrNull { it.address == stakingVal.consensusAddr }
-                hydrateValidator(validator, hr24Validator, stakingVal, totalVotingPower, height, slashWindow)
+                hydrateValidator(validator, hr24Validator, stakingVal, totalVotingPower, height, getSignedBocksWindow())
             }
     }
 
@@ -464,7 +474,7 @@ class ValidatorService(
             val signatures = lastBlock.signaturesList
                 .map { it.validatorAddress.translateByteArray().consensusAccountAddr }
             val currentVals = ValidatorsCacheRecord.findById(lastBlock.height.toInt())?.validators
-                ?: grpcClient.getValidatorsAtHeight(lastBlock.height.toInt())
+                ?: grpcClient.getValidatorsAtHeight(lastBlock.height)!!
 
             currentVals.validatorsList.forEach { vali ->
                 if (!signatures.contains(vali.address))
@@ -583,9 +593,12 @@ class ValidatorService(
 
     fun activeValidatorUptimeStats() = transaction {
         // Get Parameters
-        val (window, slashedAtPercent) = getSlashingParams().let { it.signedBlocksWindow to it.minSignedPerWindow }
-        val slashedCount =
-            slashedAtPercent.toString(Charsets.UTF_8).toDecimal().multiply(BigDecimal(window)).toLong()
+        val (window, slashedAtPercent) = getSlashingParams()
+            .let {
+                (it?.signedBlocksWindow ?: 0L) to
+                    (it?.minSignedPerWindow?.toString(Charsets.UTF_8) ?: "0.0")
+            }
+        val slashedCount = slashedAtPercent.toDecimal().multiply(BigDecimal(window)).toLong()
         // Height to count from
         val currentHeight = getLatestHeight()
 
@@ -628,7 +641,7 @@ class ValidatorService(
             currentHeight.toLong(),
             window,
             slashedCount,
-            slashedAtPercent.toString(Charsets.UTF_8).toPercentageOld(),
+            slashedAtPercent.toPercentageOld(),
             avgUptime,
             (avgUptime / window.toDouble()).toPercentage(),
             records.sortedByDescending { it.missedCount }

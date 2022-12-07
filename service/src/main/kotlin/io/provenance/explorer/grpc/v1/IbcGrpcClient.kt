@@ -1,5 +1,6 @@
 package io.provenance.explorer.grpc.v1
 
+import ibc.applications.transfer.v1.denomTrace
 import ibc.applications.transfer.v1.queryDenomTraceRequest
 import ibc.applications.transfer.v1.queryEscrowAddressRequest
 import ibc.applications.transfer.v1.queryParamsRequest
@@ -7,6 +8,7 @@ import ibc.core.channel.v1.queryChannelClientStateRequest
 import ibc.core.channel.v1.queryChannelRequest
 import ibc.core.client.v1.queryClientParamsRequest
 import io.grpc.ManagedChannelBuilder
+import io.provenance.explorer.config.ExplorerProperties.Companion.UNDER_MAINTENANCE
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Component
@@ -56,9 +58,11 @@ class IbcGrpcClient(channelUri: URI) {
     }
 
     suspend fun getDenomTrace(hash: String) =
-        transferClient.denomTrace(
-            queryDenomTraceRequest { this.hash = hash }
-        ).denomTrace
+        if (UNDER_MAINTENANCE) denomTrace { }
+        else
+            transferClient.denomTrace(
+                queryDenomTraceRequest { this.hash = hash }
+            ).denomTrace
 
     suspend fun getEscrowAddress(portId: String, channelId: String, hrpPrefix: String) = runBlocking {
         transferClient.escrowAddress(

@@ -11,6 +11,7 @@ import io.ktor.http.ContentType
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
+import io.provenance.explorer.config.ExplorerProperties.Companion.UNDER_MAINTENANCE
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
@@ -196,16 +197,18 @@ class TokenService(private val accountClient: AccountGrpcClient) {
     fun maxSupply() = runBlocking { accountClient.getCurrentSupply(UTILITY_TOKEN).amount.toBigDecimal() }
 
     // total supply = max - burned -> comes from the nhash marker address
-    fun totalSupply() = maxSupply() - burnedSupply().roundWhole()
+    fun totalSupply() = if (UNDER_MAINTENANCE) BigDecimal.ZERO else (maxSupply() - burnedSupply().roundWhole())
 
     // circulating supply = max - burned - modules - zero seq - pool - nonspendable
     fun circulatingSupply() =
-        maxSupply() // max
-            .minus(burnedSupply()) // burned
-            .minus(totalBalanceForList(zeroSeqAccounts().toSet() + moduleAccounts().addressList())) // modules/zero seq
-            .minus(communityPoolSupply()) // pool
-            .minus(totalNonspendableBalanceForList(vestingAccounts().addressList())) // nonSpendable
-            .roundWhole()
+        if (UNDER_MAINTENANCE) BigDecimal.ZERO
+        else
+            maxSupply() // max
+                .minus(burnedSupply()) // burned
+                .minus(totalBalanceForList(zeroSeqAccounts().toSet() + moduleAccounts().addressList())) // modules/zero seq
+                .minus(communityPoolSupply()) // pool
+                .minus(totalNonspendableBalanceForList(vestingAccounts().addressList())) // nonSpendable
+                .roundWhole()
 
     // rich list = all accounts - nhash marker - zero seq - modules - contracts ->>>>>>>>> out of total
     fun richList(topCount: Int = 100) = transaction {

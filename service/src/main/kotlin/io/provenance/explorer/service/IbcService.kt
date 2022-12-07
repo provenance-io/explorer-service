@@ -9,7 +9,6 @@ import ibc.core.channel.v1.Tx.MsgAcknowledgement
 import ibc.core.channel.v1.Tx.MsgRecvPacket
 import ibc.core.channel.v1.Tx.MsgTimeout
 import ibc.core.channel.v1.Tx.MsgTimeoutOnClose
-import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
@@ -51,7 +50,6 @@ class IbcService(
     private val assetService: AssetService,
     private val accountService: AccountService,
     private val protoPrinter: JsonFormat.Printer,
-    private val props: ExplorerProperties
 ) {
     protected val logger = logger(IbcService::class)
 

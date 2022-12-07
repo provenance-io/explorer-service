@@ -2,8 +2,12 @@ package io.provenance.explorer.grpc.v1
 
 import cosmos.authz.v1beta1.QueryGrpcKt
 import cosmos.authz.v1beta1.queryGranteeGrantsRequest
+import cosmos.authz.v1beta1.queryGranteeGrantsResponse
 import cosmos.authz.v1beta1.queryGranterGrantsRequest
+import cosmos.authz.v1beta1.queryGranterGrantsResponse
+import cosmos.base.query.v1beta1.pageResponse
 import io.grpc.ManagedChannelBuilder
+import io.provenance.explorer.config.ExplorerProperties.Companion.UNDER_MAINTENANCE
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.grpc.extensions.getPagination
 import org.springframework.stereotype.Component
@@ -35,18 +39,22 @@ class AuthzGrpcClient(channelUri: URI) {
     }
 
     suspend fun getGrantsForGranter(granter: String, offset: Int, limit: Int) =
-        authzClient.granterGrants(
-            queryGranterGrantsRequest {
-                this.granter = granter
-                this.pagination = getPagination(offset, limit)
-            }
-        )
+        if (UNDER_MAINTENANCE) queryGranterGrantsResponse { this.pagination = pageResponse { this.total = 0 } }
+        else
+            authzClient.granterGrants(
+                queryGranterGrantsRequest {
+                    this.granter = granter
+                    this.pagination = getPagination(offset, limit)
+                }
+            )
 
     suspend fun getGrantsForGrantee(grantee: String, offset: Int, limit: Int) =
-        authzClient.granteeGrants(
-            queryGranteeGrantsRequest {
-                this.grantee = grantee
-                this.pagination = getPagination(offset, limit)
-            }
-        )
+        if (UNDER_MAINTENANCE) queryGranteeGrantsResponse { this.pagination = pageResponse { this.total = 0 } }
+        else
+            authzClient.granteeGrants(
+                queryGranteeGrantsRequest {
+                    this.grantee = grantee
+                    this.pagination = getPagination(offset, limit)
+                }
+            )
 }

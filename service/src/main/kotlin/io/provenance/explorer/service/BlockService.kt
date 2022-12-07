@@ -21,11 +21,13 @@ class BlockService(private val blockClient: BlockGrpcClient) {
 
     fun getLatestBlockHeightIndexOrFromChain() = getBlockIndexFromCache()?.maxHeightRead ?: getLatestBlockHeight()
 
-    fun getBlockAtHeightFromChain(height: Int) = runBlocking { blockClient.getBlockAtHeight(height) }
+    fun getBlockAtHeightFromChain(height: Int) =
+        runBlocking { blockClient.getBlockAtHeight(height) } ?: getBlockAtHeight(height)?.block
 
     fun getBlockAtHeight(height: Int) = transaction { BlockCacheRecord.findById(height) }
 
-    fun getLatestBlockHeight(): Int = runBlocking { blockClient.getLatestBlock().block.height() }
+    fun getLatestBlockHeight(): Int =
+        runBlocking { blockClient.getLatestBlock()?.block?.height() } ?: getMaxBlockCacheHeight()
 
     fun updateBlockMaxHeightIndex(maxHeightRead: Int) = BlockIndexRecord.save(maxHeightRead, null)
 

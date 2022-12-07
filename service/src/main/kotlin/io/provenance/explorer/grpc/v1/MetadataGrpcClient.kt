@@ -2,17 +2,21 @@ package io.provenance.explorer.grpc.v1
 
 import cosmos.base.query.v1beta1.pageRequest
 import io.grpc.ManagedChannelBuilder
+import io.provenance.explorer.config.ExplorerProperties.Companion.UNDER_MAINTENANCE
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.extensions.toByteString
-import io.provenance.explorer.grpc.extensions.getPagination
+import io.provenance.explorer.grpc.extensions.getPaginationNoCount
 import io.provenance.metadata.v1.QueryGrpcKt.QueryCoroutineStub
 import io.provenance.metadata.v1.contractSpecificationRequest
+import io.provenance.metadata.v1.contractSpecificationResponse
 import io.provenance.metadata.v1.ownershipRequest
+import io.provenance.metadata.v1.ownershipResponse
 import io.provenance.metadata.v1.queryParamsRequest
 import io.provenance.metadata.v1.recordSpecificationRequest
 import io.provenance.metadata.v1.recordSpecificationsForContractSpecificationRequest
 import io.provenance.metadata.v1.scopeRequest
 import io.provenance.metadata.v1.scopeSpecificationRequest
+import io.provenance.metadata.v1.scopeSpecificationResponse
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import org.springframework.stereotype.Component
@@ -44,14 +48,16 @@ class MetadataGrpcClient(channelUri: URI, private val semaphore: Semaphore) {
     }
 
     suspend fun getScopesByOwner(address: String, offset: Int = 0, limit: Int = 10) =
-        semaphore.withPermit {
-            metadataClient.ownership(
-                ownershipRequest {
-                    this.address = address
-                    this.pagination = getPagination(offset, limit)
-                }
-            )
-        }
+        if (UNDER_MAINTENANCE) ownershipResponse { }
+        else
+            semaphore.withPermit {
+                metadataClient.ownership(
+                    ownershipRequest {
+                        this.address = address
+                        this.pagination = getPaginationNoCount(offset, limit)
+                    }
+                )
+            }
 
     suspend fun getScopesByOwnerTotal(address: String) =
         semaphore.withPermit {
@@ -79,27 +85,35 @@ class MetadataGrpcClient(channelUri: URI, private val semaphore: Semaphore) {
         }
 
     suspend fun getScopeById(uuid: String, includeRecords: Boolean = false, includeSessions: Boolean = false) =
-        metadataClient.scope(
-            scopeRequest {
-                this.scopeId = uuid
-                this.includeRecords = includeRecords
-                this.includeSessions = includeSessions
-            }
-        )
+        if (UNDER_MAINTENANCE) null
+        else
+            metadataClient.scope(
+                scopeRequest {
+                    this.scopeId = uuid
+                    this.includeRecords = includeRecords
+                    this.includeSessions = includeSessions
+                }
+            )
 
     suspend fun getScopeSpecById(addr: String) =
-        metadataClient.scopeSpecification(scopeSpecificationRequest { this.specificationId = addr })
+        if (UNDER_MAINTENANCE) scopeSpecificationResponse { }
+        else
+            metadataClient.scopeSpecification(scopeSpecificationRequest { this.specificationId = addr })
 
     suspend fun getContractSpecById(addr: String, includeRecords: Boolean = false) =
-        metadataClient.contractSpecification(
-            contractSpecificationRequest {
-                this.specificationId = addr
-                this.includeRecordSpecs = includeRecords
-            }
-        )
+        if (UNDER_MAINTENANCE) contractSpecificationResponse { }
+        else
+            metadataClient.contractSpecification(
+                contractSpecificationRequest {
+                    this.specificationId = addr
+                    this.includeRecordSpecs = includeRecords
+                }
+            )
 
     suspend fun getRecordSpecById(addr: String) =
-        metadataClient.recordSpecification(recordSpecificationRequest { this.specificationId = addr })
+        if (UNDER_MAINTENANCE) recordSpecificationRequest { }
+        else
+            metadataClient.recordSpecification(recordSpecificationRequest { this.specificationId = addr })
 
     suspend fun getRecordSpecsForContractSpec(contractSpec: String) =
         semaphore.withPermit {

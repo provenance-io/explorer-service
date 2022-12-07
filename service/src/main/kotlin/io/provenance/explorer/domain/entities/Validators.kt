@@ -58,6 +58,12 @@ class ValidatorsCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
                 .map { it[BlockCacheTable.height] }
                 .toSet()
         }
+
+        fun getLatestByHeight() = transaction {
+            ValidatorsCacheRecord.all().orderBy(Pair(ValidatorsCacheTable.id, SortOrder.DESC)).first().validators
+        }
+
+        fun getAtHeight(height: Long) = transaction { ValidatorsCacheRecord.findById(height.toInt())!!.validators }
     }
 
     var height by ValidatorsCacheTable.height

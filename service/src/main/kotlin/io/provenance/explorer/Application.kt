@@ -14,7 +14,6 @@ import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfigurat
 import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.ComponentScan
-import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.web.servlet.config.annotation.EnableWebMvc
 import springfox.documentation.swagger2.annotations.EnableSwagger2
 import java.util.TimeZone
@@ -22,7 +21,6 @@ import java.util.TimeZone
 @ComponentScan(basePackages = ["io.provenance.explorer" ])
 @EnableAutoConfiguration(exclude = [HibernateJpaAutoConfiguration::class])
 @EnableConfigurationProperties(value = [ExplorerProperties::class])
-@EnableScheduling
 @EnableWebMvc
 @EnableSwagger2
 class Application

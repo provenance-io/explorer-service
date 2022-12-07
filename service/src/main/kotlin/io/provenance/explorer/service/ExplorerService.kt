@@ -14,7 +14,9 @@ import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_VAL_OPER_PREFIX
+import io.provenance.explorer.config.ExplorerProperties.Companion.UNDER_MAINTENANCE
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
+import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.PREFIX_SCOPE
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
@@ -108,7 +110,7 @@ class ExplorerService(
 
     fun getBlockAtHeight(height: Int?) = runBlocking(Dispatchers.IO) {
         val queryHeight = height ?: (blockService.getMaxBlockCacheHeight() - 1)
-        val blockResponse = asyncV2.getBlock(queryHeight)!!
+        val blockResponse = asyncV2.getBlock(queryHeight) ?: throw ResourceNotFoundException("Invalid Height : $queryHeight")
         val nextBlock = asyncV2.getBlock(queryHeight + 1)
         val validatorsResponse = validatorService.getValidatorsByHeight(queryHeight)
         hydrateBlock(blockResponse, nextBlock, validatorsResponse)
@@ -142,8 +144,8 @@ class ExplorerService(
             hash = blockResponse.blockId.hash.toHash(),
             time = blockResponse.block.header.time.formattedString(),
             proposerAddress = proposer.proposerOperatorAddress,
-            moniker = stakingValidator.moniker,
-            icon = stakingValidator.imageUrl,
+            moniker = stakingValidator?.moniker ?: "UNDER MAINTENANCE",
+            icon = stakingValidator?.imageUrl,
             votingPower = CountTotal(
                 if (votingVals != null)
                     validatorsResponse.validatorsList.filter { it.address in votingVals }
@@ -235,7 +237,7 @@ class ExplorerService(
                     one.getUpgradePlan()!!.name,
                     one.getUpgradePlan()!!.info.getChainVersionFromUrl(props.upgradeVersionRegex),
                     version,
-                    runBlocking { govClient.getIfUpgradeApplied(one.getUpgradePlan()!!.name) }.height.toInt() != one.getUpgradePlan()!!.height.toInt(),
+                    (runBlocking { govClient.getIfUpgradeApplied(one.getUpgradePlan()!!.name) }?.height?.toInt() ?: 0) != one.getUpgradePlan()!!.height.toInt(),
                     scheduledName?.let { name -> name == one.getUpgradePlan()!!.name } ?: false,
                     url
                 )
@@ -306,6 +308,8 @@ class ExplorerService(
     )
 
     fun getParams(): Params = runBlocking {
+        if (UNDER_MAINTENANCE) return@runBlocking Params()
+
         val authParams = async { accountClient.getAuthParams().params }
         val bankParams = async { accountClient.getBankParams().params }
         val distParams = validatorClient.getDistParams().params
@@ -313,7 +317,7 @@ class ExplorerService(
         val tallyParams = async { govClient.getParams(GovParamType.tallying).tallyParams }
         val depositParams = async { govClient.getParams(GovParamType.deposit).depositParams }
         val mintParams = async { accountClient.getMintParams().params }
-        val slashingParams = validatorClient.getSlashingParams().params
+        val slashingParams = validatorClient.getSlashingParams()!!.params
         val stakingParams = validatorClient.getStakingParams().params
         val transferParams = async { ibcClient.getTransferParams().params }
         val clientParams = async { ibcClient.getClientParams().params }
@@ -373,8 +377,8 @@ class ExplorerService(
         val status = ValidatorState.ALL
         val valFilter = validatorSet.map { it.address }
         val stakingValidators = validatorService.getStakingValidators(status, valFilter, page.toOffset(count), count)
-        val votingSet = asyncV2.getBlock(height + 1)!!
-            .getVotingSet(Types.BlockIDFlag.BLOCK_ID_FLAG_ABSENT_VALUE).keys
+        val votingSet = asyncV2.getBlock(height + 1)
+            ?.getVotingSet(Types.BlockIDFlag.BLOCK_ID_FLAG_ABSENT_VALUE)?.keys ?: emptySet()
         val proposer = transaction { BlockProposerRecord.findById(height)!! }
         val results =
             validatorService.hydrateValidators(validatorSet, listOf(), stakingValidators, height.toLong()).map {

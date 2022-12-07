@@ -1,6 +1,8 @@
 package io.provenance.explorer.service
 
 import com.google.protobuf.util.JsonFormat
+import io.provenance.explorer.config.ExplorerProperties.Companion.UNDER_MAINTENANCE
+import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.MdParent
 import io.provenance.explorer.domain.core.MetadataAddress
 import io.provenance.explorer.domain.core.getParentForType
@@ -9,6 +11,7 @@ import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.core.toMAddressContractSpec
 import io.provenance.explorer.domain.core.toMAddressScope
 import io.provenance.explorer.domain.core.toMAddressScopeSpec
+import io.provenance.explorer.domain.entities.AccountTokenCountRecord
 import io.provenance.explorer.domain.entities.NftContractSpecRecord
 import io.provenance.explorer.domain.entities.NftScopeRecord
 import io.provenance.explorer.domain.entities.NftScopeSpecRecord
@@ -54,12 +57,13 @@ class NftService(
     fun getScopesForOwningAddress(address: String, page: Int, count: Int) = runBlocking {
         metadataClient.getScopesByOwner(address, page.toOffset(count), count).let {
             val records = it.scopeUuidsList.map { uuid -> scopeToListview(uuid) }
-            PagedResults(it.pagination.total.pageCountOfResults(count), records, it.pagination.total)
+            val total = transaction { AccountTokenCountRecord.findByAddress(address)?.nftCount ?: 0 }.toLong()
+            PagedResults(total.pageCountOfResults(count), records, total)
         }
     }
 
     private fun scopeToListview(addr: String) = runBlocking {
-        metadataClient.getScopeById(addr).let {
+        metadataClient.getScopeById(addr)!!.let {
             val lastTx = TxNftJoinRecord.findTxByUuid(it.scope.scopeIdInfo.scopeUuid, 0, 1).firstOrNull()
             ScopeListview(
                 it.scope.scopeIdInfo.scopeUuid,
@@ -75,7 +79,7 @@ class NftService(
     }
 
     fun getScopeDetail(addr: String) = runBlocking {
-        metadataClient.getScopeById(addr).let {
+        metadataClient.getScopeById(addr)?.let {
             val spec = getScopeDescrip(it.scope.scopeSpecIdInfo.scopeSpecAddr)
             val attributes = async { attrClient.getAllAttributesForAddress(it.scope.scopeIdInfo.scopeAddr) }
             ScopeDetail(
@@ -89,12 +93,14 @@ class NftService(
                 it.scope.scope.valueOwnerAddress,
                 attributes.await().map { attr -> attr.toResponse() }
             )
-        }
+        } ?: throw ResourceNotFoundException("Invalid Scope address : '$addr'")
     }
 
     fun getRecordsForScope(addr: String): List<ScopeRecord> = runBlocking {
+        if (UNDER_MAINTENANCE) return@runBlocking listOf()
         // get scope
         val scope = metadataClient.getScopeById(addr, true, true)
+            ?: throw ResourceNotFoundException("Invalid Scope address : '$addr'")
         // get scope spec -> contract specs
         val scopeSpec = metadataClient.getScopeSpecById(scope.scope.scopeSpecIdInfo.scopeSpecAddr)
         val contractSpecs = scopeSpec.scopeSpecification.specification.contractSpecIdsList.map { it.toMAddress() }.toSet()
