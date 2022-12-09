@@ -3,7 +3,6 @@ package io.provenance.explorer.service
 import cosmos.base.tendermint.v1beta1.Query
 import cosmos.staking.v1beta1.Staking
 import io.ktor.client.call.body
-import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.provenance.explorer.KTOR_CLIENT_JAVA
@@ -481,8 +480,8 @@ class ValidatorService(
                     parameter("key_suffix", identityStr)
                     parameter("fields", "pictures")
                 }
-            } catch (e: ResponseException) {
-                return@runBlocking null.also { logger.error("Error reaching Keybase: ${e.response}") }
+            } catch (e: Exception) {
+                return@runBlocking null.also { logger.error("Error reaching Keybase: ${e.message}") }
             }
 
             if (res.status.value in 200..299) {

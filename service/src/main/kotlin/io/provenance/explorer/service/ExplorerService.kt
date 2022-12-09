@@ -8,6 +8,7 @@ import cosmos.gov.v1beta1.Gov
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.get
+import io.provenance.explorer.JSON_NODE_FACTORY
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
@@ -343,7 +344,7 @@ class ExplorerService(
                     transferParams.await().toObjectNodePrint(protoPrinter),
                     clientParams.await().toObjectNodePrint(protoPrinter),
 //                    icaControllerParams.await().toObjectNodePrint(protoPrinter),
-                    null,
+                    JSON_NODE_FACTORY.objectNode(),
                     icaHostParams.await().toObjectNodePrint(protoPrinter)
                 ),
                 wasmParams.await().toObjectNodePrint(protoPrinter)
