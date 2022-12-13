@@ -8,11 +8,12 @@ import io.provenance.explorer.domain.core.sql.nullsLast
 import io.provenance.explorer.domain.core.sql.toDbQueryList
 import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.toDateTime
-import io.provenance.explorer.domain.models.explorer.AssetHolder
 import io.provenance.explorer.domain.models.explorer.AssetPricing
-import io.provenance.explorer.domain.models.explorer.CountStrTotal
-import io.provenance.explorer.domain.models.explorer.TokenDistribution
 import io.provenance.explorer.domain.models.explorer.TokenDistributionPaginatedResults
+import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
+import io.provenance.explorer.model.AssetHolder
+import io.provenance.explorer.model.TokenDistribution
+import io.provenance.explorer.model.base.CountStrTotal
 import io.provenance.marker.v1.MarkerAccount
 import io.provenance.marker.v1.MarkerStatus
 import org.jetbrains.exposed.dao.IntEntity
@@ -110,6 +111,9 @@ class MarkerCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             MarkerCacheRecord.find { MarkerCacheTable.markerType eq BaseDenomType.IBC_DENOM.name }.count()
         }
     }
+
+    fun toCoinStrWithPrice(price: BigDecimal?) =
+        this.supply.toCoinStrWithPrice(price, this.denom)
 
     var markerAddress by MarkerCacheTable.markerAddress
     var markerType by MarkerCacheTable.markerType

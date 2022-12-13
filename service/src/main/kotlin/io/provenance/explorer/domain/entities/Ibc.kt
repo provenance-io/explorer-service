@@ -11,12 +11,12 @@ import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.toDateTimeWithFormat
 import io.provenance.explorer.domain.extensions.toDbHash
-import io.provenance.explorer.domain.models.explorer.IbcRelayer
 import io.provenance.explorer.domain.models.explorer.LedgerBySliceRes
 import io.provenance.explorer.domain.models.explorer.LedgerInfo
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.grpc.extensions.toLocalhostClientState
 import io.provenance.explorer.grpc.extensions.toTendermintClientState
+import io.provenance.explorer.model.IbcRelayer
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID

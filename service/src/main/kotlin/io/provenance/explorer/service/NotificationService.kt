@@ -10,11 +10,11 @@ import io.provenance.explorer.domain.exceptions.InvalidArgumentException
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.Announcement
-import io.provenance.explorer.domain.models.explorer.AnnouncementOut
-import io.provenance.explorer.domain.models.explorer.OpenProposals
-import io.provenance.explorer.domain.models.explorer.PagedResults
-import io.provenance.explorer.domain.models.explorer.ScheduledUpgrade
 import io.provenance.explorer.grpc.v1.GovGrpcClient
+import io.provenance.explorer.model.AnnouncementOut
+import io.provenance.explorer.model.OpenProposals
+import io.provenance.explorer.model.ScheduledUpgrade
+import io.provenance.explorer.model.base.PagedResults
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime

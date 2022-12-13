@@ -3,73 +3,10 @@ package io.provenance.explorer.domain.models.explorer
 import cosmos.feegrant.v1beta1.Feegrant
 import io.provenance.explorer.domain.extensions.toCoinStrList
 import io.provenance.explorer.domain.extensions.toDateTime
-import org.joda.time.DateTime
-
-//region Authz Grant
-data class GrantData(
-    val granter: String,
-    val grantee: String,
-    val expiration: DateTime,
-    val type: String,
-    val authorization: AuthzGrant?
-)
-
-open class AuthzGrant
-
-data class GenericAuth(
-    val msg: String
-) : AuthzGrant()
-
-data class CountAuth(
-    val msg: String,
-    val allowedAuthCount: Int
-) : AuthzGrant()
-
-data class SendAuth(
-    val spendLimits: List<CoinStr>
-) : AuthzGrant()
-
-data class StakeAuth(
-    val authorizationType: String,
-    val allowList: List<String>? = null,
-    val denyList: List<String>? = null,
-    val maxTokens: CoinStr? = null
-) : AuthzGrant()
-
-data class MarkerTransferAuth(
-    val transferLimits: List<CoinStr>
-) : AuthzGrant()
-
-//endregion
+import io.provenance.explorer.model.BasicAllowance
 
 //region Feegrant
-data class FeegrantData(
-    val granter: String,
-    val grantee: String,
-    val type: String,
-    val allowance: Allowance?
-)
-
-open class Allowance
-
-data class BasicAllowance(
-    val spendLimits: List<CoinStr>,
-    val expiration: DateTime? = null,
-) : Allowance()
 
 fun Feegrant.BasicAllowance.toDto() = BasicAllowance(this.spendLimitList.toCoinStrList(), this.expiration.toDateTime())
-
-data class PeriodicAllowance(
-    val basicAllowance: BasicAllowance,
-    val period: String, // duration in seconds
-    val spendLimit: List<CoinStr>,
-    val spendRemaining: List<CoinStr>,
-    val periodReset: DateTime
-) : Allowance()
-
-data class AllowedMsgAllowance(
-    val allowance: Allowance,
-    val allowedMsgs: List<String>
-) : Allowance()
 
 //endregion

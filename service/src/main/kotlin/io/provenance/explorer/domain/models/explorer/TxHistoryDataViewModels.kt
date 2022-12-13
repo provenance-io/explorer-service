@@ -3,16 +3,15 @@ package io.provenance.explorer.domain.models.explorer
 import io.provenance.explorer.domain.entities.TxHistoryDataViews
 import io.provenance.explorer.domain.exceptions.requireToMessage
 import io.provenance.explorer.domain.extensions.CsvData
-import io.provenance.explorer.domain.extensions.stringfy
+import io.provenance.explorer.model.FeeTypeData
+import io.provenance.explorer.model.TxHistoryChartData
+import io.provenance.explorer.model.TxTypeData
+import io.provenance.explorer.model.base.DateTruncGranularity
 import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
 import org.joda.time.format.DateTimeFormat
 import java.io.ByteArrayOutputStream
 import java.io.PrintWriter
-import java.math.BigDecimal
 import java.sql.ResultSet
-import java.text.NumberFormat
-import java.util.Locale
 
 fun getFileList(filters: TxHistoryDataRequest, feepayer: String?): MutableList<CsvData> {
     val hasFeepayer = feepayer != null
@@ -47,20 +46,6 @@ fun getFileList(filters: TxHistoryDataRequest, feepayer: String?): MutableList<C
 
 //region TxHistoryChart
 
-data class TxHistoryChartData(
-    val date: DateTime,
-    val feepayer: String? = null,
-    val txCount: BigDecimal,
-    val feeAmountInBaseToken: BigDecimal,
-    val gasWanted: BigDecimal,
-    val gasUsed: BigDecimal,
-    val feeAmountInToken: BigDecimal,
-    val feesPaidInUsd: BigDecimal?,
-    val maxTokenPriceUsd: BigDecimal?,
-    val minTokenPriceUsd: BigDecimal?,
-    val avgTokenPriceUsd: BigDecimal?
-)
-
 fun ResultSet.toTxHistoryChartData(byFeepayer: Boolean) = TxHistoryChartData(
     DateTime(this.getTimestamp("date").time),
     if (byFeepayer) this.getString("feepayer") else null,
@@ -83,37 +68,9 @@ fun txHistoryDataCsvBaseHeaders(advancedMetrics: Boolean, hasFeepayer: Boolean):
     return base
 }
 
-fun TxHistoryChartData.toCsv(
-    advancedMetrics: Boolean,
-    hasFeepayer: Boolean,
-    granularity: DateTruncGranularity
-): MutableList<Any> {
-    val base = mutableListOf<Any>(this.date.withZone(DateTimeZone.UTC).customFormat(granularity))
-    if (hasFeepayer) base.add(this.feepayer!!)
-    base.addAll(
-        listOf(
-            this.txCount,
-            this.feeAmountInToken.stringfy(),
-            this.feesPaidInUsd?.currFormat() ?: "",
-            this.minTokenPriceUsd?.currFormat() ?: "",
-            this.maxTokenPriceUsd?.currFormat() ?: "",
-            this.avgTokenPriceUsd?.currFormat() ?: ""
-        )
-    )
-    if (advancedMetrics) base.addAll(listOf(this.gasWanted, this.gasUsed))
-    return base
-}
-
 //endregion
 
 //region TxTypeData
-
-data class TxTypeData(
-    val date: DateTime,
-    val feepayer: String? = null,
-    val txType: String,
-    val txTypeCount: BigDecimal,
-)
 
 fun ResultSet.toTxTypeData(byFeepayer: Boolean) = TxTypeData(
     DateTime(this.getTimestamp("date").time),
@@ -129,29 +86,9 @@ fun txTypeDataCsvBaseHeaders(hasFeepayer: Boolean): MutableList<String> {
     return base
 }
 
-fun TxTypeData.toCsv(hasFeepayer: Boolean, granularity: DateTruncGranularity): MutableList<Any> {
-    val base = mutableListOf<Any>(this.date.withZone(DateTimeZone.UTC).customFormat(granularity))
-    if (hasFeepayer) base.add(this.feepayer!!)
-    base.addAll(listOf(this.txType, this.txTypeCount))
-    return base
-}
-
 //endregion
 
 //region FeeTypeData
-
-data class FeeTypeData(
-    val date: DateTime,
-    val feepayer: String? = null,
-    val feeType: String,
-    val msgType: String?,
-    val feeAmountInBaseToken: BigDecimal,
-    val feeAmountInToken: BigDecimal,
-    val feesPaidInUsd: BigDecimal?,
-    val maxTokenPriceUsd: BigDecimal?,
-    val minTokenPriceUsd: BigDecimal?,
-    val avgTokenPriceUsd: BigDecimal?
-)
 
 fun ResultSet.toFeeTypeData(byFeepayer: Boolean) = FeeTypeData(
     DateTime(this.getTimestamp("date").time),
@@ -173,37 +110,9 @@ fun feeTypeDataCsvBaseHeaders(hasFeepayer: Boolean): MutableList<String> {
     return base
 }
 
-fun FeeTypeData.toCsv(hasFeepayer: Boolean, granularity: DateTruncGranularity): MutableList<Any> {
-    val base = mutableListOf<Any>(this.date.withZone(DateTimeZone.UTC).customFormat(granularity))
-    if (hasFeepayer) base.add(this.feepayer!!)
-    base.addAll(
-        listOf(
-            this.feeType,
-            this.msgType ?: "",
-            this.feeAmountInToken.stringfy(),
-            this.feesPaidInUsd?.currFormat() ?: "",
-            this.minTokenPriceUsd?.currFormat() ?: "",
-            this.maxTokenPriceUsd?.currFormat() ?: "",
-            this.avgTokenPriceUsd?.currFormat() ?: ""
-        )
-    )
-    return base
-}
-
 //endregion
 
 //region TxHistory API Request Bodies
-
-val currFormat = NumberFormat.getCurrencyInstance(Locale.US).apply { maximumFractionDigits = 4 }
-fun BigDecimal.currFormat() = currFormat.format(this)
-
-fun DateTime.customFormat(granularity: DateTruncGranularity) =
-    when (granularity) {
-        DateTruncGranularity.HOUR,
-        DateTruncGranularity.MINUTE -> DateTimeFormat.forPattern("yyy-MM-dd hh:mm:ss").print(this)
-        DateTruncGranularity.DAY -> DateTimeFormat.forPattern("yyy-MM-dd").print(this)
-        DateTruncGranularity.MONTH -> DateTimeFormat.forPattern("yyy-MM").print(this)
-    }
 
 fun granularityValidation(granularity: DateTruncGranularity) =
     requireToMessage(

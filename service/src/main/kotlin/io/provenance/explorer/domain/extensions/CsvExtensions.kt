@@ -11,17 +11,17 @@ data class CsvData(
     val fileName: String,
     val headers: List<String>,
     val records: List<List<Any>>
-)
-
-fun CsvData.writeCsvEntry(): ByteArray = try {
-    val baos = ByteArrayOutputStream()
-    CSVPrinter(OutputStreamWriter(baos), CSVFormat.DEFAULT)
-        .use { csvPrinter ->
-            csvPrinter.printRecord(this.headers)
-            this.records.forEach { csvPrinter.printRecord(it) }
-            csvPrinter.flush()
-            return baos.toByteArray()
-        }
-} catch (e: IOException) {
-    throw CsvWriteException("Failed to export data to CSV: " + e.message)
+) {
+    fun writeCsvEntry(): ByteArray = try {
+        val baos = ByteArrayOutputStream()
+        CSVPrinter(OutputStreamWriter(baos), CSVFormat.DEFAULT)
+            .use { csvPrinter ->
+                csvPrinter.printRecord(this.headers)
+                this.records.forEach { csvPrinter.printRecord(it) }
+                csvPrinter.flush()
+                return baos.toByteArray()
+            }
+    } catch (e: IOException) {
+        throw CsvWriteException("Failed to export data to CSV: " + e.message)
+    }
 }

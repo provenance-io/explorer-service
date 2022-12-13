@@ -1,8 +1,8 @@
 package io.provenance.explorer.domain.entities
 
-import io.provenance.explorer.domain.core.MdParent
 import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.models.explorer.TxData
+import io.provenance.explorer.model.base.MdParent
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID

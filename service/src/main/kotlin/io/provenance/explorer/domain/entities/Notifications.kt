@@ -6,7 +6,7 @@ import io.provenance.explorer.domain.core.sql.getOrNull
 import io.provenance.explorer.domain.exceptions.InvalidArgumentException
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.Announcement
-import io.provenance.explorer.domain.models.explorer.AnnouncementOut
+import io.provenance.explorer.model.AnnouncementOut
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID

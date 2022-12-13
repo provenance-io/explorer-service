@@ -1,9 +1,9 @@
 package io.provenance.explorer.web.v2
 
 import io.provenance.explorer.domain.annotation.HiddenApi
-import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
-import io.provenance.explorer.domain.models.explorer.Params
-import io.provenance.explorer.domain.models.explorer.Spotlight
+import io.provenance.explorer.model.Params
+import io.provenance.explorer.model.Spotlight
+import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.service.TokenService
 import io.swagger.annotations.Api

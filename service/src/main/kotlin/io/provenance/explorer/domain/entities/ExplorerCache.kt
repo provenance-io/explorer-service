@@ -2,12 +2,12 @@ package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
-import io.provenance.explorer.domain.extensions.USD_UPPER
-import io.provenance.explorer.domain.models.explorer.ChainAum
-import io.provenance.explorer.domain.models.explorer.ChainMarketRate
-import io.provenance.explorer.domain.models.explorer.CmcHistoricalQuote
-import io.provenance.explorer.domain.models.explorer.Spotlight
-import io.provenance.explorer.domain.models.explorer.ValidatorMarketRate
+import io.provenance.explorer.model.ChainAum
+import io.provenance.explorer.model.ChainMarketRate
+import io.provenance.explorer.model.CmcHistoricalQuote
+import io.provenance.explorer.model.Spotlight
+import io.provenance.explorer.model.ValidatorMarketRate
+import io.provenance.explorer.model.base.USD_UPPER
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.EntityClass
 import org.jetbrains.exposed.dao.IntEntity
@@ -225,13 +225,12 @@ class ChainAumHourlyRecord(id: EntityID<Int>) : IntEntity(id) {
         }
     }
 
+    fun toDto() = ChainAum(this.datetime.toString("yyyy-MM-dd HH:mm:SS"), this.denom, this.amount)
+
     var datetime by ChainAumHourlyTable.datetime
     var amount by ChainAumHourlyTable.amount
     var denom by ChainAumHourlyTable.denom
 }
-
-fun ChainAumHourlyRecord.toDto() =
-    ChainAum(this.datetime.toString("yyyy-MM-dd HH:mm:SS"), this.denom, this.amount)
 
 object TokenHistoricalDailyTable : IdTable<DateTime>(name = "token_historical_daily") {
     val timestamp = datetime("historical_timestamp")

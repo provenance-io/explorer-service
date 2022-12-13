@@ -8,11 +8,9 @@ import cosmos.group.v1.Types.ProposalStatus
 import cosmos.group.v1.vote
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.config.ExplorerProperties
-import io.provenance.explorer.domain.core.isMAddress
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.toArray
 import io.provenance.explorer.domain.core.sql.toObject
-import io.provenance.explorer.domain.core.toMAddress
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockTxRetryRecord
@@ -62,7 +60,6 @@ import io.provenance.explorer.domain.models.explorer.GroupsProposalData
 import io.provenance.explorer.domain.models.explorer.Name
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxUpdate
-import io.provenance.explorer.domain.models.explorer.toProcedureObject
 import io.provenance.explorer.grpc.extensions.AddressEvents
 import io.provenance.explorer.grpc.extensions.DenomEvents
 import io.provenance.explorer.grpc.extensions.GovMsgType
@@ -126,6 +123,8 @@ import io.provenance.explorer.grpc.extensions.toMsgVoteWeightedOld
 import io.provenance.explorer.grpc.extensions.toMsgWithdrawProposalGroup
 import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
 import io.provenance.explorer.grpc.v1.TransactionGrpcClient
+import io.provenance.explorer.model.base.isMAddress
+import io.provenance.explorer.model.base.toMAddress
 import io.provenance.explorer.service.AccountService
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.BlockService

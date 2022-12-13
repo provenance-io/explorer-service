@@ -2,13 +2,13 @@ package io.provenance.explorer.web.v3
 
 import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.config.interceptor.JwtInterceptor.Companion.X_ADDRESS
-import io.provenance.explorer.domain.extensions.TxMessageBody
 import io.provenance.explorer.domain.extensions.toTxBody
 import io.provenance.explorer.domain.extensions.toTxMessageBody
-import io.provenance.explorer.domain.models.explorer.GovDepositRequest
-import io.provenance.explorer.domain.models.explorer.GovSubmitProposalRequest
-import io.provenance.explorer.domain.models.explorer.GovVoteRequest
-import io.provenance.explorer.domain.models.explorer.ProposalType
+import io.provenance.explorer.model.GovDepositRequest
+import io.provenance.explorer.model.GovSubmitProposalRequest
+import io.provenance.explorer.model.GovVoteRequest
+import io.provenance.explorer.model.ProposalType
+import io.provenance.explorer.model.TxMessageBody
 import io.provenance.explorer.service.GovService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation

@@ -4,11 +4,11 @@ import io.provenance.explorer.domain.entities.NameRecord
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.pageOfResults
 import io.provenance.explorer.domain.models.explorer.Name
-import io.provenance.explorer.domain.models.explorer.NameMap
-import io.provenance.explorer.domain.models.explorer.NameObj
-import io.provenance.explorer.domain.models.explorer.NameTreeResponse
-import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
+import io.provenance.explorer.model.NameMap
+import io.provenance.explorer.model.NameObj
+import io.provenance.explorer.model.NameTreeResponse
+import io.provenance.explorer.model.base.PagedResults
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service

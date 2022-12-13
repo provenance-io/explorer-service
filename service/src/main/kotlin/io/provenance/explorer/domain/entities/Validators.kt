@@ -8,16 +8,17 @@ import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.ArrayColumnType
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
-import io.provenance.explorer.domain.entities.ValidatorState.ACTIVE
-import io.provenance.explorer.domain.entities.ValidatorState.ALL
-import io.provenance.explorer.domain.entities.ValidatorState.CANDIDATE
-import io.provenance.explorer.domain.entities.ValidatorState.JAILED
-import io.provenance.explorer.domain.entities.ValidatorState.REMOVED
 import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.mapper
 import io.provenance.explorer.domain.extensions.toDecimal
 import io.provenance.explorer.domain.models.explorer.CurrentValidatorState
 import io.provenance.explorer.domain.models.explorer.TxData
+import io.provenance.explorer.model.ValidatorState
+import io.provenance.explorer.model.ValidatorState.ACTIVE
+import io.provenance.explorer.model.ValidatorState.ALL
+import io.provenance.explorer.model.ValidatorState.CANDIDATE
+import io.provenance.explorer.model.ValidatorState.JAILED
+import io.provenance.explorer.model.ValidatorState.REMOVED
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -103,8 +104,6 @@ class StakingValidatorCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var accountAddress by StakingValidatorCacheTable.accountAddress
     var consensusAddress by StakingValidatorCacheTable.consensusAddress
 }
-
-enum class ValidatorState { ACTIVE, CANDIDATE, JAILED, REMOVED, ALL }
 
 object ValidatorStateTable : IntIdTable(name = "validator_state") {
     val operatorAddrId = integer("operator_addr_id")
