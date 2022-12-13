@@ -47,7 +47,6 @@ jobs:
             fi
           fi
           echo version::${VERSION}
-          cd protoBindings
           ./gradlew publish closeAndReleaseSonatypeStagingRepository \
             -PartifactVersion=${VERSION} \
             -Psigning.keyId=B7D30ABE \
