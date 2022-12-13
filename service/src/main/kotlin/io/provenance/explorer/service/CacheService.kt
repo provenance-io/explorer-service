@@ -4,7 +4,7 @@ import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.CacheKeys
 import io.provenance.explorer.domain.entities.CacheUpdateRecord
 import io.provenance.explorer.domain.entities.SpotlightCacheRecord
-import io.provenance.explorer.domain.models.explorer.Spotlight
+import io.provenance.explorer.model.Spotlight
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 

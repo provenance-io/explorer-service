@@ -15,7 +15,7 @@ import io.provenance.explorer.domain.models.explorer.LEGACY_MULTISIG
 import io.provenance.explorer.domain.models.explorer.SECP_256_K1
 import io.provenance.explorer.domain.models.explorer.SECP_256_R1
 import io.provenance.explorer.domain.models.explorer.TxData
-import io.provenance.explorer.domain.models.explorer.TxSignature
+import io.provenance.explorer.model.TxSignature
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID

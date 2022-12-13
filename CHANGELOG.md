@@ -41,6 +41,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Added support for new governance v1 actions
   * Added minimal support for IBC updates, nft module, rewards module
   * TODO: Add in support for rewards module
+* Publish API model set #464
 
 ### Improvements
 * Updated Kotlin version `1.5.31` -> `1.6.21` #342

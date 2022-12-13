@@ -1,4 +1,4 @@
-package io.provenance.explorer.domain.core
+package io.provenance.explorer.model.base
 
 import com.google.protobuf.ByteString
 import java.nio.ByteBuffer
@@ -61,7 +61,11 @@ data class MetadataAddress internal constructor(val bytes: ByteArray) {
             if (recordSpecName.isBlank()) {
                 throw IllegalArgumentException("Invalid recordSpecName: cannot be empty or blank.")
             }
-            return MetadataAddress(byteArrayOf(KEY_RECORD_SPECIFICATION).plus(uuidAsByteArray(contractSpecUuid)).plus(asHashedBytes(recordSpecName)))
+            return MetadataAddress(
+                byteArrayOf(KEY_RECORD_SPECIFICATION).plus(uuidAsByteArray(contractSpecUuid)).plus(
+                    asHashedBytes(recordSpecName)
+                )
+            )
         }
 
         /** Create a MetadataAddress object from a bech32 address representation of a MetadataAddress. */

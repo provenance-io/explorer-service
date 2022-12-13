@@ -1,7 +1,7 @@
 package io.provenance.explorer.web.v3
 
-import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
 import io.provenance.explorer.domain.models.explorer.TxHistoryDataRequest
+import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.service.TransactionService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation

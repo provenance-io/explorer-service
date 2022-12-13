@@ -4,14 +4,11 @@ import cosmos.base.v1beta1.CoinOuterClass
 import cosmos.base.v1beta1.coin
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_DECIMAL_PLACES
 import io.provenance.explorer.config.ExplorerProperties.Companion.VOTING_POWER_PADDING
-import io.provenance.explorer.domain.models.explorer.CoinStr
+import io.provenance.explorer.model.base.CoinStr
+import io.provenance.explorer.model.base.stringfy
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-const val USD_UPPER = "USD"
-const val USD_LOWER = "usd"
-
-fun BigDecimal.stringfy() = this.stripTrailingZeros().toPlainString()
 fun BigDecimal.stringfyWithScale(scale: Int) = this.stripTrailingZeros().setScale(scale, RoundingMode.HALF_EVEN).toPlainString()
 
 fun BigDecimal.toCoinStr(denom: String) = CoinStr(this.stringfy(), denom)
@@ -90,3 +87,14 @@ fun List<CoinStr>.diff(newList: List<CoinStr>) =
             }
 
 fun BigDecimal.roundWhole() = this.setScale(0, RoundingMode.HALF_EVEN)
+
+fun List<CoinStr>.mapToProtoCoin() =
+    this.groupBy({ it.denom }) { it.amount.toBigDecimal() }
+        .mapValues { (_, v) -> v.sumOf { it } }
+        .filter { it.value > BigDecimal.ZERO }
+        .map { (k, v) ->
+            coin {
+                denom = k
+                amount = v.toString()
+            }
+        }

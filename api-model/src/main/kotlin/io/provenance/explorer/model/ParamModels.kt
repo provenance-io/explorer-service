@@ -1,4 +1,4 @@
-package io.provenance.explorer.domain.models.explorer
+package io.provenance.explorer.model
 
 import com.fasterxml.jackson.databind.JsonNode
 

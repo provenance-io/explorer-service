@@ -6,7 +6,9 @@ import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.nullOrString
 import io.provenance.explorer.domain.extensions.toBase64
-import io.provenance.explorer.domain.models.explorer.CodeWithContractCount
+import io.provenance.explorer.model.Code
+import io.provenance.explorer.model.CodeWithContractCount
+import io.provenance.explorer.model.Contract
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -77,6 +79,8 @@ class SmCodeRecord(id: EntityID<Int>) : IntEntity(id) {
         fun getCount(creator: String?, hasContracts: Boolean?) =
             transaction { getFilteredQuery(creator, hasContracts).count() }
     }
+
+    fun toCodeObject() = Code(this.id.value, this.creationHeight, this.creator, this.dataHash)
 
     var creationHeight by SmCodeTable.creationHeight
     var creator by SmCodeTable.creator
@@ -163,6 +167,9 @@ class SmContractRecord(id: EntityID<Int>) : IntEntity(id) {
             query.execAndMap { it.getString("label") }
         }
     }
+
+    fun toContractObject() =
+        Contract(this.contractAddress, this.creationHeight, this.codeId, this.creator, this.admin, this.label)
 
     var contractAddress by SmContractTable.contractAddress
     var creationHeight by SmContractTable.creationHeight

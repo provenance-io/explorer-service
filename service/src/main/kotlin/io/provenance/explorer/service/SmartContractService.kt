@@ -11,9 +11,6 @@ import io.provenance.explorer.domain.entities.SmContractRecord
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toObjectNodeNonTxMsg
 import io.provenance.explorer.domain.extensions.toOffset
-import io.provenance.explorer.domain.models.explorer.Code
-import io.provenance.explorer.domain.models.explorer.Contract
-import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.grpc.extensions.toMsgClearAdmin
 import io.provenance.explorer.grpc.extensions.toMsgClearAdminOld
@@ -24,6 +21,7 @@ import io.provenance.explorer.grpc.extensions.toMsgMigrateContractOld
 import io.provenance.explorer.grpc.extensions.toMsgUpdateAdmin
 import io.provenance.explorer.grpc.extensions.toMsgUpdateAdminOld
 import io.provenance.explorer.grpc.v1.SmartContractGrpcClient
+import io.provenance.explorer.model.base.PagedResults
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
@@ -96,11 +94,6 @@ class SmartContractService(
 
     fun getContractLabels() = SmContractRecord.getContractLabels()
 }
-
-fun SmCodeRecord.toCodeObject() = Code(this.id.value, this.creationHeight, this.creator, this.dataHash)
-
-fun SmContractRecord.toContractObject() =
-    Contract(this.contractAddress, this.creationHeight, this.codeId, this.creator, this.admin, this.label)
 
 fun ByteArray.isGZIPStream(): Boolean =
     this[0] == GZIPInputStream.GZIP_MAGIC.toByte() && this[1] == (GZIPInputStream.GZIP_MAGIC ushr 8).toByte()

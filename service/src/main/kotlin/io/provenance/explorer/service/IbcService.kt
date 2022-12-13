@@ -9,7 +9,6 @@ import ibc.core.channel.v1.Tx.MsgAcknowledgement
 import ibc.core.channel.v1.Tx.MsgRecvPacket
 import ibc.core.channel.v1.Tx.MsgTimeout
 import ibc.core.channel.v1.Tx.MsgTimeoutOnClose
-import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
@@ -25,21 +24,21 @@ import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
-import io.provenance.explorer.domain.models.explorer.Balance
-import io.provenance.explorer.domain.models.explorer.BalanceByChannel
-import io.provenance.explorer.domain.models.explorer.BalancesByChain
-import io.provenance.explorer.domain.models.explorer.BalancesByChannel
-import io.provenance.explorer.domain.models.explorer.Channel
-import io.provenance.explorer.domain.models.explorer.ChannelStatus
-import io.provenance.explorer.domain.models.explorer.IbcChannelStatus
-import io.provenance.explorer.domain.models.explorer.IbcDenomDetail
-import io.provenance.explorer.domain.models.explorer.IbcDenomListed
 import io.provenance.explorer.domain.models.explorer.LedgerInfo
-import io.provenance.explorer.domain.models.explorer.PagedResults
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.grpc.extensions.denomEventRegexParse
 import io.provenance.explorer.grpc.extensions.scrubQuotes
 import io.provenance.explorer.grpc.v1.IbcGrpcClient
+import io.provenance.explorer.model.Balance
+import io.provenance.explorer.model.BalanceByChannel
+import io.provenance.explorer.model.BalancesByChain
+import io.provenance.explorer.model.BalancesByChannel
+import io.provenance.explorer.model.Channel
+import io.provenance.explorer.model.ChannelStatus
+import io.provenance.explorer.model.IbcChannelStatus
+import io.provenance.explorer.model.IbcDenomDetail
+import io.provenance.explorer.model.IbcDenomListed
+import io.provenance.explorer.model.base.PagedResults
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -51,7 +50,6 @@ class IbcService(
     private val assetService: AssetService,
     private val accountService: AccountService,
     private val protoPrinter: JsonFormat.Printer,
-    private val props: ExplorerProperties
 ) {
     protected val logger = logger(IbcService::class)
 

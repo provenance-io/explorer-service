@@ -9,3 +9,4 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+include("api-model")

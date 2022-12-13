@@ -6,11 +6,7 @@ import com.google.protobuf.Message
 import com.google.protobuf.util.JsonFormat
 import cosmos.tx.v1beta1.TxOuterClass.TxBody
 import io.provenance.explorer.OBJECT_MAPPER
-
-data class TxMessageBody(
-    val json: ObjectNode,
-    val base64: List<String>
-)
+import io.provenance.explorer.model.TxMessageBody
 
 fun Message.pack(): Any = Any.pack(this, "")
 

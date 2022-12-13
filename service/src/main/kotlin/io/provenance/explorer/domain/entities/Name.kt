@@ -2,7 +2,7 @@ package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.models.explorer.Name
-import io.provenance.explorer.domain.models.explorer.NameObj
+import io.provenance.explorer.model.NameObj
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID

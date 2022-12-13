@@ -1,9 +1,8 @@
-package io.provenance.explorer.domain.models.explorer
+package io.provenance.explorer.model
 
-import cosmos.base.v1beta1.coin
 import cosmos.gov.v1.Gov
 import cosmwasm.wasm.v1.Types
-import java.math.BigDecimal
+import io.provenance.explorer.model.base.CoinStr
 
 //region Governance Msg Models
 enum class ProposalType(val example: BaseProposal) {
@@ -149,14 +148,3 @@ data class BankSendRequest(
 )
 
 //endregion
-
-fun List<CoinStr>.mapToProtoCoin() =
-    this.groupBy({ it.denom }) { it.amount.toBigDecimal() }
-        .mapValues { (_, v) -> v.sumOf { it } }
-        .filter { it.value > BigDecimal.ZERO }
-        .map { (k, v) ->
-            coin {
-                denom = k
-                amount = v.toString()
-            }
-        }

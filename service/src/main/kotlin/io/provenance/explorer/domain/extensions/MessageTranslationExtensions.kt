@@ -9,7 +9,7 @@ import com.google.protobuf.util.JsonFormat
 import cosmos.base.abci.v1beta1.Abci
 import io.provenance.explorer.JSON_NODE_FACTORY
 import io.provenance.explorer.OBJECT_MAPPER
-import io.provenance.explorer.domain.core.isMAddress
+import io.provenance.explorer.model.base.isMAddress
 import tendermint.abci.Types
 
 val protoTypesToCheckForMetadata = listOf(

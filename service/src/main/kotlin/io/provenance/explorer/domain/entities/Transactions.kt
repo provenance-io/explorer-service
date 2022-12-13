@@ -25,26 +25,26 @@ import io.provenance.explorer.domain.extensions.stringify
 import io.provenance.explorer.domain.extensions.success
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDbHash
-import io.provenance.explorer.domain.models.explorer.CustomFee
 import io.provenance.explorer.domain.models.explorer.CustomFeeList
 import io.provenance.explorer.domain.models.explorer.EventFee
-import io.provenance.explorer.domain.models.explorer.GasStats
 import io.provenance.explorer.domain.models.explorer.MsgProtoBreakout
-import io.provenance.explorer.domain.models.explorer.TxAssociatedValues
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxFeeData
-import io.provenance.explorer.domain.models.explorer.TxFeepayer
-import io.provenance.explorer.domain.models.explorer.TxGasVolume
 import io.provenance.explorer.domain.models.explorer.TxQueryParams
-import io.provenance.explorer.domain.models.explorer.TxStatus
 import io.provenance.explorer.domain.models.explorer.TxUpdate
 import io.provenance.explorer.domain.models.explorer.getCategoryForType
-import io.provenance.explorer.domain.models.explorer.onlyTxQuery
-import io.provenance.explorer.domain.models.explorer.toProcedureObject
 import io.provenance.explorer.grpc.extensions.denomAmountToPair
 import io.provenance.explorer.grpc.extensions.findAllMatchingEvents
 import io.provenance.explorer.grpc.extensions.removeFirstSlash
 import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
+import io.provenance.explorer.model.CustomFee
+import io.provenance.explorer.model.FeeCoinStr
+import io.provenance.explorer.model.GasStats
+import io.provenance.explorer.model.TxAssociatedValues
+import io.provenance.explorer.model.TxFeepayer
+import io.provenance.explorer.model.TxGasVolume
+import io.provenance.explorer.model.TxStatus
+import io.provenance.explorer.model.base.stringfy
 import io.provenance.explorer.service.AssetService
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
@@ -840,6 +840,15 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
             txInfo.txTimestamp
         ).toProcedureObject()
     }
+
+    fun toFeeCoinStr() =
+        FeeCoinStr(
+            this.amount.stringfy(),
+            this.marker,
+            this.msgType,
+            this.recipient,
+            this.origFees?.list
+        )
 
     var blockHeight by TxFeeTable.blockHeight
     var txHash by TxFeeTable.txHash

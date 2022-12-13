@@ -1,4 +1,4 @@
-package io.provenance.explorer.domain.core
+package io.provenance.explorer.model.base
 
 import com.google.common.io.BaseEncoding
 import java.io.ByteArrayOutputStream

@@ -1,8 +1,8 @@
 package io.provenance.explorer.web.v2
 
-import io.provenance.explorer.domain.models.explorer.DateTruncGranularity
-import io.provenance.explorer.domain.models.explorer.MsgTypeSet
-import io.provenance.explorer.domain.models.explorer.TxStatus
+import io.provenance.explorer.model.MsgTypeSet
+import io.provenance.explorer.model.TxStatus
+import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.service.TransactionService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation

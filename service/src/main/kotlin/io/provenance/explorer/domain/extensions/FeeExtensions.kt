@@ -7,12 +7,11 @@ import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.entities.TxFeeRecord
 import io.provenance.explorer.domain.entities.TxMessageTypeRecord
-import io.provenance.explorer.domain.models.explorer.FeeCoinStr
-import io.provenance.explorer.domain.models.explorer.TxFee
 import io.provenance.explorer.domain.models.explorer.TxFeeData
 import io.provenance.explorer.grpc.extensions.denomAmountToPair
 import io.provenance.explorer.grpc.extensions.getByDefinedEvent
 import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
+import io.provenance.explorer.model.TxFee
 import io.provenance.msgfees.v1.eventMsgFees
 import io.provenance.msgfees.v1.msgAssessCustomMsgFeeRequest
 import net.pearx.kasechange.toTitleCase
@@ -23,15 +22,6 @@ fun Abci.TxResponse.getFeeTotalPaid() =
 
 fun List<TxFeeRecord>.toFees() = this.groupBy { it.feeType }
     .map { (k, v) -> TxFee(k.toTitleCase(), v.map { it.toFeeCoinStr() }) }
-
-fun TxFeeRecord.toFeeCoinStr() =
-    FeeCoinStr(
-        this.amount.stringfy(),
-        this.marker,
-        this.msgType,
-        this.recipient,
-        this.origFees?.list
-    )
 
 fun List<TxFeeRecord>.toFeePaid(altDenom: String) =
     this.sumOf { it.amount }.toCoinStr(this.firstOrNull()?.marker ?: altDenom)

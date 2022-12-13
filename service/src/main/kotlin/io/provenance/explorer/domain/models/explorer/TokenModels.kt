@@ -2,75 +2,18 @@ package io.provenance.explorer.domain.models.explorer
 
 import io.provenance.explorer.domain.entities.TokenHistoricalDailyRecord
 import io.provenance.explorer.domain.extensions.CsvData
-import io.provenance.explorer.domain.extensions.USD_UPPER
 import io.provenance.explorer.domain.extensions.startOfDay
+import io.provenance.explorer.model.base.CountStrTotal
+import io.provenance.explorer.model.base.DateTruncGranularity
 import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
 import org.joda.time.format.DateTimeFormat
 import java.io.ByteArrayOutputStream
 import java.io.PrintWriter
 import java.math.BigDecimal
 
-data class TokenSupply(
-    val maxSupply: CoinStr,
-    val currentSupply: CoinStr,
-    val circulation: CoinStr,
-    val communityPool: CoinStr,
-    val bonded: CoinStr,
-    val burned: CoinStr
-)
-
 data class TokenDistributionPaginatedResults(
     val ownerAddress: String,
     val data: CountStrTotal
-)
-
-data class TokenDistributionAmount(
-    val denom: String,
-    val amount: String
-)
-
-data class TokenDistribution(
-    val range: String,
-    val amount: TokenDistributionAmount,
-    val percent: String
-)
-
-data class RichAccount(
-    val address: String,
-    val amount: CoinStr,
-    val percentage: String
-)
-
-data class CmcHistoricalQuote(
-    val time_open: DateTime,
-    val time_close: DateTime,
-    val time_high: DateTime,
-    val time_low: DateTime,
-    val quote: Map<String, CmcQuote>
-)
-
-data class CmcQuote(
-    val open: BigDecimal,
-    val high: BigDecimal,
-    val low: BigDecimal,
-    val close: BigDecimal,
-    val volume: BigDecimal,
-    val market_cap: BigDecimal,
-    val timestamp: DateTime
-)
-
-data class CmcLatestDataAbbrev(
-    val last_updated: DateTime,
-    val quote: Map<String, CmcLatestQuoteAbbrev>
-)
-
-data class CmcLatestQuoteAbbrev(
-    val price: BigDecimal,
-    val percent_change_24h: BigDecimal,
-    val volume_24h: BigDecimal,
-    val market_cap_by_total_supply: BigDecimal?,
-    val last_updated: DateTime
 )
 
 data class DlobHistBase(
@@ -98,18 +41,6 @@ fun getFileListToken(filters: TokenHistoricalDataRequest): MutableList<CsvData> 
 
 fun tokenHistoricalCsvBaseHeaders(): MutableList<String> =
     mutableListOf("Date", "Open", "High", "Low", "Close", "Volume - USD")
-
-fun CmcHistoricalQuote.toCsv(): MutableList<Any> =
-    this.quote[USD_UPPER]!!.let {
-        mutableListOf(
-            it.timestamp.withZone(DateTimeZone.UTC).customFormat(DateTruncGranularity.DAY),
-            it.open,
-            it.high,
-            it.low,
-            it.close,
-            it.volume.currFormat()
-        )
-    }
 
 data class TokenHistoricalDataRequest(
     val fromDate: DateTime? = null,

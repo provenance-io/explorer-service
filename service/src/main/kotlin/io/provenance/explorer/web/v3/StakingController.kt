@@ -2,15 +2,15 @@ package io.provenance.explorer.web.v3
 
 import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.config.interceptor.JwtInterceptor.Companion.X_ADDRESS
-import io.provenance.explorer.domain.extensions.TxMessageBody
 import io.provenance.explorer.domain.extensions.toTxBody
 import io.provenance.explorer.domain.extensions.toTxMessageBody
-import io.provenance.explorer.domain.models.explorer.StakingCancelUnbondingRequest
-import io.provenance.explorer.domain.models.explorer.StakingDelegateRequest
-import io.provenance.explorer.domain.models.explorer.StakingRedelegateRequest
-import io.provenance.explorer.domain.models.explorer.StakingUndelegateRequest
-import io.provenance.explorer.domain.models.explorer.StakingWithdrawCommissionRequest
-import io.provenance.explorer.domain.models.explorer.StakingWithdrawRewardsRequest
+import io.provenance.explorer.model.StakingCancelUnbondingRequest
+import io.provenance.explorer.model.StakingDelegateRequest
+import io.provenance.explorer.model.StakingRedelegateRequest
+import io.provenance.explorer.model.StakingUndelegateRequest
+import io.provenance.explorer.model.StakingWithdrawCommissionRequest
+import io.provenance.explorer.model.StakingWithdrawRewardsRequest
+import io.provenance.explorer.model.TxMessageBody
 import io.provenance.explorer.service.StakingService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation

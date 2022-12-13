@@ -15,12 +15,12 @@ import io.provenance.explorer.domain.exceptions.requireToMessage
 import io.provenance.explorer.domain.exceptions.validate
 import io.provenance.explorer.domain.extensions.isZero
 import io.provenance.explorer.domain.extensions.pack
-import io.provenance.explorer.domain.models.explorer.StakingCancelUnbondingRequest
-import io.provenance.explorer.domain.models.explorer.StakingDelegateRequest
-import io.provenance.explorer.domain.models.explorer.StakingRedelegateRequest
-import io.provenance.explorer.domain.models.explorer.StakingUndelegateRequest
-import io.provenance.explorer.domain.models.explorer.StakingWithdrawCommissionRequest
-import io.provenance.explorer.domain.models.explorer.StakingWithdrawRewardsRequest
+import io.provenance.explorer.model.StakingCancelUnbondingRequest
+import io.provenance.explorer.model.StakingDelegateRequest
+import io.provenance.explorer.model.StakingRedelegateRequest
+import io.provenance.explorer.model.StakingUndelegateRequest
+import io.provenance.explorer.model.StakingWithdrawCommissionRequest
+import io.provenance.explorer.model.StakingWithdrawRewardsRequest
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 

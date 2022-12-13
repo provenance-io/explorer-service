@@ -5,10 +5,8 @@ import com.google.protobuf.ByteString
 import cosmos.crypto.multisig.Keys.LegacyAminoPubKey
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
-import io.provenance.explorer.domain.core.Bech32
 import io.provenance.explorer.domain.core.Hash.sha256
 import io.provenance.explorer.domain.core.logger
-import io.provenance.explorer.domain.core.toBech32Data
 import io.provenance.explorer.domain.entities.SignatureRecord
 import io.provenance.explorer.domain.models.explorer.ED_25519
 import io.provenance.explorer.domain.models.explorer.LEGACY_MULTISIG
@@ -16,6 +14,8 @@ import io.provenance.explorer.domain.models.explorer.SECP_256_K1
 import io.provenance.explorer.domain.models.explorer.SECP_256_R1
 import io.provenance.explorer.grpc.extensions.mapTxEventAttrValues
 import io.provenance.explorer.grpc.extensions.removeFirstSlash
+import io.provenance.explorer.model.base.Bech32
+import io.provenance.explorer.model.base.toBech32Data
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
 
 // PubKeySecp256k1
