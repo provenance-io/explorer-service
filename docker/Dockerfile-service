@@ -12,6 +12,7 @@ RUN gradle clean build --no-daemon > /dev/null 2>&1 || true
 # Copy all files
 COPY service /app/service/
 COPY database /app/database/
+COPY api-model /app/api-model/
 COPY buildSrc /app/buildSrc/
 COPY .git /app/.git/
 COPY build.gradle.kts gradle.properties settings.gradle.kts /app/
