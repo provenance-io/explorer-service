@@ -106,8 +106,11 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
         ) = transaction {
             proposal.toProposalTitleAndDescription(protoPrinter).let { (title, description) ->
                 val (hash, block, time) = findByProposalId(proposal.id)?.let {
-                    if (isSubmit) Triple(txInfo.txHash, txInfo.blockHeight, txInfo.txTimestamp)
-                    else Triple(it.txHash, it.blockHeight, it.txTimestamp)
+                    if (isSubmit) {
+                        Triple(txInfo.txHash, txInfo.blockHeight, txInfo.txTimestamp)
+                    } else {
+                        Triple(it.txHash, it.blockHeight, it.txTimestamp)
+                    }
                 } ?: Triple(txInfo.txHash, txInfo.blockHeight, txInfo.txTimestamp)
                 listOf(
                     -1,
@@ -442,14 +445,16 @@ class ProposalMonitorRecord(id: EntityID<Int>) : IntEntity(id) {
             proposalStatus: String,
             currentBlockTime: DateTime
         ) =
-            if (passStatuses.contains(proposalStatus) && this.votingEndTime.isBefore(currentBlockTime))
+            if (passStatuses.contains(proposalStatus) && this.votingEndTime.isBefore(currentBlockTime)) {
                 this.apply { this.readyForProcessing = true }
-            else if (failStatuses.contains(proposalStatus))
+            } else if (failStatuses.contains(proposalStatus)) {
                 this.apply {
                     this.readyForProcessing = true
                     this.processed = true
                 }
-            else null
+            } else {
+                null
+            }
 
         fun getUnprocessed() = transaction {
             ProposalMonitorRecord

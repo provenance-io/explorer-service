@@ -19,8 +19,9 @@ fun GeneratedMessageV3.toProcedureObject() = OBJECT_MAPPER.writeValueAsString(th
 // Creates String from list = value,value
 fun List<Any?>.toProcedureObject() =
     this.joinToString(",", "(", ")") { value ->
-        if (value == null) "null"
-        else
+        if (value == null) {
+            "null"
+        } else {
             when (value) {
                 is DateTime -> "'${value.toProcedureObject()}'"
                 is GeneratedMessageV3 -> "'${value.toProcedureObject()}'"
@@ -30,6 +31,7 @@ fun List<Any?>.toProcedureObject() =
                 is ObjectNode -> "'$value'"
                 else -> "not a thing"
             }
+        }
     }
 
 fun List<String>.toObject() = this.joinToString(",", "(", ")")

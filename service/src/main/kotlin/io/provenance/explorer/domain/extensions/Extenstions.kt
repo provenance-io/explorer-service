@@ -13,7 +13,6 @@ import com.google.protobuf.ByteString
 import com.google.protobuf.Timestamp
 import com.hubspot.jackson.datatype.protobuf.ProtobufModule
 import cosmos.base.abci.v1beta1.Abci
-import cosmos.staking.v1beta1.Staking
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
@@ -81,24 +80,32 @@ fun Int.toOffset(count: Int) = (this - 1) * count
 
 fun <T> List<T>.pageOfResults(page: Int, count: Int): List<T> {
     val fromIndex = page.toOffset(count)
-    if (fromIndex > this.lastIndex)
+    if (fromIndex > this.lastIndex) {
         return listOf<T>()
+    }
 
     var toIndex = page.toOffset(count) + count
-    if (toIndex > this.lastIndex)
+    if (toIndex > this.lastIndex) {
         toIndex = this.lastIndex + 1
+    }
 
     return this.subList(fromIndex, toIndex)
 }
 
 // Total # of results divided by count per page
 fun Long.pageCountOfResults(count: Int): Int =
-    if (this < count) 1
-    else ceil(this.toDouble() / count).toInt()
+    if (this < count) {
+        1
+    } else {
+        ceil(this.toDouble() / count).toInt()
+    }
 
 fun BigInteger.pageCountOfResults(count: Int): Int =
-    if (this < count.toBigInteger()) 1
-    else ceil(this.toDouble() / count).toInt()
+    if (this < count.toBigInteger()) {
+        1
+    } else {
+        ceil(this.toDouble() / count).toInt()
+    }
 
 fun String.isAddressAsType(type: String) = this.toBech32Data().hrp == type
 
@@ -120,16 +127,10 @@ fun ByteString.translateByteArray() = this.toByteArray().toBech32Data().let {
     )
 }
 
-fun Staking.Validator.getStatusString() =
-    when {
-        this.jailed -> "jailed"
-        this.status == Staking.BondStatus.BOND_STATUS_BONDED -> "active"
-        else -> "candidate"
-    }
-
 fun Timestamp.toDateTime() = DateTime(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()).toEpochMilli())
 fun Timestamp.formattedString() =
     DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()))
+
 // Uses seconds as the base vs millis
 fun Long.toDateTime() = DateTime(Instant.ofEpochSecond(this).toEpochMilli())
 

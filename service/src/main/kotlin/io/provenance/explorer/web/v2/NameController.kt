@@ -5,7 +5,6 @@ import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import io.swagger.annotations.ApiParam
 import org.springframework.http.MediaType
-import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -28,15 +27,22 @@ class NameController(private val nameService: NameService) {
 
     @ApiOperation("Returns tree of names")
     @GetMapping("/tree")
-    fun getNameTree() = ResponseEntity.ok(nameService.getNameMap())
+    fun getNameTree() = nameService.getNameMap()
 
     @ApiOperation("Returns attribute names owned by the address")
     @GetMapping("/{address}/owned")
     fun getNamesOwnedByAddress(
         @ApiParam(value = "The address, starting with the standard account prefix")
-        @PathVariable address: String,
+        @PathVariable
+        address: String,
         @ApiParam(value = "Record count between 1 and 50", defaultValue = "10", required = false)
-        @RequestParam(defaultValue = "10") @Min(1) @Max(50) count: Int,
-        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int
-    ) = ResponseEntity.ok(nameService.getNamesOwnedByAddress(address, page, count))
+        @RequestParam(defaultValue = "10")
+        @Min(1)
+        @Max(50)
+        count: Int,
+        @ApiParam(defaultValue = "1", required = false)
+        @RequestParam(defaultValue = "1")
+        @Min(1)
+        page: Int
+    ) = nameService.getNamesOwnedByAddress(address, page, count)
 }

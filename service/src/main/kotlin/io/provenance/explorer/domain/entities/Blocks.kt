@@ -239,12 +239,14 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
                     Pair(VarCharColumnType(128), valConsAddr)
                 )
                 query.exec(arguments).map {
-                    if (it.getString("val_cons_address") != null)
+                    if (it.getString("val_cons_address") != null) {
                         MissedBlockPeriod(
                             ValidatorMoniker(it.getString("val_cons_address"), null, null, null),
                             (it.getArray("blocks").array as Array<out Int>).toList()
                         )
-                    else null
+                    } else {
+                        null
+                    }
                 }.toMutableList().mapNotNull { it }
             }
 
@@ -297,8 +299,9 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
             }
 
             // Update following height records
-            if (updateFromHeight != null)
+            if (updateFromHeight != null) {
                 updateRecords(updateFromHeight, valconsAddr, running!! + 1, total!! + 1)
+            }
         }
 
         fun updateRecords(height: Int, valconsAddr: String, currRunning: Int, currTotal: Int) = transaction {

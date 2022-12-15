@@ -677,7 +677,7 @@ enum class MdEvents(val event: String, val idField: String) {
     // Scope Spec
     SSC("provenance.metadata.v1.EventScopeSpecificationCreated", "scope_specification_addr"),
     SSU("provenance.metadata.v1.EventScopeSpecificationUpdated", "scope_specification_addr"),
-    SSD("provenance.metadata.v1.EventScopeSpecificationDeleted", "scope_specification_addr"),
+    SSD("provenance.metadata.v1.EventScopeSpecificationDeleted", "scope_specification_addr")
 }
 
 fun Any.isMetadataDeletionMsg() =
@@ -779,7 +779,9 @@ fun SessionIdComponents?.toMAddress() =
     ) {
         val scope = this.scopeUuid.toUuidOrNull() ?: this.scopeAddr.toMAddress().getPrimaryUuid()
         this.sessionUuid.toMAddressSession(scope)
-    } else null
+    } else {
+        null
+    }
 
 //endregion
 
@@ -946,19 +948,24 @@ enum class DenomEvents(val event: String, val idField: String, val parse: Boolea
     MARKER_BURN("provenance.marker.v1.EventMarkerBurn", "denom"),
     MARKER_DELETE("provenance.marker.v1.EventMarkerDelete", "denom"),
     IBC_ACKNOWLEDGE("fungible_token_packet", "denom"),
-    IBC_RECV_PACKET("denomination_trace", "denom"),
+    IBC_RECV_PACKET("denomination_trace", "denom")
 }
 
 fun getDenomEventByEvent(event: String) = DenomEvents.values().firstOrNull { it.event == event }
 
 fun String.denomEventRegexParse() =
-    if (this.isNotBlank()) this.split(",").map { it.denomAmountToPair().second }
-    else emptyList()
+    if (this.isNotBlank()) {
+        this.split(",").map { it.denomAmountToPair().second }
+    } else {
+        emptyList()
+    }
 
 fun String.denomAmountToPair() =
-    if (this.isNotBlank())
+    if (this.isNotBlank()) {
         Regex("^([0-9]+)(.*)\$").matchEntire(this)!!.let { it.groups[1]!!.value to it.groups[2]!!.value }
-    else Pair("", "")
+    } else {
+        Pair("", "")
+    }
 
 //endregion
 
@@ -987,7 +994,7 @@ enum class AddressEvents(val event: String, vararg val idField: String) {
     ATTRIBUTE_DISTINCT_DELETE("provenance.attribute.v1.EventAttributeDistinctDelete", "account", "owner"),
     GROUP_POLICY_CREATE("cosmos.group.v1.EventCreateGroupPolicy", "address"),
     GROUP_POLICY_UPDATE("cosmos.group.v1.EventUpdateGroupPolicy", "address"),
-    GROUP_LEAVE("cosmos.group.v1.EventLeaveGroup", "address"),
+    GROUP_LEAVE("cosmos.group.v1.EventLeaveGroup", "address")
 }
 
 fun getAddressEventByEvent(event: String) = AddressEvents.values().firstOrNull { it.event == event }
@@ -1014,7 +1021,7 @@ enum class MsgToDefinedEvent(val msg: String, val definedEvent: String, val uniq
     NAME_BIND("/provenance.name.v1.MsgBindNameRequest", "provenance.name.v1.EventNameBound", "address"),
     PROPOSAL_SUBMIT_V1BETA1("/cosmos.gov.v1beta1.MsgSubmitProposal", "submit_proposal", "proposal_id"),
     PROPOSAL_SUBMIT_V1("/cosmos.gov.v1.MsgSubmitProposal", "submit_proposal", "proposal_id"),
-    MARKER_ADD("/provenance.marker.v1.MsgAddMarkerRequest", "provenance.marker.v1.EventMarkerAdd", "denom"),
+    MARKER_ADD("/provenance.marker.v1.MsgAddMarkerRequest", "provenance.marker.v1.EventMarkerAdd", "denom")
 }
 
 fun getDefinedEventsByMsg(msg: String) = MsgToDefinedEvent.values().firstOrNull { it.msg == msg }
@@ -1030,8 +1037,11 @@ fun getContractTypeUrlList() =
 fun String.toShortType() = this.split("Msg")[1].removeSuffix("Request")
 
 fun String.getMsgType(): MsgProtoBreakout {
-    val module = if (!this.startsWith("/ibc")) this.split(".")[1]
-    else this.split(".").let { list -> "${list[0].drop(1)}_${list[2]}" }
+    val module = if (!this.startsWith("/ibc")) {
+        this.split(".")[1]
+    } else {
+        this.split(".").let { list -> "${list[0].drop(1)}_${list[2]}" }
+    }
     val type = this.toShortType().let {
         if (this.startsWith("/cosmos.group.v1") && !this.contains("Group")) "${it}ForGroup" else it // handles
     }.toSnakeCase(universalWordSplitter(false))

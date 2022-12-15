@@ -65,8 +65,9 @@ class MetadataGrpcClient(channelUri: URI, private val semaphore: Semaphore) {
                         this.address = address
                         this.pagination = pageRequest {
                             this.limit = limit.toLong()
-                            if (nextKey.toStringUtf8().isNotBlank())
+                            if (nextKey.toStringUtf8().isNotBlank()) {
                                 this.key = nextKey
+                            }
                         }
                     }
                 ).let {

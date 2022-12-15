@@ -60,8 +60,11 @@ class AssetService(
         val records = MarkerCacheRecord.findByStatusPaginated(statuses, page.toOffset(count), count)
         val pricing = pricingService.getPricingInfoIn(records.map { it.denom }, "assetList")
         val list = records.map {
-            val supply = if (it.denom != UTILITY_TOKEN) it.toCoinStrWithPrice(pricing[it.denom])
-            else tokenService.totalSupply().toCoinStrWithPrice(pricing[it.denom], UTILITY_TOKEN)
+            val supply = if (it.denom != UTILITY_TOKEN) {
+                it.toCoinStrWithPrice(pricing[it.denom])
+            } else {
+                tokenService.totalSupply().toCoinStrWithPrice(pricing[it.denom], UTILITY_TOKEN)
+            }
             AssetListed(
                 it.denom,
                 it.markerAddress,
@@ -111,8 +114,8 @@ class AssetService(
 
     fun getAssetDetail(denom: String) =
         runBlocking {
-            MarkerUnitRecord.findByUnit(denom)?.let { unit ->
-                getAssetFromDB(unit.marker)?.let { (id, record) ->
+            MarkerUnitRecord.findByUnit(denom)?.marker?.let { marker ->
+                getAssetFromDB(marker)?.let { (id, record) ->
                     val txCount = TxMarkerJoinRecord.findCountByDenom(id.value)
                     val (ftCount, nftCount) = transaction {
                         val markerAccount =
@@ -120,20 +123,25 @@ class AssetService(
                         markerAccount?.tokenCounts?.firstOrNull()?.let { it.ftCount to it.nftCount } ?: (0 to 0)
                     }
                     val attributes = async { attrClient.getAllAttributesForAddress(record.markerAddress) }
-                    val price = pricingService.getPricingInfoIn(listOf(unit.marker), "assetDetail")[unit.marker]
+                    val price = pricingService.getPricingInfoIn(listOf(marker), "assetDetail")[marker]
                     AssetDetail(
                         record.denom,
                         record.markerAddress,
-                        if (record.data != null)
+                        if (record.data != null) {
                             AssetManagement(record.data!!.getManagingAccounts(), record.data!!.allowGovernanceControl)
-                        else null,
-                        if (record.denom != UTILITY_TOKEN) record.toCoinStrWithPrice(price)
-                        else tokenService.totalSupply().toCoinStrWithPrice(price, UTILITY_TOKEN),
+                        } else {
+                            null
+                        },
+                        if (record.denom != UTILITY_TOKEN) {
+                            record.toCoinStrWithPrice(price)
+                        } else {
+                            tokenService.totalSupply().toCoinStrWithPrice(price, UTILITY_TOKEN)
+                        },
                         record.data?.isMintable() ?: false,
-                        accountClient.getDenomHolders(unit.marker, 0, 1).pagination.total.toInt(),
+                        accountClient.getDenomHolders(marker, 0, 1).pagination.total.toInt(),
                         txCount,
                         attributes.await().map { attr -> attr.toResponse() },
-                        getDenomMetadataSingle(unit.marker).toObjectNode(protoPrinter),
+                        getDenomMetadataSingle(marker).toObjectNode(protoPrinter),
                         TokenCounts(ftCount, nftCount),
                         record.status.prettyStatus(),
                         record.markerType.prettyMarkerType()
@@ -174,7 +182,8 @@ class AssetService(
                             MarkerUnitRecord.insert(it.id.value, marker, unit)
                         }
                         MarkerUnitRecord.insert(
-                            it.id.value, marker,
+                            it.id.value,
+                            marker,
                             denomUnit {
                                 denom = marker
                                 exponent = 0
@@ -190,8 +199,14 @@ class AssetService(
     fun getDenomMetadataSingle(denom: String) = runBlocking { accountClient.getDenomMetadata(denom).metadata }
 
     fun getDenomMetadata(denom: String?) = runBlocking {
-        if (denom != null) listOf(accountClient.getDenomMetadata(denom).metadata)
-        else accountClient.getAllDenomMetadata()
+        if (denom != null) {
+            listOf(
+                (MarkerUnitRecord.findByUnit(denom)?.marker ?: denom)
+                    .let { accountClient.getDenomMetadata(it).metadata }
+            )
+        } else {
+            accountClient.getAllDenomMetadata()
+        }
     }
 
     fun updateMarkerUnit() = transaction {
@@ -201,7 +216,8 @@ class AssetService(
         }
         MarkerCacheRecord.all().forEach {
             MarkerUnitRecord.insert(
-                it.id.value, it.denom,
+                it.id.value,
+                it.denom,
                 denomUnit {
                     denom = it.denom
                     exponent = 0

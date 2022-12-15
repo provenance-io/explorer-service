@@ -42,7 +42,6 @@ import io.provenance.explorer.domain.extensions.validatorMissedBlocks
 import io.provenance.explorer.domain.extensions.validatorUptime
 import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.CurrentValidatorState
-import io.provenance.explorer.domain.models.explorer.Timeframe
 import io.provenance.explorer.domain.models.explorer.hourlyBlockCount
 import io.provenance.explorer.domain.models.explorer.zeroOutValidatorObj
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
@@ -69,6 +68,7 @@ import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.CountStrTotal
 import io.provenance.explorer.model.base.CountTotal
 import io.provenance.explorer.model.base.PagedResults
+import io.provenance.explorer.model.base.Timeframe
 import io.provenance.explorer.model.base.stringfy
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -144,8 +144,11 @@ class ValidatorService(
                 .also { if (it) ValidatorStateRecord.refreshCurrentStateView() }
             val stakingValidator = getStakingValidator(addr.operatorAddress)
             ValidatorDetails(
-                if (latestValidator != null) CountTotal(latestValidator.votingPower.toBigInteger(), votingPowerTotal)
-                else null,
+                if (latestValidator != null) {
+                    CountTotal(latestValidator.votingPower.toBigInteger(), votingPowerTotal)
+                } else {
+                    null
+                },
                 stakingValidator.json.description.moniker,
                 addr.operatorAddress,
                 addr.accountAddr,
@@ -169,7 +172,9 @@ class ValidatorService(
     fun validateStatus(v: CurrentValidatorState, valSet: Query.Validator?, valId: Int): Boolean =
         if ((valSet != null && v.currentState != ACTIVE) || (valSet == null && v.currentState == ACTIVE)) {
             updateStakingValidators(setOf(valId))
-        } else false
+        } else {
+            false
+        }
 
     // Finds a validator address record from whatever address is passed in
     fun getValidatorOperatorAddress(address: String) = when {
@@ -212,7 +217,7 @@ class ValidatorService(
         val blockHeight = blockService.getLatestBlockHeightIndexOrFromChain()
         grpcClient.getStakingValidators()
             .map { validator ->
-                if (!stakingVals.contains(validator.operatorAddress))
+                if (!stakingVals.contains(validator.operatorAddress)) {
                     StakingValidatorCacheRecord.insertIgnore(
                         validator.operatorAddress,
                         validator.operatorAddress.translateAddress().accountAddr,
@@ -228,7 +233,9 @@ class ValidatorService(
                         getImgUrl(validator.description.identity)
                             ?.let { img -> AddressImageRecord.upsert(validator.operatorAddress, img) }
                     }.let { true }
-                else false
+                } else {
+                    false
+                }
             }.also { map -> if (map.contains(true)) ValidatorStateRecord.refreshCurrentStateView() }
     }
 
@@ -240,12 +247,13 @@ class ValidatorService(
         vals.forEach { v ->
             val record = ValidatorStateRecord.findByValId(getActiveSet(), v)!!
             val data = grpcClient.getStakingValidatorOrNull(record.operatorAddress, height) ?: record.json.zeroOutValidatorObj()
-            if (record.blockHeight < height && data != record.json)
+            if (record.blockHeight < height && data != record.json) {
                 ValidatorStateRecord.insertIgnore(height, v, record.operatorAddress, data)
                     .also {
                         getImgUrl(data.description.identity)
                             ?.let { img -> AddressImageRecord.upsert(record.operatorAddress, img) }
                     }.also { if (!updated) updated = true }
+            }
         }
         return updated
     }
@@ -264,24 +272,23 @@ class ValidatorService(
     }
 
     // In point to get most recent validators
-    fun getRecentValidators(count: Int, page: Int, status: String) = aggregateValidatorsRecent(count, page, status)
+    fun getRecentValidators(count: Int, page: Int, status: ValidatorState) = aggregateValidatorsRecent(count, page, status)
 
     private fun aggregateValidatorsRecent(
         count: Int,
         page: Int,
-        status: String
+        status: ValidatorState
     ): PagedResults<ValidatorSummary> {
-        val statusEnum = ValidatorState.valueOf(status.uppercase())
         val (height, validatorSet) = grpcClient.getLatestValidators().let { it.blockHeight to it.validatorsList }
         val hr24ChangeSet = grpcClient.getValidatorsAtHeight(
             height.get24HrBlockHeight(cacheService.getAvgBlockTime()).toInt()
         ).validatorsList
-        getStakingValidators(statusEnum).map { v ->
+        getStakingValidators(status).map { v ->
             validateStatus(v, validatorSet.firstOrNull { it.address == v.consensusAddr }, v.operatorAddrId)
         }.also { map -> if (map.contains(true)) ValidatorStateRecord.refreshCurrentStateView() }
-        val stakingValidators = getStakingValidators(statusEnum, null, page.toOffset(count), count)
+        val stakingValidators = getStakingValidators(status, null, page.toOffset(count), count)
         val results = hydrateValidators(validatorSet, hr24ChangeSet, stakingValidators, height)
-        val totalCount = getStakingValidatorsCount(statusEnum, null)
+        val totalCount = getStakingValidatorsCount(status, null)
         return PagedResults(totalCount.pageCountOfResults(count), results, totalCount)
     }
 
@@ -316,10 +323,14 @@ class ValidatorService(
             addressId = stakingVal.operatorAddress,
             consensusAddress = stakingVal.consensusAddr,
             proposerPriority = validator?.proposerPriority?.toInt(),
-            votingPower = if (validator != null) CountTotal(
-                validator.votingPower.toBigInteger(),
-                totalVotingPower
-            ) else null,
+            votingPower = if (validator != null) {
+                CountTotal(
+                    validator.votingPower.toBigInteger(),
+                    totalVotingPower
+                )
+            } else {
+                null
+            },
             commission = stakingVal.json.commission.commissionRates.rate.toDecimalStringOld(),
             bondedTokens = CountStrTotal(stakingVal.json.tokens, null, UTILITY_TOKEN),
             delegators = delegatorCount,
@@ -363,48 +374,55 @@ class ValidatorService(
     }
 
     fun getBondedDelegations(address: String, page: Int, limit: Int) =
-        grpcClient.getStakingValidatorDelegations(address, page.toOffset(limit), limit).let { res ->
-            val list = res.delegationResponsesList.map {
-                Delegation(
-                    it.delegation.delegatorAddress,
-                    it.delegation.validatorAddress,
-                    null,
-                    CoinStr(it.balance.amount, it.balance.denom),
-                    null,
-                    it.delegation.shares.toDecimalStringOld(),
-                    null,
-                    null
-                )
-            }
-            val rollup = mapOf("bondedTotal" to getDelegationTotal(address))
-            PagedResults(res.pagination.total.pageCountOfResults(limit), list, res.pagination.total, rollup)
-        }
-
-    fun getUnbondingDelegations(address: String) =
-        grpcClient.getStakingValidatorUnbondingDels(address, 0, 100).let { res ->
-            res.unbondingResponsesList.flatMap { list ->
-                list.entriesList.map {
+        getValidatorOperatorAddress(address)?.let { addr ->
+            grpcClient.getStakingValidatorDelegations(addr.operatorAddress, page.toOffset(limit), limit).let { res ->
+                val list = res.delegationResponsesList.map {
                     Delegation(
-                        list.delegatorAddress,
-                        list.validatorAddress,
+                        it.delegation.delegatorAddress,
+                        it.delegation.validatorAddress,
                         null,
-                        CoinStr(it.balance, UTILITY_TOKEN),
-                        CoinStr(it.initialBalance, UTILITY_TOKEN),
+                        CoinStr(it.balance.amount, it.balance.denom),
                         null,
-                        it.creationHeight.toInt(),
-                        it.completionTime.toDateTime()
+                        it.delegation.shares.toDecimalStringOld(),
+                        null,
+                        null
                     )
                 }
+                val rollup = mapOf("bondedTotal" to getDelegationTotal(addr.operatorAddress))
+                PagedResults(res.pagination.total.pageCountOfResults(limit), list, res.pagination.total, rollup)
             }
-        }.let { recs ->
-            val total = recs.sumOf { it.amount.amount.toBigDecimal() }.toCoinStr(UTILITY_TOKEN)
-            UnpaginatedDelegation(recs, mapOf(Pair("unbondingTotal", total)))
-        }
+        } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
-    fun getValidatorCommission(address: String) = grpcClient.getValidatorCommission(address).commissionList
+    fun getUnbondingDelegations(address: String) =
+        getValidatorOperatorAddress(address)?.let { addr ->
+            grpcClient.getStakingValidatorUnbondingDels(addr.operatorAddress, 0, 100).let { res ->
+                res.unbondingResponsesList.flatMap { list ->
+                    list.entriesList.map {
+                        Delegation(
+                            list.delegatorAddress,
+                            list.validatorAddress,
+                            null,
+                            CoinStr(it.balance, UTILITY_TOKEN),
+                            CoinStr(it.initialBalance, UTILITY_TOKEN),
+                            null,
+                            it.creationHeight.toInt(),
+                            it.completionTime.toDateTime()
+                        )
+                    }
+                }
+            }.let { recs ->
+                val total = recs.sumOf { it.amount.amount.toBigDecimal() }.toCoinStr(UTILITY_TOKEN)
+                UnpaginatedDelegation(recs, mapOf(Pair("unbondingTotal", total)))
+            }
+        } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
+
+    fun getValidatorCommission(address: String) =
+        getValidatorOperatorAddress(address)?.let { addr ->
+            grpcClient.getValidatorCommission(addr.operatorAddress).commissionList
+        } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
     fun getCommissionInfo(address: String): ValidatorCommission {
-        val validator = ValidatorStateRecord.findByOperator(getActiveSet(), address)?.json
+        val validator = getValidatorOperatorAddress(address)?.json
             ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
         val selfBonded = getValSelfBonded(validator)
@@ -431,18 +449,23 @@ class ValidatorService(
     }
 
     fun getCommissionRateHistory(address: String) =
-        ValidatorStateRecord.getCommissionHistory(address)
-            .map { CommissionList(it.commissionRate.stringfy(), it.blockHeight) }
-            .let { ValidatorCommissionHistory(address, it) }
+        getValidatorOperatorAddress(address)?.let { addr ->
+            ValidatorStateRecord.getCommissionHistory(addr.operatorAddress)
+                .map { CommissionList(it.commissionRate.stringfy(), it.blockHeight) }
+                .let { ValidatorCommissionHistory(addr.operatorAddress, it) }
+        } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
     fun getValidatorMarketRateAvg(address: String, txCount: Int) =
-        ValidatorMarketRateRecord.getValidatorRateForBlockCount(address, txCount)
-            .map { it.marketRate }
-            .let { list -> MarketRateAvg(list.size, list.minOrNull()!!, list.maxOrNull()!!, list.average()) }
+        getValidatorOperatorAddress(address)?.let { addr ->
+            ValidatorMarketRateRecord.getValidatorRateForBlockCount(addr.operatorAddress, txCount)
+                .map { it.marketRate }
+                .let { list -> MarketRateAvg(list.size, list.minOrNull()!!, list.maxOrNull()!!, list.average()) }
+        } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
-    fun getValidatorMarketRateStats(address: String, fromDate: DateTime?, toDate: DateTime?, count: Int) = transaction {
-        ValidatorMarketRateStatsRecord.findByAddress(address, fromDate, toDate, count)
-    }
+    fun getValidatorMarketRateStats(address: String, fromDate: DateTime?, toDate: DateTime?, count: Int) =
+        getValidatorOperatorAddress(address)?.let { addr ->
+            ValidatorMarketRateStatsRecord.findByAddress(addr.operatorAddress, fromDate, toDate, count)
+        } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
     fun getProposerConsensusAddr(blockMeta: Query.GetBlockByHeightResponse) =
         blockMeta.block.header.proposerAddress.translateByteArray().consensusAccountAddr
@@ -454,7 +477,6 @@ class ValidatorService(
     ): BlockProposer {
         val consAddr = getProposerConsensusAddr(blockMeta)
         val proposer = findAddressByConsensus(consAddr)!!.operatorAddress
-//        val proposer = findAddressByOperator(blockMeta.sdkBlock.header.proposerAddress)!!.operatorAddress
         return BlockProposer(blockHeight, proposer, timestamp)
     }
 
@@ -467,8 +489,9 @@ class ValidatorService(
                 ?: grpcClient.getValidatorsAtHeight(lastBlock.height.toInt())
 
             currentVals.validatorsList.forEach { vali ->
-                if (!signatures.contains(vali.address))
+                if (!signatures.contains(vali.address)) {
                     MissedBlocksRecord.insert(lastBlock.height.toInt(), vali.address)
+                }
             }
         }
     }
@@ -489,24 +512,34 @@ class ValidatorService(
                     JSONObject(res.body<String>()).getJSONArray("them").let {
                         if (it.length() > 0) {
                             val them = it.getJSONObject(0)
-                            if (them.has("pictures"))
+                            if (them.has("pictures")) {
                                 them.getJSONObject("pictures")?.getJSONObject("primary")?.getString("url")
-                            else null
-                        } else null
+                            } else {
+                                null
+                            }
+                        } else {
+                            null
+                        }
                     }
                 } catch (e: Exception) {
                     null
                 }
-            } else null.also { logger.error("Error reaching Keybase: ${res.status}") }
-        } else null
+            } else {
+                null.also { logger.error("Error reaching Keybase: ${res.status}") }
+            }
+        } else {
+            null
+        }
     }
 
     fun getBlockLatencyData(address: String, blockCount: Int) =
-        BlockProposerRecord.getRecordsForProposer(address, blockCount).let { res ->
-            val average = res.map { it.blockLatency!! }.average()
-            val data = res.associate { it.blockHeight to it.blockLatency!! }
-            BlockLatencyData(address, data, average)
-        }
+        getValidatorOperatorAddress(address)?.let { addr ->
+            BlockProposerRecord.getRecordsForProposer(addr.operatorAddress, blockCount).let { res ->
+                val average = res.map { it.blockLatency!! }.average()
+                val data = res.associate { it.blockHeight to it.blockLatency!! }
+                BlockLatencyData(addr.operatorAddress, data, average)
+            }
+        } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
     private fun getLatestHeight() = SpotlightCacheRecord.getSpotlight()?.latestBlock?.height ?: blockService.getMaxBlockCacheHeight()
 
@@ -537,10 +570,9 @@ class ValidatorService(
     }
 
     fun getMissedBlocksForValidatorInTimeframe(timeframe: Timeframe, validatorAddr: String?): MissedBlocksTimeframe {
-        if (timeframe == Timeframe.FOREVER && validatorAddr == null)
-            throw IllegalArgumentException("If timeframe is FOREVER, you must have a validator operator address specified.")
-        if (validatorAddr != null && !validatorAddr.startsWith(PROV_VAL_OPER_PREFIX))
-            throw IllegalArgumentException("'validatorAddr' must begin with the validator operator address prefix : $PROV_VAL_OPER_PREFIX")
+        if (timeframe == Timeframe.FOREVER && validatorAddr == null) {
+            throw IllegalArgumentException("If timeframe is FOREVER, you must have a validator address specified.")
+        }
 
         val currentHeight = getLatestHeight()
         val frame = when (timeframe) {
@@ -550,10 +582,13 @@ class ValidatorService(
             Timeframe.FOREVER -> currentHeight - 1
         }
 
-        val valConsAddr = if (validatorAddr != null)
-            StakingValidatorCacheRecord.findByOperAddr(validatorAddr)?.consensusAddress
-        else
-            null
+        val valConsAddr =
+            if (validatorAddr != null) {
+                getValidatorOperatorAddress(validatorAddr)?.consensusAddr
+                    ?: throw ResourceNotFoundException("Invalid validator address: '$validatorAddr'")
+            } else {
+                null
+            }
 
         return getMissedBlocksForInput(currentHeight, frame, valConsAddr)
     }

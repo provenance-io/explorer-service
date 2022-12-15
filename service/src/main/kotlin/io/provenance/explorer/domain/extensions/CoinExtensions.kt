@@ -51,8 +51,9 @@ fun Int.padToDecString() =
 
 fun List<CoinOuterClass.DecCoin>.isZero(): Boolean {
     this.forEach {
-        if (it.amount.toBigDecimal() != BigDecimal.ZERO)
+        if (it.amount.toBigDecimal() != BigDecimal.ZERO) {
             return false
+        }
     }
     return true
 }
@@ -76,15 +77,16 @@ fun String.toPercentage(num: BigDecimal, den: BigDecimal, scale: Int) =
 
 // Calcs the difference between this (oldList) of denoms and the newList of denoms
 fun List<CoinStr>.diff(newList: List<CoinStr>) =
-    if (this.isEmpty())
+    if (this.isEmpty()) {
         newList
-    else
+    } else {
         newList.associateBy { it.denom }
             .let { map ->
                 this.map { orig ->
                     CoinStr(map[orig.denom]!!.amount.toBigInteger().minus(orig.amount.toBigInteger()).toString(), orig.denom)
                 }
             }
+    }
 
 fun BigDecimal.roundWhole() = this.setScale(0, RoundingMode.HALF_EVEN)
 

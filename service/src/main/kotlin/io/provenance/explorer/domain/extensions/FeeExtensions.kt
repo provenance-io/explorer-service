@@ -38,9 +38,9 @@ fun Abci.TxResponse.defaultBaseFees(msgFeeClient: MsgFeeGrpcClient, height: Int)
 // If not, if fee event is present, use that
 // If not, use the total fee paid (usually used for older txs)
 fun Abci.TxResponse.getSuccessTotalBaseFee(msgFeeClient: MsgFeeGrpcClient, height: Int, props: ExplorerProperties, hasMsgFees: Boolean) =
-    if (props.inOneElevenBugRange(height) && !hasMsgFees)
+    if (props.inOneElevenBugRange(height) && !hasMsgFees) {
         this.defaultBaseFees(msgFeeClient, height)
-    else
+    } else {
         this.eventsList
             .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("basefee") }
             ?.attributesList?.first { it.key.toStringUtf8() == "basefee" }
@@ -52,6 +52,7 @@ fun Abci.TxResponse.getSuccessTotalBaseFee(msgFeeClient: MsgFeeGrpcClient, heigh
                     ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.toBigDecimal()
                     ?: this.getFeeTotalPaid()
                 )
+    }
 
 // If min_fee_charged event is present, use that
 // if not, if coin_spent event is present, use that
@@ -74,7 +75,9 @@ fun Abci.TxResponse.getFailureTotalBaseFee(msgFeeClient: MsgFeeGrpcClient, heigh
                             if (msgFeeClient.getMsgFeesAtHeight(height).isNotEmpty()) {
                                 val baseFee = this.defaultBaseFees(msgFeeClient, height)
                                 if (baseFee > this.getFeeTotalPaid()) this.getFeeTotalPaid() else baseFee
-                            } else this.getFeeTotalPaid()
+                            } else {
+                                this.getFeeTotalPaid()
+                            }
                             )
                     )
             )
@@ -82,8 +85,11 @@ fun Abci.TxResponse.getFailureTotalBaseFee(msgFeeClient: MsgFeeGrpcClient, heigh
 val sigErrorComboList = listOf("sdk" to 8, "sdk" to 32)
 
 fun Abci.TxResponse.getTotalBaseFees(msgFeeClient: MsgFeeGrpcClient, height: Int, props: ExplorerProperties, hasMsgFees: Boolean) =
-    if (this.code == 0) this.getSuccessTotalBaseFee(msgFeeClient, height, props, hasMsgFees)
-    else this.getFailureTotalBaseFee(msgFeeClient, height)
+    if (this.code == 0) {
+        this.getSuccessTotalBaseFee(msgFeeClient, height, props, hasMsgFees)
+    } else {
+        this.getFailureTotalBaseFee(msgFeeClient, height)
+    }
 
 // Old way to find msg fees, before the events were in place
 fun ServiceOuterClass.GetTxResponse.identifyMsgBasedFeesOld(msgFeeClient: MsgFeeGrpcClient, height: Int): List<TxFeeData> {

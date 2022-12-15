@@ -68,7 +68,7 @@ data class AccountVestingInfo(
     val endTime: DateTime,
     val originalVestingList: List<CoinStr>,
     val startTime: DateTime? = null,
-    val periodicVestingList: List<PeriodicVestingInfo> = emptyList(),
+    val periodicVestingList: List<PeriodicVestingInfo> = emptyList()
 )
 
 data class PeriodicVestingInfo(

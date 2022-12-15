@@ -115,8 +115,11 @@ class UtilityService(
     fun getMsgTypeToProto() = transaction {
         TxMessageTypeRecord.all().map {
             val proto = it.protoType
-            val module = if (!it.protoType.startsWith("/ibc")) it.protoType.split(".")[1]
-            else it.protoType.split(".").let { list -> "${list[0].drop(1)}_${list[2]}" }
+            val module = if (!it.protoType.startsWith("/ibc")) {
+                it.protoType.split(".")[1]
+            } else {
+                it.protoType.split(".").let { list -> "${list[0].drop(1)}_${list[2]}" }
+            }
             val type = it.protoType.split("Msg")[1].removeSuffix("Request").toSnakeCase(universalWordSplitter(false))
             val category = type.getCategoryForType()?.mainCategory
 

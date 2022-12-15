@@ -52,7 +52,7 @@ open class Allowance
 
 data class BasicAllowance(
     val spendLimits: List<CoinStr>,
-    val expiration: DateTime? = null,
+    val expiration: DateTime? = null
 ) : Allowance()
 
 data class PeriodicAllowance(

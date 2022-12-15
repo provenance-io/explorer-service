@@ -19,7 +19,10 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping(path = ["/api/v2/migration"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Api(
-    value = "Migration controller", produces = "application/json", consumes = "application/json", tags = ["Migrations"],
+    value = "Migration controller",
+    produces = "application/json",
+    consumes = "application/json",
+    tags = ["Migrations"],
     description = "This should NEVER be used by the UI"
 )
 @HiddenApi

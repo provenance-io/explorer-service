@@ -64,7 +64,7 @@ publishing {
                 scm {
                     connection.set(project.property("scm.connection") as String)
                     developerConnection.set(project.property("scm.developerConnection") as String)
-                    url.set(project.property("scm.url") as String)
+                    url.set((project.property("scm.url") as String) + "/tree/main/api-model")
                 }
             }
         }

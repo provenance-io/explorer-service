@@ -30,8 +30,9 @@ class AccountControllerV2(private val accountService: AccountService) {
     @GetMapping("/{address}")
     fun getAccount(
         @ApiParam(value = "The address of the account, starting with the standard account prefix")
-        @PathVariable address: String
-    ) = ResponseEntity.ok(accountService.getAccountDetail(address))
+        @PathVariable
+        address: String
+    ) = accountService.getAccountDetail(address)
 
     @ApiOperation("Returns account balances for the account address")
     @GetMapping("/{address}/balances")
@@ -39,52 +40,57 @@ class AccountControllerV2(private val accountService: AccountService) {
     @java.lang.Deprecated
     fun getAccountBalances(
         @ApiParam(value = "The address of the account, starting with the standard account prefix")
-        @PathVariable address: String,
+        @PathVariable
+        address: String,
         @ApiParam(value = "Record count between 1 and 100", defaultValue = "10", required = false)
-        @RequestParam(defaultValue = "10") @Min(1) @Max(100) count: Int,
-        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int
+        @RequestParam(defaultValue = "10")
+        @Min(1)
+        @Max(100)
+        count: Int,
+        @ApiParam(defaultValue = "1", required = false)
+        @RequestParam(defaultValue = "1")
+        @Min(1)
+        page: Int
     ) = ResponseEntity.ok(accountService.getAccountBalances(address, page, count))
 
     @ApiOperation("Returns delegations for the account address")
     @GetMapping("/{address}/delegations")
     fun getAccountDelegations(
         @ApiParam(value = "The address of the account, starting with the standard account prefix")
-        @PathVariable address: String,
+        @PathVariable
+        address: String,
         @ApiParam(value = "Record count between 1 and 100", defaultValue = "10", required = false)
-        @RequestParam(defaultValue = "10") @Min(1) @Max(100) count: Int,
-        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int
-    ) = ResponseEntity.ok(accountService.getDelegations(address, page, count))
+        @RequestParam(defaultValue = "10")
+        @Min(1)
+        @Max(100)
+        count: Int,
+        @ApiParam(defaultValue = "1", required = false)
+        @RequestParam(defaultValue = "1")
+        @Min(1)
+        page: Int
+    ) = accountService.getDelegations(address, page, count)
 
     @ApiOperation("Returns delegations in the process of unbonding for the account address")
     @GetMapping("/{address}/unbonding")
     fun getAccountUnbondingDelegations(
         @ApiParam(value = "The address of the account, starting with the standard account prefix")
-        @PathVariable address: String
-    ) = ResponseEntity.ok(accountService.getUnbondingDelegations(address))
+        @PathVariable
+        address: String
+    ) = accountService.getUnbondingDelegations(address)
 
     @ApiOperation("Returns redelegations for the ccount address")
     @GetMapping("/{address}/redelegations")
     fun getAccountRedelegations(
         @ApiParam(value = "The address of the account, starting with the standard account prefix")
-        @PathVariable address: String
-    ) = ResponseEntity.ok(accountService.getRedelegations(address))
+        @PathVariable
+        address: String
+    ) = accountService.getRedelegations(address)
 
     @ApiOperation("Returns current unclaimed rewards for the account address")
     @GetMapping("/{address}/rewards")
     fun getAccountRewards(
         @ApiParam(value = "The address of the account, starting with the standard account prefix")
-        @PathVariable address: String
-    ) = ResponseEntity.ok(accountService.getRewards(address))
-
-    @ApiOperation("Returns attribute names owned by the account address")
-    @GetMapping("/{address}/attributes/owned")
-    @Deprecated("Use /api/v2/names/{address}/owned")
-    @java.lang.Deprecated
-    fun getAccountNamesOwned(
-        @ApiParam(value = "The address of the account, starting with the standard account prefix")
-        @PathVariable address: String,
-        @ApiParam(value = "Record count between 1 and 50", defaultValue = "10", required = false)
-        @RequestParam(defaultValue = "10") @Min(1) @Max(50) count: Int,
-        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int
-    ) = ResponseEntity.ok(accountService.getNamesOwnedByAccount(address, page, count))
+        @PathVariable
+        address: String
+    ) = accountService.getRewards(address)
 }

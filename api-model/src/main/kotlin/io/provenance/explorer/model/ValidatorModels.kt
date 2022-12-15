@@ -131,7 +131,7 @@ data class ValidatorUptimeStats(
     val uptimeCount: Int,
     val uptimeCountPercentage: String,
     val missedCount: Int,
-    val missedCountPercentage: String,
+    val missedCountPercentage: String
 )
 
 data class UptimeDataSet(

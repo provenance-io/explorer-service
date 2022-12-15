@@ -39,6 +39,7 @@ object Hash {
         val result = sha3(bytes)
         return Numeric.toHexString(result)
     }
+
     /**
      * Keccak-256 hash function.
      *
@@ -47,16 +48,9 @@ object Hash {
      * @param length of data
      * @return hash value
      */
-    /**
-     * Keccak-256 hash function.
-     *
-     * @param input binary encoded input data
-     * @return hash value
-     */
     @JvmOverloads
     fun sha3(input: ByteArray, offset: Int = 0, length: Int = input.size): ByteArray {
-        val kecc: Keccak.DigestKeccak =
-            Keccak.Digest256()
+        val kecc: Keccak.DigestKeccak = Keccak.Digest256()
         kecc.update(input, offset, length)
         return kecc.digest()
     }

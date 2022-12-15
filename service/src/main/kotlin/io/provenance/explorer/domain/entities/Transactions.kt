@@ -98,7 +98,7 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             val query = "SELECT * FROM get_tx_associated_values(?, ?)".trimIndent()
             val arguments = mutableListOf<Pair<ColumnType, *>>(
                 Pair(TextColumnType(), txHash),
-                Pair(IntegerColumnType(), txHeight),
+                Pair(IntegerColumnType(), txHeight)
             )
             query.execAndMap(arguments) { TxAssociatedValues(it.getString("value"), it.getString("type")) }
         }
@@ -132,8 +132,9 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
             val columns = TxCacheTable.columns.toMutableList()
             val query = findByQueryParams(txQueryParams, columns)
-            if (!txQueryParams.onlyTxQuery())
+            if (!txQueryParams.onlyTxQuery()) {
                 query.groupBy(*TxCacheTable.columns.toTypedArray())
+            }
             query.orderBy(Pair(TxCacheTable.height, SortOrder.DESC))
                 .limit(txQueryParams.count, txQueryParams.offset.toLong())
             TxCacheRecord.wrapRows(query).toSet()
@@ -151,45 +152,59 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         private fun findByQueryParams(tqp: TxQueryParams, distinctQuery: List<Expression<*>>?) = transaction {
             var join: ColumnSet = TxCacheTable
 
-            if (tqp.msgTypes.isNotEmpty())
+            if (tqp.msgTypes.isNotEmpty()) {
                 join = join.innerJoin(TxMsgTypeQueryTable, { TxCacheTable.id }, { TxMsgTypeQueryTable.txHashId })
-            if ((tqp.addressId != null && tqp.addressType != null) || tqp.address != null)
+            }
+            if ((tqp.addressId != null && tqp.addressType != null) || tqp.address != null) {
                 join = join.innerJoin(TxAddressJoinTable, { TxCacheTable.id }, { TxAddressJoinTable.txHashId })
-            if (tqp.markerId != null || tqp.denom != null)
+            }
+            if (tqp.markerId != null || tqp.denom != null) {
                 join = join.innerJoin(TxMarkerJoinTable, { TxCacheTable.id }, { TxMarkerJoinTable.txHashId })
-            if (tqp.nftId != null)
+            }
+            if (tqp.nftId != null) {
                 join = join.innerJoin(TxNftJoinTable, { TxCacheTable.id }, { TxNftJoinTable.txHashId })
-            if (tqp.ibcChannelIds.isNotEmpty())
+            }
+            if (tqp.ibcChannelIds.isNotEmpty()) {
                 join = join.innerJoin(TxIbcTable, { TxCacheTable.id }, { TxIbcTable.txHashId })
+            }
 
             val query = if (distinctQuery != null) join.slice(distinctQuery).selectAll() else join.selectAll()
 
-            if (tqp.msgTypes.isNotEmpty())
+            if (tqp.msgTypes.isNotEmpty()) {
                 query.andWhere { TxMsgTypeQueryTable.typeId inList tqp.msgTypes }
-            if (tqp.txHeight != null)
+            }
+            if (tqp.txHeight != null) {
                 query.andWhere { TxCacheTable.height eq tqp.txHeight }
-            if (tqp.txStatus != null)
+            }
+            if (tqp.txStatus != null) {
                 query.andWhere {
                     if (tqp.txStatus == TxStatus.FAILURE) TxCacheTable.errorCode neq 0 else TxCacheTable.errorCode.isNull()
                 }
-            if (tqp.addressId != null && tqp.addressType != null)
+            }
+            if (tqp.addressId != null && tqp.addressType != null) {
                 query.andWhere { (TxAddressJoinTable.addressId eq tqp.addressId) and (TxAddressJoinTable.addressType eq tqp.addressType) }
-            else if (tqp.address != null)
+            } else if (tqp.address != null) {
                 query.andWhere { (TxAddressJoinTable.address eq tqp.address) }
-            if (tqp.markerId != null)
+            }
+            if (tqp.markerId != null) {
                 query.andWhere { TxMarkerJoinTable.markerId eq tqp.markerId }
-            else if (tqp.denom != null)
+            } else if (tqp.denom != null) {
                 query.andWhere { TxMarkerJoinTable.denom eq tqp.denom }
-            if (tqp.nftId != null && tqp.nftType != null)
+            }
+            if (tqp.nftId != null && tqp.nftType != null) {
                 query.andWhere { (TxNftJoinTable.metadataId eq tqp.nftId) and (TxNftJoinTable.metadataType eq tqp.nftType) }
-            else if (tqp.nftUuid != null && tqp.nftType != null)
+            } else if (tqp.nftUuid != null && tqp.nftType != null) {
                 query.andWhere { (TxNftJoinTable.metadataUuid eq tqp.nftUuid) and (TxNftJoinTable.metadataType eq tqp.nftType) }
-            if (tqp.fromDate != null)
+            }
+            if (tqp.fromDate != null) {
                 query.andWhere { TxCacheTable.txTimestamp greaterEq tqp.fromDate.startOfDay() }
-            if (tqp.toDate != null)
+            }
+            if (tqp.toDate != null) {
                 query.andWhere { TxCacheTable.txTimestamp lessEq tqp.toDate.startOfDay().plusDays(1) }
-            if (tqp.ibcChannelIds.isNotEmpty())
+            }
+            if (tqp.ibcChannelIds.isNotEmpty()) {
                 query.andWhere { TxIbcTable.channelId inList tqp.ibcChannelIds }
+            }
 
             query
         }
@@ -245,8 +260,9 @@ class TxMessageTypeRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.type] = type
                 it[this.module] = module
                 it[this.protoType] = protoType
-                if (type.getCategoryForType() != null)
+                if (type.getCategoryForType() != null) {
                     it[this.category] = type.getCategoryForType()!!.mainCategory
+                }
             }
         }
     }
@@ -273,7 +289,7 @@ class TxMsgTypeSubtypeRecord(id: EntityID<Int>) : IntEntity(id) {
         fun buildInserts(primary: MsgProtoBreakout, secondaries: List<MsgProtoBreakout>, txInfo: TxData) = transaction {
             val primId = TxMessageTypeRecord.insert(primary.type, primary.module, primary.proto)
             val recs =
-                if (secondaries.isNotEmpty())
+                if (secondaries.isNotEmpty()) {
                     secondaries.map {
                         listOf(
                             0,
@@ -286,18 +302,20 @@ class TxMsgTypeSubtypeRecord(id: EntityID<Int>) : IntEntity(id) {
                             txInfo.txHash
                         ).toProcedureObject()
                     }
-                else listOf(
+                } else {
                     listOf(
-                        0,
-                        0,
-                        primId.value,
-                        null,
-                        txInfo.txTimestamp,
-                        0,
-                        txInfo.blockHeight,
-                        txInfo.txHash
-                    ).toProcedureObject()
-                )
+                        listOf(
+                            0,
+                            0,
+                            primId.value,
+                            null,
+                            txInfo.txTimestamp,
+                            0,
+                            txInfo.blockHeight,
+                            txInfo.txHash
+                        ).toProcedureObject()
+                    )
+                }
             primId to recs
         }
     }
@@ -342,8 +360,9 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
             val query = TxMsgTypeQueryTable
                 .slice(distinctCount)
                 .select { TxMsgTypeQueryTable.txHashId eq hashId }
-            if (msgTypes.isNotEmpty())
+            if (msgTypes.isNotEmpty()) {
                 query.andWhere { TxMsgTypeQueryTable.typeId inList msgTypes }
+            }
             query.first()[distinctCount].toBigInteger()
         }
 
@@ -352,8 +371,9 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
                 .innerJoin(TxMsgTypeSubtypeTable, { TxMessageTable.id }, { TxMsgTypeSubtypeTable.txMsgId })
                 .slice(listOf(distId) + tableColSet)
                 .select { TxMessageTable.txHashId eq hashId }
-            if (msgTypes.isNotEmpty())
+            if (msgTypes.isNotEmpty()) {
                 query.andWhere { TxMsgTypeQueryTable.typeId inList msgTypes }
+            }
             query
                 .orderBy(Pair(TxMessageTable.msgIdx, SortOrder.ASC))
                 .limit(limit, offset.toLong())
@@ -387,40 +407,53 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
         private fun findByQueryParams(tqp: TxQueryParams, distinctQuery: List<Expression<*>>?) = transaction {
             var join: ColumnSet = TxMessageTable
 
-            if (tqp.msgTypes.isNotEmpty())
+            if (tqp.msgTypes.isNotEmpty()) {
                 join =
                     join.innerJoin(TxMsgTypeQueryTable, { TxMessageTable.txHashId }, { TxMsgTypeQueryTable.txHashId })
-            if (tqp.txStatus != null)
+            }
+            if (tqp.txStatus != null) {
                 join = join.innerJoin(TxCacheTable, { TxMessageTable.txHashId }, { TxCacheTable.id })
-            if ((tqp.addressId != null && tqp.addressType != null) || tqp.address != null)
+            }
+            if ((tqp.addressId != null && tqp.addressType != null) || tqp.address != null) {
                 join = join.innerJoin(TxAddressJoinTable, { TxMessageTable.txHashId }, { TxAddressJoinTable.txHashId })
-            if (tqp.smCodeId != null)
+            }
+            if (tqp.smCodeId != null) {
                 join = join.innerJoin(TxSmCodeTable, { TxMessageTable.txHashId }, { TxSmCodeTable.txHashId })
-            if (tqp.smContractAddrId != null)
+            }
+            if (tqp.smContractAddrId != null) {
                 join = join.innerJoin(TxSmContractTable, { TxMessageTable.txHashId }, { TxSmContractTable.txHashId })
+            }
 
             val query = if (distinctQuery != null) join.slice(distinctQuery).selectAll() else join.selectAll()
 
-            if (tqp.msgTypes.isNotEmpty())
+            if (tqp.msgTypes.isNotEmpty()) {
                 query.andWhere { TxMsgTypeQueryTable.typeId inList tqp.msgTypes }
-            if (tqp.txHeight != null)
+            }
+            if (tqp.txHeight != null) {
                 query.andWhere { TxMessageTable.blockHeight eq tqp.txHeight }
-            if (tqp.txStatus != null)
+            }
+            if (tqp.txStatus != null) {
                 query.andWhere {
                     if (tqp.txStatus == TxStatus.FAILURE) TxCacheTable.errorCode neq 0 else TxCacheTable.errorCode.isNull()
                 }
-            if (tqp.addressId != null && tqp.addressType != null)
+            }
+            if (tqp.addressId != null && tqp.addressType != null) {
                 query.andWhere { (TxAddressJoinTable.addressId eq tqp.addressId) and (TxAddressJoinTable.addressType eq tqp.addressType) }
-            else if (tqp.address != null)
+            } else if (tqp.address != null) {
                 query.andWhere { (TxAddressJoinTable.address eq tqp.address) }
-            if (tqp.smCodeId != null)
+            }
+            if (tqp.smCodeId != null) {
                 query.andWhere { (TxSmCodeTable.smCode eq tqp.smCodeId) }
-            if (tqp.smContractAddrId != null)
+            }
+            if (tqp.smContractAddrId != null) {
                 query.andWhere { (TxSmContractTable.contractId eq tqp.smContractAddrId) }
-            if (tqp.fromDate != null)
+            }
+            if (tqp.fromDate != null) {
                 query.andWhere { TxMessageTable.txTimestamp greaterEq tqp.fromDate.startOfDay() }
-            if (tqp.toDate != null)
+            }
+            if (tqp.toDate != null) {
                 query.andWhere { TxMessageTable.txTimestamp lessEq tqp.toDate.startOfDay().plusDays(1) }
+            }
 
             query
         }
@@ -522,10 +555,12 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 |   tx_message_type
                 |FROM $tblName
                 |WHERE tx_timestamp >= ? 
-                |  AND tx_timestamp < ? """.trimMargin()
+                |  AND tx_timestamp < ? 
+            """.trimMargin()
 
-            if (msgType != null)
+            if (msgType != null) {
                 query += " AND tx_message_type = ? "
+            }
 
             query += " ORDER BY tx_timestamp ASC;"
 
@@ -534,8 +569,9 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 Pair(dateTimeType, fromDate.startOfDay()),
                 Pair(dateTimeType, toDate.startOfDay().plusDays(1))
             )
-            if (msgType != null)
+            if (msgType != null) {
                 arguments.add(Pair(VarCharColumnType(), msgType))
+            }
 
             val tz = DateTimeZone.UTC
             val pattern = "yyyy-MM-dd HH:mm:ss"
@@ -550,7 +586,7 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                         it.getInt("stddev_gas_used"),
                         it.getString("tx_message_type")
                     )
-                }
+                }.toList()
         }
 
         fun updateGasStats(): Unit = transaction {
@@ -611,7 +647,8 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 |WHERE $tblName.tx_timestamp >= ? 
                 |  AND $tblName.tx_timestamp < ?
                 |ORDER BY $tblName.tx_timestamp ASC
-                |""".trimMargin()
+                |
+            """.trimMargin()
 
             val dateTimeType = DateColumnType(true)
             val arguments = listOf<Pair<DateColumnType, DateTime>>(
@@ -630,7 +667,7 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                         it.getBigDecimal("gas_used").toBigInteger(),
                         it.getBigDecimal("fee_amount")
                     )
-                }
+                }.toList()
         }
 
         fun updateGasFeeVolume(): Unit = transaction {
@@ -742,7 +779,7 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                     // insert used fee
                     feeList.add(buildInsert(txInfo, BASE_FEE_USED.name, nhash.id.value, nhash.denom, baseFeeUsed))
                     // insert paid too much fee if > 0
-                    if (baseFeeOverage > BigDecimal.ZERO)
+                    if (baseFeeOverage > BigDecimal.ZERO) {
                         feeList.add(
                             buildInsert(
                                 txInfo,
@@ -752,8 +789,9 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                                 baseFeeOverage
                             )
                         )
+                    }
                     // insert additional fees grouped by msg type
-                    if (tx.success())
+                    if (tx.success()) {
                         msgBasedFeeList.forEach { fee ->
                             val feeType =
                                 if (fee.msgType == CUSTOM_FEE_MSG_TYPE) CUSTOM_FEE.name else MSG_BASED_FEE.name
@@ -770,6 +808,7 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                                 )
                             )
                         }
+                    }
                 }
                 feeList
             }
@@ -802,7 +841,9 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                                     CustomFee(name.value, custAmount.toBigDecimal(), custDenom, recipList[idx].value)
                                 }
                             }.groupBy { it.recipient }
-                    } else emptyMap()
+                    } else {
+                        emptyMap()
+                    }
 
                 val data = TxFeeData(
                     TxMessageTypeRecord.findByProtoType(fee.msg_type)?.type ?: CUSTOM_FEE_MSG_TYPE,

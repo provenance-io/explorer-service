@@ -171,14 +171,24 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
                 match?.txHashId ?: -1,
                 match?.txHash ?: txData.txHash,
                 match?.txTimestamp ?: txData.txTimestamp,
-                if (match != null)
-                    if (!match.acknowledged) ledger.ack
-                    else match.acknowledged
-                else ledger.ack,
-                if (match != null)
-                    if (!match.ackSuccess) ledger.ackSuccess
-                    else match.ackSuccess
-                else ledger.ackSuccess,
+                if (match != null) {
+                    if (!match.acknowledged) {
+                        ledger.ack
+                    } else {
+                        match.acknowledged
+                    }
+                } else {
+                    ledger.ack
+                },
+                if (match != null) {
+                    if (!match.ackSuccess) {
+                        ledger.ackSuccess
+                    } else {
+                        match.ackSuccess
+                    }
+                } else {
+                    ledger.ackSuccess
+                },
                 match?.sequence ?: ledger.sequence,
                 match?.uniqueHash ?: getUniqueHash(ledger)
             ).toProcedureObject()
@@ -203,12 +213,18 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
                 )
                 .select { IbcLedgerTable.acknowledged and IbcLedgerTable.ackSuccess }
 
-            if (srcPort != null && srcChannel != null)
+            if (srcPort != null && srcChannel != null) {
                 query.andWhere { (IbcChannelTable.srcPort eq srcPort) and (IbcChannelTable.srcChannel eq srcChannel) }
+            }
 
             query.groupBy(
-                IbcLedgerTable.dstChainName, IbcChannelTable.srcPort, IbcChannelTable.srcChannel,
-                IbcChannelTable.dstPort, IbcChannelTable.dstChannel, IbcLedgerTable.denom, IbcLedgerTable.denomTrace
+                IbcLedgerTable.dstChainName,
+                IbcChannelTable.srcPort,
+                IbcChannelTable.srcChannel,
+                IbcChannelTable.dstPort,
+                IbcChannelTable.dstChannel,
+                IbcLedgerTable.denom,
+                IbcLedgerTable.denomTrace
             )
                 .orderBy(
                     Pair(IbcLedgerTable.dstChainName, SortOrder.ASC),
@@ -234,8 +250,12 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
         fun getByChain() = transaction {
             IbcLedgerTable
                 .slice(
-                    IbcLedgerTable.dstChainName, IbcLedgerTable.denom, IbcLedgerTable.denomTrace, balanceInSum,
-                    balanceOutSum, lastTxTime
+                    IbcLedgerTable.dstChainName,
+                    IbcLedgerTable.denom,
+                    IbcLedgerTable.denomTrace,
+                    balanceInSum,
+                    balanceOutSum,
+                    lastTxTime
                 )
                 .select { IbcLedgerTable.acknowledged and IbcLedgerTable.ackSuccess }
                 .groupBy(IbcLedgerTable.dstChainName, IbcLedgerTable.denom, IbcLedgerTable.denomTrace)

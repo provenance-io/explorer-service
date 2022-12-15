@@ -56,11 +56,12 @@ class TransactionGrpcClient(channelUri: URI) {
                     this.limit = limit.toLong()
                 }
             ).let {
-                if (it.txResponsesList.isEmpty())
+                if (it.txResponsesList.isEmpty()) {
                     throw TendermintApiException(
                         "Blockchain failed to retrieve txs for height $height. Expected $total, " +
                             "Returned 0. This happens sometimes. The block will retry."
                     )
+                }
                 txResps.add(it)
                 txRespCount += it.txResponsesList.size
             }

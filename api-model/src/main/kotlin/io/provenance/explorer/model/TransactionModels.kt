@@ -174,7 +174,7 @@ enum class MsgTypeSet(val mainCategory: String, val types: List<String>, val add
             "mint",
             "burn",
             "withdraw",
-            "set_denom_metadata",
+            "set_denom_metadata"
         ),
         listOf("instantiate_contract")
     ),

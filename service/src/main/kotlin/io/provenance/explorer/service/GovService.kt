@@ -93,7 +93,6 @@ import io.provenance.explorer.model.GovProposalDetail
 import io.provenance.explorer.model.GovSubmitProposalRequest
 import io.provenance.explorer.model.GovTimeFrame
 import io.provenance.explorer.model.GovVoteRequest
-import io.provenance.explorer.model.GovVotesDetail
 import io.provenance.explorer.model.InstantiateContractData
 import io.provenance.explorer.model.ParameterChangeData
 import io.provenance.explorer.model.ProposalHeader
@@ -150,8 +149,11 @@ class GovService(
 
     fun getParamHeights(proposal: Gov.Proposal) =
         proposal.let { prop ->
-            val depositTime = if (prop.votingStartTime.toString() == "0001-01-01T00:00:00Z") prop.depositEndTime
-            else prop.votingStartTime
+            val depositTime = if (prop.votingStartTime.toString() == "0001-01-01T00:00:00Z") {
+                prop.depositEndTime
+            } else {
+                prop.votingStartTime
+            }
             val votingTime = if (prop.votingEndTime.toString() == "0001-01-01T00:00:00Z") null else prop.votingEndTime
 
             ProposalParamHeights(
@@ -336,8 +338,11 @@ class GovService(
                 .tallyParams.let { param ->
                     val eligibleAmount =
                         (
-                            if (proposal.votingParamCheckHeight == -1) cacheService.getSpotlight()!!.latestBlock.height
-                            else proposal.votingParamCheckHeight
+                            if (proposal.votingParamCheckHeight == -1) {
+                                cacheService.getSpotlight()!!.latestBlock.height
+                            } else {
+                                proposal.votingParamCheckHeight
+                            }
                             )
                             .let { valService.getValidatorsByHeight(it + 1) }
                             .validatorsList
@@ -380,10 +385,12 @@ class GovService(
 
     private fun getAddressObj(addr: String, isValidator: Boolean) = transaction {
         val (operatorAddress, moniker) =
-            if (isValidator)
+            if (isValidator) {
                 ValidatorStateRecord.findByAccount(valService.getActiveSet(), addr)!!
                     .let { it.operatorAddress to it.moniker }
-            else null to null
+            } else {
+                null to null
+            }
         GovAddress(addr, operatorAddress, moniker)
     }
 
@@ -425,7 +432,9 @@ class GovService(
                             }
                         }
                         GovProposalRecord.getAllPaginated(page.toOffset(count), count)
-                    } else list
+                    } else {
+                        list
+                    }
                 }
             }.map { mapProposalRecord(it) }
             .let {
@@ -445,60 +454,6 @@ class GovService(
                 val total = GovVoteRecord.findByProposalIdCount(proposalId)
                 PagedResults(total.pageCountOfResults(count), it, total)
             }
-    }
-
-    @Deprecated("Data split out: For vote list, use GovService.getProposalVotesPaginated; For vote tallies, use GovService.getProposalDetail")
-    fun getProposalVotes(proposalId: Long) = transaction {
-        val proposal = GovProposalRecord.findByProposalId(proposalId)
-            ?: throw ResourceNotFoundException("Invalid proposal id: '$proposalId'")
-
-        val params =
-            (
-                getParamsAtHeight(GovParamType.tallying, proposal.votingParamCheckHeight)
-                    ?: getParams(GovParamType.tallying)
-                )
-                .tallyParams.let { param ->
-                    val eligibleAmount =
-                        (
-                            if (proposal.votingParamCheckHeight == -1) cacheService.getSpotlight()!!.latestBlock.height
-                            else proposal.votingParamCheckHeight
-                            )
-                            .let { valService.getValidatorsByHeight(it) }
-                            .validatorsList
-                            .sumOf { it.votingPower }
-
-                    TallyParams(
-                        CoinStr(eligibleAmount.toString(), UTILITY_TOKEN),
-                        param.quorum.toDecimalString(),
-                        param.threshold.toDecimalString(),
-                        param.vetoThreshold.toDecimalString()
-                    )
-                }
-        val dbRecords = GovVoteRecord.findByProposalId(proposalId)
-        val voteRecords = dbRecords.groupBy { it.voter }.map { (k, v) -> mapVoteRecord(k, v) }
-        val indTallies = dbRecords.groupingBy { it.vote }.eachCount()
-        val tallies = runBlocking { govClient.getTally(proposalId)?.tally }
-        val zeroStr = 0.toString()
-        val tally = VotesTally(
-            Tally(
-                indTallies.getOrDefault(VoteOption.VOTE_OPTION_YES.name, 0),
-                CoinStr(tallies?.yesCount ?: zeroStr, UTILITY_TOKEN)
-            ),
-            Tally(
-                indTallies.getOrDefault(VoteOption.VOTE_OPTION_NO.name, 0),
-                CoinStr(tallies?.noCount ?: zeroStr, UTILITY_TOKEN)
-            ),
-            Tally(
-                indTallies.getOrDefault(VoteOption.VOTE_OPTION_NO_WITH_VETO.name, 0),
-                CoinStr(tallies?.noWithVetoCount ?: zeroStr, UTILITY_TOKEN)
-            ),
-            Tally(
-                indTallies.getOrDefault(VoteOption.VOTE_OPTION_ABSTAIN.name, 0),
-                CoinStr(tallies?.abstainCount ?: zeroStr, UTILITY_TOKEN)
-            ),
-            Tally(dbRecords.count(), CoinStr(tallies?.sum()?.stringfy() ?: zeroStr, UTILITY_TOKEN))
-        )
-        GovVotesDetail(params, tally, voteRecords)
     }
 
     fun Gov.TallyResult.sum() =
@@ -584,7 +539,7 @@ class GovService(
                 listOf(Gov.ProposalStatus.PROPOSAL_STATUS_VOTING_PERIOD)
             ).toTypedArray(),
             accountService.validateAddress(request.voter),
-            requireToMessage(request.votes.sumOf { it.weight } == 100) { "The sum of all submitted votes must be 100" },
+            requireToMessage(request.votes.sumOf { it.weight } == 100) { "The sum of all submitted votes must be 100" }
         )
         return when (request.votes.size) {
             0 -> throw InvalidArgumentException("A vote option must be included in the request")
@@ -811,9 +766,11 @@ fun GovProposalRecord?.getUpgradePlan() =
                 msg.typeUrl.contains("MsgSoftwareUpgrade") -> msg.toMsgSoftwareUpgrade().plan
                 msg.typeUrl.contains("gov.v1.MsgExecLegacyContent") ->
                     msg.toMsgExecLegacyContent().content.let {
-                        if (it.typeUrl.contains("SoftwareUpgradeProposal"))
+                        if (it.typeUrl.contains("SoftwareUpgradeProposal")) {
                             it.toSoftwareUpgradeProposal().plan
-                        else null
+                        } else {
+                            null
+                        }
                     }
 
                 else -> null
@@ -822,8 +779,11 @@ fun GovProposalRecord?.getUpgradePlan() =
         ?: this?.dataV1beta1?.content?.toSoftwareUpgradeProposal()?.plan
 
 fun String.toVoteMetadata() =
-    if (this.isBlank()) null
-    else OBJECT_MAPPER.readValue<GovVoteMetadata>(this).justification
+    if (this.isBlank()) {
+        null
+    } else {
+        OBJECT_MAPPER.readValue<GovVoteMetadata>(this).justification
+    }
 
 fun Any.toWeightedVoteList() =
     when {

@@ -49,7 +49,7 @@ class IbcService(
     private val ibcClient: IbcGrpcClient,
     private val assetService: AssetService,
     private val accountService: AccountService,
-    private val protoPrinter: JsonFormat.Printer,
+    private val protoPrinter: JsonFormat.Printer
 ) {
     protected val logger = logger(IbcService::class)
 
@@ -86,7 +86,7 @@ class IbcService(
                 "send_packet" -> v.attributesList.forEach {
                     when (it.key) {
                         "packet_data_hex" ->
-                            if (ledger.denom.isEmpty())
+                            if (ledger.denom.isEmpty()) {
                                 it.value.decodeHex().toObjectNode().let { node ->
                                     ledger.denom = node.get("denom").asText()
                                     ledger.denomTrace =
@@ -95,8 +95,9 @@ class IbcService(
                                     ledger.fromAddress = node.get("sender").asText()
                                     ledger.balanceOut = node.get("amount").asText()
                                 }
+                            }
                         "packet_data" ->
-                            if (ledger.denom.isEmpty())
+                            if (ledger.denom.isEmpty()) {
                                 it.value.toObjectNode().let { node ->
                                     ledger.denom = node.get("denom").asText()
                                     ledger.denomTrace =
@@ -105,6 +106,7 @@ class IbcService(
                                     ledger.fromAddress = node.get("sender").asText()
                                     ledger.balanceOut = node.get("amount").asText()
                                 }
+                            }
                         "packet_sequence" -> ledger.sequence = it.value.toInt()
                     }
                 }
@@ -131,19 +133,21 @@ class IbcService(
                     "recv_packet" -> v.attributesList.forEach {
                         when (it.key) {
                             "packet_data_hex" ->
-                                if (ledger.toAddress.isEmpty())
+                                if (ledger.toAddress.isEmpty()) {
                                     it.value.decodeHex().toObjectNode().let { node ->
                                         ledger.toAddress = node.get("receiver").asText()
                                         ledger.fromAddress = node.get("sender").asText()
                                         ledger.balanceIn = node.get("amount").asText()
                                     }
+                                }
                             "packet_data" ->
-                                if (ledger.toAddress.isEmpty())
+                                if (ledger.toAddress.isEmpty()) {
                                     it.value.toObjectNode().let { node ->
                                         ledger.toAddress = node.get("receiver").asText()
                                         ledger.fromAddress = node.get("sender").asText()
                                         ledger.balanceIn = node.get("amount").asText()
                                     }
+                                }
                             "packet_sequence" -> ledger.sequence = it.value.toInt()
                         }
                     }

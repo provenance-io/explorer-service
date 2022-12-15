@@ -132,8 +132,9 @@ class AsyncService(
 
         BlockTxCountsCacheRecord.updateTxCounts()
         BlockProposerRecord.calcLatency()
-        if (!cacheService.getCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key)!!.cacheValue.toBoolean())
+        if (!cacheService.getCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key)!!.cacheValue.toBoolean()) {
             cacheService.updateCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key, true.toString())
+        }
     }
 
     fun getBlockIndex() = blockService.getBlockIndexFromCache()?.let {
@@ -170,11 +171,17 @@ class AsyncService(
             val max = list.maxWithOrNull(Comparator.naturalOrder())
             val min = list.minWithOrNull(Comparator.naturalOrder())
             val avg = list.fold(BigDecimal.ZERO, BigDecimal::add).div(list.count().toBigDecimal())
-            if (addr != null) ValidatorMarketRateStatsRecord.save(addr, min, max, avg, date)
-            else ChainMarketRateStatsRecord.save(min, max, avg, date)
+            if (addr != null) {
+                ValidatorMarketRateStatsRecord.save(addr, min, max, avg, date)
+            } else {
+                ChainMarketRateStatsRecord.save(min, max, avg, date)
+            }
         } else {
-            if (addr != null) ValidatorMarketRateStatsRecord.save(addr, null, null, null, date)
-            else ChainMarketRateStatsRecord.save(null, null, null, date)
+            if (addr != null) {
+                ValidatorMarketRateStatsRecord.save(addr, null, null, null, date)
+            } else {
+                ChainMarketRateStatsRecord.save(null, null, null, date)
+            }
         }
     }
 
@@ -235,9 +242,9 @@ class AsyncService(
         cacheService.getCacheValue(key)!!.let { cache ->
             pricingService.getPricingAsync(cache.cacheValue!!, "async pricing update").forEach { price ->
                 // dont set price from PE
-                if (price.markerDenom != UTILITY_TOKEN)
+                if (price.markerDenom != UTILITY_TOKEN) {
                     assetService.getAssetRaw(price.markerDenom).let { pricingService.insertAssetPricing(it, price) }
-                else {
+                } else {
                     // Pull price from CMC, calced to the true base denom price
                     val cmcPrice =
                         tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price
@@ -317,10 +324,16 @@ class AsyncService(
                 val prevRecIdx = list.indexOfLast { DateTime(it.trade_timestamp * 1000).isBefore(today.minusDays(1)) }
                 val prevRecord = list[prevRecIdx]
                 val price = list.last().price
-                val percentChg = if (prevRecIdx == list.lastIndex) BigDecimal.ZERO
-                else price.percentChange(prevRecord.price)
-                val vol24Hr = if (prevRecIdx == list.lastIndex) BigDecimal.ZERO
-                else list.subList(prevRecIdx + 1, list.lastIndex + 1).sumOf { it.target_volume }.stripTrailingZeros()
+                val percentChg = if (prevRecIdx == list.lastIndex) {
+                    BigDecimal.ZERO
+                } else {
+                    price.percentChange(prevRecord.price)
+                }
+                val vol24Hr = if (prevRecIdx == list.lastIndex) {
+                    BigDecimal.ZERO
+                } else {
+                    list.subList(prevRecIdx + 1, list.lastIndex + 1).sumOf { it.target_volume }.stripTrailingZeros()
+                }
                 val marketCap = price.multiply(tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER))
                 val rec = CmcLatestDataAbbrev(
                     today,
@@ -337,10 +350,11 @@ class AsyncService(
         // Find existing record
         var startBlock = cacheService.getCacheValue(CacheKeys.FEE_BUG_ONE_ELEVEN_START_BLOCK.key)!!.cacheValue
         // If null, update from env. If env comes back null, update to "DONE"
-        if (startBlock.isNullOrBlank())
+        if (startBlock.isNullOrBlank()) {
             startBlock = props.oneElevenBugRange()?.first()?.toString()
                 .also { cacheService.updateCacheValue(CacheKeys.FEE_BUG_ONE_ELEVEN_START_BLOCK.key, it ?: done) }
                 ?: done
+        }
         // If "DONE" exit out
         if (startBlock == done) return
         var lastBlock = 0
@@ -350,10 +364,11 @@ class AsyncService(
             .forEach { block ->
                 if (block.txCount > 0) asyncCache.saveBlockEtc(block.block, Pair(true, false))
                 // Check if the last processed block equals the end of the fee bug range
-                if (block.height == props.oneElevenBugRange()!!.last)
+                if (block.height == props.oneElevenBugRange()!!.last) {
                     cacheService.updateCacheValue(CacheKeys.FEE_BUG_ONE_ELEVEN_START_BLOCK.key, done)
-                else
+                } else {
                     lastBlock = block.height
+                }
             }
         // Update the cache value to the last block processed
         cacheService.updateCacheValue(CacheKeys.FEE_BUG_ONE_ELEVEN_START_BLOCK.key, lastBlock.toString())
@@ -379,8 +394,9 @@ class AsyncService(
                 .orderBy(Pair(TxMessageTable.blockHeight, SortOrder.DESC))
                 .limit(5000)
                 .let { TxMessageRecord.wrapRows(it).toList() }
-            if (msgs.isEmpty()) cacheService.updateCacheValue(CacheKeys.AUTHZ_PROCESSING.key, false.toString())
-            else
+            if (msgs.isEmpty()) {
+                cacheService.updateCacheValue(CacheKeys.AUTHZ_PROCESSING.key, false.toString())
+            } else {
                 msgs.forEach { msgRec ->
                     val secondaries = msgRec.txMessage.getMsgSubTypes().filterNotNull()
                         .map { it.getMsgType() }
@@ -401,6 +417,7 @@ class AsyncService(
                         }
                     }
                 }
+            }
             logger.info("Updating AUTHZ subtypes")
         }
     }

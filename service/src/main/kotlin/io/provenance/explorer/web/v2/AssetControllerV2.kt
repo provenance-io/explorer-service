@@ -27,7 +27,7 @@ import javax.validation.constraints.Min
     consumes = MediaType.APPLICATION_JSON_VALUE,
     tags = ["Assets"]
 )
-class AssetController(
+class AssetControllerV2(
     private val assetService: AssetService,
     private val ibcService: IbcService,
     private val tokenService: TokenService
@@ -37,19 +37,29 @@ class AssetController(
     @GetMapping("/all")
     fun getMarkers(
         @RequestParam(defaultValue = "MARKER_STATUS_ACTIVE") statuses: List<MarkerStatus>,
-        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
+        @ApiParam(defaultValue = "1", required = false)
+        @RequestParam(defaultValue = "1")
+        @Min(1)
+        page: Int,
         @ApiParam(value = "Record count between 1 and 200", defaultValue = "10", required = false)
-        @RequestParam(defaultValue = "10") @Min(1) @Max(200) count: Int
-    ) = ResponseEntity.ok(assetService.getAssets(statuses, page, count))
+        @RequestParam(defaultValue = "10")
+        @Min(1)
+        @Max(200)
+        count: Int
+    ) = assetService.getAssets(statuses, page, count)
 
     @ApiOperation("Returns asset detail for the denom")
     @GetMapping("/detail/{denom}")
+    @Deprecated("Use /api/v3/assets/{denom}")
+    @java.lang.Deprecated
     fun getMarkerDetail(
         @ApiParam(value = "Use any of the denom units to search, ie `nhash` or `hash`") @PathVariable denom: String
     ) = ResponseEntity.ok(assetService.getAssetDetail(denom))
 
     @ApiOperation("Returns asset detail for an ibc denom")
     @GetMapping("/detail/ibc/{hash}")
+    @Deprecated("Use /api/v3/assets/ibc/{hash}")
+    @java.lang.Deprecated
     fun getIbcDetail(
         @ApiParam(
             value = "For an IBC denom, the standard format is `ibc/{hash}`. This parameter is solely the {hash}" +
@@ -59,11 +69,19 @@ class AssetController(
 
     @ApiOperation("Returns asset holders for the denom")
     @GetMapping("/holders")
-    fun getMarkerHolders(
-        @ApiParam(value = "Use the base denom name, ie `nhash` instead of `hash`") @RequestParam id: String,
-        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
+    @Deprecated("Use /api/v3/assets/{denom}/holders")
+    @java.lang.Deprecated
+    fun getMarkerHoldersOld(
+        @ApiParam(value = "Use any of the denom units to search, ie `nhash` or `hash`") @RequestParam id: String,
+        @ApiParam(defaultValue = "1", required = false)
+        @RequestParam(defaultValue = "1")
+        @Min(1)
+        page: Int,
         @ApiParam(value = "Record count between 1 and 200", defaultValue = "10", required = false)
-        @RequestParam(defaultValue = "10") @Min(1) @Max(200) count: Int
+        @RequestParam(defaultValue = "10")
+        @Min(1)
+        @Max(200)
+        count: Int
     ) = ResponseEntity.ok(assetService.getAssetHolders(id, page, count))
 
     @ApiOperation("Returns distribution of hash between sets of accounts")
@@ -74,8 +92,11 @@ class AssetController(
 
     @ApiOperation("Returns denom metadata for all or the specified asset")
     @GetMapping("/metadata")
+    @Deprecated("Use /api/v3/assets/metadata")
+    @java.lang.Deprecated
     fun getMarkerMetadata(
         @ApiParam(value = "Use the base denom name, ie `nhash` instead of `hash`", required = false)
-        @RequestParam(required = false) id: String?
+        @RequestParam(required = false)
+        id: String?
     ) = ResponseEntity.ok(assetService.getMetadata(id))
 }

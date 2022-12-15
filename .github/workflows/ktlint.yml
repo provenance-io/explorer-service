@@ -10,8 +10,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: "checkout"
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - run: |
+          curl -sSLO https://github.com/pinterest/ktlint/releases/download/0.47.1/ktlint && chmod a+x ktlint && sudo mv ktlint /usr/local/bin/
+      - name: run ktlint
+        run: |
+          ktlint --disabled_rules=filename,chain-wrapping,enum-entry-name-case --reporter=checkstyle,output=build/ktlint-report.xml **/*.kt
+        continue-on-error: true
+      - uses: yutailang0119/action-ktlint@v3
+        with:
+          report-path: build/*.xml # Support glob patterns by https://www.npmjs.com/package/@actions/glob
+        continue-on-error: false # If annotations contain error of severity, action-ktlint exit 1.
 
-      - name: "ktlint"
-        uses: "fkneeland-figure/gha-kotlin-linter@v3"

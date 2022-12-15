@@ -147,7 +147,8 @@ class TokenDistributionAmountsRecord(id: EntityID<Int>) : IntEntity(id) {
             TokenDistributionAmountsTable
                 .slice(data)
                 .select { data.isNotNull() }
-                .map { it[data] }
+                .filter { it[data] != null }
+                .map { it[data]!! }
         }
     }
 

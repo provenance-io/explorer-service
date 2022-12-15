@@ -19,7 +19,10 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping(path = ["/api/v2/utility"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Api(
-    value = "Utility controller", produces = "application/json", consumes = "application/json", tags = ["Utilities"],
+    value = "Utility controller",
+    produces = "application/json",
+    consumes = "application/json",
+    tags = ["Utilities"],
     description = "This should not be used by the UI"
 )
 @HiddenApi

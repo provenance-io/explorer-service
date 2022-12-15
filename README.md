@@ -119,6 +119,9 @@ Swagger for Explorer : http://localhost:8612/swagger-ui/index.html <br/>
 Swagger for Testnet: http://localhost:1317/swagger/
 
 ### Linting
+We use Ktlint for our linting use -> https://pinterest.github.io/ktlint/rules/standard/
+Currently on version `0.47.1`
+
 To install the Kotlin linter run:
 ```
 brew install ktlint
@@ -126,5 +129,8 @@ brew install ktlint
 
 In order to automatically lint/check for things that can't be autocorrected run:
 ```
-ktlint -F "**/*.kt"
+ktlint -F "**/*.kt" --disabled_rules=filename,chain-wrapping,enum-entry-name-case
 ```
+This will also correct linting issues, and you can add and commit the updates.
+
+There is a GHA that checks for linting issues, and produces a report on the associated PR.

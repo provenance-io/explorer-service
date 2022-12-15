@@ -64,10 +64,12 @@ fun Message.toObjectNode(protoPrinter: JsonFormat.Printer) =
     OBJECT_MAPPER.readTree(protoPrinter.print(this))
         .let { node ->
             node.get("@type")?.asText()?.let { proto ->
-                if (protoTypesToCheckForMetadata.contains(proto))
+                if (protoTypesToCheckForMetadata.contains(proto)) {
                     protoTypesFieldsToCheckForMetadata.forEach { fromBase64ToMAddress(node, it) }
-                if (protoTypesToCheckForSmartContract.contains(proto))
+                }
+                if (protoTypesToCheckForSmartContract.contains(proto)) {
                     protoTypesFieldsToCheckForSmartContract.forEach { fromBase64ToObject(node, it) }
+                }
             }
             (node as ObjectNode).remove("@type")
             node
@@ -111,11 +113,12 @@ fun fromBase64ToMAddress(jsonNode: JsonNode, fieldName: String) {
         when {
             jsonNode.get(fieldName).isTextual -> {
                 val value = jsonNode.get(fieldName).asText()
-                if (!value.isMAddress())
+                if (!value.isMAddress()) {
                     (jsonNode as ObjectNode).replace(
                         fieldName,
                         JSON_NODE_FACTORY.textNode(value.fromBase64ToMAddress().toString())
                     )
+                }
             }
             jsonNode.get(fieldName).isArray -> {
                 val oldArray = (jsonNode.get(fieldName) as ArrayNode)

@@ -66,7 +66,7 @@ data class ParamChangeObj(
 
 data class StoreCodeData(
     val runAs: String,
-    val accessConfig: StoreCodeAccessConfig? = null,
+    val accessConfig: StoreCodeAccessConfig? = null
 ) : BaseProposal()
 
 data class StoreCodeAccessConfig(
@@ -80,7 +80,7 @@ data class InstantiateContractData(
     val codeId: Int,
     val label: String? = null,
     val msg: String,
-    val funds: List<CoinStr> = emptyList(),
+    val funds: List<CoinStr> = emptyList()
 ) : BaseProposal()
 
 data class GovDepositRequest(
