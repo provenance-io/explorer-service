@@ -38,11 +38,15 @@ class StakingController(private val stakingService: StakingService, private val 
     @PostMapping("/delegate")
     fun createDelegate(
         @ApiParam(value = "Data used to craft the Delegate msg type")
-        @RequestBody request: StakingDelegateRequest,
-        @ApiParam(hidden = true) @RequestAttribute(name = X_ADDRESS, required = true) xAddress: String
+        @RequestBody
+        request: StakingDelegateRequest,
+        @ApiParam(hidden = true)
+        @RequestAttribute(name = X_ADDRESS, required = true)
+        xAddress: String
     ): TxMessageBody {
-        if (xAddress != request.delegator)
+        if (xAddress != request.delegator) {
             throw IllegalArgumentException("Unable to process create delegate; connected wallet does not match request")
+        }
         return stakingService.createDelegate(request).toTxBody().toTxMessageBody(printer)
     }
 
@@ -50,11 +54,15 @@ class StakingController(private val stakingService: StakingService, private val 
     @PostMapping("/redelegate")
     fun createRedelegate(
         @ApiParam(value = "Data used to craft the BeginRedelegate msg type")
-        @RequestBody request: StakingRedelegateRequest,
-        @ApiParam(hidden = true) @RequestAttribute(name = X_ADDRESS, required = true) xAddress: String
+        @RequestBody
+        request: StakingRedelegateRequest,
+        @ApiParam(hidden = true)
+        @RequestAttribute(name = X_ADDRESS, required = true)
+        xAddress: String
     ): TxMessageBody {
-        if (xAddress != request.delegator)
+        if (xAddress != request.delegator) {
             throw IllegalArgumentException("Unable to process create redelegate; connected wallet does not match request")
+        }
         return stakingService.createRedelegate(request).toTxBody().toTxMessageBody(printer)
     }
 
@@ -62,11 +70,15 @@ class StakingController(private val stakingService: StakingService, private val 
     @PostMapping("/undelegate")
     fun createUndelegate(
         @ApiParam(value = "Data used to craft the Undelegate msg type")
-        @RequestBody request: StakingUndelegateRequest,
-        @ApiParam(hidden = true) @RequestAttribute(name = X_ADDRESS, required = true) xAddress: String
+        @RequestBody
+        request: StakingUndelegateRequest,
+        @ApiParam(hidden = true)
+        @RequestAttribute(name = X_ADDRESS, required = true)
+        xAddress: String
     ): TxMessageBody {
-        if (xAddress != request.delegator)
+        if (xAddress != request.delegator) {
             throw IllegalArgumentException("Unable to process create undelegate; connected wallet does not match request")
+        }
         return stakingService.createUndelegate(request).toTxBody().toTxMessageBody(printer)
     }
 
@@ -74,11 +86,15 @@ class StakingController(private val stakingService: StakingService, private val 
     @PostMapping("/withdraw_rewards")
     fun createWithdrawRewards(
         @ApiParam(value = "Data used to craft the WithdrawDelegatorReward msg type")
-        @RequestBody request: StakingWithdrawRewardsRequest,
-        @ApiParam(hidden = true) @RequestAttribute(name = X_ADDRESS, required = true) xAddress: String
+        @RequestBody
+        request: StakingWithdrawRewardsRequest,
+        @ApiParam(hidden = true)
+        @RequestAttribute(name = X_ADDRESS, required = true)
+        xAddress: String
     ): TxMessageBody {
-        if (xAddress != request.delegator)
+        if (xAddress != request.delegator) {
             throw IllegalArgumentException("Unable to process create withdraw rewards; connected wallet does not match request")
+        }
         return stakingService.createWithdrawRewards(request).toTxBody().toTxMessageBody(printer)
     }
 
@@ -86,11 +102,15 @@ class StakingController(private val stakingService: StakingService, private val 
     @PostMapping("/withdraw_commission")
     fun createWithdrawCommission(
         @ApiParam(value = "Data used to craft the WithdrawValidatorCommission msg type")
-        @RequestBody request: StakingWithdrawCommissionRequest,
-        @ApiParam(hidden = true) @RequestAttribute(name = X_ADDRESS, required = true) xAddress: String
+        @RequestBody
+        request: StakingWithdrawCommissionRequest,
+        @ApiParam(hidden = true)
+        @RequestAttribute(name = X_ADDRESS, required = true)
+        xAddress: String
     ): TxMessageBody {
-        if (!stakingService.validateWithdrawCommission(request.validator, xAddress))
+        if (!stakingService.validateWithdrawCommission(request.validator, xAddress)) {
             throw IllegalArgumentException("Unable to process create withdraw commission; connected wallet does not match request")
+        }
         return stakingService.createWithdrawCommission(request).toTxBody().toTxMessageBody(printer)
     }
 
@@ -98,11 +118,15 @@ class StakingController(private val stakingService: StakingService, private val 
     @PostMapping("/cancel_unbonding")
     fun createCancelUnbondingDelegation(
         @ApiParam(value = "Data used to craft the CancelUnbondingDelegation msg type")
-        @RequestBody request: StakingCancelUnbondingRequest,
-        @ApiParam(hidden = true) @RequestAttribute(name = X_ADDRESS, required = true) xAddress: String
+        @RequestBody
+        request: StakingCancelUnbondingRequest,
+        @ApiParam(hidden = true)
+        @RequestAttribute(name = X_ADDRESS, required = true)
+        xAddress: String
     ): TxMessageBody {
-        if (xAddress != request.delegator)
+        if (xAddress != request.delegator) {
             throw IllegalArgumentException("Unable to process create cancel unbonding delegation; connected wallet does not match request")
+        }
         return stakingService.createCancelUnbonding(request).toTxBody().toTxMessageBody(printer)
     }
 }

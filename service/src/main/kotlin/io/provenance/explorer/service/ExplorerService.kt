@@ -144,16 +144,20 @@ class ExplorerService(
             moniker = stakingValidator.moniker,
             icon = stakingValidator.imageUrl,
             votingPower = CountTotal(
-                if (votingVals != null)
+                if (votingVals != null) {
                     validatorsResponse.validatorsList.filter { it.address in votingVals }
                         .sumOf { v -> v.votingPower.toBigInteger() }
-                else null,
+                } else {
+                    null
+                },
                 validatorsResponse.validatorsList.sumOf { v -> v.votingPower.toBigInteger() }
             ),
             validatorCount = CountTotal(
-                if (votingVals != null)
+                if (votingVals != null) {
                     validatorsResponse.validatorsList.filter { it.address in votingVals }.size.toBigInteger()
-                else null,
+                } else {
+                    null
+                },
                 validatorsResponse.validatorsCount.toBigInteger()
             ),
             txNum = blockResponse.block.data.txsCount
@@ -251,8 +255,9 @@ class ExplorerService(
             page++
             records.addAll(getChainReleases(page, pageCount))
         }
-        if (records.isNotEmpty())
+        if (records.isNotEmpty()) {
             CacheUpdateRecord.updateCacheByKey(CacheKeys.CHAIN_RELEASES.key, VANILLA_MAPPER.writeValueAsString(records))
+        }
         return records
     }
 
@@ -274,12 +279,16 @@ class ExplorerService(
                             ele.getString("created_at"),
                             ele.getString("html_url")
                         )
-                    } else null
+                    } else {
+                        null
+                    }
                 }.sortedBy { it.createdAt.toDateTime() }.toMutableList()
             } catch (e: Exception) {
                 mutableListOf<GithubReleaseData>().also { logger.error("Error: $e") }
             }
-        } else mutableListOf<GithubReleaseData>().also { logger.error("Error reaching Pricing Engine: ${res.status.value}") }
+        } else {
+            mutableListOf<GithubReleaseData>().also { logger.error("Error reaching Pricing Engine: ${res.status.value}") }
+        }
     }
 
     fun String.getLatestPatchVersion(
@@ -289,9 +298,9 @@ class ExplorerService(
     ): Pair<String, String> {
         val currMinor = this.getChainVersionFromUrl(regex).split(".").subList(0, 2).joinToString(".")
         val nextVersion = nextUpgradeUrl?.getChainVersionFromUrl(regex)
-        return if (nextVersion == null)
+        return if (nextVersion == null) {
             knownReleases.last { it.releaseVersion.startsWith(currMinor) }.let { it.releaseVersion to it.releaseUrl }
-        else {
+        } else {
             val next = knownReleases.first { it.releaseVersion == nextVersion }
             knownReleases.last { it.releaseVersion.startsWith(currMinor) && it.createdAt.toDateTime() < next.createdAt.toDateTime() }
                 .let { it.releaseVersion to it.releaseUrl }
@@ -334,7 +343,7 @@ class ExplorerService(
                 GovParams(
                     votingParams.await().toObjectNodePrint(protoPrinter),
                     tallyParams.await().toDto(),
-                    depositParams.await().toObjectNodePrint(protoPrinter),
+                    depositParams.await().toObjectNodePrint(protoPrinter)
                 ),
                 mintParams.await().toDto(),
                 slashingParams.toDto(),
@@ -354,7 +363,7 @@ class ExplorerService(
                 metadataParams.await().toObjectNodePrint(protoPrinter),
                 nameParams.await().toObjectNodePrint(protoPrinter),
                 msgParams.await().toObjectNodePrint(protoPrinter)
-            ),
+            )
         )
     }
 

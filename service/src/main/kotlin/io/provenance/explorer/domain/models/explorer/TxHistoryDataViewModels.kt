@@ -120,9 +120,11 @@ fun granularityValidation(granularity: DateTruncGranularity) =
     ) { "The specified granularity is not supported: $granularity" }
 
 fun datesValidation(fromDate: DateTime?, toDate: DateTime?) =
-    if (fromDate != null && toDate != null)
+    if (fromDate != null && toDate != null) {
         requireToMessage(fromDate.isBefore(toDate)) { "'fromDate' ($fromDate) must be before 'toDate' ($toDate)" }
-    else null
+    } else {
+        null
+    }
 
 data class TxHistoryDataRequest(
     val fromDate: DateTime? = null,
@@ -148,8 +150,9 @@ data class TxHistoryDataRequest(
             writer.println("toDate: ${if (toDate != null) dateFormat.print(toDate) else "NULL"}")
             writer.println("granularity: ${granularity.name}")
             writer.println("advancedMetrics: $advancedMetrics")
-            if (feepayer != null)
+            if (feepayer != null) {
                 writer.println("feepayer: $feepayer")
+            }
             writer.flush()
             return baos.toByteArray()
         }

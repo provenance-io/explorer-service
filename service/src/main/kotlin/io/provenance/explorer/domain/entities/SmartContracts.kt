@@ -39,8 +39,9 @@ class SmCodeRecord(id: EntityID<Int>) : IntEntity(id) {
         fun getOrInsert(codeId: Int, data: QueryOuterClass.QueryCodeResponse?, creationHeight: Int) =
             transaction {
                 findById(codeId)?.apply {
-                    if (this.creationHeight > creationHeight)
+                    if (this.creationHeight > creationHeight) {
                         this.creationHeight = creationHeight
+                    }
                     if (this.data == null && data != null) {
                         this.creator = data.codeInfo.creator
                         this.dataHash = data.codeInfo.dataHash.toBase64()
@@ -63,9 +64,11 @@ class SmCodeRecord(id: EntityID<Int>) : IntEntity(id) {
                 .select { if (creator != null) SmCodeTable.creator eq creator else Op.TRUE }
                 .groupBy(SmCodeTable.id)
                 .having {
-                    if (hasContracts != null)
+                    if (hasContracts != null) {
                         if (hasContracts) contractCount neq 0L else contractCount eq 0L
-                    else Op.TRUE
+                    } else {
+                        Op.TRUE
+                    }
                 }
         }
 
@@ -116,8 +119,9 @@ class SmContractRecord(id: EntityID<Int>) : IntEntity(id) {
         fun getOrInsert(data: QueryOuterClass.QueryContractInfoResponse, creationHeight: Int) =
             transaction {
                 findByContractAddress(data.address)?.apply {
-                    if (this.creationHeight > creationHeight)
+                    if (this.creationHeight > creationHeight) {
                         this.creationHeight = creationHeight
+                    }
                 }?.id?.value ?: SmContractTable.insertAndGetId {
                     it[this.contractAddress] = data.address
                     it[this.creationHeight] = creationHeight

@@ -78,8 +78,11 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
         fun saveAccount(address: String, accPrefix: String, accountData: Any?, isContract: Boolean = false, isGroupPolicy: Boolean = false) =
             transaction {
                 accountData?.let { insertIgnore(it, isContract) }
-                    ?: if (address.isAddressAsType(accPrefix)) insertUnknownAccount(address, isContract, isGroupPolicy)
-                    else throw ResourceNotFoundException("Invalid account: '$address'")
+                    ?: if (address.isAddressAsType(accPrefix)) {
+                        insertUnknownAccount(address, isContract, isGroupPolicy)
+                    } else {
+                        throw ResourceNotFoundException("Invalid account: '$address'")
+                    }
             }
 
         private fun insertUnknownAccount(addr: String, isContract: Boolean = false, isGroupPolicy: Boolean = false) = transaction {

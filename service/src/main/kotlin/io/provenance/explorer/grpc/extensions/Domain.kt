@@ -21,7 +21,6 @@ import io.provenance.explorer.domain.extensions.toCoinStrList
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toPercentage
 import io.provenance.explorer.domain.extensions.toPercentageOld
-import io.provenance.explorer.domain.models.explorer.PeriodInSeconds
 import io.provenance.explorer.domain.models.explorer.toCoinStr
 import io.provenance.explorer.model.AccountVestingInfo
 import io.provenance.explorer.model.DistParams
@@ -31,6 +30,7 @@ import io.provenance.explorer.model.PeriodicVestingInfo
 import io.provenance.explorer.model.SlashingParams
 import io.provenance.explorer.model.TallyingParams
 import io.provenance.explorer.model.base.CoinStr
+import io.provenance.explorer.model.base.PeriodInSeconds
 import io.provenance.explorer.service.prettyRole
 import io.provenance.marker.v1.Access
 import io.provenance.marker.v1.MarkerAccount
@@ -81,8 +81,9 @@ fun MarkerAccount.getManagingAccounts(): MutableMap<String, List<String>> {
     return when {
         this.status.number >= MarkerStatus.MARKER_STATUS_ACTIVE.number -> managers
         else -> {
-            if (this.manager.isNotBlank())
+            if (this.manager.isNotBlank()) {
                 managers[this.manager] = Access.values().filterRoles().map { it.name.prettyRole() }
+            }
             managers
         }
     }
@@ -101,9 +102,11 @@ fun Any.toPermanentLockedAccount() = this.unpack(Vesting.PermanentLockedAccount:
 fun Any.toInterchainAccount() = this.unpack(InterchainAccount::class.java)
 
 fun Any.getModuleAccName() =
-    if (this.typeUrl.getTypeShortName() == Auth.ModuleAccount::class.java.simpleName)
+    if (this.typeUrl.getTypeShortName() == Auth.ModuleAccount::class.java.simpleName) {
         this.toModuleAccount().name
-    else null
+    } else {
+        null
+    }
 
 fun String.isStandardAddress() =
     this.startsWith(PROV_ACC_PREFIX) && !this.startsWith(PROV_VAL_OPER_PREFIX)
@@ -214,13 +217,13 @@ fun Distribution.Params.toDto() = DistParams(
     this.communityTax.toPercentageOld(),
     this.baseProposerReward.toPercentageOld(),
     this.bonusProposerReward.toPercentageOld(),
-    this.withdrawAddrEnabled,
+    this.withdrawAddrEnabled
 )
 
 fun Gov.TallyParams.toDto() = TallyingParams(
     this.quorum.toPercentage(),
     this.threshold.toPercentage(),
-    this.vetoThreshold.toPercentage(),
+    this.vetoThreshold.toPercentage()
 )
 
 fun Mint.Params.toDto() = MintParams(
@@ -229,7 +232,7 @@ fun Mint.Params.toDto() = MintParams(
     this.inflationMax.toPercentageOld(),
     this.inflationMin.toPercentageOld(),
     this.goalBonded.toPercentageOld(),
-    this.blocksPerYear,
+    this.blocksPerYear
 )
 
 fun Slashing.Params.toDto() = SlashingParams(
@@ -237,7 +240,7 @@ fun Slashing.Params.toDto() = SlashingParams(
     this.minSignedPerWindow.toString(Charsets.UTF_8).toPercentageOld(),
     "${this.downtimeJailDuration.seconds}s",
     this.slashFractionDoubleSign.toString(Charsets.UTF_8).toPercentageOld(),
-    this.slashFractionDowntime.toString(Charsets.UTF_8).toPercentageOld(),
+    this.slashFractionDowntime.toString(Charsets.UTF_8).toPercentageOld()
 )
 
 fun MsgFee.toDto() = MsgBasedFee(this.msgTypeUrl, this.additionalFee.toCoinStr())

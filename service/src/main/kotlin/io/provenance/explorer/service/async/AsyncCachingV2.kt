@@ -164,9 +164,11 @@ class AsyncCachingV2(
     protected var chainId: String = ""
 
     fun getChainIdString() =
-        if (chainId.isEmpty())
+        if (chainId.isEmpty()) {
             getBlock(blockService.getLatestBlockHeightIndex())!!.block.header.chainId.also { this.chainId = it }
-        else this.chainId
+        } else {
+            this.chainId
+        }
 
     fun getBlock(blockHeight: Int) = transaction {
         BlockCacheRecord.findById(blockHeight)?.also { BlockCacheRecord.updateHitCount(blockHeight) }?.block
@@ -190,12 +192,15 @@ class AsyncCachingV2(
         val valsAtHeight = validatorService.buildValidatorsAtHeight(blockRes.block.height())
         validatorService.saveMissedBlocks(blockRes)
         val txs =
-            if (blockRes.block.data.txsCount > 0) saveTxs(
-                blockRes,
-                proposerRec,
-                rerunTxs
-            ).map { it.toProcedureObject() }
-            else listOf()
+            if (blockRes.block.data.txsCount > 0) {
+                saveTxs(
+                    blockRes,
+                    proposerRec,
+                    rerunTxs
+                ).map { it.toProcedureObject() }
+            } else {
+                listOf()
+            }
         val blockUpdate = BlockUpdate(block, proposerRec.buildInsert(), valsAtHeight, txs)
         try {
             BlockCacheRecord.insertToProcedure(blockUpdate)
@@ -251,10 +256,10 @@ class AsyncCachingV2(
         proposerRec: BlockProposer,
         rerunTxs: Pair<Boolean, Boolean> = Pair(false, false) // rerun txs, pull from db
     ) =
-        if (txCountForHeight(blockHeight).toInt() == expectedNumTxs && !rerunTxs.first)
+        if (txCountForHeight(blockHeight).toInt() == expectedNumTxs && !rerunTxs.first) {
             logger.info("Cache hit for transaction at height $blockHeight with $expectedNumTxs transactions")
                 .let { listOf() }
-        else {
+        } else {
             logger.info("Searching for $expectedNumTxs transactions at height $blockHeight")
             tryAddTxs(blockHeight, expectedNumTxs, blockTime, proposerRec, rerunTxs.second)
         }
@@ -266,14 +271,15 @@ class AsyncCachingV2(
         proposerRec: BlockProposer,
         pullFromDb: Boolean = false
     ): List<TxUpdatedItems> = try {
-        if (pullFromDb)
+        if (pullFromDb) {
             transaction {
                 TxCacheRecord.findByHeight(blockHeight)
                     .map { addTxToCacheWithTimestamp(it.txV2, blockTime, proposerRec) }
             }
-        else
+        } else {
             runBlocking { txClient.getTxsByHeight(blockHeight, txCount) }
                 .map { addTxToCacheWithTimestamp(it, blockTime, proposerRec) }
+        }
     } catch (e: Exception) {
         logger.error("Failed to retrieve transactions at block: $blockHeight", e.message)
         BlockTxRetryRecord.insert(blockHeight, e)
@@ -335,8 +341,9 @@ class AsyncCachingV2(
             var events = listOf<String>()
             if (tx.txResponse.logsCount > 0) {
                 events = saveEvents(txInfo, tx, primTypeId.value, idx)
-                if (tx.tx.body.messagesCount == 1)
+                if (tx.tx.body.messagesCount == 1) {
                     single = TxSingleMessageCacheRecord.buildInsert(txInfo, tx.txResponse.gasUsed.toInt(), primaryType.type)
+                }
             }
             txUpdate.apply {
                 if (single != null) this.singleMsgs.add(single)
@@ -406,8 +413,9 @@ class AsyncCachingV2(
         }
         if (pairCopy.second != null) {
             txUpdate.apply { this.addressJoin.add(TxAddressJoinRecord.buildInsert(txInfo, pairCopy, addr)) }
-            if (pairCopy.first == TxAddressJoinType.ACCOUNT.name)
+            if (pairCopy.first == TxAddressJoinType.ACCOUNT.name) {
                 ProcessQueueRecord.insertIgnore(ProcessQueueType.ACCOUNT, addr)
+            }
         }
         return pairCopy
     }
@@ -425,8 +433,11 @@ class AsyncCachingV2(
                         e.attributesList
                             .filter { attr -> attr.key == it.idField }
                             .mapNotNull { found ->
-                                if (it.parse) found.value.scrubQuotes().denomEventRegexParse()
-                                else listOf(found.value.scrubQuotes())
+                                if (it.parse) {
+                                    found.value.scrubQuotes().denomEventRegexParse()
+                                } else {
+                                    listOf(found.value.scrubQuotes())
+                                }
                             }.flatten()
                     }
                 }
@@ -434,7 +445,9 @@ class AsyncCachingV2(
         (denoms + eventDenoms).toSet().mapNotNull { de ->
             val denom = msgDenoms.firstOrNull { it.first.contains(de) }
             if (denom != null && denom.second) if (tx.txResponse.code == 0) saveDenom(de, txInfo, txUpdate) else null
-            else saveDenom(de.unchainDenom(), txInfo, txUpdate)
+            else {
+                saveDenom(de.unchainDenom(), txInfo, txUpdate)
+            }
         }
     }
 
@@ -466,8 +479,9 @@ class AsyncCachingV2(
             nftService.saveMAddress(md)
                 // mark deleted if necessary
                 .also {
-                    if (tx.txResponse.code == 0 && (msgAddrPairs.firstOrNull { it.first == listOf(md) }?.second == true))
+                    if (tx.txResponse.code == 0 && (msgAddrPairs.firstOrNull { it.first == listOf(md) }?.second == true)) {
                         nftService.markDeleted(md)
+                    }
                 }
         }
         // Save the nft joins
@@ -508,7 +522,6 @@ class AsyncCachingV2(
                                 else -> throw InvalidArgumentException("Invalid gov deposit msg type: ${pair.second.typeUrl}")
                             }
                             txUpdate.apply {
-
                                 govService.buildProposal(proposalId, txInfo, depositor, isSubmit = false)?.let { this.proposals.add(it) }
                                 govService.buildDeposit(proposalId, txInfo, pair.second, null)?.let { this.deposits.addAll(it) }
                             }
@@ -765,8 +778,9 @@ class AsyncCachingV2(
                             groupedAtts["name"]!!.forEachIndexed { idx, name ->
                                 val (child, parent) = name.splitChildParent()
                                 val obj = Name(parent, child, name, addrList[idx], false, txInfo.blockHeight)
-                                if (insertList.firstOrNull { it.fullName == name } == null)
+                                if (insertList.firstOrNull { it.fullName == name } == null) {
                                     insertList.add(obj)
+                                }
                             }
                         }
                         NameEvents.NAME_DELETE.event -> {
@@ -798,8 +812,9 @@ class AsyncCachingV2(
         (msgGroups + eventGroups).toSet().forEach { id ->
             groupService.buildGroup(id, txInfo)?.let {
                 txUpdate.apply {
-                    if (tx.txResponse.code == 0)
+                    if (tx.txResponse.code == 0) {
                         this.groupsList.add(it)
+                    }
                     this.groupJoin.add(groupService.buildTxGroup(id, txInfo))
                 }
             }
@@ -823,17 +838,18 @@ class AsyncCachingV2(
                 ?.let { policy ->
                     val (join, savedPolicy) = groupService.buildTxGroupPolicy(addr, txInfo)
                     txUpdate.apply {
-                        if (tx.txResponse.code == 0)
+                        if (tx.txResponse.code == 0) {
                             this.groupPolicies
                                 .add(listOf(policy, listOf(join).toArray(TxGroupsPolicyTable.tableName)).toObject())
-                        else if (savedPolicy)
+                        } else if (savedPolicy) {
                             this.policyJoinAlt.add(join)
+                        }
                     }
                 }
         }
 
         // get group gov msgs, and process
-        if (tx.txResponse.code == 0)
+        if (tx.txResponse.code == 0) {
             tx.tx.body.messagesList.mapNotNull { it.getAssociatedGroupProposals() }
                 .forEachIndexed { idx, pair ->
                     when (pair.first) {
@@ -922,15 +938,18 @@ class AsyncCachingV2(
                                 listOf("result")
                             )["result"]?.getGroupsExecutorResult()
 
-                            if (execResult != null)
+                            if (execResult != null) {
                                 transaction {
                                     proposal.apply {
-                                        if (proposal.proposalStatus.getGroupsProposalStatus() != ProposalStatus.PROPOSAL_STATUS_ACCEPTED)
+                                        if (proposal.proposalStatus.getGroupsProposalStatus() != ProposalStatus.PROPOSAL_STATUS_ACCEPTED) {
                                             this.proposalStatus = ProposalStatus.PROPOSAL_STATUS_ACCEPTED.name
-                                        if (proposal.executorResult.getGroupsExecutorResult() != execResult)
+                                        }
+                                        if (proposal.executorResult.getGroupsExecutorResult() != execResult) {
                                             this.executorResult = execResult.name
+                                        }
                                     }
                                 }
+                            }
                         }
                         GroupGovMsgType.EXEC -> {
                             val msg = pair.second.toMsgExecGroup()
@@ -946,15 +965,18 @@ class AsyncCachingV2(
                                 listOf("result")
                             )["result"]?.getGroupsExecutorResult()
 
-                            if (execResult != null)
+                            if (execResult != null) {
                                 transaction {
                                     proposal.apply {
-                                        if (proposal.proposalStatus.getGroupsProposalStatus() != ProposalStatus.PROPOSAL_STATUS_ACCEPTED)
+                                        if (proposal.proposalStatus.getGroupsProposalStatus() != ProposalStatus.PROPOSAL_STATUS_ACCEPTED) {
                                             this.proposalStatus = ProposalStatus.PROPOSAL_STATUS_ACCEPTED.name
-                                        if (proposal.executorResult.getGroupsExecutorResult() != execResult)
+                                        }
+                                        if (proposal.executorResult.getGroupsExecutorResult() != execResult) {
                                             this.executorResult = execResult.name
+                                        }
                                     }
                                 }
+                            }
                         }
                         GroupGovMsgType.WITHDRAW -> {
                             val msg = pair.second.toMsgWithdrawProposalGroup()
@@ -970,7 +992,7 @@ class AsyncCachingV2(
                         }
                     }
                 }
-        else
+        } else {
             tx.tx.body.messagesList.mapNotNull { it.getAssociatedGroupProposals() }
                 .forEachIndexed { _, pair ->
                     when (pair.first) {
@@ -1003,6 +1025,7 @@ class AsyncCachingV2(
                         }
                     }
                 }
+        }
     }
 
     private fun saveSignaturesTx(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, txUpdate: TxUpdate) = transaction {

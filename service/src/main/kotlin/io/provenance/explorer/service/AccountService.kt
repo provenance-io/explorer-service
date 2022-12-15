@@ -39,7 +39,6 @@ import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toProtoCoin
 import io.provenance.explorer.domain.extensions.typeToLabel
 import io.provenance.explorer.domain.models.explorer.AddrData
-import io.provenance.explorer.domain.models.explorer.PeriodInSeconds
 import io.provenance.explorer.domain.models.explorer.TxHistoryDataRequest
 import io.provenance.explorer.domain.models.explorer.datesValidation
 import io.provenance.explorer.domain.models.explorer.getFileList
@@ -69,6 +68,7 @@ import io.provenance.explorer.model.TxHistoryChartData
 import io.provenance.explorer.model.UnpaginatedDelegation
 import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.PagedResults
+import io.provenance.explorer.model.base.PeriodInSeconds
 import io.provenance.explorer.model.base.USD_UPPER
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
@@ -158,19 +158,11 @@ class AccountService(
                     list.map {
                         AccountSignature(
                             it.childSigIdx ?: 0,
-                            it.childSigAddress ?: address,
+                            it.childSigAddress ?: address
                         )
                     }
                 )
             }
-
-    @Deprecated("Use NameService.getNamesOwnedByAddress")
-    fun getNamesOwnedByAccount(address: String, page: Int, limit: Int) = runBlocking {
-        attrClient.getNamesForAddress(address, page.toOffset(limit), limit).let { res ->
-            val names = res.nameList.toList()
-            PagedResults(res.pagination.total.pageCountOfResults(limit), names, res.pagination.total)
-        }
-    }
 
     suspend fun getBalances(address: String, page: Int, limit: Int) =
         accountClient.getAccountBalances(address, page.toOffset(limit), limit)
@@ -224,10 +216,11 @@ class AccountService(
 
     // Used for balance validation - this is raw data only
     fun getAccountBalancesAllAtHeight(address: String, height: Int, denom: String?) = runBlocking {
-        if (denom != null)
+        if (denom != null) {
             listOf(accountClient.getAccountBalanceForDenomAtHeight(address, denom, height).toCoinStr())
-        else
+        } else {
             accountClient.getAccountBalancesAllAtHeight(address, height).map { it.toCoinStr() }
+        }
     }
 
     private fun getDelegationTotal(address: String) = runBlocking {
@@ -346,8 +339,9 @@ class AccountService(
 
     fun getVestingSchedule(address: String, continuousPeriod: PeriodInSeconds = PeriodInSeconds.DAY) = transaction {
         getAccountRaw(address).let { acc ->
-            if (acc.data == null || acc.data?.isVesting() == false)
+            if (acc.data == null || acc.data?.isVesting() == false) {
                 throw ResourceNotFoundException("Invalid vesting account: '$address'")
+            }
             acc.data!!.toVestingData(getInitializationDate(acc), continuousPeriod)
         }
     }

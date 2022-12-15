@@ -10,7 +10,6 @@ import io.swagger.annotations.ApiParam
 import org.joda.time.DateTime
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
-import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -33,33 +32,37 @@ class TokenController(private val tokenService: TokenService) {
 
     @ApiOperation("Returns token statistics for the chain, ie circulation, community pool")
     @GetMapping("/stats")
-    fun getTokenStats() = ResponseEntity.ok(tokenService.getTokenBreakdown())
+    fun getTokenStats() = tokenService.getTokenBreakdown()
 
     @ApiOperation("Runs the distribution update")
     @GetMapping("/run")
     @HiddenApi
-    fun runDistribution() = ResponseEntity.ok(tokenService.updateTokenDistributionStats(UTILITY_TOKEN))
+    fun runDistribution() = tokenService.updateTokenDistributionStats(UTILITY_TOKEN)
 
     @ApiOperation("Returns distribution of hash between sets of accounts = all - nhash marker - zeroSeq - modules - contracts")
     @GetMapping("/distribution")
-    fun getDistribution() = ResponseEntity.ok(tokenService.getTokenDistributionStats())
+    fun getDistribution() = tokenService.getTokenDistributionStats()
 
     @ApiOperation("Returns the top X accounts rich in 'nhash' = all - nhash marker - zeroSeq - modules - contracts")
     @GetMapping("/rich_list")
-    fun getRichList(@RequestParam(defaultValue = "100") @Min(1) @Max(1000) limit: Int) =
-        ResponseEntity.ok(tokenService.richList(limit))
+    fun getRichList(
+        @RequestParam(defaultValue = "100")
+        @Min(1)
+        @Max(1000)
+        limit: Int
+    ) = tokenService.richList(limit)
 
     @ApiOperation("Returns max supply of `nhash` = max")
     @GetMapping("/max_supply")
-    fun getMaxSupply() = ResponseEntity.ok(tokenService.maxSupply())
+    fun getMaxSupply() = tokenService.maxSupply()
 
     @ApiOperation("Returns total supply of `nhash` = max - burned ")
     @GetMapping("/total_supply")
-    fun getTotalSupply() = ResponseEntity.ok(tokenService.totalSupply())
+    fun getTotalSupply() = tokenService.totalSupply()
 
     @ApiOperation("Returns circulating supply of `nhash` = max - burned - modules - zeroSeq - pool - nonspendable ")
     @GetMapping("/circulating_supply")
-    fun getCirculatingSupply() = ResponseEntity.ok(tokenService.circulatingSupply())
+    fun getCirculatingSupply() = tokenService.circulatingSupply()
 
     @ApiOperation("Returns CoinMarketCap historical token pricing for the given dates inclusive")
     @GetMapping("/historical_pricing")
@@ -68,17 +71,23 @@ class TokenController(private val tokenService: TokenService) {
             type = "DateTime",
             value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
-        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
+        )
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        fromDate: DateTime?,
         @ApiParam(
             type = "DateTime",
             value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
-        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?
-    ) = ResponseEntity.ok(tokenService.getTokenHistorical(fromDate, toDate))
+        )
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        toDate: DateTime?
+    ) = tokenService.getTokenHistorical(fromDate, toDate)
 
     @ApiOperation("Returns CoinMarketCap latest token pricing")
     @GetMapping("/latest_pricing")
-    fun getLatestPricing() = ResponseEntity.ok(tokenService.getTokenLatest())
+    fun getLatestPricing() = tokenService.getTokenLatest()
 
     @ApiOperation("Get Token Historical data as a ZIP download, containing CSVs")
     @GetMapping("/historical_pricing/download", produces = ["application/zip"])
@@ -87,12 +96,18 @@ class TokenController(private val tokenService: TokenService) {
             type = "DateTime",
             value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
-        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?,
+        )
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        fromDate: DateTime?,
         @ApiParam(
             type = "DateTime",
             value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
-        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) toDate: DateTime?,
+        )
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        toDate: DateTime?,
         response: HttpServletResponse
     ) {
         val filters = TokenHistoricalDataRequest(fromDate, toDate)

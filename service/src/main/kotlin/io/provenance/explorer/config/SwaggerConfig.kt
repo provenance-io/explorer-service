@@ -61,9 +61,10 @@ class SwaggerConfig(val props: ExplorerProperties) {
             .select()
             .apis(RequestHandlerSelectors.basePackage("io.provenance.explorer.web"))
 
-        if (props.hiddenApis())
+        if (props.hiddenApis()) {
             docket.apis(Predicate.not(RequestHandlerSelectors.withClassAnnotation(HiddenApi::class.java)))
                 .apis(Predicate.not(RequestHandlerSelectors.withMethodAnnotation(HiddenApi::class.java)))
+        }
 
         return docket.build()
     }

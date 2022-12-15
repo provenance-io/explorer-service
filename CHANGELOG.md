@@ -42,6 +42,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
   * Added minimal support for IBC updates, nft module, rewards module
   * TODO: Add in support for rewards module
 * Publish API model set #464
+* Publish API client set #468
 
 ### Improvements
 * Updated Kotlin version `1.5.31` -> `1.6.21` #342
@@ -67,6 +68,17 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Now caching FT/NFT counts per address #448
   * This is done on the fly, asynchronously
   * The Account detail API pulls from the cached values 
+* Deprecated a few APIs to align the API sets better #468
+  * `/api/v2/assets/detail/{denom}` -> `/api/v3/assets/{denom}`
+  * `/api/v2/assets/detail/ibc/{hash}` -> `/api/v3/assets/ibc/{hash}`
+  * `/api/v2/assets/holders` -> `/api/v3/assets/{denom}/holders`
+  * `/api/v2/assets/metadata` -> `/api/v3/assets/metadata`
+  * `/api/v2/gov/proposals/all` -> `/api/v3/gov/proposals`
+  * `/api/v2/gov/address/{address}/votes` -> `/api/v3/gov/votes/{address}`
+  * `/api/v2/smart_contract/codes/all` -> `/api/v3/smart_contract/code`
+  * `/api/v2/smart_contract/contract/all` -> `/api/v3/smart_contract/contract`
+  * `/api/v2/txs/types/tx/{hash}` -> `/api/v3/txs/{hash}/types`
+  * `/api/v2/validators/recent` -> `/api/v3/validators/recent`
 
 ### Data
 * Migration 1.86 - Add `process_queue`, `account_token_counts` #448

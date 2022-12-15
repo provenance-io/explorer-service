@@ -101,9 +101,11 @@ fun ByteArray.isGZIPStream(): Boolean =
 fun ByteArray.isWASM() = this.sliceArray(0 until 4).contentEquals(byteArrayOf(0x00, 0x61, 0x73, 0x6D))
 
 fun ByteString.gzipUncompress() =
-    if (this.toByteArray().isGZIPStream())
+    if (this.toByteArray().isGZIPStream()) {
         GZIPInputStream(this.toByteArray().inputStream()).use { it.readBytes() }
-    else this.toByteArray()
+    } else {
+        this.toByteArray()
+    }
 
 fun ByteArray.gzipCompress(): ByteArray = ByteArrayOutputStream().use { byteStream ->
     GZIPOutputStream(byteStream).use { it.write(this, 0, this.size) }

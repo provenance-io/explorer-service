@@ -41,7 +41,7 @@ class GroupsRecord(id: EntityID<Int>) : IntEntity(id) {
         fun buildInsert(
             group: GroupInfo,
             members: GroupMembers,
-            txInfo: TxData,
+            txInfo: TxData
         ) =
             listOf(
                 group.id,
@@ -120,7 +120,7 @@ class GroupsPolicyRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun buildInsert(
             policy: Types.GroupPolicyInfo,
-            txInfo: TxData,
+            txInfo: TxData
         ) = transaction {
             listOf(
                 -1,
@@ -206,7 +206,7 @@ class GroupsProposalRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun buildInsert(
             proposalData: GroupsProposalInsertData,
-            txInfo: TxData,
+            txInfo: TxData
         ) = transaction {
             listOf(
                 -1,

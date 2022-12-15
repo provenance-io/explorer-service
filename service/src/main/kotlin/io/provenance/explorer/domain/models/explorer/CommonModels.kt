@@ -31,17 +31,4 @@ fun CoinOuterClass.Coin.toCoinStrWithPrice(price: BigDecimal?) =
 fun CoinOuterClass.DecCoin.toCoinStrWithPrice(price: BigDecimal?) =
     this.amount.toDecimalStringOld().toBigDecimal().toCoinStrWithPrice(price, this.denom)
 
-enum class Timeframe { WEEK, DAY, HOUR, FOREVER }
-
 const val hourlyBlockCount = 720
-
-enum class PeriodInSeconds(val seconds: Int) {
-    SECOND(1),
-    MINUTE(60),
-    HOUR(3600),
-    DAY(86400),
-    WEEK(604800),
-    MONTH(2628000),
-    QUARTER(7884000),
-    YEAR(31536000)
-}

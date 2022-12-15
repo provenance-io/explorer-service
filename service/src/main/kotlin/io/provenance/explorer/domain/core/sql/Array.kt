@@ -43,8 +43,9 @@ class ArrayColumnType(private val type: ColumnType) : ColumnType() {
 
     override fun notNullValueToDB(value: Any): Any {
         if (value is ArrayList<*>) {
-            if (value.isEmpty())
+            if (value.isEmpty()) {
                 return "'{}'"
+            }
 
             val columnType = type.sqlType().split("(")[0]
             val jdbcConnection = (TransactionManager.current().connection as JdbcConnectionImpl).connection

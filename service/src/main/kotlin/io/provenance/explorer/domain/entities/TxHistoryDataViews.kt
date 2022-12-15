@@ -33,9 +33,13 @@ class TxHistoryDataViews {
         ) =
             transaction {
                 val dateWhere =
-                    if (fromDate != null && toDate != null) " hourly between ? and ? "
-                    else if (fromDate != null) " hourly >= ? "
-                    else " true "
+                    if (fromDate != null && toDate != null) {
+                        " hourly between ? and ? "
+                    } else if (fromDate != null) {
+                        " hourly >= ? "
+                    } else {
+                        " true "
+                    }
                 val feepayerWhere = if (feepayer != null) " and feepayer = ? " else " and true "
                 val query = "Select " +
                     "date_trunc(?, hourly) as date, " +
@@ -57,15 +61,17 @@ class TxHistoryDataViews {
                 val arguments = mutableListOf<Pair<ColumnType, *>>(
                     Pair(VarCharColumnType(64), granularity.name),
                     Pair(IntegerColumnType(), UTILITY_TOKEN_BASE_MULTIPLIER),
-                    Pair(IntegerColumnType(), UTILITY_TOKEN_BASE_MULTIPLIER),
+                    Pair(IntegerColumnType(), UTILITY_TOKEN_BASE_MULTIPLIER)
                 )
                 if (fromDate != null) {
                     arguments.add(Pair(DateColumnType(true), fromDate))
-                    if (toDate != null)
+                    if (toDate != null) {
                         arguments.add(Pair(DateColumnType(true), toDate.plusDays(1).minusMinutes(1)))
+                    }
                 }
-                if (feepayer != null)
+                if (feepayer != null) {
                     arguments.add(Pair(VarCharColumnType(128), feepayer))
+                }
                 query.execAndMap(arguments) { it.toTxHistoryChartData(feepayer != null) }
             }
 
@@ -76,9 +82,13 @@ class TxHistoryDataViews {
             feepayer: String? = null
         ) = transaction {
             val dateWhere =
-                if (fromDate != null && toDate != null) " hourly between ? and ? "
-                else if (fromDate != null) " hourly >= ? "
-                else " true "
+                if (fromDate != null && toDate != null) {
+                    " hourly between ? and ? "
+                } else if (fromDate != null) {
+                    " hourly >= ? "
+                } else {
+                    " true "
+                }
             val feepayerWhere = if (feepayer != null) " and feepayer = ? " else " and true "
             val query = "Select " +
                 "date_trunc(?, hourly) as date, " +
@@ -93,11 +103,13 @@ class TxHistoryDataViews {
             val arguments = mutableListOf<Pair<ColumnType, *>>(Pair(VarCharColumnType(64), granularity.name))
             if (fromDate != null) {
                 arguments.add(Pair(DateColumnType(true), fromDate))
-                if (toDate != null)
+                if (toDate != null) {
                     arguments.add(Pair(DateColumnType(true), toDate.plusDays(1).minusMinutes(1)))
+                }
             }
-            if (feepayer != null)
+            if (feepayer != null) {
                 arguments.add(Pair(VarCharColumnType(128), feepayer))
+            }
             query.execAndMap(arguments) { it.toTxTypeData(feepayer != null) }
         }
 
@@ -108,9 +120,13 @@ class TxHistoryDataViews {
             feepayer: String? = null
         ) = transaction {
             val dateWhere =
-                if (fromDate != null && toDate != null) " hourly between ? and ? "
-                else if (fromDate != null) " hourly >= ? "
-                else " true "
+                if (fromDate != null && toDate != null) {
+                    " hourly between ? and ? "
+                } else if (fromDate != null) {
+                    " hourly >= ? "
+                } else {
+                    " true "
+                }
             val feepayerWhere = if (feepayer != null) " and feepayer = ? " else " and true "
             val query = "Select " +
                 "date_trunc(?, hourly) as date, " +
@@ -131,15 +147,17 @@ class TxHistoryDataViews {
             val arguments = mutableListOf<Pair<ColumnType, *>>(
                 Pair(VarCharColumnType(64), granularity.name),
                 Pair(IntegerColumnType(), UTILITY_TOKEN_BASE_MULTIPLIER),
-                Pair(IntegerColumnType(), UTILITY_TOKEN_BASE_MULTIPLIER),
+                Pair(IntegerColumnType(), UTILITY_TOKEN_BASE_MULTIPLIER)
             )
             if (fromDate != null) {
                 arguments.add(Pair(DateColumnType(true), fromDate))
-                if (toDate != null)
+                if (toDate != null) {
                     arguments.add(Pair(DateColumnType(true), toDate.plusDays(1).minusMinutes(1)))
+                }
             }
-            if (feepayer != null)
+            if (feepayer != null) {
                 arguments.add(Pair(VarCharColumnType(128), feepayer))
+            }
             query.execAndMap(arguments) { it.toFeeTypeData(feepayer != null) }
         }
     }

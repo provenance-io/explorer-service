@@ -80,8 +80,9 @@ class NotificationService(
     }
 
     private fun Announcement.validateAnnouncement(): Announcement {
-        if (this.id == null && (this.title == null || this.body == null))
+        if (this.id == null && (this.title == null || this.body == null)) {
             throw InvalidArgumentException("Both title and announcement body must be filled in for new announcement.")
+        }
         return this
     }
 

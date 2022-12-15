@@ -62,8 +62,9 @@ class GroupGrpcClient(channelUri: URI) {
                             this.pagination = getPagination(offset, limit)
                         }
                     ).let { res ->
-                        if (total == 0)
+                        if (total == 0) {
                             total = res.pagination.total.toInt()
+                        }
                         memberList.addAll(res.membersList.map { it.member })
                         offset += limit
                     }

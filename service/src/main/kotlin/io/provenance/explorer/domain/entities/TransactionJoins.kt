@@ -140,9 +140,14 @@ class TxNftJoinRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findTxByUuid(uuid: String, offset: Int, limit: Int) = transaction {
             val query = TxNftJoinTable.innerJoin(TxCacheTable, { TxNftJoinTable.txHashId }, { TxCacheTable.id })
                 .slice(
-                    TxCacheTable.id, TxCacheTable.hash,
-                    TxCacheTable.height, TxCacheTable.gasWanted, TxCacheTable.gasUsed, TxCacheTable.txTimestamp,
-                    TxCacheTable.errorCode, TxCacheTable.codespace
+                    TxCacheTable.id,
+                    TxCacheTable.hash,
+                    TxCacheTable.height,
+                    TxCacheTable.gasWanted,
+                    TxCacheTable.gasUsed,
+                    TxCacheTable.txTimestamp,
+                    TxCacheTable.errorCode,
+                    TxCacheTable.codespace
                 )
                 .select { TxNftJoinTable.metadataUuid eq uuid }
                 .andWhere { TxNftJoinTable.metadataType eq MdParent.SCOPE.name }

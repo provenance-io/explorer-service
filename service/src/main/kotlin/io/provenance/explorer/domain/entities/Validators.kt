@@ -154,7 +154,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
             val query = "SELECT * FROM get_all_validator_state(?, ?, NULL)".trimIndent()
             val arguments = mutableListOf<Pair<ColumnType, *>>(
                 Pair(IntegerColumnType(), activeSet),
-                Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
+                Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name)
             )
             query.execAndMap(arguments) { it.toCurrentValidatorState() }
         }
@@ -176,10 +176,12 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
                     "SELECT * FROM get_all_validator_state(?, ?, NULL) WHERE operator_addr_id IN $idList".trimIndent()
                 val arguments = mutableListOf<Pair<ColumnType, *>>(
                     Pair(IntegerColumnType(), activeSet),
-                    Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
+                    Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name)
                 )
                 query.execAndMap(arguments) { it.toCurrentValidatorState() }
-            } else listOf()
+            } else {
+                listOf()
+            }
         }
 
         fun findByAccount(activeSet: Int, address: String) = transaction {
@@ -275,7 +277,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
                         Pair(TextColumnType(), searchState.name.lowercase()),
                         Pair(IntegerColumnType(), limitDefault),
                         Pair(IntegerColumnType(), offsetDefault),
-                        Pair(ArrayColumnType(TextColumnType()), consensusAddrSet),
+                        Pair(ArrayColumnType(TextColumnType()), consensusAddrSet)
                     )
                     query.execAndMap(arguments) { it.toCount() }.first()
                 }
@@ -284,7 +286,7 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
                     val arguments = mutableListOf<Pair<ColumnType, *>>(
                         Pair(IntegerColumnType(), activeSet),
                         Pair(VarCharColumnType(64), Staking.BondStatus.BOND_STATUS_BONDED.name),
-                        Pair(ArrayColumnType(TextColumnType()), consensusAddrSet),
+                        Pair(ArrayColumnType(TextColumnType()), consensusAddrSet)
                     )
                     query.execAndMap(arguments) { it.toCount() }.first()
                 }
@@ -368,8 +370,9 @@ class ValidatorMarketRateRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findForDates(fromDate: DateTime, toDate: DateTime, address: String?) = transaction {
             val query = ValidatorMarketRateTable
                 .select { ValidatorMarketRateTable.blockTimestamp.between(fromDate, toDate.plusDays(1)) }
-            if (address != null)
+            if (address != null) {
                 query.andWhere { ValidatorMarketRateTable.proposerAddress eq address }
+            }
             ValidatorMarketRateRecord.wrapRows(query)
         }
 

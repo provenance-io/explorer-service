@@ -7,7 +7,7 @@ import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
-import io.provenance.explorer.domain.entities.MarkerCacheRecord
+import io.provenance.explorer.domain.entities.MarkerUnitRecord
 import io.provenance.explorer.domain.entities.SignatureTxRecord
 import io.provenance.explorer.domain.entities.SmContractRecord
 import io.provenance.explorer.domain.entities.TxAddressJoinRecord
@@ -48,7 +48,6 @@ import io.provenance.explorer.model.TxSmartContract
 import io.provenance.explorer.model.TxStatus
 import io.provenance.explorer.model.TxSummary
 import io.provenance.explorer.model.TxType
-import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.getParentForType
 import io.provenance.explorer.model.base.isMAddress
@@ -114,14 +113,17 @@ class TransactionService(
         val msgTypes = if (msgType != null) listOf(msgType) else (module?.getValuesPlusAddtnl() ?: listOf())
         val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
         val addr = transaction { address?.getAddressType(valService.getActiveSet()) }
-        val markerId = if (denom != null) MarkerCacheRecord.findByDenom(denom)?.id?.value else null
+        val markerId = if (denom != null) MarkerUnitRecord.findByUnit(denom)?.markerId else null
         val nftMAddress = if (nftAddr != null && nftAddr.isMAddress()) nftAddr.toMAddress() else nftAddr?.toMAddressScope()
         val nft = nftMAddress?.let { Triple(it.getParentForType()?.name, nftService.getNftDbId(it), it.getPrimaryUuid().toString()) }
         val ibcChannelIds =
-            if (ibcSrcPort != null && ibcSrcChannel != null)
+            if (ibcSrcPort != null && ibcSrcChannel != null) {
                 listOf(ibcService.getChannelIdByPortAndChannel(ibcSrcPort, ibcSrcChannel))
-            else if (ibcChain != null) ibcService.getChannelIdsByChain(ibcChain)
-            else emptyList()
+            } else if (ibcChain != null) {
+                ibcService.getChannelIdsByChain(ibcChain)
+            } else {
+                emptyList()
+            }
 
         val params =
             TxQueryParams(
@@ -135,9 +137,11 @@ class TransactionService(
         TxCacheRecord.findByQueryForResults(params).map {
             val rec = it
             val displayMsgType = transaction {
-                if (msgTypes.isNotEmpty())
+                if (msgTypes.isNotEmpty()) {
                     rec.txMessages.flatMap { msg -> msg.txMessageType }.firstMatchLabel(msgTypes)
-                else rec.txMessages.first().txMessageType.firstMatchLabel()
+                } else {
+                    rec.txMessages.first().txMessageType.firstMatchLabel()
+                }
             }
             TxSummary(
                 rec.hash,
@@ -225,10 +229,6 @@ class TransactionService(
 
     fun getTxHeatmap() = BlockCacheHourlyTxCountsRecord.getTxHeatmap()
 
-    @Deprecated("Use TransactionService.getTxHistoryChartData", ReplaceWith("TransactionService.getTxHistoryChartData"))
-    fun getTxHistoryByQuery(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity) =
-        BlockCacheHourlyTxCountsRecord.getTxCountsForParams(fromDate, toDate, granularity)
-
     private fun getMonikers(txId: EntityID<Int>): Map<String, String> {
         val monikers = TxAddressJoinRecord.findValidatorsByTxHash(valService.getActiveSet(), txId)
             .associate { v -> v.operatorAddress to v.moniker }
@@ -304,8 +304,14 @@ class TransactionService(
 
         val params =
             TxQueryParams(
-                msgTypes = msgTypeIds, txStatus = txStatus, count = count, offset = page.toOffset(count),
-                fromDate = fromDate, toDate = toDate, smCodeId = codeId, smContractAddrId = contractId
+                msgTypes = msgTypeIds,
+                txStatus = txStatus,
+                count = count,
+                offset = page.toOffset(count),
+                fromDate = fromDate,
+                toDate = toDate,
+                smCodeId = codeId,
+                smContractAddrId = contractId
             )
 
         val total = TxMessageRecord.findByQueryParamsForCount(params)
@@ -363,17 +369,22 @@ fun List<TxMessageTypeRecord>.mapToRes() =
 fun SizedIterable<TxMsgTypeSubtypeRecord>.firstMatchLabel(filter: List<String> = emptyList()) = this.toList().firstMatchLabel(filter)
 
 fun List<TxMsgTypeSubtypeRecord>.firstMatchLabel(filter: List<String> = emptyList()) =
-    if (filter.isNotEmpty())
+    if (filter.isNotEmpty()) {
         this.toList().groupedByTxMsg()
             .filter { (_, v) -> filter.intersect((v.mapPieces(true) + v.mapPieces(false)).toSet()).isNotEmpty() }
             .groupedByType().makeLabels()[0]
-    else this.toList().groupedByTxMsg().groupedByType().makeLabels()[0]
+    } else {
+        this.toList().groupedByTxMsg().groupedByType().makeLabels()[0]
+    }
 
 fun Map<TxMessageTypeRecord, List<TxMessageTypeRecord?>>.makeLabels() =
     this.map { (k, v) ->
         v.filterNotNull().let { list ->
-            if (list.isNotEmpty()) list.joinToString(", ", " - ") { it.type }
-            else ""
+            if (list.isNotEmpty()) {
+                list.joinToString(", ", " - ") { it.type }
+            } else {
+                ""
+            }
         }.let { "${k.type}$it" }
     }
 

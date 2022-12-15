@@ -59,7 +59,7 @@ data class TxTypeData(
     val date: DateTime,
     val feepayer: String? = null,
     val txType: String,
-    val txTypeCount: BigDecimal,
+    val txTypeCount: BigDecimal
 ) {
     fun toCsv(hasFeepayer: Boolean, granularity: DateTruncGranularity): MutableList<Any> {
         val base = mutableListOf<Any>(this.date.withZone(DateTimeZone.UTC).customFormat(granularity))

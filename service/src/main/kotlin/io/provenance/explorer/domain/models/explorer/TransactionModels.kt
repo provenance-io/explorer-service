@@ -124,7 +124,7 @@ data class TxUpdate(
     var groupPolicies: MutableList<String> = mutableListOf(),
     var policyJoinAlt: MutableList<String> = mutableListOf(),
     var groupProposals: MutableList<String> = mutableListOf(),
-    var groupVotes: MutableList<String> = mutableListOf(),
+    var groupVotes: MutableList<String> = mutableListOf()
 ) {
     fun toProcedureObject() =
         listOf(

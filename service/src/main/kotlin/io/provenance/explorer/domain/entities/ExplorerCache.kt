@@ -91,10 +91,12 @@ class ValidatorMarketRateStatsRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findByAddress(address: String, fromDate: DateTime?, toDate: DateTime?, count: Int) = transaction {
             val query = ValidatorMarketRateStatsTable.select { ValidatorMarketRateStatsTable.operatorAddress eq address }
-            if (fromDate != null)
+            if (fromDate != null) {
                 query.andWhere { ValidatorMarketRateStatsTable.date greaterEq fromDate }
-            if (toDate != null)
+            }
+            if (toDate != null) {
                 query.andWhere { ValidatorMarketRateStatsTable.date lessEq toDate.plusDays(1) }
+            }
 
             query.orderBy(ValidatorMarketRateStatsTable.date, SortOrder.ASC).limit(count)
             ValidatorMarketRateStatsRecord.wrapRows(query).map {
@@ -139,10 +141,12 @@ class ChainMarketRateStatsRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) 
 
         fun findForDates(fromDate: DateTime?, toDate: DateTime?, count: Int) = transaction {
             val query = ChainMarketRateStatsTable.selectAll()
-            if (fromDate != null)
+            if (fromDate != null) {
                 query.andWhere { ChainMarketRateStatsTable.date greaterEq fromDate }
-            if (toDate != null)
+            }
+            if (toDate != null) {
                 query.andWhere { ChainMarketRateStatsTable.date lessEq toDate.plusDays(1) }
+            }
 
             query.orderBy(ChainMarketRateStatsTable.date, SortOrder.ASC).limit(count)
             ChainMarketRateStatsRecord.wrapRows(query).map {
@@ -251,10 +255,12 @@ class TokenHistoricalDailyRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) 
 
         fun findForDates(fromDate: DateTime?, toDate: DateTime?) = transaction {
             val query = TokenHistoricalDailyTable.selectAll()
-            if (fromDate != null)
+            if (fromDate != null) {
                 query.andWhere { TokenHistoricalDailyTable.timestamp greaterEq fromDate }
-            if (toDate != null)
+            }
+            if (toDate != null) {
                 query.andWhere { TokenHistoricalDailyTable.timestamp lessEq toDate.plusDays(1) }
+            }
 
             query.orderBy(TokenHistoricalDailyTable.timestamp, SortOrder.ASC)
             TokenHistoricalDailyRecord.wrapRows(query).map { it.data }.toList()

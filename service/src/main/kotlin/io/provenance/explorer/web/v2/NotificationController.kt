@@ -53,14 +53,23 @@ class NotificationController(private val notifService: NotificationService) {
     @ApiOperation("Returns a paginated list of announcements")
     @GetMapping("/announcement/all")
     fun getAnnouncements(
-        @ApiParam(defaultValue = "1", required = false) @RequestParam(defaultValue = "1") @Min(1) page: Int,
+        @ApiParam(defaultValue = "1", required = false)
+        @RequestParam(defaultValue = "1")
+        @Min(1)
+        page: Int,
         @ApiParam(value = "Record count between 1 and 50", defaultValue = "10", required = false)
-        @RequestParam(defaultValue = "10") @Min(1) @Max(50) count: Int,
+        @RequestParam(defaultValue = "10")
+        @Min(1)
+        @Max(50)
+        count: Int,
         @ApiParam(
             type = "DateTime",
             value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
-        ) @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) fromDate: DateTime?
+        )
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        fromDate: DateTime?
     ) = ResponseEntity.ok(notifService.getAnnouncements(page, count, fromDate))
 
     @ApiOperation("Returns a single announcement by ID")
