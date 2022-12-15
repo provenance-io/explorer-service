@@ -50,13 +50,7 @@ jobs:
           ./gradlew publishToSonatype \
             -Pversion=${VERSION} \
             -PartifactVersion=${VERSION} \
-            -Psigning.keyId=B7D30ABE \
-            -Psigning.password="$GPG_PASSWORD" \
-            -Psigning.secretKeyRingFile=$GITHUB_WORKSPACE/release.gpg \
-            --info
-          ./gradlew closeAndReleaseSonatypeStagingRepository \
-            -Pversion=${VERSION} \
-            -PartifactVersion=${VERSION} \
+            closeAndReleaseSonatypeStagingRepository \
             -Psigning.keyId=B7D30ABE \
             -Psigning.password="$GPG_PASSWORD" \
             -Psigning.secretKeyRingFile=$GITHUB_WORKSPACE/release.gpg \
