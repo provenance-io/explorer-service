@@ -47,9 +47,10 @@ jobs:
             fi
           fi
           echo version::${VERSION}
-          ./gradlew publish closeAndReleaseSonatypeStagingRepository \
+          ./gradlew publish \
+            -Pversion=${VERSION} \
             -PartifactVersion=${VERSION} \
             -Psigning.keyId=B7D30ABE \
-            -Psigning.password="${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}" \
+            -Psigning.password="$GPG_PASSWORD" \
             -Psigning.secretKeyRingFile=$GITHUB_WORKSPACE/release.gpg \
             --info
