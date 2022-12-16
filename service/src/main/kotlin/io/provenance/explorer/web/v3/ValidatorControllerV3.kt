@@ -16,7 +16,7 @@ import javax.validation.constraints.Min
 
 @Validated
 @RestController
-@RequestMapping(path = ["/api/v2/validators"], produces = [MediaType.APPLICATION_JSON_VALUE])
+@RequestMapping(path = ["/api/v3/validators"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Api(
     description = "Validator-related endpoints",
     produces = MediaType.APPLICATION_JSON_VALUE,

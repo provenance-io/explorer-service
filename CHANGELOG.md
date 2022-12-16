@@ -33,6 +33,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Bug Fixes
+* Fixed `/api/v3/validators` url
+* Now handling no fee amount in the tx
+
 ## [v5.4.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.4.0) - 2022-12-15
 ### Release Name: Jean de Béthencourt
 
