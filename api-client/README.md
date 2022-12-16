@@ -4,14 +4,26 @@ Explorer API Client
 Explorer API client provides the clients to call into the Explorer APIs. Instead of having to manually set up calls to 
 the APIs, you can import this library to use when accessing to the APIs programmatically.
 
-You should also import the api-models to be used effectively.
+This is bundled with the appropriate API model library, so you dont have to import the model library separately for use. 
 
 Import
 -----
 
-This library is versioned in tandem with the API set. Bleeding edge is tagged as `latest`.
-
+This library is versioned in tandem with the API set.
 Available in the [Maven Central repository](https://search.maven.org/artifact/io.provenance.explorer/explorer-api-client).
+
+**BleedingEdge**
+
+Bleeding edge is tagged as `1.0-SNAPSHOT`.
+
+To reach the snapshot, you need to use the snapshot repository
+```groovy
+repositories {
+    maven { url = project.uri("https://oss.sonatype.org/content/repositories/snapshots") }
+}
+```
+
+and then import as below, with version `1.0-SNAPSHOT`.
 
 **Maven**
 ```xml
@@ -20,22 +32,15 @@ Available in the [Maven Central repository](https://search.maven.org/artifact/io
     <artifactId>explorer-api-client</artifactId>
     <version>latest</version>
 </dependency>
-<dependency>
-    <groupId>io.provenance.explorer</groupId>
-    <artifactId>explorer-api-model</artifactId>
-    <version>latest</version>
-</dependency>
 ```
 
 **Gradle Groovy**
 ```groovy
-implementation 'io.provenance.explorer:explorer-api-model:latest'
 implementation 'io.provenance.explorer:explorer-api-client:latest'
 ```
 
 **Gradle Kotlin**
 ```kotlin
-implementation("io.provenance.explorer:explorer-api-model:latest")
 implementation("io.provenance.explorer:explorer-api-client:latest")
 ```
 
