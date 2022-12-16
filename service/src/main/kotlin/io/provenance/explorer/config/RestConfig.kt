@@ -19,6 +19,20 @@ import cosmos.group.v1.Events.EventUpdateGroup
 import cosmos.group.v1.Events.EventUpdateGroupPolicy
 import cosmos.group.v1.Events.EventVote
 import cosmos.group.v1.Events.EventWithdrawProposal
+import cosmos.group.v1.Tx.MsgCreateGroup
+import cosmos.group.v1.Tx.MsgCreateGroupPolicy
+import cosmos.group.v1.Tx.MsgCreateGroupWithPolicy
+import cosmos.group.v1.Tx.MsgExec
+import cosmos.group.v1.Tx.MsgLeaveGroup
+import cosmos.group.v1.Tx.MsgSubmitProposal
+import cosmos.group.v1.Tx.MsgUpdateGroupAdmin
+import cosmos.group.v1.Tx.MsgUpdateGroupMembers
+import cosmos.group.v1.Tx.MsgUpdateGroupMetadata
+import cosmos.group.v1.Tx.MsgUpdateGroupPolicyAdmin
+import cosmos.group.v1.Tx.MsgUpdateGroupPolicyDecisionPolicy
+import cosmos.group.v1.Tx.MsgUpdateGroupPolicyMetadata
+import cosmos.group.v1.Tx.MsgVote
+import cosmos.group.v1.Tx.MsgWithdrawProposal
 import cosmos.group.v1.Types.PercentageDecisionPolicy
 import cosmos.group.v1.Types.ThresholdDecisionPolicy
 import cosmos.nft.v1beta1.Tx.MsgSend
@@ -329,7 +343,21 @@ fun msgDescriptors() =
         MsgCreateRewardProgramRequest.getDescriptor(),
         MsgEndRewardProgramRequest.getDescriptor(),
         MsgClaimRewardsRequest.getDescriptor(),
-        MsgClaimAllRewardsRequest.getDescriptor()
+        MsgClaimAllRewardsRequest.getDescriptor(),
+        MsgCreateGroup.getDescriptor(),
+        MsgCreateGroupWithPolicy.getDescriptor(),
+        MsgCreateGroupPolicy.getDescriptor(),
+        MsgUpdateGroupMembers.getDescriptor(),
+        MsgUpdateGroupMetadata.getDescriptor(),
+        MsgUpdateGroupPolicyMetadata.getDescriptor(),
+        MsgUpdateGroupAdmin.getDescriptor(),
+        MsgUpdateGroupPolicyAdmin.getDescriptor(),
+        MsgUpdateGroupPolicyDecisionPolicy.getDescriptor(),
+        MsgSubmitProposal.getDescriptor(),
+        MsgVote.getDescriptor(),
+        MsgWithdrawProposal.getDescriptor(),
+        MsgExec.getDescriptor(),
+        MsgLeaveGroup.getDescriptor()
     )
 
 fun contentDescriptors() =
