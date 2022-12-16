@@ -72,7 +72,7 @@ jobs:
           VERSION=$(echo $VERSION | sed -e 's/^v//')
           echo version::${VERSION}
           ./gradlew publishToSonatype \
-            $(if [ $VERSION = $SNAPSHOT ]; then echo 'closeSonatypeStagingRepository'; else echo 'closeAndReleaseSonatypeStagingRepository'; fi) \
+            closeAndReleaseSonatypeStagingRepository \
             -Pversion=${VERSION} \
             -PartifactVersion=${VERSION} \
             -Psigning.keyId=B7D30ABE \
