@@ -18,7 +18,8 @@ import net.pearx.kasechange.toTitleCase
 import java.math.BigDecimal
 
 fun Abci.TxResponse.getFeeTotalPaid() =
-    this.tx.unpack(Tx::class.java).authInfo.fee.amountList.first { it.denom == UTILITY_TOKEN }.amount.toBigDecimal()
+    this.tx.unpack(Tx::class.java).authInfo.fee.amountList.firstOrNull { it.denom == UTILITY_TOKEN }?.amount?.toBigDecimal()
+        ?: BigDecimal.ZERO
 
 fun List<TxFeeRecord>.toFees() = this.groupBy { it.feeType }
     .map { (k, v) -> TxFee(k.toTitleCase(), v.map { it.toFeeCoinStr() }) }
