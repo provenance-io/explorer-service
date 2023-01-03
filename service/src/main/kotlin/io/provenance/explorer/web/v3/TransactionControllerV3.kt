@@ -2,6 +2,7 @@ package io.provenance.explorer.web.v3
 
 import io.provenance.explorer.domain.models.explorer.TxHistoryDataRequest
 import io.provenance.explorer.model.base.DateTruncGranularity
+import io.provenance.explorer.model.base.Timeframe
 import io.provenance.explorer.service.TransactionService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -107,4 +108,33 @@ class TransactionControllerV3(private val transactionService: TransactionService
         @RequestParam(required = false)
         blockHeight: Int? = null
     ) = transactionService.getTxTypesByTxHash(hash)
+
+    @ApiOperation("Returns a heatmap of transaction activity on chain")
+    @GetMapping("/heatmap")
+    fun txHeatmap(
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        )
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        fromDate: DateTime?,
+        @ApiParam(
+            type = "DateTime",
+            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+            required = false
+        )
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        toDate: DateTime?,
+        @ApiParam(
+            value = "The timeframe of data, either QUARTER, MONTH, WEEK, or FOREVER",
+            defaultValue = "FOREVER",
+            required = false,
+            allowableValues = "FOREVER,QUARTER,MONTH,WEEK"
+        )
+        @RequestParam(defaultValue = "FOREVER", required = false)
+        timeframe: Timeframe
+    ) = transactionService.getTxHeatmap(fromDate, toDate, timeframe)
 }

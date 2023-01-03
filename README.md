@@ -129,7 +129,7 @@ brew install ktlint
 
 In order to automatically lint/check for things that can't be autocorrected run:
 ```
-ktlint -F "**/*.kt" --disabled_rules=filename,chain-wrapping,enum-entry-name-case
+ktlint -F "**/*.kt" --disabled_rules=filename,chain-wrapping,enum-entry-name-case,multiline-if-else
 ```
 This will also correct linting issues, and you can add and commit the updates.
 

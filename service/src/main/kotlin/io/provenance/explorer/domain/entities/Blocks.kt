@@ -39,12 +39,16 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.Max
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
 import org.jetbrains.exposed.sql.Sum
 import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertIgnore
@@ -355,7 +359,7 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
             }
         }
 
-        fun getTxHeatmap() = transaction {
+        fun getTxHeatmap(fromDate: DateTime? = null, toDate: DateTime? = null) = transaction {
             val blockTimestamp = BlockCacheHourlyTxCountsTable.blockTimestamp
             val dow = ExtractDOW(blockTimestamp)
             val day = ExtractDay(blockTimestamp)
@@ -364,30 +368,23 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
             val result = BlockCacheHourlyTxCountsTable
                 .slice(dow, day, hour, txSum)
                 .selectAll()
+                .andWhere {
+                    if (fromDate != null && toDate != null)
+                        BlockCacheHourlyTxCountsTable.blockTimestamp.between(fromDate.startOfDay(), toDate.startOfDay())
+                    else Op.TRUE
+                }
                 .groupBy(dow)
                 .groupBy(day)
                 .groupBy(hour)
                 .orderBy(dow, SortOrder.ASC)
                 .orderBy(hour, SortOrder.ASC)
-                .map {
-                    TxHeatmapRaw(
-                        it[dow],
-                        it[day].trim(),
-                        it[hour],
-                        it[txSum]!!
-                    )
-                }
+                .map { TxHeatmapRaw(it[dow], it[day].trim(), it[hour], it[txSum]!!) }
                 .groupBy { it.dow }
                 .map {
                     TxHeatmap(
                         dow = it.key,
                         day = it.value[0].day,
-                        data = it.value.map { row ->
-                            TxHeatmapHour(
-                                row.hour,
-                                row.numberTxs
-                            )
-                        }
+                        data = it.value.map { row -> TxHeatmapHour(row.hour, row.numberTxs) }
                     )
                 }
 

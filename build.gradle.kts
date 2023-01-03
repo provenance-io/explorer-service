@@ -73,13 +73,4 @@ subprojects {
             apiVersion = "1.6"
         }
     }
-
-    configurations.all {
-        resolutionStrategy.eachDependency {
-            if (requested.group == "org.apache.logging.log4j" && (requested.version == "2.14.1") || (requested.version == "2.15.0")) {
-                useVersion("2.15.0")
-                because("CVE-2021-44228")
-            }
-        }
-    }
 }

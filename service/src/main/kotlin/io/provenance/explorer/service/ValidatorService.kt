@@ -550,6 +550,8 @@ class ValidatorService(
             Timeframe.DAY -> hourlyBlockCount * 24
             Timeframe.HOUR -> hourlyBlockCount
             Timeframe.FOREVER -> currentHeight - 1
+            Timeframe.QUARTER -> hourlyBlockCount * 24 * (365 / 4)
+            Timeframe.MONTH -> hourlyBlockCount * 24 * (365 / 12)
         }
 
         val validators = MissedBlocksRecord
@@ -580,6 +582,8 @@ class ValidatorService(
             Timeframe.DAY -> hourlyBlockCount * 24
             Timeframe.HOUR -> hourlyBlockCount
             Timeframe.FOREVER -> currentHeight - 1
+            Timeframe.QUARTER -> hourlyBlockCount * 24 * (365 / 4)
+            Timeframe.MONTH -> hourlyBlockCount * 24 * (365 / 12)
         }
 
         val valConsAddr =

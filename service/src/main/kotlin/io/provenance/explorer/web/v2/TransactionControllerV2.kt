@@ -128,6 +128,8 @@ class TransactionControllerV2(private val transactionService: TransactionService
 
     @ApiOperation("Returns a heatmap of transaction activity on chain")
     @GetMapping("/heatmap")
+    @Deprecated("Use /api/v3/txs/heatmap")
+    @java.lang.Deprecated
     fun txHeatmap() = transactionService.getTxHeatmap()
 
     @ApiOperation("Return list of transaction types")

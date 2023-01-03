@@ -20,10 +20,12 @@ import io.provenance.explorer.domain.entities.TxMsgTypeSubtypeRecord
 import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.getFeepayer
+import io.provenance.explorer.domain.exceptions.InvalidArgumentException
 import io.provenance.explorer.domain.exceptions.validate
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.msgEventsToObjectNodePrint
 import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toFeePaid
 import io.provenance.explorer.domain.extensions.toFees
@@ -42,6 +44,7 @@ import io.provenance.explorer.model.MsgInfo
 import io.provenance.explorer.model.MsgTypeSet
 import io.provenance.explorer.model.TxDetails
 import io.provenance.explorer.model.TxGov
+import io.provenance.explorer.model.TxHeatmapRes
 import io.provenance.explorer.model.TxHistoryChartData
 import io.provenance.explorer.model.TxMessage
 import io.provenance.explorer.model.TxSmartContract
@@ -49,6 +52,7 @@ import io.provenance.explorer.model.TxStatus
 import io.provenance.explorer.model.TxSummary
 import io.provenance.explorer.model.TxType
 import io.provenance.explorer.model.base.PagedResults
+import io.provenance.explorer.model.base.Timeframe
 import io.provenance.explorer.model.base.getParentForType
 import io.provenance.explorer.model.base.isMAddress
 import io.provenance.explorer.model.base.toMAddress
@@ -227,7 +231,30 @@ class TransactionService(
                 }
         }
 
-    fun getTxHeatmap() = BlockCacheHourlyTxCountsRecord.getTxHeatmap()
+    fun getTxHeatmap(fromDate: DateTime? = null, toDate: DateTime? = null, timeframe: Timeframe = Timeframe.FOREVER): TxHeatmapRes {
+        if (fromDate != null && toDate != null)
+            return BlockCacheHourlyTxCountsRecord.getTxHeatmap(fromDate, toDate)
+
+        val (from, to) = when (timeframe) {
+            Timeframe.FOREVER -> null to null
+            Timeframe.QUARTER ->
+                if (fromDate != null) fromDate to fromDate.plusMonths(3)
+                else if (toDate != null) toDate.minusMonths(3) to toDate
+                else DateTime.now().startOfDay().let { it.minusMonths(3) to it }
+            Timeframe.MONTH ->
+                if (fromDate != null) fromDate to fromDate.plusMonths(1)
+                else if (toDate != null) toDate.minusMonths(1) to toDate
+                else DateTime.now().startOfDay().let { it.minusMonths(1) to it }
+            Timeframe.WEEK ->
+                if (fromDate != null) fromDate to fromDate.plusWeeks(1)
+                else if (toDate != null) toDate.minusWeeks(1) to toDate
+                else DateTime.now().startOfDay().let { it.minusWeeks(1) to it }
+            Timeframe.DAY, Timeframe.HOUR ->
+                throw InvalidArgumentException("Timeframe ${timeframe.name} is not supported for heatmap data")
+        }
+
+        return BlockCacheHourlyTxCountsRecord.getTxHeatmap(from, to)
+    }
 
     private fun getMonikers(txId: EntityID<Int>): Map<String, String> {
         val monikers = TxAddressJoinRecord.findValidatorsByTxHash(valService.getActiveSet(), txId)
