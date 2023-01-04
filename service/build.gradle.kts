@@ -83,15 +83,6 @@ dependencyManagement {
     }
 }
 
-configurations.all {
-    resolutionStrategy.eachDependency {
-        if (requested.group == "org.apache.logging.log4j" && (requested.version == "2.14.1") || (requested.version == "2.15.0")) {
-            useVersion("2.15.0")
-            because("CVE-2021-44228")
-        }
-    }
-}
-
 var profiles = System.getenv("SPRING_PROFILES_ACTIVE") ?: "development"
 
 tasks.getByName<BootRun>("bootRun") {

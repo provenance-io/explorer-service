@@ -33,6 +33,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+* Add date parameters to `/api/v3/txs/heatmap` #462
+  * Added `fromDate`, `toDate`, `timeframe`
+  * Defaulting to `FOREVER` to return all data
+
 ### Bug Fixes
 * Fixed `/api/v3/validators` url
 * Now handling no fee amount in the tx

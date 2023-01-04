@@ -30,4 +30,4 @@ enum class PeriodInSeconds(val seconds: Int) {
     YEAR(31536000)
 }
 
-enum class Timeframe { WEEK, DAY, HOUR, FOREVER }
+enum class Timeframe { QUARTER, MONTH, WEEK, DAY, HOUR, FOREVER }
