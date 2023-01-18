@@ -57,6 +57,7 @@ import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.BlockUpdate
 import io.provenance.explorer.domain.models.explorer.GroupsProposalData
+import io.provenance.explorer.domain.models.explorer.MsgProtoBreakout
 import io.provenance.explorer.domain.models.explorer.Name
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxUpdate
@@ -332,21 +333,18 @@ class AsyncCachingV2(
         }
 
     fun saveMessages(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse, txUpdate: TxUpdate) = transaction {
+        val typeList = mutableListOf<MsgProtoBreakout>()
         tx.tx.body.messagesList.forEachIndexed { idx, msg ->
             val primaryType = msg.typeUrl.getMsgType()
             val secondaryTypes = msg.getMsgSubTypes().filterNotNull().map { it.getMsgType() }
             val (primTypeId, subTypeRecs) = TxMsgTypeSubtypeRecord.buildInserts(primaryType, secondaryTypes, txInfo)
             val msgRec = TxMessageRecord.buildInsert(txInfo, msg, idx)
-            var single: String? = null
             var events = listOf<String>()
             if (tx.txResponse.logsCount > 0) {
                 events = saveEvents(txInfo, tx, primTypeId.value, idx)
-                if (tx.tx.body.messagesCount == 1) {
-                    single = TxSingleMessageCacheRecord.buildInsert(txInfo, tx.txResponse.gasUsed.toInt(), primaryType.type)
-                }
+                typeList.add(primaryType)
             }
             txUpdate.apply {
-                if (single != null) this.singleMsgs.add(single)
                 this.txMsgs.add(
                     listOf(
                         msgRec,
@@ -354,6 +352,14 @@ class AsyncCachingV2(
                         events.toArray("tx_event")
                     ).toObject()
                 )
+            }
+        }
+        typeList.groupingBy { it }.eachCount().let {
+            val size = it.size
+            if (it.size == 1) {
+                val type = it.keys.first().type
+                val gasUsed = tx.txResponse.gasUsed.toInt() / it.values.first()
+                txUpdate.apply { this.singleMsgs.add(TxSingleMessageCacheRecord.buildInsert(txInfo, gasUsed, type)) }
             }
         }
     }

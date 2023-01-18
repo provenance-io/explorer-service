@@ -37,6 +37,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Add date parameters to `/api/v3/txs/heatmap` #462
   * Added `fromDate`, `toDate`, `timeframe`
   * Defaulting to `FOREVER` to return all data
+* Allow "Average Cost of Msg Type" calcs to pull from multi-msg, single-typed txs
 
 ### Bug Fixes
 * Fixed `/api/v3/validators` url
