@@ -9,12 +9,12 @@ import io.provenance.explorer.model.AccountRewards
 import io.provenance.explorer.model.AccountVestingInfo
 import io.provenance.explorer.model.Delegation
 import io.provenance.explorer.model.DenomBalanceBreakdown
-import io.provenance.explorer.model.TxHistoryChartData
 import io.provenance.explorer.model.UnpaginatedDelegation
 import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.PeriodInSeconds
+import io.provenance.explorer.model.download.TxHistoryChartData
 import org.joda.time.DateTime
 
 object AccountRoutes {

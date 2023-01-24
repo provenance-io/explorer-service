@@ -42,6 +42,7 @@ data class TxQueryParams(
     val address: String? = null,
     val markerId: Int? = null,
     val denom: String? = null,
+    val primaryTypesOnly: Boolean = false,
     val msgTypes: List<Int> = emptyList(),
     val txHeight: Int? = null,
     val txStatus: TxStatus? = null,

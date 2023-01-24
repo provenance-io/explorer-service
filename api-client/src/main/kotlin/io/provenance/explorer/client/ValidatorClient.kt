@@ -6,6 +6,7 @@ import feign.RequestLine
 import io.provenance.explorer.model.BlockLatencyData
 import io.provenance.explorer.model.Delegation
 import io.provenance.explorer.model.MarketRateAvg
+import io.provenance.explorer.model.MetricPeriod
 import io.provenance.explorer.model.MissedBlocksTimeframe
 import io.provenance.explorer.model.UnpaginatedDelegation
 import io.provenance.explorer.model.UptimeDataSet
@@ -14,6 +15,7 @@ import io.provenance.explorer.model.ValidatorCommission
 import io.provenance.explorer.model.ValidatorCommissionHistory
 import io.provenance.explorer.model.ValidatorDetails
 import io.provenance.explorer.model.ValidatorMarketRate
+import io.provenance.explorer.model.ValidatorMetrics
 import io.provenance.explorer.model.ValidatorState
 import io.provenance.explorer.model.ValidatorSummary
 import io.provenance.explorer.model.ValidatorSummaryAbbrev
@@ -38,6 +40,9 @@ object ValidatorRoutes {
     const val MISSED_BLOCKS_DISTINCT = "$VALIDATOR_V2/missed_blocks/distinct"
     const val MISSED_BLOCKS = "$VALIDATOR_V2/missed_blocks"
     const val UPTIME = "$VALIDATOR_V2/uptime"
+    const val VALIDATOR_METRICS = "$VALIDATOR_V3/{address}/metrics"
+    const val VALIDATOR_METRICS_PERIODS = "$VALIDATOR_V3/{address}/metrics/periods"
+    const val ALL_METRICS_PERIODS = "$VALIDATOR_V3/metrics/periods"
 }
 
 @Headers(BaseClient.CT_JSON)
@@ -112,4 +117,17 @@ interface ValidatorClient : BaseClient {
 
     @RequestLine("GET ${ValidatorRoutes.UPTIME}")
     fun uptimeData(): UptimeDataSet
+
+    @RequestLine("GET ${ValidatorRoutes.VALIDATOR_METRICS}")
+    fun validatorMetrics(
+        @Param("address") address: String,
+        @Param("year") year: Int,
+        @Param("quarter") quarter: Int
+    ): ValidatorMetrics
+
+    @RequestLine("GET ${ValidatorRoutes.VALIDATOR_METRICS_PERIODS}")
+    fun validatorMetricsPeriods(@Param("address") address: String): MutableList<MetricPeriod>
+
+    @RequestLine("GET ${ValidatorRoutes.ALL_METRICS_PERIODS}")
+    fun allMetricsPeriods(): MutableList<MetricPeriod>
 }

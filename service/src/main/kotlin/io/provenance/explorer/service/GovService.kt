@@ -50,7 +50,7 @@ import io.provenance.explorer.domain.extensions.getType
 import io.provenance.explorer.domain.extensions.mapToProtoCoin
 import io.provenance.explorer.domain.extensions.mhashToNhash
 import io.provenance.explorer.domain.extensions.pack
-import io.provenance.explorer.domain.extensions.padToDecString
+import io.provenance.explorer.domain.extensions.padToDecStringNew
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.to256Hash
 import io.provenance.explorer.domain.extensions.toBase64
@@ -555,7 +555,7 @@ class GovService(
                     request.votes.filter { it.weight > 0 }.map {
                         weightedVoteOption {
                             option = it.option
-                            weight = it.weight.padToDecString()
+                            weight = it.weight.padToDecStringNew()
                         }
                     }
                 )
@@ -691,6 +691,12 @@ class GovService(
                 }.pack()
             }
         }
+
+    fun getVotesPerProposalsMetrics(addrId: Int, startDate: DateTime, endDate: DateTime) = transaction {
+        val props = GovProposalRecord.getCompletedProposalsForPeriod(startDate, endDate).map { it.proposalId }
+        val votes = GovVoteRecord.getAddressVotesForProposalList(addrId, props)
+        votes.size to props.size
+    }
 }
 
 fun Any.getGovMsgDetail(txHash: String) =
@@ -790,14 +796,14 @@ fun Any.toWeightedVoteList() =
         this.typeUrl.endsWith("gov.v1beta1.MsgVote") ->
             listOf(
                 weightedVoteOption {
-                    this.weight = "1000000000000000000"
+                    this.weight = "1"
                     this.option = VoteOption.valueOf(this@toWeightedVoteList.toMsgVoteOld().option.name)
                 }
             )
         this.typeUrl.endsWith("gov.v1.MsgVote") ->
             listOf(
                 weightedVoteOption {
-                    this.weight = "1000000000000000000"
+                    this.weight = "1"
                     this.option = this@toWeightedVoteList.toMsgVote().option
                 }
             )

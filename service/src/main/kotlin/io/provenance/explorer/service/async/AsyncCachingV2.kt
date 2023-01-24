@@ -491,81 +491,94 @@ class AsyncCachingV2(
     private fun saveGovData(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, txUpdate: TxUpdate) = transaction {
         if (tx.txResponse.code == 0) {
             tx.tx.body.messagesList.mapNotNull { it.getAssociatedGovMsgs() }
-                .forEachIndexed { idx, pair ->
-                    when (pair.first) {
-                        GovMsgType.PROPOSAL ->
-                            // Have to find the proposalId in the log events
-                            tx.txResponse.logsList[idx]
-                                .eventsList.first { it.type == "submit_proposal" }
-                                .attributesList.first { it.key == "proposal_id" }
-                                .value.toLong()
-                                .let { id ->
-                                    val proposer = when {
-                                        pair.second.typeUrl.endsWith("gov.v1beta1.MsgSubmitProposal") -> pair.second.toMsgSubmitProposalOld().proposer
-                                        pair.second.typeUrl.endsWith("gov.v1.MsgSubmitProposal") -> pair.second.toMsgSubmitProposal().proposer
-                                        else -> throw InvalidArgumentException("Invalid gov proposal msg type: ${pair.second.typeUrl}")
-                                    }
-                                    txUpdate.apply {
-                                        govService.buildProposal(id, txInfo, proposer, true)?.let { this.proposals.add(it) }
-                                        govService.buildDeposit(id, txInfo, null, pair.second)?.let { this.deposits.addAll(it) }
-                                        govService.buildProposalMonitor(pair.second, id, txInfo).let { mon ->
-                                            if (mon.isNotEmpty()) this.proposalMonitors.addAll(mon)
+                .forEachIndexed { logsIdx, list ->
+                    list.forEachIndexed { listIdx, pair ->
+                        when (pair.first) {
+                            GovMsgType.PROPOSAL ->
+                                // Have to find the proposalId in the log events
+                                tx.txResponse.logsList[logsIdx]
+                                    .eventsList.first { it.type == "submit_proposal" }
+                                    .attributesList.filter { it.key == "proposal_id" }.withIndex()
+                                    .first { it.index == listIdx }
+                                    .value.value.toLong()
+                                    .let { id ->
+                                        val proposer = when {
+                                            pair.second.typeUrl.endsWith("gov.v1beta1.MsgSubmitProposal") -> pair.second.toMsgSubmitProposalOld().proposer
+                                            pair.second.typeUrl.endsWith("gov.v1.MsgSubmitProposal") -> pair.second.toMsgSubmitProposal().proposer
+                                            else -> throw InvalidArgumentException("Invalid gov proposal msg type: ${pair.second.typeUrl}")
+                                        }
+                                        txUpdate.apply {
+                                            govService.buildProposal(id, txInfo, proposer, true)
+                                                ?.let { this.proposals.add(it) }
+                                            govService.buildDeposit(id, txInfo, null, pair.second)
+                                                ?.let { this.deposits.addAll(it) }
+                                            govService.buildProposalMonitor(pair.second, id, txInfo).let { mon ->
+                                                if (mon.isNotEmpty()) this.proposalMonitors.addAll(mon)
+                                            }
                                         }
                                     }
+                            GovMsgType.DEPOSIT -> {
+                                val (proposalId, depositor) = when {
+                                    pair.second.typeUrl.endsWith("gov.v1beta1.MsgDeposit") ->
+                                        pair.second.toMsgDepositOld().let { it.proposalId to it.depositor }
+                                    pair.second.typeUrl.endsWith("gov.v1.MsgDeposit") ->
+                                        pair.second.toMsgDeposit().let { it.proposalId to it.depositor }
+                                    else -> throw InvalidArgumentException("Invalid gov deposit msg type: ${pair.second.typeUrl}")
                                 }
-                        GovMsgType.DEPOSIT -> {
-                            val (proposalId, depositor) = when {
-                                pair.second.typeUrl.endsWith("gov.v1beta1.MsgDeposit") ->
-                                    pair.second.toMsgDepositOld().let { it.proposalId to it.depositor }
-                                pair.second.typeUrl.endsWith("gov.v1.MsgDeposit") ->
-                                    pair.second.toMsgDeposit().let { it.proposalId to it.depositor }
-                                else -> throw InvalidArgumentException("Invalid gov deposit msg type: ${pair.second.typeUrl}")
+                                txUpdate.apply {
+                                    govService.buildProposal(proposalId, txInfo, depositor, isSubmit = false)
+                                        ?.let { this.proposals.add(it) }
+                                    govService.buildDeposit(proposalId, txInfo, pair.second, null)
+                                        ?.let { this.deposits.addAll(it) }
+                                }
                             }
-                            txUpdate.apply {
-                                govService.buildProposal(proposalId, txInfo, depositor, isSubmit = false)?.let { this.proposals.add(it) }
-                                govService.buildDeposit(proposalId, txInfo, pair.second, null)?.let { this.deposits.addAll(it) }
-                            }
-                        }
-                        GovMsgType.VOTE -> {
-                            val (proposalId, voter, justification) = when {
-                                pair.second.typeUrl.endsWith("gov.v1beta1.MsgVote") ->
-                                    pair.second.toMsgVoteOld().let { Triple(it.proposalId, it.voter, null) }
-                                pair.second.typeUrl.endsWith("gov.v1.MsgVote") ->
-                                    pair.second.toMsgVote().let { Triple(it.proposalId, it.voter, it.metadata.toVoteMetadata()) }
-                                else -> throw InvalidArgumentException("Invalid gov vote msg type: ${pair.second.typeUrl}")
-                            }
-                            txUpdate.apply {
-                                govService.buildProposal(proposalId, txInfo, voter, isSubmit = false)?.let { this.proposals.add(it) }
-                                this.votes.addAll(
-                                    govService.buildVote(
-                                        txInfo,
-                                        pair.second.toWeightedVoteList(),
-                                        voter,
-                                        proposalId,
-                                        justification
+
+                            GovMsgType.VOTE -> {
+                                val (proposalId, voter, justification) = when {
+                                    pair.second.typeUrl.endsWith("gov.v1beta1.MsgVote") ->
+                                        pair.second.toMsgVoteOld().let { Triple(it.proposalId, it.voter, null) }
+                                    pair.second.typeUrl.endsWith("gov.v1.MsgVote") ->
+                                        pair.second.toMsgVote()
+                                            .let { Triple(it.proposalId, it.voter, it.metadata.toVoteMetadata()) }
+                                    else -> throw InvalidArgumentException("Invalid gov vote msg type: ${pair.second.typeUrl}")
+                                }
+                                txUpdate.apply {
+                                    govService.buildProposal(proposalId, txInfo, voter, isSubmit = false)
+                                        ?.let { this.proposals.add(it) }
+                                    this.votes.addAll(
+                                        govService.buildVote(
+                                            txInfo,
+                                            pair.second.toWeightedVoteList(),
+                                            voter,
+                                            proposalId,
+                                            justification
+                                        )
                                     )
-                                )
+                                }
                             }
-                        }
-                        GovMsgType.WEIGHTED -> {
-                            val (proposalId, voter, justification) = when {
-                                pair.second.typeUrl.endsWith("gov.v1beta1.MsgVoteWeighted") ->
-                                    pair.second.toMsgVoteWeightedOld().let { Triple(it.proposalId, it.voter, null) }
-                                pair.second.typeUrl.endsWith("gov.v1.MsgVoteWeighted") ->
-                                    pair.second.toMsgVoteWeighted().let { Triple(it.proposalId, it.voter, it.metadata.toVoteMetadata()) }
-                                else -> throw InvalidArgumentException("Invalid gov vote weighted msg type: ${pair.second.typeUrl}")
-                            }
-                            txUpdate.apply {
-                                govService.buildProposal(proposalId, txInfo, voter, isSubmit = false)?.let { this.proposals.add(it) }
-                                this.votes.addAll(
-                                    govService.buildVote(
-                                        txInfo,
-                                        pair.second.toWeightedVoteList(),
-                                        voter,
-                                        proposalId,
-                                        justification
+
+                            GovMsgType.WEIGHTED -> {
+                                val (proposalId, voter, justification) = when {
+                                    pair.second.typeUrl.endsWith("gov.v1beta1.MsgVoteWeighted") ->
+                                        pair.second.toMsgVoteWeightedOld().let { Triple(it.proposalId, it.voter, null) }
+                                    pair.second.typeUrl.endsWith("gov.v1.MsgVoteWeighted") ->
+                                        pair.second.toMsgVoteWeighted()
+                                            .let { Triple(it.proposalId, it.voter, it.metadata.toVoteMetadata()) }
+                                    else -> throw InvalidArgumentException("Invalid gov vote weighted msg type: ${pair.second.typeUrl}")
+                                }
+                                txUpdate.apply {
+                                    govService.buildProposal(proposalId, txInfo, voter, isSubmit = false)
+                                        ?.let { this.proposals.add(it) }
+                                    this.votes.addAll(
+                                        govService.buildVote(
+                                            txInfo,
+                                            pair.second.toWeightedVoteList(),
+                                            voter,
+                                            proposalId,
+                                            justification
+                                        )
                                     )
-                                )
+                                }
                             }
                         }
                     }

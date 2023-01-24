@@ -32,8 +32,6 @@ import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toPercentage
 import io.provenance.explorer.domain.models.explorer.DlobHistBase
 import io.provenance.explorer.domain.models.explorer.TokenHistoricalDataRequest
-import io.provenance.explorer.domain.models.explorer.datesValidation
-import io.provenance.explorer.domain.models.explorer.getFileListToken
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.model.AssetHolder
 import io.provenance.explorer.model.CmcLatestDataAbbrev
@@ -244,9 +242,9 @@ class TokenService(private val accountClient: AccountGrpcClient) {
     }
 
     fun getHashPricingDataDownload(filters: TokenHistoricalDataRequest, resp: ServletOutputStream): ZipOutputStream {
-        validate(datesValidation(filters.fromDate, filters.toDate))
+        validate(filters.datesValidation())
         val baseFileName = filters.getFileNameBase()
-        val fileList = getFileListToken(filters)
+        val fileList = filters.getFileList()
 
         val zos = ZipOutputStream(resp)
         fileList.forEach { file ->

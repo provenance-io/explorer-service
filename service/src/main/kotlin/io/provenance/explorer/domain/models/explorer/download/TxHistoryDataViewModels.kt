@@ -1,48 +1,17 @@
-package io.provenance.explorer.domain.models.explorer
+package io.provenance.explorer.domain.models.explorer.download
 
 import io.provenance.explorer.domain.entities.TxHistoryDataViews
 import io.provenance.explorer.domain.exceptions.requireToMessage
 import io.provenance.explorer.domain.extensions.CsvData
-import io.provenance.explorer.model.FeeTypeData
-import io.provenance.explorer.model.TxHistoryChartData
-import io.provenance.explorer.model.TxTypeData
 import io.provenance.explorer.model.base.DateTruncGranularity
+import io.provenance.explorer.model.download.FeeTypeData
+import io.provenance.explorer.model.download.TxHistoryChartData
+import io.provenance.explorer.model.download.TxTypeData
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import java.io.ByteArrayOutputStream
 import java.io.PrintWriter
 import java.sql.ResultSet
-
-fun getFileList(filters: TxHistoryDataRequest, feepayer: String?): MutableList<CsvData> {
-    val hasFeepayer = feepayer != null
-    val fileList = mutableListOf(
-        CsvData(
-            "TxHistoryChartData",
-            txHistoryDataCsvBaseHeaders(filters.advancedMetrics, hasFeepayer),
-            TxHistoryDataViews.getTxHistoryChartData(filters.granularity, filters.fromDate, filters.toDate, feepayer)
-                .map { it.toCsv(filters.advancedMetrics, hasFeepayer, filters.granularity) }
-        )
-    )
-    if (filters.advancedMetrics) {
-        fileList.add(
-            CsvData(
-                "TxTypeData",
-                txTypeDataCsvBaseHeaders(hasFeepayer),
-                TxHistoryDataViews.getTxTypeData(filters.granularity, filters.fromDate, filters.toDate, feepayer)
-                    .map { it.toCsv(hasFeepayer, filters.granularity) }
-            )
-        )
-        fileList.add(
-            CsvData(
-                "FeeTypeData",
-                feeTypeDataCsvBaseHeaders(hasFeepayer),
-                TxHistoryDataViews.getFeeTypeData(filters.granularity, filters.fromDate, filters.toDate, feepayer)
-                    .map { it.toCsv(hasFeepayer, filters.granularity) }
-            )
-        )
-    }
-    return fileList
-}
 
 //region TxHistoryChart
 
@@ -114,25 +83,56 @@ fun feeTypeDataCsvBaseHeaders(hasFeepayer: Boolean): MutableList<String> {
 
 //region TxHistory API Request Bodies
 
-fun granularityValidation(granularity: DateTruncGranularity) =
-    requireToMessage(
-        listOf(DateTruncGranularity.MONTH, DateTruncGranularity.DAY, DateTruncGranularity.HOUR).contains(granularity)
-    ) { "The specified granularity is not supported: $granularity" }
-
-fun datesValidation(fromDate: DateTime?, toDate: DateTime?) =
-    if (fromDate != null && toDate != null) {
-        requireToMessage(fromDate.isBefore(toDate)) { "'fromDate' ($fromDate) must be before 'toDate' ($toDate)" }
-    } else {
-        null
-    }
-
 data class TxHistoryDataRequest(
     val fromDate: DateTime? = null,
     val toDate: DateTime? = null,
     val granularity: DateTruncGranularity = DateTruncGranularity.DAY,
     val advancedMetrics: Boolean = false
 ) {
-    private val dateFormat = DateTimeFormat.forPattern("yyy-MM-dd")
+    fun granularityValidation() =
+        requireToMessage(
+            listOf(DateTruncGranularity.MONTH, DateTruncGranularity.DAY, DateTruncGranularity.HOUR).contains(granularity)
+        ) { "The specified granularity is not supported: $granularity" }
+
+    fun datesValidation() =
+        if (fromDate != null && toDate != null) {
+            requireToMessage(fromDate.isBefore(toDate)) { "'fromDate' ($fromDate) must be before 'toDate' ($toDate)" }
+        } else {
+            null
+        }
+
+    fun getFileList(feepayer: String?): MutableList<CsvData> {
+        val hasFeepayer = feepayer != null
+        val fileList = mutableListOf(
+            CsvData(
+                "TxHistoryChartData",
+                txHistoryDataCsvBaseHeaders(advancedMetrics, hasFeepayer),
+                TxHistoryDataViews.getTxHistoryChartData(granularity, fromDate, toDate, feepayer)
+                    .map { it.toCsv(advancedMetrics, hasFeepayer, granularity) }
+            )
+        )
+        if (advancedMetrics) {
+            fileList.add(
+                CsvData(
+                    "TxTypeData",
+                    txTypeDataCsvBaseHeaders(hasFeepayer),
+                    TxHistoryDataViews.getTxTypeData(granularity, fromDate, toDate, feepayer)
+                        .map { it.toCsv(hasFeepayer, granularity) }
+                )
+            )
+            fileList.add(
+                CsvData(
+                    "FeeTypeData",
+                    feeTypeDataCsvBaseHeaders(hasFeepayer),
+                    TxHistoryDataViews.getFeeTypeData(granularity, fromDate, toDate, feepayer)
+                        .map { it.toCsv(hasFeepayer, granularity) }
+                )
+            )
+        }
+        return fileList
+    }
+
+    private val dateFormat = DateTimeFormat.forPattern("yyyy-MM-dd")
 
     fun getFileNameBase(feepayer: String?): String {
         val to = if (toDate != null) dateFormat.print(toDate) else "CURRENT"

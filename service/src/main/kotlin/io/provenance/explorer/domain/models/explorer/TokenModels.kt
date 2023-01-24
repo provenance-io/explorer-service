@@ -1,6 +1,7 @@
 package io.provenance.explorer.domain.models.explorer
 
 import io.provenance.explorer.domain.entities.TokenHistoricalDailyRecord
+import io.provenance.explorer.domain.exceptions.requireToMessage
 import io.provenance.explorer.domain.extensions.CsvData
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.model.base.CountStrTotal
@@ -29,23 +30,29 @@ data class DlobHistorical(
     val type: String
 )
 
-fun getFileListToken(filters: TokenHistoricalDataRequest): MutableList<CsvData> =
-    mutableListOf(
-        CsvData(
-            "TokenHistoricalData",
-            tokenHistoricalCsvBaseHeaders(),
-            TokenHistoricalDailyRecord.findForDates(filters.fromDate?.startOfDay(), filters.toDate?.startOfDay())
-                .map { it.toCsv() }
-        )
-    )
-
-fun tokenHistoricalCsvBaseHeaders(): MutableList<String> =
-    mutableListOf("Date", "Open", "High", "Low", "Close", "Volume - USD")
-
 data class TokenHistoricalDataRequest(
     val fromDate: DateTime? = null,
     val toDate: DateTime? = null
 ) {
+    fun getFileList(): MutableList<CsvData> =
+        mutableListOf(
+            CsvData(
+                "TokenHistoricalData",
+                tokenHistoricalCsvBaseHeaders,
+                TokenHistoricalDailyRecord.findForDates(fromDate?.startOfDay(), toDate?.startOfDay()).map { it.toCsv() }
+            )
+        )
+
+    private val tokenHistoricalCsvBaseHeaders: MutableList<String> =
+        mutableListOf("Date", "Open", "High", "Low", "Close", "Volume - USD")
+
+    fun datesValidation() =
+        if (fromDate != null && toDate != null) {
+            requireToMessage(fromDate.isBefore(toDate)) { "'fromDate' ($fromDate) must be before 'toDate' ($toDate)" }
+        } else {
+            null
+        }
+
     private val dateFormat = DateTimeFormat.forPattern("yyy-MM-dd")
 
     fun getFileNameBase(): String {

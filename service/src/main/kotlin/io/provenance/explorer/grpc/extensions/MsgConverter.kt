@@ -790,16 +790,17 @@ fun Any.toSoftwareUpgradeProposal() = this.unpack(SoftwareUpgradeProposal::class
 
 enum class GovMsgType { PROPOSAL, VOTE, WEIGHTED, DEPOSIT }
 
-fun Any.getAssociatedGovMsgs() =
+fun Any.getAssociatedGovMsgs(): List<Pair<GovMsgType, Any>>? =
     when {
         typeUrl.endsWith("gov.v1beta1.MsgSubmitProposal")
-            || typeUrl.endsWith("gov.v1.MsgSubmitProposal") -> GovMsgType.PROPOSAL to this
+            || typeUrl.endsWith("gov.v1.MsgSubmitProposal") -> listOf(GovMsgType.PROPOSAL to this)
         typeUrl.endsWith("gov.v1beta1.MsgVote")
-            || typeUrl.endsWith("gov.v1.MsgVote") -> GovMsgType.VOTE to this
+            || typeUrl.endsWith("gov.v1.MsgVote") -> listOf(GovMsgType.VOTE to this)
         typeUrl.endsWith("gov.v1beta1.MsgVoteWeighted")
-            || typeUrl.endsWith("gov.v1.MsgVoteWeighted") -> GovMsgType.WEIGHTED to this
+            || typeUrl.endsWith("gov.v1.MsgVoteWeighted") -> listOf(GovMsgType.WEIGHTED to this)
         typeUrl.endsWith("gov.v1beta1.MsgDeposit")
-            || typeUrl.endsWith("gov.v1.MsgDeposit") -> GovMsgType.DEPOSIT to this
+            || typeUrl.endsWith("gov.v1.MsgDeposit") -> listOf(GovMsgType.DEPOSIT to this)
+        typeUrl.endsWith("authz.v1beta1.MsgExec") -> this.toMsgExec().msgsList.mapNotNull { it.getAssociatedGovMsgs() }.flatten()
         else -> null.also { logger().debug("This typeUrl is not a governance-based msg: $typeUrl") }
     }
 
@@ -1020,7 +1021,6 @@ enum class MsgToDefinedEvent(val msg: String, val definedEvent: String, val uniq
     ),
     NAME_BIND("/provenance.name.v1.MsgBindNameRequest", "provenance.name.v1.EventNameBound", "address"),
     PROPOSAL_SUBMIT_V1BETA1("/cosmos.gov.v1beta1.MsgSubmitProposal", "submit_proposal", "proposal_id"),
-    PROPOSAL_SUBMIT_V1("/cosmos.gov.v1.MsgSubmitProposal", "submit_proposal", "proposal_id"),
     MARKER_ADD("/provenance.marker.v1.MsgAddMarkerRequest", "provenance.marker.v1.EventMarkerAdd", "denom")
 }
 

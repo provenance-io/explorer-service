@@ -35,11 +35,16 @@ fun String.toPercentageOld() =
 
 fun String.toPercentage() = BigDecimal(this).multiply(BigDecimal(100)).stringfyWithScale(4) + "%"
 
+// Used with protos that include `(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",` in descripion
+// example: v1beta1.gov WeightedVote weight value
 fun String.toDecimal() =
     BigDecimal(this.toBigInteger(), UTILITY_TOKEN_BASE_DECIMAL_PLACES * 2).stripTrailingZeros()
 
+// Used with protos that exclude `(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",` from description
+// example: v1.gov WeightedVote weight value
+fun String.toDecimalNew() = BigDecimal(this).stripTrailingZeros()
+
 fun Double.toPercentage() = "${this * 100}%"
-// fun BigDecimal.toPercentage() = "${this * 100}%"
 
 fun List<Int>.avg() = this.sum() / this.size
 
@@ -48,6 +53,8 @@ fun BigDecimal.percentChange(orig: BigDecimal) =
 
 fun Int.padToDecString() =
     BigDecimal(this).multiply(BigDecimal("1e${(UTILITY_TOKEN_BASE_DECIMAL_PLACES - 1) * 2}")).toPlainString()
+
+fun Int.padToDecStringNew() = BigDecimal(this).divide(BigDecimal(100), 4, RoundingMode.HALF_EVEN).toPlainString()
 
 fun List<CoinOuterClass.DecCoin>.isZero(): Boolean {
     this.forEach {
@@ -73,6 +80,12 @@ fun String.toPercentage(num: BigDecimal, den: BigDecimal, scale: Int) =
     this.toBigDecimal()
         .divide(den, 100, RoundingMode.HALF_EVEN)
         .multiply(num)
+        .stringfyWithScale(scale) + "%"
+
+fun Int.toPercentage(num: Int, den: Int, scale: Int) =
+    this.toBigDecimal()
+        .divide(den.toBigDecimal(), 100, RoundingMode.HALF_EVEN)
+        .multiply(num.toBigDecimal())
         .stringfyWithScale(scale) + "%"
 
 // Calcs the difference between this (oldList) of denoms and the newList of denoms

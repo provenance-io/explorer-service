@@ -32,12 +32,9 @@ import io.provenance.explorer.domain.extensions.toFees
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.txEventsToObjectNodePrint
-import io.provenance.explorer.domain.models.explorer.TxHistoryDataRequest
 import io.provenance.explorer.domain.models.explorer.TxQueryParams
-import io.provenance.explorer.domain.models.explorer.datesValidation
-import io.provenance.explorer.domain.models.explorer.getFileList
+import io.provenance.explorer.domain.models.explorer.download.TxHistoryDataRequest
 import io.provenance.explorer.domain.models.explorer.getValuesPlusAddtnl
-import io.provenance.explorer.domain.models.explorer.granularityValidation
 import io.provenance.explorer.grpc.extensions.getModuleAccName
 import io.provenance.explorer.model.Gas
 import io.provenance.explorer.model.MsgInfo
@@ -45,7 +42,6 @@ import io.provenance.explorer.model.MsgTypeSet
 import io.provenance.explorer.model.TxDetails
 import io.provenance.explorer.model.TxGov
 import io.provenance.explorer.model.TxHeatmapRes
-import io.provenance.explorer.model.TxHistoryChartData
 import io.provenance.explorer.model.TxMessage
 import io.provenance.explorer.model.TxSmartContract
 import io.provenance.explorer.model.TxStatus
@@ -57,6 +53,7 @@ import io.provenance.explorer.model.base.getParentForType
 import io.provenance.explorer.model.base.isMAddress
 import io.provenance.explorer.model.base.toMAddress
 import io.provenance.explorer.model.base.toMAddressScope
+import io.provenance.explorer.model.download.TxHistoryChartData
 import io.provenance.explorer.service.async.AsyncCachingV2
 import io.provenance.explorer.service.async.getAddressType
 import org.jetbrains.exposed.dao.id.EntityID
@@ -291,8 +288,9 @@ class TransactionService(
 
             val params =
                 TxQueryParams(
-                    addressId = addr?.second, addressType = addr?.first, address = address, msgTypes = msgTypeIds,
-                    txStatus = txStatus, count = count, offset = page.toOffset(count), fromDate = fromDate, toDate = toDate
+                    addressId = addr?.second, addressType = addr?.first, address = address, primaryTypesOnly = true,
+                    msgTypes = msgTypeIds, txStatus = txStatus, count = count, offset = page.toOffset(count),
+                    fromDate = fromDate, toDate = toDate
                 )
 
             val total = TxMessageRecord.findByQueryParamsForCount(params)
@@ -361,19 +359,19 @@ class TransactionService(
 
     fun getTxHistoryChartData(filters: TxHistoryDataRequest): List<TxHistoryChartData> {
         validate(
-            granularityValidation(filters.granularity),
-            datesValidation(filters.fromDate, filters.toDate)
+            filters.granularityValidation(),
+            filters.datesValidation()
         )
         return TxHistoryDataViews.getTxHistoryChartData(filters.granularity, filters.fromDate, filters.toDate)
     }
 
     fun getTxHistoryChartDataDownload(filters: TxHistoryDataRequest, resp: ServletOutputStream): ZipOutputStream {
         validate(
-            granularityValidation(filters.granularity),
-            datesValidation(filters.fromDate, filters.toDate)
+            filters.granularityValidation(),
+            filters.datesValidation()
         )
         val baseFileName = filters.getFileNameBase(null)
-        val fileList = getFileList(filters, null)
+        val fileList = filters.getFileList(null)
 
         val zos = ZipOutputStream(resp)
         fileList.forEach { file ->

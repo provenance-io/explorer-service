@@ -13,6 +13,9 @@ import io.provenance.explorer.domain.extensions.mapper
 import io.provenance.explorer.domain.extensions.toDecimal
 import io.provenance.explorer.domain.models.explorer.CurrentValidatorState
 import io.provenance.explorer.domain.models.explorer.TxData
+import io.provenance.explorer.domain.models.explorer.download.toValidatorMetricData
+import io.provenance.explorer.model.MetricPeriod
+import io.provenance.explorer.model.ValidatorMetrics
 import io.provenance.explorer.model.ValidatorState
 import io.provenance.explorer.model.ValidatorState.ACTIVE
 import io.provenance.explorer.model.ValidatorState.ALL
@@ -25,6 +28,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.IntegerColumnType
+import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.VarCharColumnType
@@ -35,6 +39,7 @@ import org.jetbrains.exposed.sql.insertIgnoreAndGetId
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import java.math.BigDecimal
@@ -391,4 +396,83 @@ class ValidatorMarketRateRecord(id: EntityID<Int>) : IntEntity(id) {
     var txHash by ValidatorMarketRateTable.txHash
     var marketRate by ValidatorMarketRateTable.marketRate
     var success by ValidatorMarketRateTable.success
+}
+
+object ValidatorMetricsTable : IntIdTable(name = "validator_metrics") {
+    val operAddrId = integer("oper_addr_id")
+    val operatorAddress = varchar("operator_address", 128)
+    val year = integer("year")
+    val quarter = integer("quarter")
+    val data = jsonb<ValidatorMetricsTable, ValidatorMetrics>("data", OBJECT_MAPPER)
+}
+
+class ValidatorMetricsRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<ValidatorMetricsRecord>(ValidatorMetricsTable) {
+
+        fun findByOperAddrForPeriod(operAddrId: Int, year: Int, quarter: Int) = transaction {
+            ValidatorMetricsRecord.find { (ValidatorMetricsTable.operAddrId eq operAddrId) and (ValidatorMetricsTable.year eq year) and (ValidatorMetricsTable.quarter eq quarter) }
+                .firstOrNull()
+        }
+
+        fun findByOperAddr(operAddrId: Int) = transaction {
+            ValidatorMetricsRecord.find { ValidatorMetricsTable.operAddrId eq operAddrId }.toMutableList()
+        }
+
+        fun findDistinctPeriods(currYear: Int, currQuarter: Int) = transaction {
+            ValidatorMetricsTable
+                .slice(ValidatorMetricsTable.year, ValidatorMetricsTable.quarter)
+                .selectAll()
+                .groupBy(ValidatorMetricsTable.year, ValidatorMetricsTable.quarter)
+                .map {
+                    MetricPeriod(
+                        it.toMetricPeriodLabel(it[ValidatorMetricsTable.year] == currYear && it[ValidatorMetricsTable.quarter] == currQuarter),
+                        it[ValidatorMetricsTable.year],
+                        it[ValidatorMetricsTable.quarter]
+                    )
+                }.toMutableList()
+        }
+
+        fun ResultRow.toMetricPeriodLabel(isCurrent: Boolean) =
+            "${this[ValidatorMetricsTable.year]} Q${this[ValidatorMetricsTable.quarter]}" + (if (isCurrent) " - Current" else "")
+
+        fun getDataForPeriod(year: Int, quarter: Int) =
+            transaction {
+                val query = """
+                    SELECT
+                      year,
+                      quarter,
+                      data -> 'moniker'::text AS moniker,
+                      operator_address,
+                      (data -> 'is_active')::boolean AS is_active,
+                      (data -> 'is_verified')::boolean AS is_verified,
+                      (data -> 'voting_metric' -> 'count')::integer AS gov_vote,
+                      (data -> 'voting_metric' -> 'total')::integer AS gov_proposal,
+                      (data -> 'uptime_metrics' -> 'count')::integer AS blocks_up,
+                      (data -> 'uptime_metrics' -> 'total')::integer AS blocks_total
+                    FROM validator_metrics
+                    WHERE year = ? AND quarter = ?;
+                """.trimIndent()
+                val arguments = mutableListOf(Pair(IntegerColumnType(), year), Pair(IntegerColumnType(), quarter))
+                query.execAndMap(arguments) { it.toValidatorMetricData() }
+            }
+
+        fun insertIgnore(operId: Int, operator: String, year: Int, quarter: Int, data: ValidatorMetrics) =
+            transaction {
+                ValidatorMetricsTable.insertIgnore {
+                    it[this.operAddrId] = operId
+                    it[this.operatorAddress] = operator
+                    it[this.year] = year
+                    it[this.quarter] = quarter
+                    it[this.data] = data
+                }
+            }
+    }
+
+    fun toMetricPeriodLabel(isCurrent: Boolean) = "$year Q$quarter" + (if (isCurrent) " - Current" else "")
+
+    var operAddrId by ValidatorMetricsTable.operAddrId
+    var operatorAddress by ValidatorMetricsTable.operatorAddress
+    var year by ValidatorMetricsTable.year
+    var quarter by ValidatorMetricsTable.quarter
+    var data by ValidatorMetricsTable.data
 }

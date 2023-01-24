@@ -19,6 +19,7 @@ import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFI
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_VAL_CONS_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_VAL_OPER_PREFIX
 import io.provenance.explorer.domain.entities.MissedBlocksRecord
+import io.provenance.explorer.domain.exceptions.InvalidArgumentException
 import io.provenance.explorer.domain.models.explorer.Addresses
 import io.provenance.explorer.model.base.Bech32
 import io.provenance.explorer.model.base.toBech32Data
@@ -72,6 +73,11 @@ fun String.validatorMissedBlocks(blockWindow: BigInteger, currentHeight: BigInte
             .findValidatorsWithMissedBlocksForPeriod((currentHeight - blockWindow).toInt(), currentHeight.toInt(), this)
             .sumOf { it.blocks.count() }
         ).let { mbCount -> Pair(mbCount, blockWindow) }
+
+fun String.validatorMissedBlocksSpecific(fromHeight: Int, toHeight: Int) =
+    MissedBlocksRecord
+        .findValidatorsWithMissedBlocksForPeriod(fromHeight, toHeight, this)
+        .sumOf { it.blocks.count() }
 
 fun Long.isPastDue(currentMillis: Long) = DateTime.now().millis - this > currentMillis
 
@@ -138,6 +144,14 @@ fun DateTime.startOfDay() = this.withZone(DateTimeZone.UTC).withTimeAtStartOfDay
 fun String.toDateTime() = DateTime.parse(this)
 fun String.toDateTimeWithFormat(formatter: org.joda.time.format.DateTimeFormatter) = DateTime.parse(this, formatter)
 fun OffsetDateTime.toDateTime() = DateTime(this.toInstant().toEpochMilli(), DateTimeZone.UTC)
+fun Int.monthToQuarter() =
+    when {
+        (1..3).contains(this) -> 1
+        (4..6).contains(this) -> 2
+        (7..9).contains(this) -> 3
+        (10..12).contains(this) -> 4
+        else -> throw InvalidArgumentException("Not a valid month: $this")
+    }
 
 fun ServiceOuterClass.GetTxResponse.success() = this.txResponse.code == 0
 fun BlockOuterClass.Block.height() = this.header.height.toInt()

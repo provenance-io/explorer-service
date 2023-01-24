@@ -33,6 +33,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Validator Delegation Program metrics #482
+  * Added support to calculate and return validator metrics used by the Validator Delegation Program
+  * Added client support
+
 ### Improvements
 * Add date parameters to `/api/v3/txs/heatmap` #462
   * Added `fromDate`, `toDate`, `timeframe`
@@ -41,6 +46,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Bug Fixes
 * Fixed `/api/v3/validators` url
 * Now handling no fee amount in the tx
+* Now handling Exec'd governance msgs, and properly handling weights from v1.Gov msgs
+
+### Data
+* Migration 1.88 - Add `block_time_spread`, `validator_metrics` #482
+  * Adds view, table to support calculating and storing metrics for the Validator Delegation Program
 
 ## [v5.4.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.4.0) - 2022-12-15
 ### Release Name: Jean de Béthencourt
