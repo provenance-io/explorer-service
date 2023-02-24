@@ -14,7 +14,9 @@ import io.provenance.explorer.domain.extensions.exec
 import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.map
 import io.provenance.explorer.domain.extensions.startOfDay
+import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.explorer.BlockProposer
+import io.provenance.explorer.domain.models.explorer.BlockTimeSpread
 import io.provenance.explorer.domain.models.explorer.BlockUpdate
 import io.provenance.explorer.domain.models.explorer.MissedBlockPeriod
 import io.provenance.explorer.domain.models.explorer.TxHeatmapRaw
@@ -42,9 +44,7 @@ import org.jetbrains.exposed.sql.Max
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
 import org.jetbrains.exposed.sql.Sum
 import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.and
@@ -63,6 +63,7 @@ import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
+import java.sql.ResultSet
 
 object BlockCacheTable : CacheIdTable<Int>(name = "block_cache") {
     val height = integer("height")
@@ -457,6 +458,32 @@ class BlockTxCountsCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             val query = "CALL update_block_cache_hourly_tx_counts()"
             this.exec(query)
         }
+
+        fun updateSpreadView() = transaction {
+            val query = "REFRESH MATERIALIZED VIEW block_time_spread"
+            this.exec(query)
+        }
+
+        fun getBlockTimeSpread(year: Int, quarter: Int) = transaction {
+            val query = """
+                SELECT
+                    year,
+                    quarter,
+                    min(min_height) AS min_height,
+                    max(max_height) AS max_height,
+                    min(min_time) AS min_time,
+                    max(max_time) AS max_time,
+                    sum(total_blocks) AS total_blocks
+                FROM block_time_spread
+                WHERE year = ? AND quarter = ?
+                GROUP BY year, quarter;
+            """.trimIndent()
+            val arguments = mutableListOf<Pair<ColumnType, Int>>(
+                Pair(IntegerColumnType(), year),
+                Pair(IntegerColumnType(), quarter)
+            )
+            query.execAndMap(arguments) { it.toBlockTimeSpread() }.firstOrNull()
+        }
     }
 
     var blockHeight by BlockTxCountsCacheTable.blockHeight
@@ -464,6 +491,16 @@ class BlockTxCountsCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var txCount by BlockTxCountsCacheTable.txCount
     var processed by BlockTxCountsCacheTable.processed
 }
+
+fun ResultSet.toBlockTimeSpread() = BlockTimeSpread(
+    this.getInt("year"),
+    this.getInt("quarter"),
+    this.getInt("min_height"),
+    this.getInt("max_height"),
+    this.getTimestamp("min_time").toDateTime(),
+    this.getTimestamp("max_time").toDateTime(),
+    this.getInt("total_blocks")
+)
 
 object BlockTxRetryTable : IdTable<Int>(name = "block_tx_retry") {
     val height = integer("height")

@@ -5,7 +5,7 @@ import io.provenance.explorer.config.interceptor.JwtInterceptor
 import io.provenance.explorer.domain.annotation.HiddenApi
 import io.provenance.explorer.domain.extensions.toTxBody
 import io.provenance.explorer.domain.extensions.toTxMessageBody
-import io.provenance.explorer.domain.models.explorer.TxHistoryDataRequest
+import io.provenance.explorer.domain.models.explorer.download.TxHistoryDataRequest
 import io.provenance.explorer.model.BankSendRequest
 import io.provenance.explorer.model.TxMessageBody
 import io.provenance.explorer.model.base.DateTruncGranularity

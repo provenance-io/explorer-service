@@ -15,3 +15,13 @@ data class GithubReleaseData(
     val createdAt: String,
     val releaseUrl: String
 )
+
+data class BlockTimeSpread(
+    val year: Int,
+    val quarter: Int,
+    val minHeight: Int,
+    val maxHeight: Int,
+    val minTimestamp: DateTime,
+    val maxTimestamp: DateTime,
+    val totalBlocks: Int
+)

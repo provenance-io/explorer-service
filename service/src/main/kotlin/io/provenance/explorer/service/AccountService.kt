@@ -39,10 +39,7 @@ import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toProtoCoin
 import io.provenance.explorer.domain.extensions.typeToLabel
 import io.provenance.explorer.domain.models.explorer.AddrData
-import io.provenance.explorer.domain.models.explorer.TxHistoryDataRequest
-import io.provenance.explorer.domain.models.explorer.datesValidation
-import io.provenance.explorer.domain.models.explorer.getFileList
-import io.provenance.explorer.domain.models.explorer.granularityValidation
+import io.provenance.explorer.domain.models.explorer.download.TxHistoryDataRequest
 import io.provenance.explorer.domain.models.explorer.toCoinStr
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
 import io.provenance.explorer.grpc.extensions.getModuleAccName
@@ -64,12 +61,12 @@ import io.provenance.explorer.model.Delegation
 import io.provenance.explorer.model.DenomBalanceBreakdown
 import io.provenance.explorer.model.Reward
 import io.provenance.explorer.model.TokenCounts
-import io.provenance.explorer.model.TxHistoryChartData
 import io.provenance.explorer.model.UnpaginatedDelegation
 import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.PeriodInSeconds
 import io.provenance.explorer.model.base.USD_UPPER
+import io.provenance.explorer.model.download.TxHistoryChartData
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.SortOrder
@@ -373,8 +370,8 @@ class AccountService(
 
     fun getAccountTxHistoryChartData(feepayer: String, filters: TxHistoryDataRequest): List<TxHistoryChartData> {
         validate(
-            granularityValidation(filters.granularity),
-            datesValidation(filters.fromDate, filters.toDate)
+            filters.granularityValidation(),
+            filters.datesValidation()
         )
         return TxHistoryDataViews.getTxHistoryChartData(filters.granularity, filters.fromDate, filters.toDate, feepayer)
     }
@@ -385,12 +382,12 @@ class AccountService(
         outputStream: ServletOutputStream
     ): ZipOutputStream {
         validate(
-            granularityValidation(filters.granularity),
-            datesValidation(filters.fromDate, filters.toDate),
+            filters.granularityValidation(),
+            filters.datesValidation(),
             validateAddress(feepayer)
         )
         val baseFileName = filters.getFileNameBase(feepayer)
-        val fileList = getFileList(filters, feepayer)
+        val fileList = filters.getFileList(feepayer)
 
         val zos = ZipOutputStream(outputStream)
         fileList.forEach { file ->

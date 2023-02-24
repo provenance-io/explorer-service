@@ -55,6 +55,12 @@ class NameService(
                 val result = it.pageOfResults(page, count)
                 PagedResults(it.size.toLong().pageCountOfResults(count), result, it.size.toLong())
             }
+
+    fun getVerifiedKycAttributes() = transaction {
+        NameRecord.getAllNamesForParent("kyc.passport.pb")
+            .map { it.fullName }
+            .toSet()
+    }
 }
 
 // Splits from `figuretest2.kyc.pb` -> Pair(`kyc.pb`, `kyc.pb`)

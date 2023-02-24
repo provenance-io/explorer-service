@@ -3,6 +3,8 @@ package io.provenance.explorer.model
 import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.USD_UPPER
+import io.provenance.explorer.model.download.currFormat
+import io.provenance.explorer.model.download.customFormat
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import java.math.BigDecimal

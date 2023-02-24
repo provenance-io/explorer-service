@@ -1,4 +1,4 @@
-package io.provenance.explorer.model
+package io.provenance.explorer.model.download
 
 import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.stringfy
@@ -15,9 +15,9 @@ fun BigDecimal.currFormat() = currFormat.format(this)
 fun DateTime.customFormat(granularity: DateTruncGranularity) =
     when (granularity) {
         DateTruncGranularity.HOUR,
-        DateTruncGranularity.MINUTE -> DateTimeFormat.forPattern("yyy-MM-dd hh:mm:ss").print(this)
-        DateTruncGranularity.DAY -> DateTimeFormat.forPattern("yyy-MM-dd").print(this)
-        DateTruncGranularity.MONTH -> DateTimeFormat.forPattern("yyy-MM").print(this)
+        DateTruncGranularity.MINUTE -> DateTimeFormat.forPattern("yyyy-MM-dd hh:mm:ss").print(this)
+        DateTruncGranularity.DAY -> DateTimeFormat.forPattern("yyyy-MM-dd").print(this)
+        DateTruncGranularity.MONTH -> DateTimeFormat.forPattern("yyyy-MM").print(this)
     }
 
 data class TxHistoryChartData(

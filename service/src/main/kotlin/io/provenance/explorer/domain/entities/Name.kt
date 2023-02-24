@@ -55,6 +55,10 @@ class NameRecord(id: EntityID<Int>) : IntEntity(id) {
             NameRecord.find { (NameTable.fullName eq fullName) and (NameTable.owner eq owner) }.firstOrNull()
         }
 
+        fun getAllNamesForParent(parent: String) = transaction {
+            NameRecord.find { NameTable.parent like "%$parent" }.toList()
+        }
+
         fun getNameSet() = transaction {
             val query = """
                 with data as (

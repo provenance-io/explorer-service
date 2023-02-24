@@ -9,7 +9,7 @@ import io.provenance.explorer.domain.core.sql.ArrayAgg
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.extensions.stringify
-import io.provenance.explorer.domain.extensions.toDecimal
+import io.provenance.explorer.domain.extensions.toDecimalNew
 import io.provenance.explorer.domain.extensions.toObjectNodeList
 import io.provenance.explorer.domain.models.explorer.AddrData
 import io.provenance.explorer.domain.models.explorer.GovContentV1List
@@ -94,6 +94,14 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun getNonFinalProposals() = transaction {
             GovProposalRecord.find { GovProposalTable.status notInList completeStatuses }.toList()
+        }
+
+        fun getCompletedProposalsForPeriod(startDate: DateTime, endDate: DateTime) = transaction {
+            GovProposalRecord.find {
+                (GovProposalTable.txTimestamp.between(startDate, endDate)) and
+                    (GovProposalTable.status inList completeStatuses) and
+                    (GovProposalTable.votingParamCheckHeight neq -1)
+            }.toMutableList()
         }
 
         fun buildInsert(
@@ -288,6 +296,11 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
             GovVoteRecord.find { GovVoteTable.addressId eq addrId }.groupBy { GovVoteTable.proposalId }.count()
         }
 
+        fun getAddressVotesForProposalList(addrId: Int, list: List<Long>) = transaction {
+            GovVoteRecord.find { (GovVoteTable.proposalId inList list) and (GovVoteTable.addressId eq addrId) }
+                .toMutableList()
+        }
+
         fun buildInsert(
             txInfo: TxData,
             votes: List<GovV1.WeightedVoteOption>,
@@ -307,7 +320,7 @@ class GovVoteRecord(id: EntityID<Int>) : IntEntity(id) {
                     txInfo.txHash,
                     txInfo.txTimestamp,
                     0,
-                    it.weight.toDecimal(),
+                    it.weight.toDecimalNew(),
                     justification
                 ).toProcedureObject()
             }

@@ -54,6 +54,7 @@ class TransactionGrpcClient(channelUri: URI) {
                 getTxsEventRequest {
                     this.events.add("tx.height=$height")
                     this.limit = limit.toLong()
+                    this.page = page.toLong()
                 }
             ).let {
                 if (it.txResponsesList.isEmpty()) {

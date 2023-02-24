@@ -46,7 +46,8 @@ data class ValidatorDetails(
     val status: String,
     val unbondingHeight: Long?,
     val jailedUntil: DateTime?,
-    val removed: Boolean
+    val removed: Boolean,
+    val isVerified: Boolean
 )
 
 data class ValidatorCommission(
@@ -143,4 +144,21 @@ data class UptimeDataSet(
     val avgUptimeCount: Int,
     val avgUptimeCountPercentage: String,
     val validatorsAtRisk: List<ValidatorUptimeStats>
+)
+
+data class ValidatorMetrics(
+    val operatorAddr: String,
+    val moniker: String,
+    val year: Int,
+    val quarter: Int,
+    val isActive: Boolean,
+    val isVerified: Boolean,
+    val votingMetric: CountTotal,
+    val uptimeMetrics: CountTotal
+)
+
+data class MetricPeriod(
+    val label: String,
+    val year: Int,
+    val quarter: Int
 )

@@ -32,8 +32,11 @@ import io.provenance.explorer.domain.entities.TxMsgTypeSubtypeTable
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
 import io.provenance.explorer.domain.entities.ValidatorMarketRateStatsRecord
+import io.provenance.explorer.domain.entities.ValidatorMetricsRecord
+import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.extensions.getType
 import io.provenance.explorer.domain.extensions.height
+import io.provenance.explorer.domain.extensions.monthToQuarter
 import io.provenance.explorer.domain.extensions.percentChange
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
@@ -51,8 +54,10 @@ import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.CacheService
 import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.service.GovService
+import io.provenance.explorer.service.MetricsService
 import io.provenance.explorer.service.PricingService
 import io.provenance.explorer.service.TokenService
+import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.service.getBlock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -91,7 +96,9 @@ class AsyncService(
     private val cacheService: CacheService,
     private val tokenService: TokenService,
     private val pricingService: PricingService,
-    private val accountService: AccountService
+    private val accountService: AccountService,
+    private val valService: ValidatorService,
+    private val metricsService: MetricsService
 ) {
 
     protected val logger = logger(AsyncService::class)
@@ -445,6 +452,29 @@ class AsyncService(
         for (msg in channel) {
             accountService.updateTokenCounts(msg)
             ProcessQueueRecord.delete(ProcessQueueType.ACCOUNT, msg)
+        }
+    }
+
+    @Scheduled(cron = "0 0 0 * * *") // Every beginning of every day
+    fun calculateValidatorMetrics() {
+        val (year, quarter) = DateTime.now().minusMinutes(5).let { it.year to it.monthOfYear.monthToQuarter() }
+        logger.info("Refreshing block spread view")
+        BlockTxCountsCacheRecord.updateSpreadView()
+        logger.info("Saving validator metrics")
+        val spread = BlockTxCountsCacheRecord.getBlockTimeSpread(year, quarter) ?: return
+        ValidatorStateRecord.findAll(valService.getActiveSet()).forEach { vali ->
+            try {
+                val metric = metricsService.processMetricsForValObjectAndSpread(vali, spread)
+                ValidatorMetricsRecord.insertIgnore(
+                    vali.operatorAddrId,
+                    vali.operatorAddress,
+                    spread.year,
+                    spread.quarter,
+                    metric
+                )
+            } catch (e: Exception) {
+                logger.error("Error processing metrics for validator: ${vali.operatorAddress}", e.message)
+            }
         }
     }
 }

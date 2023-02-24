@@ -7,13 +7,14 @@ import io.provenance.explorer.model.MsgTypeSet
 import io.provenance.explorer.model.TxDetails
 import io.provenance.explorer.model.TxGov
 import io.provenance.explorer.model.TxHeatmapRes
-import io.provenance.explorer.model.TxHistoryChartData
 import io.provenance.explorer.model.TxMessage
 import io.provenance.explorer.model.TxStatus
 import io.provenance.explorer.model.TxSummary
 import io.provenance.explorer.model.TxType
 import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.PagedResults
+import io.provenance.explorer.model.base.Timeframe
+import io.provenance.explorer.model.download.TxHistoryChartData
 import org.joda.time.DateTime
 
 object TransactionRoutes {
@@ -26,7 +27,7 @@ object TransactionRoutes {
     const val TX_JSON = "$TX_V2/{hash}/json"
     const val TX_TYPES = "$TX_V3/{hash}/types"
     const val TXS_AT_HEIGHT = "$TX_V2/height/{height}"
-    const val HEATMAP = "$TX_V2/heatmap"
+    const val HEATMAP = "$TX_V3/heatmap"
     const val TYPES = "$TX_V2/types"
     const val TYPES_BY_MODULE = "$TX_V2/types/{module}"
     const val TXS_BY_MODULE = "$TX_V2/module/{module}"
@@ -83,7 +84,11 @@ interface TransactionClient : BaseClient {
     ): PagedResults<TxSummary>
 
     @RequestLine("GET ${TransactionRoutes.HEATMAP}")
-    fun heatmap(): TxHeatmapRes
+    fun heatmap(
+        @Param("fromDate") fromDate: DateTime? = null,
+        @Param("toDate") toDate: DateTime? = null,
+        @Param("timeframe") timeframe: Timeframe = Timeframe.FOREVER
+    ): TxHeatmapRes
 
     @RequestLine("GET ${TransactionRoutes.TYPES}")
     fun types(): List<TxType>

@@ -2,9 +2,9 @@ package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
 import io.provenance.explorer.domain.extensions.execAndMap
-import io.provenance.explorer.domain.models.explorer.toFeeTypeData
-import io.provenance.explorer.domain.models.explorer.toTxHistoryChartData
-import io.provenance.explorer.domain.models.explorer.toTxTypeData
+import io.provenance.explorer.domain.models.explorer.download.toFeeTypeData
+import io.provenance.explorer.domain.models.explorer.download.toTxHistoryChartData
+import io.provenance.explorer.domain.models.explorer.download.toTxTypeData
 import io.provenance.explorer.model.base.DateTruncGranularity
 import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.IntegerColumnType

@@ -12,6 +12,8 @@ import java.sql.Timestamp
 fun Timestamp.toDateTime(newZone: DateTimeZone, pattern: String): String =
     DateTime(this.time).withZone(newZone).toString(pattern)
 
+fun Timestamp.toDateTime() = DateTime(this.time)
+
 fun String.exec(args: Iterable<Pair<IColumnType, Any?>>): ResultSet =
     with(TransactionManager.current().connection.prepareStatement(this, false)) {
         this.fillParameters(args)

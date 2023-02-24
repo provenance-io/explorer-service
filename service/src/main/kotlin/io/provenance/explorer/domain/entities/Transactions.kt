@@ -407,53 +407,43 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
         private fun findByQueryParams(tqp: TxQueryParams, distinctQuery: List<Expression<*>>?) = transaction {
             var join: ColumnSet = TxMessageTable
 
-            if (tqp.msgTypes.isNotEmpty()) {
-                join =
+            if (tqp.msgTypes.isNotEmpty())
+                join = if (tqp.primaryTypesOnly)
+                    join.innerJoin(TxMsgTypeSubtypeTable, { TxMessageTable.txHashId }, { TxMsgTypeSubtypeTable.txHashId })
+                else
                     join.innerJoin(TxMsgTypeQueryTable, { TxMessageTable.txHashId }, { TxMsgTypeQueryTable.txHashId })
-            }
-            if (tqp.txStatus != null) {
+            if (tqp.txStatus != null)
                 join = join.innerJoin(TxCacheTable, { TxMessageTable.txHashId }, { TxCacheTable.id })
-            }
-            if ((tqp.addressId != null && tqp.addressType != null) || tqp.address != null) {
+            if ((tqp.addressId != null && tqp.addressType != null) || tqp.address != null)
                 join = join.innerJoin(TxAddressJoinTable, { TxMessageTable.txHashId }, { TxAddressJoinTable.txHashId })
-            }
-            if (tqp.smCodeId != null) {
+            if (tqp.smCodeId != null)
                 join = join.innerJoin(TxSmCodeTable, { TxMessageTable.txHashId }, { TxSmCodeTable.txHashId })
-            }
-            if (tqp.smContractAddrId != null) {
+            if (tqp.smContractAddrId != null)
                 join = join.innerJoin(TxSmContractTable, { TxMessageTable.txHashId }, { TxSmContractTable.txHashId })
-            }
 
             val query = if (distinctQuery != null) join.slice(distinctQuery).selectAll() else join.selectAll()
 
-            if (tqp.msgTypes.isNotEmpty()) {
-                query.andWhere { TxMsgTypeQueryTable.typeId inList tqp.msgTypes }
-            }
-            if (tqp.txHeight != null) {
+            if (tqp.msgTypes.isNotEmpty())
+                if (tqp.primaryTypesOnly) query.andWhere { TxMsgTypeSubtypeTable.primaryType inList tqp.msgTypes }
+                else query.andWhere { TxMsgTypeQueryTable.typeId inList tqp.msgTypes }
+            if (tqp.txHeight != null)
                 query.andWhere { TxMessageTable.blockHeight eq tqp.txHeight }
-            }
-            if (tqp.txStatus != null) {
+            if (tqp.txStatus != null)
                 query.andWhere {
                     if (tqp.txStatus == TxStatus.FAILURE) TxCacheTable.errorCode neq 0 else TxCacheTable.errorCode.isNull()
                 }
-            }
-            if (tqp.addressId != null && tqp.addressType != null) {
+            if (tqp.addressId != null && tqp.addressType != null)
                 query.andWhere { (TxAddressJoinTable.addressId eq tqp.addressId) and (TxAddressJoinTable.addressType eq tqp.addressType) }
-            } else if (tqp.address != null) {
+            else if (tqp.address != null)
                 query.andWhere { (TxAddressJoinTable.address eq tqp.address) }
-            }
-            if (tqp.smCodeId != null) {
+            if (tqp.smCodeId != null)
                 query.andWhere { (TxSmCodeTable.smCode eq tqp.smCodeId) }
-            }
-            if (tqp.smContractAddrId != null) {
+            if (tqp.smContractAddrId != null)
                 query.andWhere { (TxSmContractTable.contractId eq tqp.smContractAddrId) }
-            }
-            if (tqp.fromDate != null) {
+            if (tqp.fromDate != null)
                 query.andWhere { TxMessageTable.txTimestamp greaterEq tqp.fromDate.startOfDay() }
-            }
-            if (tqp.toDate != null) {
+            if (tqp.toDate != null)
                 query.andWhere { TxMessageTable.txTimestamp lessEq tqp.toDate.startOfDay().plusDays(1) }
-            }
 
             query
         }

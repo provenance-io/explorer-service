@@ -44,6 +44,7 @@ import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.CurrentValidatorState
 import io.provenance.explorer.domain.models.explorer.hourlyBlockCount
 import io.provenance.explorer.domain.models.explorer.zeroOutValidatorObj
+import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
 import io.provenance.explorer.model.BlockLatencyData
 import io.provenance.explorer.model.CommissionList
@@ -70,6 +71,7 @@ import io.provenance.explorer.model.base.CountTotal
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.Timeframe
 import io.provenance.explorer.model.base.stringfy
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -82,7 +84,9 @@ import java.math.BigInteger
 class ValidatorService(
     private val blockService: BlockService,
     private val grpcClient: ValidatorGrpcClient,
-    private val cacheService: CacheService
+    private val cacheService: CacheService,
+    private val attrClient: AttributeGrpcClient,
+    private val nameService: NameService
 ) {
 
     protected val logger = logger(ValidatorService::class)
@@ -90,6 +94,13 @@ class ValidatorService(
     fun getActiveSet() = grpcClient.getStakingParams().params.maxValidators
 
     fun getSlashingParams() = grpcClient.getSlashingParams().params
+
+    fun isVerified(address: String) =
+        runBlocking {
+            val atts = async { attrClient.getAllAttributesForAddress(address) }.await().map { it.name }
+            val kycAtts = nameService.getVerifiedKycAttributes()
+            atts.intersect(kycAtts).isNotEmpty()
+        }
 
     // Assumes that the returned validators are active at that height
     fun getValidatorsByHeight(blockHeight: Int) = transaction {
@@ -165,7 +176,8 @@ class ValidatorService(
                 stakingValidator.currentState.toString().lowercase(),
                 if (stakingValidator.currentState != ACTIVE) stakingValidator.json.unbondingHeight else null,
                 if (stakingValidator.jailed) signingInfo?.jailedUntil?.toDateTime() else null,
-                stakingValidator.removed
+                stakingValidator.removed,
+                isVerified(addr.accountAddr)
             )
         } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 

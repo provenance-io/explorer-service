@@ -1,6 +1,6 @@
 package io.provenance.explorer.web.v3
 
-import io.provenance.explorer.domain.models.explorer.TxHistoryDataRequest
+import io.provenance.explorer.domain.models.explorer.download.TxHistoryDataRequest
 import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.Timeframe
 import io.provenance.explorer.service.TransactionService
