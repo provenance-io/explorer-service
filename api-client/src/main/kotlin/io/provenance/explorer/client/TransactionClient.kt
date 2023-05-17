@@ -77,12 +77,14 @@ interface TransactionClient : BaseClient {
     @RequestLine("GET ${TransactionRoutes.TX_JSON}?blockHeight={blockHeight}")
     fun txJson(
         @Param("hash") hash: String,
-        @Param("blockHeight") blockHeight: Int? = null): String
+        @Param("blockHeight") blockHeight: Int? = null
+    ): String
 
     @RequestLine("GET ${TransactionRoutes.TX_TYPES}?blockHeight={blockHeight}")
     fun txTypes(
         @Param("hash") hash: String,
-        @Param("blockHeight") blockHeight: Int? = null): List<TxType>
+        @Param("blockHeight") blockHeight: Int? = null
+    ): List<TxType>
 
     @RequestLine("GET ${TransactionRoutes.TXS_AT_HEIGHT}?$PAGE_PARAMETERS&blockHeight={blockHeight}")
     fun txsAtHeight(
