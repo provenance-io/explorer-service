@@ -3,6 +3,7 @@ package io.provenance.explorer.client
 import feign.Headers
 import feign.Param
 import feign.RequestLine
+import io.provenance.explorer.client.BaseRoutes.PAGE_PARAMETERS
 import io.provenance.explorer.model.DepositRecord
 import io.provenance.explorer.model.GovProposalDetail
 import io.provenance.explorer.model.VoteRecord
@@ -21,7 +22,7 @@ object GovernanceRoutes {
 @Headers(BaseClient.CT_JSON)
 interface GovernanceClient : BaseClient {
 
-    @RequestLine("GET ${GovernanceRoutes.ALL}")
+    @RequestLine("GET ${GovernanceRoutes.ALL}?$PAGE_PARAMETERS")
     fun allProposals(
         @Param("count") count: Int = 10,
         @Param("page") page: Int = 1
@@ -30,21 +31,21 @@ interface GovernanceClient : BaseClient {
     @RequestLine("GET ${GovernanceRoutes.PROPOSAL}")
     fun proposal(@Param("id") id: Long): GovProposalDetail
 
-    @RequestLine("GET ${GovernanceRoutes.DEPOSITS}")
+    @RequestLine("GET ${GovernanceRoutes.DEPOSITS}?$PAGE_PARAMETERS")
     fun proposalDeposits(
         @Param("id") id: Long,
         @Param("count") count: Int = 10,
         @Param("page") page: Int = 1
     ): PagedResults<DepositRecord>
 
-    @RequestLine("GET ${GovernanceRoutes.VOTES}")
+    @RequestLine("GET ${GovernanceRoutes.VOTES}?$PAGE_PARAMETERS")
     fun proposalVotes(
         @Param("id") id: Long,
         @Param("count") count: Int = 10,
         @Param("page") page: Int = 1
     ): PagedResults<VoteRecord>
 
-    @RequestLine("GET ${GovernanceRoutes.VOTES_BY_ADDRESS}")
+    @RequestLine("GET ${GovernanceRoutes.VOTES_BY_ADDRESS}?$PAGE_PARAMETERS")
     fun votesByAddress(
         @Param("address") address: String,
         @Param("count") count: Int = 10,

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import feign.Headers
 import feign.Param
 import feign.RequestLine
+import io.provenance.explorer.client.BaseRoutes.PAGE_PARAMETERS
 import io.provenance.explorer.model.ScopeDetail
 import io.provenance.explorer.model.ScopeListview
 import io.provenance.explorer.model.ScopeRecord
@@ -25,7 +26,7 @@ interface NftClient : BaseClient {
     @RequestLine("GET ${NftRoutes.SCOPE}")
     fun scope(@Param("addr") addr: String): ScopeDetail
 
-    @RequestLine("GET ${NftRoutes.SCOPES_BY_OWNER}")
+    @RequestLine("GET ${NftRoutes.SCOPES_BY_OWNER}?$PAGE_PARAMETERS")
     fun scopesByOwner(
         @Param("address") address: String,
         @Param("count") count: Int = 10,

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import feign.Headers
 import feign.Param
 import feign.RequestLine
+import io.provenance.explorer.client.BaseRoutes.PAGE_PARAMETERS
 import io.provenance.explorer.model.Code
 import io.provenance.explorer.model.CodeWithContractCount
 import io.provenance.explorer.model.Contract
@@ -24,7 +25,7 @@ object SmartContractRoutes {
 @Headers(BaseClient.CT_JSON)
 interface SmartContractClient : BaseClient {
 
-    @RequestLine("GET ${SmartContractRoutes.CODE_ALL}")
+    @RequestLine("GET ${SmartContractRoutes.CODE_ALL}?$PAGE_PARAMETERS&creator={creator}&has_contract={has_contracts}")
     fun codeList(
         @Param("count") count: Int = 10,
         @Param("page") page: Int = 1,
@@ -35,7 +36,7 @@ interface SmartContractClient : BaseClient {
     @RequestLine("GET ${SmartContractRoutes.CODE}")
     fun code(@Param("id") id: Int): Code
 
-    @RequestLine("GET ${SmartContractRoutes.CODE_CONTRACTS}")
+    @RequestLine("GET ${SmartContractRoutes.CODE_CONTRACTS}?$PAGE_PARAMETERS&creator={creator}&admin={admin}")
     fun contractsByCode(
         @Param("id") id: Int,
         @Param("count") count: Int = 10,
@@ -44,7 +45,7 @@ interface SmartContractClient : BaseClient {
         @Param("admin") admin: String? = null
     ): PagedResults<Contract>
 
-    @RequestLine("GET ${SmartContractRoutes.CONTRACT_ALL}")
+    @RequestLine("GET ${SmartContractRoutes.CONTRACT_ALL}?$PAGE_PARAMETERS&creator={creator}&admin={admin}&label={label}")
     fun contractList(
         @Param("count") count: Int = 10,
         @Param("page") page: Int = 1,

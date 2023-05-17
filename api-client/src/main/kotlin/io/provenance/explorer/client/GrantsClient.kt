@@ -3,6 +3,7 @@ package io.provenance.explorer.client
 import feign.Headers
 import feign.Param
 import feign.RequestLine
+import io.provenance.explorer.client.BaseRoutes.PAGE_PARAMETERS
 import io.provenance.explorer.model.FeegrantData
 import io.provenance.explorer.model.GrantData
 import io.provenance.explorer.model.base.PagedResults
@@ -18,28 +19,28 @@ object GrantsRoutes {
 @Headers(BaseClient.CT_JSON)
 interface GrantsClient : BaseClient {
 
-    @RequestLine("GET ${GrantsRoutes.GRANTS_AS_GRANTEE}")
+    @RequestLine("GET ${GrantsRoutes.GRANTS_AS_GRANTEE}?$PAGE_PARAMETERS")
     fun grantsAsGrantee(
         @Param("address") address: String,
         @Param("count") count: Int = 10,
         @Param("page") page: Int = 1
     ): PagedResults<GrantData>
 
-    @RequestLine("GET ${GrantsRoutes.GRANTS_AS_GRANTER}")
+    @RequestLine("GET ${GrantsRoutes.GRANTS_AS_GRANTER}?$PAGE_PARAMETERS")
     fun grantsAsGranter(
         @Param("address") address: String,
         @Param("count") count: Int = 10,
         @Param("page") page: Int = 1
     ): PagedResults<GrantData>
 
-    @RequestLine("GET ${GrantsRoutes.FEEGRANTS_AS_GRANTEE}")
+    @RequestLine("GET ${GrantsRoutes.FEEGRANTS_AS_GRANTEE}?$PAGE_PARAMETERS")
     fun feegrantsAsGrantee(
         @Param("address") address: String,
         @Param("count") count: Int = 10,
         @Param("page") page: Int = 1
     ): PagedResults<FeegrantData>
 
-    @RequestLine("GET ${GrantsRoutes.FEEGRANTS_AS_GRANTER}")
+    @RequestLine("GET ${GrantsRoutes.FEEGRANTS_AS_GRANTER}?$PAGE_PARAMETERS")
     fun feegrantsAsGranter(
         @Param("address") address: String,
         @Param("count") count: Int = 10,

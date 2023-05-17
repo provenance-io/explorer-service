@@ -3,6 +3,7 @@ package io.provenance.explorer.client
 import feign.Headers
 import feign.Param
 import feign.RequestLine
+import io.provenance.explorer.client.BaseRoutes.PAGE_PARAMETERS
 import io.provenance.explorer.model.BlockSummary
 import io.provenance.explorer.model.base.PagedResults
 
@@ -16,8 +17,11 @@ object BlockRoutes {
 @Headers(BaseClient.CT_JSON)
 interface BlockClient : BaseClient {
 
-    @RequestLine("GET ${BlockRoutes.RECENT}")
-    fun recent(@Param("count") count: Int = 10, @Param("page") page: Int = 1): PagedResults<BlockSummary>
+    @RequestLine("GET ${BlockRoutes.RECENT}?$PAGE_PARAMETERS")
+    fun recent(
+        @Param("count") count: Int = 10,
+        @Param("page") page: Int = 1
+    ): PagedResults<BlockSummary>
 
     @RequestLine("GET ${BlockRoutes.CURRENT_HEIGHT}")
     fun currentHeight(): BlockSummary

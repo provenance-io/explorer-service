@@ -3,6 +3,7 @@ package io.provenance.explorer.client
 import feign.Headers
 import feign.Param
 import feign.RequestLine
+import io.provenance.explorer.client.BaseRoutes.PAGE_PARAMETERS
 import io.provenance.explorer.model.BlockLatencyData
 import io.provenance.explorer.model.Delegation
 import io.provenance.explorer.model.MarketRateAvg
@@ -48,14 +49,14 @@ object ValidatorRoutes {
 @Headers(BaseClient.CT_JSON)
 interface ValidatorClient : BaseClient {
 
-    @RequestLine("GET ${ValidatorRoutes.RECENT}")
+    @RequestLine("GET ${ValidatorRoutes.RECENT}?$PAGE_PARAMETERS&status={status}")
     fun recentValidators(
         @Param("count") count: Int = 10,
         @Param("page") page: Int = 1,
         @Param("status") status: ValidatorState = ValidatorState.ACTIVE
     ): PagedResults<ValidatorSummary>
 
-    @RequestLine("GET ${ValidatorRoutes.VALIDATORS_AT_HEIGHT}")
+    @RequestLine("GET ${ValidatorRoutes.VALIDATORS_AT_HEIGHT}?$PAGE_PARAMETERS")
     fun validatorsAtHeight(
         @Param("blockHeight") blockHeight: Int,
         @Param("count") count: Int = 10,
@@ -84,13 +85,13 @@ interface ValidatorClient : BaseClient {
     @RequestLine("GET ${ValidatorRoutes.VALIDATOR_COMMISSION_HISTORY}")
     fun validatorCommissionHistory(@Param("address") address: String): ValidatorCommissionHistory
 
-    @RequestLine("GET ${ValidatorRoutes.VALIDATOR_MARKET_RATE}")
+    @RequestLine("GET ${ValidatorRoutes.VALIDATOR_MARKET_RATE}?txCount={txCount}")
     fun validatorAvgMarketRate(
         @Param("address") address: String,
         @Param("txCount") txCount: Int = 500
     ): MarketRateAvg
 
-    @RequestLine("GET ${ValidatorRoutes.VALIDATOR_MARKET_RATE_PERIOD}")
+    @RequestLine("GET ${ValidatorRoutes.VALIDATOR_MARKET_RATE_PERIOD}?fromDate={fromDate}&toDate={toDate}&dayCount={dayCount}")
     fun validatorMarketRateOverTime(
         @Param("address") address: String,
         @Param("fromDate") fromDate: DateTime? = null,
@@ -98,18 +99,18 @@ interface ValidatorClient : BaseClient {
         @Param("dayCount") dayCount: Int = 14
     ): List<ValidatorMarketRate>
 
-    @RequestLine("GET ${ValidatorRoutes.VALIDATOR_LATENCY}")
+    @RequestLine("GET ${ValidatorRoutes.VALIDATOR_LATENCY}?blockCount={blockCount}")
     fun validatorLatency(
         @Param("address") address: String,
         @Param("blockCount") blockCount: Int = 100
     ): BlockLatencyData
 
-    @RequestLine("GET ${ValidatorRoutes.MISSED_BLOCKS_DISTINCT}")
+    @RequestLine("GET ${ValidatorRoutes.MISSED_BLOCKS_DISTINCT}?timeframe={timeframe}")
     fun distinctValidatorsWithMissedBlocks(
         @Param("timeframe") timeframe: Timeframe = Timeframe.HOUR
     ): MissedBlocksTimeframe
 
-    @RequestLine("GET ${ValidatorRoutes.MISSED_BLOCKS}")
+    @RequestLine("GET ${ValidatorRoutes.MISSED_BLOCKS}?timeframe={timeframe}&validatorAddr={validatorAddr}")
     fun validatorsWithMissedBocks(
         @Param("timeframe") timeframe: Timeframe = Timeframe.HOUR,
         @Param("validatorAddr") validatorAddr: String
@@ -118,7 +119,7 @@ interface ValidatorClient : BaseClient {
     @RequestLine("GET ${ValidatorRoutes.UPTIME}")
     fun uptimeData(): UptimeDataSet
 
-    @RequestLine("GET ${ValidatorRoutes.VALIDATOR_METRICS}")
+    @RequestLine("GET ${ValidatorRoutes.VALIDATOR_METRICS}?address={address}&year={year}&quarter={quarter}")
     fun validatorMetrics(
         @Param("address") address: String,
         @Param("year") year: Int,

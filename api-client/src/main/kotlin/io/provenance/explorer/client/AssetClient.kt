@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import feign.Headers
 import feign.Param
 import feign.RequestLine
+import io.provenance.explorer.client.BaseRoutes.PAGE_PARAMETERS
 import io.provenance.explorer.model.AssetDetail
 import io.provenance.explorer.model.AssetHolder
 import io.provenance.explorer.model.AssetListed
@@ -24,7 +25,7 @@ object AssetRoutes {
 @Headers(BaseClient.CT_JSON)
 interface AssetClient : BaseClient {
 
-    @RequestLine("GET ${AssetRoutes.ALL}")
+    @RequestLine("GET ${AssetRoutes.ALL}?$PAGE_PARAMETERS&statuses={statuses}")
     fun all(
         @Param("statuses") statuses: List<MarkerStatus> = listOf(MarkerStatus.MARKER_STATUS_ACTIVE),
         @Param("count") count: Int = 10,
@@ -37,13 +38,13 @@ interface AssetClient : BaseClient {
     @RequestLine("GET ${AssetRoutes.DETAIL_IBC}")
     fun ibcAsset(@Param("hash") hash: String): IbcDenomDetail
 
-    @RequestLine("GET ${AssetRoutes.HOLDERS}")
+    @RequestLine("GET ${AssetRoutes.HOLDERS}?$PAGE_PARAMETERS")
     fun assetHolders(
         @Param("denom") denom: String,
         @Param("count") count: Int = 10,
         @Param("page") page: Int = 1
     ): PagedResults<AssetHolder>
 
-    @RequestLine("GET ${AssetRoutes.METADATA}")
+    @RequestLine("GET ${AssetRoutes.METADATA}?denom={denom}")
     fun metadata(@Param("denom") denom: String? = null): List<ObjectNode>
 }

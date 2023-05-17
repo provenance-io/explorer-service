@@ -32,7 +32,7 @@ interface TokenClient : BaseClient {
     @RequestLine("GET ${TokenRoutes.DISTRIBUTION}")
     fun distribution(): List<TokenDistribution>
 
-    @RequestLine("GET ${TokenRoutes.RICH_LIST}")
+    @RequestLine("GET ${TokenRoutes.RICH_LIST}?limit={limit}")
     fun richList(@Param("limit") limit: Int): List<RichAccount>
 
     @RequestLine("GET ${TokenRoutes.MAX_SUPPLY}")
@@ -44,7 +44,7 @@ interface TokenClient : BaseClient {
     @RequestLine("GET ${TokenRoutes.CIRCULATING_SUPPLY}")
     fun circulatingSupply(): BigDecimal
 
-    @RequestLine("GET ${TokenRoutes.HISTORICAL_PRICING}")
+    @RequestLine("GET ${TokenRoutes.HISTORICAL_PRICING}?fromDate={fromDate}&toDate={toDate}")
     fun historicalPricing(
         @Param("fromDate") fromDate: DateTime? = null,
         @Param("toDate") toDate: DateTime? = null
