@@ -29,7 +29,8 @@ interface IbcClient : BaseClient {
     @RequestLine("GET ${IbcRoutes.ALL}?$PAGE_PARAMETERS")
     fun allDenoms(
         @Param("count") count: Int = 10,
-        @Param("page") page: Int = 1): PagedResults<IbcDenomListed>
+        @Param("page") page: Int = 1
+    ): PagedResults<IbcDenomListed>
 
     @RequestLine("GET ${IbcRoutes.CHANNELS}?status={status}")
     fun channelsByStatus(
