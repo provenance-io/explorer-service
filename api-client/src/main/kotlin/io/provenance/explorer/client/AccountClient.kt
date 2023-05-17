@@ -3,6 +3,7 @@ package io.provenance.explorer.client
 import feign.Headers
 import feign.Param
 import feign.RequestLine
+import io.provenance.explorer.client.BaseRoutes.PAGE_PARAMETERS
 import io.provenance.explorer.model.AccountDetail
 import io.provenance.explorer.model.AccountFlags
 import io.provenance.explorer.model.AccountRewards
@@ -40,7 +41,7 @@ interface AccountClient : BaseClient {
     @RequestLine("GET ${AccountRoutes.ACCOUNT}")
     fun account(@Param("address") address: String): AccountDetail
 
-    @RequestLine("GET ${AccountRoutes.DELEGATIONS}")
+    @RequestLine("GET ${AccountRoutes.DELEGATIONS}?$PAGE_PARAMETERS")
     fun delegations(
         @Param("address") address: String,
         @Param("count") count: Int = 10,
@@ -56,27 +57,27 @@ interface AccountClient : BaseClient {
     @RequestLine("GET ${AccountRoutes.REWARDS}")
     fun rewards(@Param("address") address: String): AccountRewards
 
-    @RequestLine("GET ${AccountRoutes.BALANCES}")
+    @RequestLine("GET ${AccountRoutes.BALANCES}?$PAGE_PARAMETERS")
     fun balances(
         @Param("address") address: String,
         @Param("count") count: Int = 10,
         @Param("page") page: Int = 1
     ): PagedResults<DenomBalanceBreakdown>
 
-    @RequestLine("GET ${AccountRoutes.VESTING}")
+    @RequestLine("GET ${AccountRoutes.VESTING}?continuousPeriod={continuousPeriod}")
     fun vestingSchedule(
         @Param("address") address: String,
         @Param("continuousPeriod") continuousPeriod: PeriodInSeconds = PeriodInSeconds.DAY
     ): AccountVestingInfo
 
-    @RequestLine("GET ${AccountRoutes.BALANCES_AT_HEIGHT}")
+    @RequestLine("GET ${AccountRoutes.BALANCES_AT_HEIGHT}?height={height}&denom={denom}")
     fun balancesAtHeight(
         @Param("address") address: String,
         @Param("height") height: Int,
         @Param("denom") denom: String? = null
     ): List<CoinStr>
 
-    @RequestLine("GET ${AccountRoutes.FEEPAYER_HISTORY}")
+    @RequestLine("GET ${AccountRoutes.FEEPAYER_HISTORY}?fromDate={fromDate}&toDate={toDate}&granularity={granularity}")
     fun feepayerHistory(
         @Param("address") address: String,
         @Param("fromDate") fromDate: DateTime? = null,
@@ -85,7 +86,10 @@ interface AccountClient : BaseClient {
     ): List<TxHistoryChartData>
 
     @RequestLine("GET ${AccountRoutes.BALANCES_BY_DENOM}")
-    fun balanceByDenom(@Param("address") address: String, @Param("denom") denom: String): DenomBalanceBreakdown
+    fun balanceByDenom(
+        @Param("address") address: String,
+        @Param("denom") denom: String
+    ): DenomBalanceBreakdown
 
     @RequestLine("GET ${AccountRoutes.BALANCES_BY_UTILITY_TOKEN}")
     fun balanceByUtilityToken(@Param("address") address: String): DenomBalanceBreakdown

@@ -3,6 +3,7 @@ package io.provenance.explorer.client
 import feign.Headers
 import feign.Param
 import feign.RequestLine
+import io.provenance.explorer.client.BaseRoutes.PAGE_PARAMETERS
 import io.provenance.explorer.model.MsgTypeSet
 import io.provenance.explorer.model.TxDetails
 import io.provenance.explorer.model.TxGov
@@ -41,14 +42,14 @@ object TransactionRoutes {
 @Headers(BaseClient.CT_JSON)
 interface TransactionClient : BaseClient {
 
-    @RequestLine("GET ${TransactionRoutes.HISTORY}")
+    @RequestLine("GET ${TransactionRoutes.HISTORY}?fromDate={fromDate}&toDate={toDate}&granularity={granularity}")
     fun history(
         @Param("fromDate") fromDate: DateTime? = null,
         @Param("toDate") toDate: DateTime? = null,
         @Param("granularity") granularity: DateTruncGranularity = DateTruncGranularity.DAY
     ): List<TxHistoryChartData>
 
-    @RequestLine("GET ${TransactionRoutes.RECENT}")
+    @RequestLine("GET ${TransactionRoutes.RECENT}?$PAGE_PARAMETERS&fromDate={fromDate}&toDate={toDate}&txStatus={txStatus}&msgType={msgType}")
     fun recentTxs(
         @Param("count") count: Int = 10,
         @Param("page") page: Int = 1,
@@ -58,10 +59,13 @@ interface TransactionClient : BaseClient {
         @Param("toDate") toDate: DateTime? = null
     ): PagedResults<TxSummary>
 
-    @RequestLine("GET ${TransactionRoutes.TX}")
-    fun tx(@Param("hash") hash: String, @Param("blockHeight") blockHeight: Int? = null): TxDetails
+    @RequestLine("GET ${TransactionRoutes.TX}?blockHeight={blockHeight}")
+    fun tx(
+        @Param("hash") hash: String,
+        @Param("blockHeight") blockHeight: Int? = null
+    ): TxDetails
 
-    @RequestLine("GET ${TransactionRoutes.TX_MSGS}")
+    @RequestLine("GET ${TransactionRoutes.TX_MSGS}?$PAGE_PARAMETERS&blockHeight={blockHeight}&msgType={msgType}")
     fun txMsgs(
         @Param("hash") hash: String,
         @Param("blockHeight") blockHeight: Int? = null,
@@ -70,20 +74,26 @@ interface TransactionClient : BaseClient {
         @Param("msgType") msgType: String? = null
     ): PagedResults<TxMessage>
 
-    @RequestLine("GET ${TransactionRoutes.TX_JSON}")
-    fun txJson(@Param("hash") hash: String, @Param("blockHeight") blockHeight: Int? = null): String
+    @RequestLine("GET ${TransactionRoutes.TX_JSON}?blockHeight={blockHeight}")
+    fun txJson(
+        @Param("hash") hash: String,
+        @Param("blockHeight") blockHeight: Int? = null
+    ): String
 
-    @RequestLine("GET ${TransactionRoutes.TX_TYPES}")
-    fun txTypes(@Param("hash") hash: String, @Param("blockHeight") blockHeight: Int? = null): List<TxType>
+    @RequestLine("GET ${TransactionRoutes.TX_TYPES}?blockHeight={blockHeight}")
+    fun txTypes(
+        @Param("hash") hash: String,
+        @Param("blockHeight") blockHeight: Int? = null
+    ): List<TxType>
 
-    @RequestLine("GET ${TransactionRoutes.TXS_AT_HEIGHT}")
+    @RequestLine("GET ${TransactionRoutes.TXS_AT_HEIGHT}?$PAGE_PARAMETERS&blockHeight={blockHeight}")
     fun txsAtHeight(
         @Param("blockHeight") blockHeight: Int,
         @Param("count") count: Int = 10,
         @Param("page") page: Int = 1
     ): PagedResults<TxSummary>
 
-    @RequestLine("GET ${TransactionRoutes.HEATMAP}")
+    @RequestLine("GET ${TransactionRoutes.HEATMAP}?fromDate={fromDate}&toDate={toDate}&timeframe={timeframe}")
     fun heatmap(
         @Param("fromDate") fromDate: DateTime? = null,
         @Param("toDate") toDate: DateTime? = null,
@@ -96,7 +106,7 @@ interface TransactionClient : BaseClient {
     @RequestLine("GET ${TransactionRoutes.TYPES_BY_MODULE}")
     fun typesByModule(@Param("module") module: MsgTypeSet): List<TxType>
 
-    @RequestLine("GET ${TransactionRoutes.TXS_BY_MODULE}")
+    @RequestLine("GET ${TransactionRoutes.TXS_BY_MODULE}?$PAGE_PARAMETERS&msgType={msgType}&txStatus={txStatus}&address={address}&denom={denom}&nftAddr={nftAddr}&ibcChain={ibcChain}&ibcSrcPort={ibcSrcPort}&ibcSrcChannel={ibcSrcChannel}&fromDate={fromDate}&toDate={toDate}")
     fun txsByModule(
         @Param("module") module: MsgTypeSet,
         @Param("count") count: Int = 10,
@@ -113,7 +123,7 @@ interface TransactionClient : BaseClient {
         @Param("toDate") toDate: DateTime? = null
     ): PagedResults<TxSummary>
 
-    @RequestLine("GET ${TransactionRoutes.TXS_BY_ADDRESS}")
+    @RequestLine("GET ${TransactionRoutes.TXS_BY_ADDRESS}?$PAGE_PARAMETERS&msgType={msgType}&txStatus={txStatus}&fromDate={fromDate}&toDate={toDate}")
     fun txsByAddress(
         @Param("address") address: String,
         @Param("count") count: Int = 10,
@@ -124,7 +134,7 @@ interface TransactionClient : BaseClient {
         @Param("toDate") toDate: DateTime? = null
     ): PagedResults<TxSummary>
 
-    @RequestLine("GET ${TransactionRoutes.TXS_BY_NFT}")
+    @RequestLine("GET ${TransactionRoutes.TXS_BY_NFT}?$PAGE_PARAMETERS&msgType={msgType}&txStatus={txStatus}&fromDate={fromDate}&toDate={toDate}")
     fun txsByNft(
         @Param("nftAddr") nftAddr: String,
         @Param("count") count: Int = 10,
@@ -135,7 +145,7 @@ interface TransactionClient : BaseClient {
         @Param("toDate") toDate: DateTime? = null
     ): PagedResults<TxSummary>
 
-    @RequestLine("GET ${TransactionRoutes.TXS_BY_MODULE_GOV}")
+    @RequestLine("GET ${TransactionRoutes.TXS_BY_MODULE_GOV}?$PAGE_PARAMETERS&address={address}&msgType={msgType}&txStatus={txStatus}&fromDate={fromDate}&toDate={toDate}")
     fun txsByModuleGov(
         @Param("count") count: Int = 10,
         @Param("page") page: Int = 1,
@@ -146,7 +156,7 @@ interface TransactionClient : BaseClient {
         @Param("toDate") toDate: DateTime? = null
     ): PagedResults<TxGov>
 
-    @RequestLine("GET ${TransactionRoutes.TXS_BY_MODULE_SMART_CONTRACT}")
+    @RequestLine("GET ${TransactionRoutes.TXS_BY_MODULE_SMART_CONTRACT}?$PAGE_PARAMETERS&code={code}&contract={contract}&msgType={msgType}&txStatus={txStatus}&fromDate={fromDate}&toDate={toDate}")
     fun txsByModuleSmartContract(
         @Param("count") count: Int = 10,
         @Param("page") page: Int = 1,
@@ -158,7 +168,7 @@ interface TransactionClient : BaseClient {
         @Param("toDate") toDate: DateTime? = null
     ): PagedResults<TxGov>
 
-    @RequestLine("GET ${TransactionRoutes.TXS_BY_IBC_CHAIN}")
+    @RequestLine("GET ${TransactionRoutes.TXS_BY_IBC_CHAIN}?$PAGE_PARAMETERS&msgType={msgType}&txStatus={txStatus}&ibcSrcPort={ibcSrcPort}&ibcSrcChannel={ibcSrcChannel}&fromDate={fromDate}&toDate={toDate}")
     fun txsByIbcChain(
         @Param("ibcChain") ibcChain: String,
         @Param("count") count: Int = 10,

@@ -3,6 +3,7 @@ package io.provenance.explorer.client
 import feign.Headers
 import feign.Param
 import feign.RequestLine
+import io.provenance.explorer.client.BaseRoutes.PAGE_PARAMETERS
 import io.provenance.explorer.model.NameObj
 import io.provenance.explorer.model.NameTreeResponse
 import io.provenance.explorer.model.base.PagedResults
@@ -19,7 +20,7 @@ interface NameClient : BaseClient {
     @RequestLine("GET ${NameRoutes.TREE}")
     fun tree(): NameTreeResponse
 
-    @RequestLine("GET ${NameRoutes.OWNED}")
+    @RequestLine("GET ${NameRoutes.OWNED}?$PAGE_PARAMETERS")
     fun ownedByAddress(
         @Param("address") address: String,
         @Param("count") count: Int = 10,

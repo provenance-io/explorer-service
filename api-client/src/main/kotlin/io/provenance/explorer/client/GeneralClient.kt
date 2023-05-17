@@ -41,7 +41,7 @@ interface GeneralClient : BaseClient {
     @RequestLine("GET ${GeneralRoutes.SPOTLIGHT}")
     fun spotlight(): Spotlight?
 
-    @RequestLine("GET ${GeneralRoutes.GAS_STATS}")
+    @RequestLine("GET ${GeneralRoutes.GAS_STATS}?fromDate={fromDate}&toDate={toDate}&granularity={granularity}&msgType={msgType}")
     fun gasStats(
         @Param("fromDate") fromDate: DateTime,
         @Param("toDate") toDate: DateTime,
@@ -49,7 +49,7 @@ interface GeneralClient : BaseClient {
         @Param("msgType") msgType: String? = null
     ): List<GasStats>
 
-    @RequestLine("GET ${GeneralRoutes.GAS_VOLUME}")
+    @RequestLine("GET ${GeneralRoutes.GAS_VOLUME}?fromDate={fromDate}&toDate={toDate}&granularity={granularity}")
     fun gasVolume(
         @Param("fromDate") fromDate: DateTime,
         @Param("toDate") toDate: DateTime,
@@ -59,14 +59,14 @@ interface GeneralClient : BaseClient {
     @RequestLine("GET ${GeneralRoutes.CHAIN_ID}")
     fun chainId(): String
 
-    @RequestLine("GET ${GeneralRoutes.CHAIN_MARKET_RATE_PERIOD}")
+    @RequestLine("GET ${GeneralRoutes.CHAIN_MARKET_RATE_PERIOD}?fromDate={fromDate}&toDate={toDate}&dayCount={dayCount}")
     fun marketRateOverTime(
         @Param("fromDate") fromDate: DateTime,
         @Param("toDate") toDate: DateTime,
         @Param("dayCount") dayCount: Int = 14
     ): List<ChainMarketRate>
 
-    @RequestLine("GET ${GeneralRoutes.CHAIN_MARKET_RATE}")
+    @RequestLine("GET ${GeneralRoutes.CHAIN_MARKET_RATE}?blockCount={blockCount}")
     fun avgMarketRate(@Param("blockCount") blockCount: Int = 500): MarketRateAvg
 
     @RequestLine("GET ${GeneralRoutes.CHAIN_UPGRADES}")
@@ -78,7 +78,7 @@ interface GeneralClient : BaseClient {
     @RequestLine("GET ${GeneralRoutes.CHAIN_MSG_BASED_FEES}")
     fun msgBasedFees(): List<MsgBasedFee>
 
-    @RequestLine("GET ${GeneralRoutes.CHAIN_AUM_LIST}")
+    @RequestLine("GET ${GeneralRoutes.CHAIN_AUM_LIST}?fromDate={fromDate}&toDate={toDate}&dayCount={dayCount}")
     fun aumOverTime(
         @Param("fromDate") fromDate: DateTime? = null,
         @Param("toDate") toDate: DateTime? = null,
