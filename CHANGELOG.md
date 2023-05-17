@@ -47,6 +47,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Fixed `/api/v3/validators` url
 * Now handling no fee amount in the tx
 * Now handling Exec'd governance msgs, and properly handling weights from v1.Gov msgs
+* Added object mapper and query parameters to `api-client` [#487](https://github.com/provenance-io/explorer-service/issues/487)
 
 ### Data
 * Migration 1.88 - Add `block_time_spread`, `validator_metrics` #482
