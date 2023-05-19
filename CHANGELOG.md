@@ -33,13 +33,16 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+## [v5.5.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.5.0) - 2023-05-19
+### Release Name: John Cabot
+
 ### Features
-* Validator Delegation Program metrics #482
+* Validator Delegation Program metrics [#482](https://github.com/provenance-io/explorer-service/issues/482)
   * Added support to calculate and return validator metrics used by the Validator Delegation Program
   * Added client support
 
 ### Improvements
-* Add date parameters to `/api/v3/txs/heatmap` #462
+* Add date parameters to `/api/v3/txs/heatmap` [#462](https://github.com/provenance-io/explorer-service/issues/462)
   * Added `fromDate`, `toDate`, `timeframe`
   * Defaulting to `FOREVER` to return all data
 
@@ -50,7 +53,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Added object mapper and query parameters to `api-client` [#487](https://github.com/provenance-io/explorer-service/issues/487)
 
 ### Data
-* Migration 1.88 - Add `block_time_spread`, `validator_metrics` #482
+* Migration 1.88 - Add `block_time_spread`, `validator_metrics` [#482](https://github.com/provenance-io/explorer-service/issues/482)
   * Adds view, table to support calculating and storing metrics for the Validator Delegation Program
 
 ## [v5.4.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.4.0) - 2022-12-15
