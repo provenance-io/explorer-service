@@ -33,6 +33,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+* Updated Prov Protos from 1.14.0-rc2 to 1.16.0 [#490](https://github.com/provenance-io/explorer-service/issues/490)
+
 ## [v5.5.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.5.0) - 2023-05-19
 ### Release Name: John Cabot
 
