@@ -31,6 +31,7 @@ import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toPercentage
 import io.provenance.explorer.domain.models.explorer.DlobHistBase
+import io.provenance.explorer.domain.models.explorer.DlobHistorical
 import io.provenance.explorer.domain.models.explorer.TokenHistoricalDataRequest
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.model.AssetHolder
@@ -145,7 +146,8 @@ class TokenService(private val accountClient: AccountGrpcClient) {
     }
 
     fun getTokenBreakdown() = runBlocking {
-        val bonded = accountClient.getStakingPool().pool.bondedTokens.toBigDecimal().roundWhole().toCoinStr(UTILITY_TOKEN)
+        val bonded =
+            accountClient.getStakingPool().pool.bondedTokens.toBigDecimal().roundWhole().toCoinStr(UTILITY_TOKEN)
         TokenSupply(
             maxSupply().toCoinStr(UTILITY_TOKEN),
             totalSupply().toCoinStr(UTILITY_TOKEN),
@@ -157,16 +159,20 @@ class TokenService(private val accountClient: AccountGrpcClient) {
     }
 
     fun nhashMarkerAddr() = MarkerCacheRecord.findByDenom(UTILITY_TOKEN)?.markerAddress!!
-    fun burnedSupply() = runBlocking { accountClient.getMarkerBalance(nhashMarkerAddr(), UTILITY_TOKEN).toBigDecimal().roundWhole() }
+    fun burnedSupply() =
+        runBlocking { accountClient.getMarkerBalance(nhashMarkerAddr(), UTILITY_TOKEN).toBigDecimal().roundWhole() }
+
     fun moduleAccounts() = AccountRecord.findAccountsByType(listOf(Auth.ModuleAccount::class.java.simpleName))
     fun zeroSeqAccounts() = AccountRecord.findZeroSequenceAccounts()
     fun vestingAccounts() = AccountRecord.findAccountsByType(vestingAccountTypes)
     fun contractAccounts() = AccountRecord.findContractAccounts()
     fun allAccounts() = transaction { AccountRecord.all().toMutableList() }
-    fun communityPoolSupply() = runBlocking { accountClient.getCommunityPoolAmount(UTILITY_TOKEN).toBigDecimal().roundWhole() }
+    fun communityPoolSupply() =
+        runBlocking { accountClient.getCommunityPoolAmount(UTILITY_TOKEN).toBigDecimal().roundWhole() }
+
     fun richListAccounts() =
         allAccounts().addressList() - zeroSeqAccounts().toSet() - moduleAccounts().addressList() -
-            contractAccounts().addressList() - setOf(nhashMarkerAddr())
+                contractAccounts().addressList() - setOf(nhashMarkerAddr())
 
     fun totalBalanceForList(addresses: Set<String>) = runBlocking {
         TokenDistributionPaginatedResultsRecord.findByAddresses(addresses).asFlow()
@@ -231,6 +237,55 @@ class TokenService(private val accountClient: AccountGrpcClient) {
             return@runBlocking null.also { logger.error("Error fetching from Dlob: ${e.message}") }
         } catch (e: Throwable) {
             return@runBlocking null.also { logger.error("Error fetching from Dlob: ${e.message}") }
+        }
+    }
+
+    suspend fun getHistoricalFromDlobNew(startTime: DateTime): DlobHistBase? {
+        val dlobContractUrls = listOf(
+            "https://www.dlob.io/gecko/external/api/v1/order-books/pb1w6ul64t5fjcg65mmscec758dgyml6xmmw5fy2vyxxc9dhq3tmhusyzcj3r/aggregate?unit=YEAR",
+            "https://www.dlob.io/gecko/external/api/v1/order-books/pb18vd8fpwxzck93qlwghaj6arh4p7c5n894vnu5g/aggregate?unit=YEAR"
+        )
+        var dlobHistorBase: DlobHistBase? = null
+        for (url in dlobContractUrls) {
+            try {
+                val data = fetchDataFromUrl(url, startTime)
+                if (data != null) {
+                    if (dlobHistorBase == null) {
+                        dlobHistorBase = data
+                    }else {
+                        val combinedBuy = dlobHistorBase.buy + data.buy
+                        dlobHistorBase = dlobHistorBase.copy(buy = combinedBuy)
+                    }
+                }
+            } catch (e: ResponseException) {
+                logger.error("Error fetching from Dlob: ${e.response}")
+            } catch (e: Exception) {
+                logger.error("Error fetching from Dlob: ${e.message}")
+            } catch (e: Throwable) {
+                logger.error("Error fetching from Dlob: ${e.message}")
+            }
+        }
+
+        return dlobHistorBase
+    }
+
+    private suspend fun fetchDataFromUrl(url: String, startTime: DateTime): DlobHistBase? {
+        return try {
+            KTOR_CLIENT_JAVA.get(url) {
+                parameter("ticker_id", "HASH_USD")
+                parameter("type", "buy")
+                parameter("start_time", DateTimeFormat.forPattern("dd-MM-yyyy").print(startTime))
+                accept(ContentType.Application.Json)
+            }.body()
+        } catch (e: ResponseException) {
+            logger.error("Error fetching from Dlob: ${e.response}")
+            null
+        } catch (e: Exception) {
+            logger.error("Error fetching from Dlob: ${e.message}")
+            null
+        } catch (e: Throwable) {
+            logger.error("Error fetching from Dlob: ${e.message}")
+            null
         }
     }
 
