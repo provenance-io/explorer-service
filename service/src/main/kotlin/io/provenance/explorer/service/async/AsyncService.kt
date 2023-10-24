@@ -104,7 +104,7 @@ class AsyncService(
     protected val logger = logger(AsyncService::class)
     protected var collectHistorical = true
 
-    // @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
+     @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateLatestBlockHeightJob() {
         val index = getBlockIndex()
         val startHeight = blockService.getLatestBlockHeight()
@@ -328,9 +328,7 @@ class AsyncService(
         }
     }
 
-    //    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
-    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
-
+    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
     fun updateTokenLatest() {
         val today = DateTime.now().withZone(DateTimeZone.UTC)
         val startDate = today.minusDays(7)
