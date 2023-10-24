@@ -223,10 +223,10 @@ class TokenService(private val accountClient: AccountGrpcClient) {
             }
     }
 
-    fun getHistoricalFromDlob(startTime: DateTime): DlobHistBase? = runBlocking {
+    fun getHistoricalFromDlob(startTime: DateTime, tickerId: String): DlobHistBase? = runBlocking {
         try {
-            KTOR_CLIENT_JAVA.get("https://www.dlob.io:443/gecko/external/api/v1/exchange/historical_trades") {
-                parameter("ticker_id", "HASH_USD")
+            KTOR_CLIENT_JAVA.get("https://test.dlob.io:443/gecko/external/api/v1/exchange/historical_trades") {
+                parameter("ticker_id", tickerId)
                 parameter("type", "buy")
                 parameter("start_time", DateTimeFormat.forPattern("dd-MM-yyyy").print(startTime))
                 accept(ContentType.Application.Json)
@@ -240,53 +240,14 @@ class TokenService(private val accountClient: AccountGrpcClient) {
         }
     }
 
-    suspend fun getHistoricalFromDlobNew(startTime: DateTime): DlobHistBase? {
-        val dlobContractUrls = listOf(
-            "https://www.dlob.io/gecko/external/api/v1/order-books/pb1w6ul64t5fjcg65mmscec758dgyml6xmmw5fy2vyxxc9dhq3tmhusyzcj3r/aggregate?unit=YEAR",
-            "https://www.dlob.io/gecko/external/api/v1/order-books/pb18vd8fpwxzck93qlwghaj6arh4p7c5n894vnu5g/aggregate?unit=YEAR"
-        )
-        var dlobHistorBase: DlobHistBase? = null
-        for (url in dlobContractUrls) {
-            try {
-                val data = fetchDataFromUrl(url, startTime)
-                if (data != null) {
-                    if (dlobHistorBase == null) {
-                        dlobHistorBase = data
-                    }else {
-                        val combinedBuy = dlobHistorBase.buy + data.buy
-                        dlobHistorBase = dlobHistorBase.copy(buy = combinedBuy)
-                    }
-                }
-            } catch (e: ResponseException) {
-                logger.error("Error fetching from Dlob: ${e.response}")
-            } catch (e: Exception) {
-                logger.error("Error fetching from Dlob: ${e.message}")
-            } catch (e: Throwable) {
-                logger.error("Error fetching from Dlob: ${e.message}")
-            }
-        }
+    fun getHistoricalFromDlob(startTime: DateTime): DlobHistBase {
+        val tickerIds = listOf("HASH_USD", "HASH_USDOMNI")
 
-        return dlobHistorBase
-    }
+        val dlobHistorical = tickerIds
+            .mapNotNull { getHistoricalFromDlob(startTime, it)?.buy }
+            .flatten()
 
-    private suspend fun fetchDataFromUrl(url: String, startTime: DateTime): DlobHistBase? {
-        return try {
-            KTOR_CLIENT_JAVA.get(url) {
-                parameter("ticker_id", "HASH_USD")
-                parameter("type", "buy")
-                parameter("start_time", DateTimeFormat.forPattern("dd-MM-yyyy").print(startTime))
-                accept(ContentType.Application.Json)
-            }.body()
-        } catch (e: ResponseException) {
-            logger.error("Error fetching from Dlob: ${e.response}")
-            null
-        } catch (e: Exception) {
-            logger.error("Error fetching from Dlob: ${e.message}")
-            null
-        } catch (e: Throwable) {
-            logger.error("Error fetching from Dlob: ${e.message}")
-            null
-        }
+        return DlobHistBase(dlobHistorical)
     }
 
     fun getTokenHistorical(fromDate: DateTime?, toDate: DateTime?) =

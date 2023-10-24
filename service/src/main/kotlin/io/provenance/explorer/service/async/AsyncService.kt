@@ -104,7 +104,7 @@ class AsyncService(
     protected val logger = logger(AsyncService::class)
     protected var collectHistorical = true
 
-    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
+    // @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateLatestBlockHeightJob() {
         val index = getBlockIndex()
         val startHeight = blockService.getLatestBlockHeight()
@@ -277,10 +277,15 @@ class AsyncService(
     @Scheduled(cron = "0 0 0/1 * * ?") // Every hour
     fun saveChainAum() = explorerService.saveChainAum()
 
-    @Scheduled(cron = "0 0 1 * * ?") // Every day at 1 am
+    @Scheduled(cron = "0 0 1 * * *") // Every day at 1 am
     fun updateTokenHistorical() {
         val today = DateTime.now().startOfDay()
-        val startDate = today.minusMonths(1)
+        var startDate = today.minusMonths(1)
+        var latest = TokenHistoricalDailyRecord.getLatestDateEntry()
+        if (latest != null) {
+            startDate = latest.timestamp.minusDays(1)
+        }
+
         val dlobRes = tokenService.getHistoricalFromDlob(startDate) ?: return
         val baseMap = Interval(startDate, today)
             .let { int -> generateSequence(int.start) { dt -> dt.plusDays(1) }.takeWhile { dt -> dt < int.end } }
@@ -306,22 +311,26 @@ class AsyncService(
                 time_low = if (low != null) DateTime(low.trade_timestamp * 1000) else k,
                 quote = mapOf(
                     USD_UPPER to
-                        CmcQuote(
-                            open = open,
-                            high = high?.price ?: prevPrice,
-                            low = low?.price ?: prevPrice,
-                            close = close,
-                            volume = usdVolume,
-                            market_cap = close.multiply(tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)),
-                            timestamp = closeDate
-                        )
+                            CmcQuote(
+                                open = open,
+                                high = high?.price ?: prevPrice,
+                                low = low?.price ?: prevPrice,
+                                close = close,
+                                volume = usdVolume,
+                                market_cap = close.multiply(
+                                    tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+                                ),
+                                timestamp = closeDate
+                            )
                 )
             ).also { prevPrice = close }
             TokenHistoricalDailyRecord.save(record.time_open.startOfDay(), record)
         }
     }
 
-    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
+    //    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
+    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
+
     fun updateTokenLatest() {
         val today = DateTime.now().withZone(DateTimeZone.UTC)
         val startDate = today.minusDays(7)
@@ -346,7 +355,10 @@ class AsyncService(
                     today,
                     mapOf(USD_UPPER to CmcLatestQuoteAbbrev(price, percentChg, vol24Hr, marketCap, today))
                 )
-                CacheUpdateRecord.updateCacheByKey(CacheKeys.UTILITY_TOKEN_LATEST.key, VANILLA_MAPPER.writeValueAsString(rec))
+                CacheUpdateRecord.updateCacheByKey(
+                    CacheKeys.UTILITY_TOKEN_LATEST.key,
+                    VANILLA_MAPPER.writeValueAsString(rec)
+                )
             }
     }
 
@@ -443,7 +455,8 @@ class AsyncService(
                 try {
                     transaction { it.apply { this.processing = true } }
                     send(it.processValue)
-                } catch (_: Exception) { }
+                } catch (_: Exception) {
+                }
             }
         }
     }
