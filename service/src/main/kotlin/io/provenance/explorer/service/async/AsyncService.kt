@@ -86,7 +86,6 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import javax.annotation.PostConstruct
 
-
 @Service
 class AsyncService(
     private val props: ExplorerProperties,
@@ -325,17 +324,17 @@ class AsyncService(
                 time_low = if (low != null) DateTime(low.trade_timestamp * 1000) else k,
                 quote = mapOf(
                     USD_UPPER to
-                            CmcQuote(
-                                open = open,
-                                high = high?.price ?: prevPrice,
-                                low = low?.price ?: prevPrice,
-                                close = close,
-                                volume = usdVolume,
-                                market_cap = close.multiply(
-                                    tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)
-                                ),
-                                timestamp = closeDate
-                            )
+                        CmcQuote(
+                            open = open,
+                            high = high?.price ?: prevPrice,
+                            low = low?.price ?: prevPrice,
+                            close = close,
+                            volume = usdVolume,
+                            market_cap = close.multiply(
+                                tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+                            ),
+                            timestamp = closeDate
+                        )
                 )
             ).also { prevPrice = close }
             TokenHistoricalDailyRecord.save(record.time_open.startOfDay(), record)

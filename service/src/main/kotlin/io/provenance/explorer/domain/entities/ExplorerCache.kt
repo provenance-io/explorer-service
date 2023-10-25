@@ -215,7 +215,7 @@ class ChainAumHourlyRecord(id: EntityID<Int>) : IntEntity(id) {
         fun getAumForPeriod(fromDate: DateTime, toDate: DateTime) = transaction {
             ChainAumHourlyRecord.find {
                 (ChainAumHourlyTable.datetime greaterEq fromDate) and
-                        (ChainAumHourlyTable.datetime lessEq toDate.plusDays(1))
+                    (ChainAumHourlyTable.datetime lessEq toDate.plusDays(1))
             }
                 .orderBy(Pair(ChainAumHourlyTable.datetime, SortOrder.ASC))
                 .toList()
@@ -301,7 +301,7 @@ class ProcessQueueRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findByType(processType: ProcessQueueType) = transaction {
             ProcessQueueRecord.find {
                 (ProcessQueueTable.processType eq processType.name) and
-                        (ProcessQueueTable.processing eq false)
+                    (ProcessQueueTable.processing eq false)
             }.toList()
         }
 
@@ -314,7 +314,7 @@ class ProcessQueueRecord(id: EntityID<Int>) : IntEntity(id) {
         fun delete(processType: ProcessQueueType, value: String) = transaction {
             ProcessQueueTable.deleteWhere {
                 (ProcessQueueTable.processType eq processType.name) and
-                        (ProcessQueueTable.processValue eq value)
+                    (processValue eq value)
             }
         }
 

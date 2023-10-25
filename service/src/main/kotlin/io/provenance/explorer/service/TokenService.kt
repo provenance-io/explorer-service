@@ -69,7 +69,7 @@ class TokenService(private val accountClient: AccountGrpcClient) {
             AccountRecord.saveAccount(
                 it.ownerAddress,
                 PROV_ACC_PREFIX,
-                accountClient.getAccountInfo(it.ownerAddress),
+                accountClient.getAccountInfo(it.ownerAddress)
             )
         }.collect()
         TokenDistributionPaginatedResultsRecord.savePaginatedResults(records)
@@ -95,7 +95,7 @@ class TokenService(private val accountClient: AccountGrpcClient) {
         denom: String,
         page: Int,
         count: Int,
-        retryCount: Int = 3,
+        retryCount: Int = 3
     ): PagedResults<AssetHolder> {
         var hasSucceeded = false
         var numberOfTriesRemaining = retryCount
@@ -131,7 +131,7 @@ class TokenService(private val accountClient: AccountGrpcClient) {
             Triple(50, 50, "51-100"),
             Triple(500, 100, "101-500"),
             Triple(500, 500, "501-1000"),
-            Triple("ALL", 1000, "1001-"),
+            Triple("ALL", 1000, "1001-")
         ).map { (limit, offset, range) ->
             val results = TokenDistributionPaginatedResultsRecord.findByLimitOffset(richListAccounts(), limit, offset)
             val denom = results[0].data.denom
@@ -153,7 +153,7 @@ class TokenService(private val accountClient: AccountGrpcClient) {
             circulatingSupply().toCoinStr(UTILITY_TOKEN),
             communityPoolSupply().toCoinStr(UTILITY_TOKEN),
             bonded,
-            burnedSupply().toCoinStr(UTILITY_TOKEN),
+            burnedSupply().toCoinStr(UTILITY_TOKEN)
         )
     }
 
@@ -216,7 +216,7 @@ class TokenService(private val accountClient: AccountGrpcClient) {
                 RichAccount(
                     it.ownerAddress,
                     CoinStr(it.data.count, it.data.denom),
-                    it.data.count.toPercentage(BigDecimal(100), totalSupply, 4),
+                    it.data.count.toPercentage(BigDecimal(100), totalSupply, 4)
                 )
             }
     }
