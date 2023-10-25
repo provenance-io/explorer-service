@@ -84,6 +84,8 @@ import tendermint.types.BlockOuterClass
 import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import javax.annotation.PostConstruct
+
 
 @Service
 class AsyncService(
@@ -104,7 +106,19 @@ class AsyncService(
     protected val logger = logger(AsyncService::class)
     protected var collectHistorical = true
 
-     @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
+    @PostConstruct
+    fun asyncServiceOnStartInit() {
+        Thread {
+            try {
+                Thread.sleep(5000)
+                updateTokenHistorical()
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
+        }.start()
+    }
+
+    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateLatestBlockHeightJob() {
         val index = getBlockIndex()
         val startHeight = blockService.getLatestBlockHeight()
@@ -145,7 +159,7 @@ class AsyncService(
     }
 
     fun getBlockIndex() = blockService.getBlockIndexFromCache()?.let {
-        Pair<Int?, Int?>(it.maxHeightRead, it.minHeightRead)
+        Pair(it.maxHeightRead, it.minHeightRead)
     }
 
     fun startCollectingHistoricalBlocks(blockIndex: Pair<Int?, Int?>?) =
@@ -248,11 +262,11 @@ class AsyncService(
         val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC).toString()
         cacheService.getCacheValue(key)!!.let { cache ->
             pricingService.getPricingAsync(cache.cacheValue!!, "async pricing update").forEach { price ->
-                // dont set price from PE
+                // don't set price from PE
                 if (price.markerDenom != UTILITY_TOKEN) {
                     assetService.getAssetRaw(price.markerDenom).let { pricingService.insertAssetPricing(it, price) }
                 } else {
-                    // Pull price from CMC, calced to the true base denom price
+                    // Pull price from CMC, calculate to the true base denom price
                     val cmcPrice =
                         tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price
                             ?.let {
@@ -281,7 +295,7 @@ class AsyncService(
     fun updateTokenHistorical() {
         val today = DateTime.now().startOfDay()
         var startDate = today.minusMonths(1)
-        var latest = TokenHistoricalDailyRecord.getLatestDateEntry()
+        val latest = TokenHistoricalDailyRecord.getLatestDateEntry()
         if (latest != null) {
             startDate = latest.timestamp.minusDays(1)
         }

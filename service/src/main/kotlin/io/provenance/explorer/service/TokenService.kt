@@ -240,14 +240,13 @@ class TokenService(private val accountClient: AccountGrpcClient) {
         }
     }
 
-    fun getHistoricalFromDlob(startTime: DateTime): DlobHistBase {
+    fun getHistoricalFromDlob(startTime: DateTime): DlobHistBase? {
         val tickerIds = listOf("HASH_USD", "HASH_USDOMNI")
 
         val dlobHistorical = tickerIds
-            .mapNotNull { getHistoricalFromDlob(startTime, it)?.buy }
-            .flatten()
+            .flatMap { getHistoricalFromDlob(startTime, it)?.buy.orEmpty() }
 
-        return DlobHistBase(dlobHistorical)
+        return if (dlobHistorical.isNotEmpty()) DlobHistBase(dlobHistorical) else null
     }
 
     fun getTokenHistorical(fromDate: DateTime?, toDate: DateTime?) =
