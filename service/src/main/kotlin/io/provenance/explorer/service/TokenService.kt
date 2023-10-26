@@ -223,7 +223,7 @@ class TokenService(private val accountClient: AccountGrpcClient) {
 
     fun getHistoricalFromDlob(startTime: DateTime, tickerId: String): DlobHistBase? = runBlocking {
         try {
-            KTOR_CLIENT_JAVA.get("https://test.dlob.io:443/gecko/external/api/v1/exchange/historical_trades") {
+            KTOR_CLIENT_JAVA.get("https://www.dlob.io:443/gecko/external/api/v1/exchange/historical_trades") {
                 parameter("ticker_id", tickerId)
                 parameter("type", "buy")
                 parameter("start_time", DateTimeFormat.forPattern("dd-MM-yyyy").print(startTime))
