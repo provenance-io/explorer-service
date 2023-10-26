@@ -298,8 +298,9 @@ class AsyncService(
         if (latest != null) {
             startDate = latest.timestamp.minusDays(1)
         }
-
         val dlobRes = tokenService.getHistoricalFromDlob(startDate) ?: return
+        logger.info("Updating token historical data starting from $startDate with ${dlobRes.buy.size} buy record for roll-up.")
+
         val baseMap = Interval(startDate, today)
             .let { int -> generateSequence(int.start) { dt -> dt.plusDays(1) }.takeWhile { dt -> dt < int.end } }
             .map { it to emptyList<DlobHistorical>() }.toMap().toMutableMap()
