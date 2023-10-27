@@ -290,7 +290,7 @@ class AsyncService(
     @Scheduled(cron = "0 0 0/1 * * ?") // Every hour
     fun saveChainAum() = explorerService.saveChainAum()
 
-    @Scheduled(cron = "0 0 1 * * *") // Every day at 1 am
+    @Scheduled(cron = "0 0 1 * * ?") // Every day at 1 am
     fun updateTokenHistorical() {
         val today = DateTime.now().startOfDay()
         var startDate = today.minusMonths(1)
