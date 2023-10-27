@@ -293,11 +293,12 @@ class AsyncService(
     @Scheduled(cron = "0 0 1 * * ?") // Every day at 1 am
     fun updateTokenHistorical() {
         val today = DateTime.now().startOfDay()
-        var startDate = today.minusMonths(1)
-        val latest = TokenHistoricalDailyRecord.getLatestDateEntry()
-        if (latest != null) {
-            startDate = latest.timestamp.minusDays(1).startOfDay()
-        }
+//        var startDate = today.minusMonths(1)
+//        val latest = TokenHistoricalDailyRecord.getLatestDateEntry()
+//        if (latest != null) {
+//            startDate = latest.timestamp.minusDays(1).startOfDay()
+//        }
+        val startDate = DateTime(2023, 8, 4, 0, 0, 0).startOfDay()
         val dlobRes = tokenService.getHistoricalFromDlob(startDate) ?: return
         logger.info("Updating token historical data starting from $startDate with ${dlobRes.buy.size} buy records for roll-up.")
 
