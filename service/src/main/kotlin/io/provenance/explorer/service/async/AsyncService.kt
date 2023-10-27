@@ -84,6 +84,7 @@ import tendermint.types.BlockOuterClass
 import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import javax.annotation.PostConstruct
 
 @Service
 class AsyncService(
@@ -103,6 +104,18 @@ class AsyncService(
 
     protected val logger = logger(AsyncService::class)
     protected var collectHistorical = true
+
+    @PostConstruct
+    fun asyncServiceOnStartInit() {
+        Thread {
+            try {
+                Thread.sleep(5000)
+                updateTokenHistorical()
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
+        }.start()
+    }
 
     @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateLatestBlockHeightJob() {
@@ -145,7 +158,7 @@ class AsyncService(
     }
 
     fun getBlockIndex() = blockService.getBlockIndexFromCache()?.let {
-        Pair<Int?, Int?>(it.maxHeightRead, it.minHeightRead)
+        Pair(it.maxHeightRead, it.minHeightRead)
     }
 
     fun startCollectingHistoricalBlocks(blockIndex: Pair<Int?, Int?>?) =
@@ -248,11 +261,11 @@ class AsyncService(
         val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC).toString()
         cacheService.getCacheValue(key)!!.let { cache ->
             pricingService.getPricingAsync(cache.cacheValue!!, "async pricing update").forEach { price ->
-                // dont set price from PE
+                // don't set price from PE
                 if (price.markerDenom != UTILITY_TOKEN) {
                     assetService.getAssetRaw(price.markerDenom).let { pricingService.insertAssetPricing(it, price) }
                 } else {
-                    // Pull price from CMC, calced to the true base denom price
+                    // Pull price from CMC, calculate to the true base denom price
                     val cmcPrice =
                         tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price
                             ?.let {
@@ -280,8 +293,14 @@ class AsyncService(
     @Scheduled(cron = "0 0 1 * * ?") // Every day at 1 am
     fun updateTokenHistorical() {
         val today = DateTime.now().startOfDay()
-        val startDate = today.minusMonths(1)
+        var startDate = today.minusMonths(1)
+        val latest = TokenHistoricalDailyRecord.getLatestDateEntry()
+        if (latest != null) {
+            startDate = latest.timestamp.minusDays(1)
+        }
         val dlobRes = tokenService.getHistoricalFromDlob(startDate) ?: return
+        logger.info("Updating token historical data starting from $startDate with ${dlobRes.buy.size} buy records for roll-up.")
+
         val baseMap = Interval(startDate, today)
             .let { int -> generateSequence(int.start) { dt -> dt.plusDays(1) }.takeWhile { dt -> dt < int.end } }
             .map { it to emptyList<DlobHistorical>() }.toMap().toMutableMap()
@@ -312,7 +331,9 @@ class AsyncService(
                             low = low?.price ?: prevPrice,
                             close = close,
                             volume = usdVolume,
-                            market_cap = close.multiply(tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)),
+                            market_cap = close.multiply(
+                                tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+                            ),
                             timestamp = closeDate
                         )
                 )
@@ -346,7 +367,10 @@ class AsyncService(
                     today,
                     mapOf(USD_UPPER to CmcLatestQuoteAbbrev(price, percentChg, vol24Hr, marketCap, today))
                 )
-                CacheUpdateRecord.updateCacheByKey(CacheKeys.UTILITY_TOKEN_LATEST.key, VANILLA_MAPPER.writeValueAsString(rec))
+                CacheUpdateRecord.updateCacheByKey(
+                    CacheKeys.UTILITY_TOKEN_LATEST.key,
+                    VANILLA_MAPPER.writeValueAsString(rec)
+                )
             }
     }
 
@@ -443,7 +467,8 @@ class AsyncService(
                 try {
                     transaction { it.apply { this.processing = true } }
                     send(it.processValue)
-                } catch (_: Exception) { }
+                } catch (_: Exception) {
+                }
             }
         }
     }

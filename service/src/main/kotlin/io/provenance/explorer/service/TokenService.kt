@@ -145,7 +145,8 @@ class TokenService(private val accountClient: AccountGrpcClient) {
     }
 
     fun getTokenBreakdown() = runBlocking {
-        val bonded = accountClient.getStakingPool().pool.bondedTokens.toBigDecimal().roundWhole().toCoinStr(UTILITY_TOKEN)
+        val bonded =
+            accountClient.getStakingPool().pool.bondedTokens.toBigDecimal().roundWhole().toCoinStr(UTILITY_TOKEN)
         TokenSupply(
             maxSupply().toCoinStr(UTILITY_TOKEN),
             totalSupply().toCoinStr(UTILITY_TOKEN),
@@ -157,16 +158,19 @@ class TokenService(private val accountClient: AccountGrpcClient) {
     }
 
     fun nhashMarkerAddr() = MarkerCacheRecord.findByDenom(UTILITY_TOKEN)?.markerAddress!!
-    fun burnedSupply() = runBlocking { accountClient.getMarkerBalance(nhashMarkerAddr(), UTILITY_TOKEN).toBigDecimal().roundWhole() }
+    fun burnedSupply() =
+        runBlocking { accountClient.getMarkerBalance(nhashMarkerAddr(), UTILITY_TOKEN).toBigDecimal().roundWhole() }
+
     fun moduleAccounts() = AccountRecord.findAccountsByType(listOf(Auth.ModuleAccount::class.java.simpleName))
     fun zeroSeqAccounts() = AccountRecord.findZeroSequenceAccounts()
     fun vestingAccounts() = AccountRecord.findAccountsByType(vestingAccountTypes)
     fun contractAccounts() = AccountRecord.findContractAccounts()
     fun allAccounts() = transaction { AccountRecord.all().toMutableList() }
-    fun communityPoolSupply() = runBlocking { accountClient.getCommunityPoolAmount(UTILITY_TOKEN).toBigDecimal().roundWhole() }
+    fun communityPoolSupply() =
+        runBlocking { accountClient.getCommunityPoolAmount(UTILITY_TOKEN).toBigDecimal().roundWhole() }
+
     fun richListAccounts() =
-        allAccounts().addressList() - zeroSeqAccounts().toSet() - moduleAccounts().addressList() -
-            contractAccounts().addressList() - setOf(nhashMarkerAddr())
+        allAccounts().addressList() - zeroSeqAccounts().toSet() - moduleAccounts().addressList() - contractAccounts().addressList() - setOf(nhashMarkerAddr())
 
     fun totalBalanceForList(addresses: Set<String>) = runBlocking {
         TokenDistributionPaginatedResultsRecord.findByAddresses(addresses).asFlow()
@@ -217,10 +221,10 @@ class TokenService(private val accountClient: AccountGrpcClient) {
             }
     }
 
-    fun getHistoricalFromDlob(startTime: DateTime): DlobHistBase? = runBlocking {
+    fun getHistoricalFromDlob(startTime: DateTime, tickerId: String): DlobHistBase? = runBlocking {
         try {
             KTOR_CLIENT_JAVA.get("https://www.dlob.io:443/gecko/external/api/v1/exchange/historical_trades") {
-                parameter("ticker_id", "HASH_USD")
+                parameter("ticker_id", tickerId)
                 parameter("type", "buy")
                 parameter("start_time", DateTimeFormat.forPattern("dd-MM-yyyy").print(startTime))
                 accept(ContentType.Application.Json)
@@ -232,6 +236,15 @@ class TokenService(private val accountClient: AccountGrpcClient) {
         } catch (e: Throwable) {
             return@runBlocking null.also { logger.error("Error fetching from Dlob: ${e.message}") }
         }
+    }
+
+    fun getHistoricalFromDlob(startTime: DateTime): DlobHistBase? {
+        val tickerIds = listOf("HASH_USD", "HASH_USDOMNI")
+
+        val dlobHistorical = tickerIds
+            .flatMap { getHistoricalFromDlob(startTime, it)?.buy.orEmpty() }
+
+        return if (dlobHistorical.isNotEmpty()) DlobHistBase(dlobHistorical) else null
     }
 
     fun getTokenHistorical(fromDate: DateTime?, toDate: DateTime?) =
