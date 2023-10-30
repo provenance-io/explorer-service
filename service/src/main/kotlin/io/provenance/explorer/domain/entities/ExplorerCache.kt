@@ -282,10 +282,6 @@ class TokenHistoricalDailyRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) 
                 .limit(1)
                 .firstOrNull()
         }
-
-        fun deleteByDate(date: DateTime) = transaction {
-            TokenHistoricalDailyTable.deleteWhere { TokenHistoricalDailyTable.timestamp eq date.startOfDay() }
-        }
     }
 
     var timestamp by TokenHistoricalDailyTable.timestamp
