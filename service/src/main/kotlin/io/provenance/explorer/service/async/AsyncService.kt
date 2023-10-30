@@ -306,8 +306,6 @@ class AsyncService(
             .map { it to emptyList<DlobHistorical>() }.toMap().toMutableMap()
         var prevPrice = TokenHistoricalDailyRecord.lastKnownPriceForDate(startDate)
 
-        TokenHistoricalDailyRecord
-
         baseMap.putAll(
             dlobRes.buy
                 .filter { DateTime(it.trade_timestamp * 1000).startOfDay() != today }
