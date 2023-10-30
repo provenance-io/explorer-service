@@ -307,6 +307,8 @@ class AsyncService(
             .map { it to emptyList<DlobHistorical>() }.toMap().toMutableMap()
         var prevPrice = TokenHistoricalDailyRecord.lastKnownPriceForDate(startDate)
 
+        TokenHistoricalDailyRecord
+
         baseMap.putAll(
             dlobRes.buy
                 .filter { DateTime(it.trade_timestamp * 1000).startOfDay() != today }
@@ -339,7 +341,9 @@ class AsyncService(
                         )
                 )
             ).also { prevPrice = close }
-            TokenHistoricalDailyRecord.save(record.time_open.startOfDay(), record)
+            TokenHistoricalDailyRecord.deleteByDate(record.time_open.startOfDay())
+            val id = TokenHistoricalDailyRecord.save(record.time_open.startOfDay(), record)
+            logger.info("saving record ${record.time_open.startOfDay()} $record insert count ${id.insertedCount}")
         }
     }
 
