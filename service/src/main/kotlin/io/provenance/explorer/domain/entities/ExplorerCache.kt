@@ -2,7 +2,6 @@ package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
-import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.model.ChainAum
 import io.provenance.explorer.model.ChainMarketRate
 import io.provenance.explorer.model.CmcHistoricalQuote
