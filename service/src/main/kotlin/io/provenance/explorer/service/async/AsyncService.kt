@@ -296,7 +296,7 @@ class AsyncService(
         var startDate = today.minusMonths(1)
         val latest = TokenHistoricalDailyRecord.getLatestDateEntry()
         if (latest != null) {
-            startDate = latest.timestamp.minusDays(1)
+            startDate = latest.timestamp.minusDays(1).startOfDay()
         }
         val dlobRes = tokenService.getHistoricalFromDlob(startDate) ?: return
         logger.info("Updating token historical data starting from $startDate with ${dlobRes.buy.size} buy records for roll-up.")
