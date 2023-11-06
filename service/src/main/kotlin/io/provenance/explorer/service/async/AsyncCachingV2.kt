@@ -303,12 +303,16 @@ class AsyncCachingV2(
         val txUpdate = TxUpdate(tx)
         val txInfo = TxData(proposerRec.blockHeight, null, res.txResponse.txhash, blockTime)
         saveMessages(txInfo, res, txUpdate)
-        saveTxFees(res, txInfo, txUpdate, proposerRec)
+        // saveTxFees(res, txInfo, txUpdate, proposerRec)
         val addrs = saveAddresses(txInfo, res, txUpdate)
         val markers = saveMarkers(txInfo, res, txUpdate)
         saveNftData(txInfo, res, txUpdate)
         saveGovData(res, txInfo, txUpdate)
-        saveIbcChannelData(res, txInfo, txUpdate)
+        try {
+            saveIbcChannelData(res, txInfo, txUpdate)
+        } catch (e: Exception) {
+            logger.info("exception saving ibc data $e")
+        }
         saveSmartContractData(res, txInfo, txUpdate)
         saveNameData(res, txInfo)
         saveGroups(res, txInfo, txUpdate)
@@ -868,11 +872,12 @@ class AsyncCachingV2(
                     when (pair.first) {
                         GroupGovMsgType.PROPOSAL -> {
                             // Have to find the proposalId in the log events
-                            val proposalId = tx.mapEventAttrValues(
+                            val proposalIdB = tx.mapEventAttrValues(
                                 idx,
                                 GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.event,
                                 GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.idField.toList()
-                            )[GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.idField.first()]!!.toLong()
+                            )[GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.idField.first()]
+                            val proposalId = proposalIdB!!.toLong()
 
                             val msg = pair.second.toMsgSubmitProposalGroup()
                             val nodeData = groupService.proposalAtHeight(proposalId, txInfo.blockHeight)?.proposal
