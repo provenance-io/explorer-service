@@ -45,12 +45,24 @@ fun Abci.TxResponse.getSuccessTotalBaseFee(msgFeeClient: MsgFeeGrpcClient, heigh
         this.eventsList
             .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("basefee") }
             ?.attributesList?.first { it.key.toStringUtf8() == "basefee" }
-            ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.toBigDecimal()
+            ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.let {
+                try {
+                    it.toBigDecimal()
+                } catch (e: NumberFormatException) {
+                    return BigDecimal.ZERO
+                }
+            }
             ?: (
                 this.eventsList
                     .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("fee") }
                     ?.attributesList?.first { it.key.toStringUtf8() == "fee" }
-                    ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.toBigDecimal()
+                    ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.let {
+                        try {
+                            it.toBigDecimal()
+                        } catch (e: NumberFormatException) {
+                            return BigDecimal.ZERO
+                        }
+                    }
                     ?: this.getFeeTotalPaid()
                 )
     }

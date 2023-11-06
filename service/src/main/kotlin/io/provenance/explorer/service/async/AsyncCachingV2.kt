@@ -303,7 +303,7 @@ class AsyncCachingV2(
         val txUpdate = TxUpdate(tx)
         val txInfo = TxData(proposerRec.blockHeight, null, res.txResponse.txhash, blockTime)
         saveMessages(txInfo, res, txUpdate)
-        // saveTxFees(res, txInfo, txUpdate, proposerRec)
+        saveTxFees(res, txInfo, txUpdate, proposerRec)
         val addrs = saveAddresses(txInfo, res, txUpdate)
         val markers = saveMarkers(txInfo, res, txUpdate)
         saveNftData(txInfo, res, txUpdate)
