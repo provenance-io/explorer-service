@@ -76,12 +76,24 @@ fun Abci.TxResponse.getFailureTotalBaseFee(msgFeeClient: MsgFeeGrpcClient, heigh
     this.eventsList
         .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("min_fee_charged") }
         ?.attributesList?.first { it.key.toStringUtf8() == "min_fee_charged" }
-        ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.toBigDecimal()
+        ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.let {
+            try {
+                it.toBigDecimal()
+            } catch (e: NumberFormatException) {
+                return BigDecimal.ZERO
+            }
+        }
         ?: (
             this.eventsList
                 .firstOrNull { it.type == "coin_spent" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("amount") }
                 ?.attributesList?.first { it.key.toStringUtf8() == "amount" }
-                ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.toBigDecimal()
+                ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.let {
+                    try {
+                        it.toBigDecimal()
+                    } catch (e: NumberFormatException) {
+                        return BigDecimal.ZERO
+                    }
+                }
                 ?: (
                     sigErrorComboList.firstOrNull { it == Pair(this.codespace, this.code) }?.let { BigDecimal.ZERO }
                         ?: (
