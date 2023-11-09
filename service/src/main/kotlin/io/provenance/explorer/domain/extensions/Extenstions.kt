@@ -25,7 +25,6 @@ import io.provenance.explorer.model.base.Bech32
 import io.provenance.explorer.model.base.toBech32Data
 import io.provenance.explorer.model.base.toMAddress
 import net.pearx.kasechange.splitToWords
-import org.apache.commons.text.StringEscapeUtils
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import tendermint.types.BlockOuterClass

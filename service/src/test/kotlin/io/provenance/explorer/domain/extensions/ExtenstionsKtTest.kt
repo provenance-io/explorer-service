@@ -1,8 +1,8 @@
 package io.provenance.explorer.domain.extensions
 
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.assertEquals
 
 class ExtensionsKtTest {
     @Test
