@@ -25,7 +25,6 @@ import io.provenance.explorer.model.base.Bech32
 import io.provenance.explorer.model.base.toBech32Data
 import io.provenance.explorer.model.base.toMAddress
 import net.pearx.kasechange.splitToWords
-import org.apache.commons.text.StringEscapeUtils
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import tendermint.types.BlockOuterClass
@@ -158,7 +157,7 @@ fun BlockOuterClass.Block.height() = this.header.height.toInt()
 fun Long.get24HrBlockHeight(avgBlockTime: BigDecimal) =
     BigDecimal(24 * 60 * 60).divide(avgBlockTime, 0, RoundingMode.HALF_UP).let { this - it.toInt() }
 
-fun String.toObjectNode() = OBJECT_MAPPER.readValue(StringEscapeUtils.unescapeJson(this), ObjectNode::class.java)
+fun String.toObjectNode() = OBJECT_MAPPER.readValue(this, ObjectNode::class.java)
 fun Any?.stringify() = if (this == null) null else OBJECT_MAPPER.writeValueAsString(this)
 
 fun List<BigDecimal>.average() = this.fold(BigDecimal.ZERO, BigDecimal::add)
