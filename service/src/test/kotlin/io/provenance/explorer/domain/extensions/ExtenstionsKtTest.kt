@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 class ExtensionsKtTest {
     @Test
     @Tag("junit-jupiter")
-    fun testToObjectNode() {
+    fun `test toObjectNode properly converts json strings to objecs`() {
         val inputJsonWithJsonStrObj = "{\"amount\":\"1\",\"denom\":\"psa.3zlqy2ecncvalbycokxnoh.stock\",\"memo\":\"{\\\"marker\\\":{\\\"transfer-auths\\\":[\\\"tp19zf8q9swrsspkdljumwh04zjac4nkfvju6ehl9\\\",\\\"tp1tk6fqws0su7fzp090edrauaa756mdyjfdw0507\\\",\\\"tp1a53udazy8ayufvy0s434pfwjcedzqv34vfvvyc\\\"],\\\"allow-force-transfer\\\":false}}\",\"receiver\":\"tp12wyy028sd3yf3j0z950fq5p3zvzgpzgds3dqp3\",\"sender\":\"tp12wyy028sd3yf3j0z950fq5p3zvzgpzgds3dqp3\"}"
         val inputFormatedJsonWithJsonStrObj = "{\n" +
             "  \"amount\": \"1\",\n" +
