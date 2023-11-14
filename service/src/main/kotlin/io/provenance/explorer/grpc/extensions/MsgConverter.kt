@@ -911,12 +911,12 @@ fun getGroupPolicyEventByEvent(event: String) = GroupPolicyEvents.values().first
 
 enum class GroupGovMsgType { PROPOSAL, VOTE, EXEC, WITHDRAW }
 
-fun Any.getAssociatedGroupProposals() =
+fun Any.getAssociatedGroupProposals(index: Int): Triple<Int, GroupGovMsgType, Any>? =
     when {
-        typeUrl.endsWith("group.v1.MsgSubmitProposal") -> GroupGovMsgType.PROPOSAL to this
-        typeUrl.endsWith("group.v1.MsgVote") -> GroupGovMsgType.VOTE to this
-        typeUrl.endsWith("group.v1.MsgExec") -> GroupGovMsgType.EXEC to this
-        typeUrl.endsWith("group.v1.MsgWithdrawProposal") -> GroupGovMsgType.WITHDRAW to this
+        typeUrl.endsWith("group.v1.MsgSubmitProposal") -> Triple(index, GroupGovMsgType.PROPOSAL, this)
+        typeUrl.endsWith("group.v1.MsgVote") -> Triple(index, GroupGovMsgType.VOTE, this)
+        typeUrl.endsWith("group.v1.MsgExec") -> Triple(index, GroupGovMsgType.EXEC, this)
+        typeUrl.endsWith("group.v1.MsgWithdrawProposal") -> Triple(index, GroupGovMsgType.WITHDRAW, this)
         else -> null.also { logger().debug("This typeUrl is not a group-governance-based msg: $typeUrl") }
     }
 

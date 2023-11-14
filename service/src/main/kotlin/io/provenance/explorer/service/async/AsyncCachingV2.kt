@@ -861,183 +861,187 @@ class AsyncCachingV2(
                 }
         }
 
-        // get group gov msgs, and process
+        val govProposalMsgTuples = tx.tx.body.messagesList.mapIndexedNotNull { idx, msg -> msg.getAssociatedGroupProposals(idx) }
         if (tx.txResponse.code == 0) {
-            tx.tx.body.messagesList.mapNotNull { it.getAssociatedGroupProposals() }
-                .forEachIndexed { idx, pair ->
-                    when (pair.first) {
-                        GroupGovMsgType.PROPOSAL -> {
-                            // Have to find the proposalId in the log events
-                            val proposalId = tx.mapEventAttrValues(
-                                idx,
-                                GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.event,
-                                GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.idField.toList()
-                            )[GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.idField.first()]!!.toLong()
+            govProposalMsgTuples.forEach { triple ->
+                when (triple.second) {
+                    GroupGovMsgType.PROPOSAL -> {
+                        // Have to find the proposalId in the log events
+                        val proposalId = tx.mapEventAttrValues(
+                            triple.first,
+                            GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.event,
+                            GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.idField.toList()
+                        )[GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.idField.first()]!!.toLong()
 
-                            val msg = pair.second.toMsgSubmitProposalGroup()
-                            val nodeData = groupService.proposalAtHeight(proposalId, txInfo.blockHeight)?.proposal
-                            val policy = groupService.policyAtHeight(msg.groupPolicyAddress, txInfo.blockHeight)!!.info
-                            val group = groupService.groupAtHeight(policy.groupId, txInfo.blockHeight)!!.info
-                            val tally = groupService.proposalTallyAtHeight(proposalId, txInfo.blockHeight)?.tally
-                            val data = GroupsProposalData(
-                                msg.proposersList,
-                                msg.metadata,
-                                msg.messagesList,
-                                msg.exec.name,
-                                txInfo.txTimestamp,
-                                group.version,
-                                policy.version,
-                                tally,
-                                nodeData?.votingPeriodEnd?.toDateTime()
-                            )
-                            val status = nodeData?.status ?: ProposalStatus.PROPOSAL_STATUS_ACCEPTED
-                            val execResult = nodeData?.executorResult ?: tx.mapEventAttrValues(
-                                idx,
-                                GroupProposalEvents.GROUP_EXEC.event,
-                                listOf("result")
-                            )["result"]!!.getGroupsExecutorResult()
+                        val msg = triple.third.toMsgSubmitProposalGroup()
+                        val nodeData = groupService.proposalAtHeight(proposalId, txInfo.blockHeight)?.proposal
+                        val policy = groupService.policyAtHeight(msg.groupPolicyAddress, txInfo.blockHeight)!!.info
+                        val group = groupService.groupAtHeight(policy.groupId, txInfo.blockHeight)!!.info
+                        val tally = groupService.proposalTallyAtHeight(proposalId, txInfo.blockHeight)?.tally
+                        val data = GroupsProposalData(
+                            msg.proposersList,
+                            msg.metadata,
+                            msg.messagesList,
+                            msg.exec.name,
+                            txInfo.txTimestamp,
+                            group.version,
+                            policy.version,
+                            tally,
+                            nodeData?.votingPeriodEnd?.toDateTime()
+                        )
+                        val status = nodeData?.status ?: ProposalStatus.PROPOSAL_STATUS_ACCEPTED
+                        val execResult = nodeData?.executorResult ?: tx.mapEventAttrValues(
+                            triple.first,
+                            GroupProposalEvents.GROUP_EXEC.event,
+                            listOf("result")
+                        )["result"]!!.getGroupsExecutorResult()
+                        val proposal = groupService.buildProposal(
+                            group.id,
+                            policy.address,
+                            proposalId,
+                            data,
+                            nodeData,
+                            status,
+                            execResult,
+                            txInfo
+                        )
 
-                            val proposal = groupService.buildProposal(
-                                group.id,
-                                policy.address,
-                                proposalId,
-                                data,
-                                nodeData,
-                                status,
-                                execResult,
-                                txInfo
-                            )
-                            val votes = groupService.buildVotes(
-                                group.id,
-                                group.version,
-                                msg.proposersList,
-                                vote {
-                                    this.proposalId = proposalId
-                                    this.option = Types.VoteOption.VOTE_OPTION_YES
-                                    this.metadata = ""
-                                },
-                                txInfo
-                            )
-                            txUpdate.apply {
-                                this.groupProposals.add(proposal)
-                                this.groupVotes.addAll(votes)
-                                this.policyJoinAlt.add(groupService.buildTxGroupPolicy(msg.groupPolicyAddress, txInfo).first)
-                            }
+                        val votes = groupService.buildVotes(
+                            group.id,
+                            group.version,
+                            msg.proposersList,
+                            vote {
+                                this.proposalId = proposalId
+                                this.option = Types.VoteOption.VOTE_OPTION_YES
+                                this.metadata = ""
+                            },
+                            txInfo
+                        )
+                        txUpdate.apply {
+                            this.groupProposals.add(proposal)
+                            this.groupVotes.addAll(votes)
+                            this.policyJoinAlt.add(groupService.buildTxGroupPolicy(msg.groupPolicyAddress, txInfo).first)
                         }
-                        GroupGovMsgType.VOTE -> {
-                            val msg = pair.second.toMsgVoteGroup()
-                            val proposal = groupService.getProposalById(msg.proposalId)!!
+                    }
 
-                            groupService.buildVotes(
-                                proposal.groupId.toLong(),
-                                proposal.proposalData.groupVersion,
-                                listOf(msg.voter),
-                                vote {
-                                    this.proposalId = msg.proposalId
-                                    this.option = msg.option
-                                    this.metadata = msg.metadata
-                                },
-                                txInfo
-                            ).let {
-                                txUpdate.apply {
-                                    this.groupVotes.addAll(it)
-                                    this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
-                                }
-                            }
+                    GroupGovMsgType.VOTE -> {
+                        val msg = triple.third.toMsgVoteGroup()
+                        val proposal = groupService.getProposalById(msg.proposalId)!!
 
-                            val execResult = tx.mapEventAttrValues(
-                                idx,
-                                GroupProposalEvents.GROUP_EXEC.event,
-                                listOf("result")
-                            )["result"]?.getGroupsExecutorResult()
-
-                            if (execResult != null) {
-                                transaction {
-                                    proposal.apply {
-                                        if (proposal.proposalStatus.getGroupsProposalStatus() != ProposalStatus.PROPOSAL_STATUS_ACCEPTED) {
-                                            this.proposalStatus = ProposalStatus.PROPOSAL_STATUS_ACCEPTED.name
-                                        }
-                                        if (proposal.executorResult.getGroupsExecutorResult() != execResult) {
-                                            this.executorResult = execResult.name
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        GroupGovMsgType.EXEC -> {
-                            val msg = pair.second.toMsgExecGroup()
-                            val proposal = groupService.getProposalById(msg.proposalId)!!
-
+                        groupService.buildVotes(
+                            proposal.groupId.toLong(),
+                            proposal.proposalData.groupVersion,
+                            listOf(msg.voter),
+                            vote {
+                                this.proposalId = msg.proposalId
+                                this.option = msg.option
+                                this.metadata = msg.metadata
+                            },
+                            txInfo
+                        ).let {
                             txUpdate.apply {
+                                this.groupVotes.addAll(it)
                                 this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
                             }
-
-                            val execResult = tx.mapEventAttrValues(
-                                idx,
-                                GroupProposalEvents.GROUP_EXEC.event,
-                                listOf("result")
-                            )["result"]?.getGroupsExecutorResult()
-
-                            if (execResult != null) {
-                                transaction {
-                                    proposal.apply {
-                                        if (proposal.proposalStatus.getGroupsProposalStatus() != ProposalStatus.PROPOSAL_STATUS_ACCEPTED) {
-                                            this.proposalStatus = ProposalStatus.PROPOSAL_STATUS_ACCEPTED.name
-                                        }
-                                        if (proposal.executorResult.getGroupsExecutorResult() != execResult) {
-                                            this.executorResult = execResult.name
-                                        }
-                                    }
-                                }
-                            }
                         }
-                        GroupGovMsgType.WITHDRAW -> {
-                            val msg = pair.second.toMsgWithdrawProposalGroup()
-                            val proposal = groupService.getProposalById(msg.proposalId)!!
 
-                            txUpdate.apply {
-                                this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
-                            }
+                        val execResult = tx.mapEventAttrValues(
+                            triple.first,
+                            GroupProposalEvents.GROUP_EXEC.event,
+                            listOf("result")
+                        )["result"]?.getGroupsExecutorResult()
 
+                        if (execResult != null) {
                             transaction {
-                                proposal.apply { this.proposalStatus = ProposalStatus.PROPOSAL_STATUS_WITHDRAWN.name }
+                                proposal.apply {
+                                    if (proposal.proposalStatus.getGroupsProposalStatus() != ProposalStatus.PROPOSAL_STATUS_ACCEPTED) {
+                                        this.proposalStatus = ProposalStatus.PROPOSAL_STATUS_ACCEPTED.name
+                                    }
+                                    if (proposal.executorResult.getGroupsExecutorResult() != execResult) {
+                                        this.executorResult = execResult.name
+                                    }
+                                }
                             }
                         }
                     }
+
+                    GroupGovMsgType.EXEC -> {
+                        val msg = triple.third.toMsgExecGroup()
+                        val proposal = groupService.getProposalById(msg.proposalId)!!
+
+                        txUpdate.apply {
+                            this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
+                        }
+
+                        val execResult = tx.mapEventAttrValues(
+                            triple.first,
+                            GroupProposalEvents.GROUP_EXEC.event,
+                            listOf("result")
+                        )["result"]?.getGroupsExecutorResult()
+
+                        if (execResult != null) {
+                            transaction {
+                                proposal.apply {
+                                    if (proposal.proposalStatus.getGroupsProposalStatus() != ProposalStatus.PROPOSAL_STATUS_ACCEPTED) {
+                                        this.proposalStatus = ProposalStatus.PROPOSAL_STATUS_ACCEPTED.name
+                                    }
+                                    if (proposal.executorResult.getGroupsExecutorResult() != execResult) {
+                                        this.executorResult = execResult.name
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    GroupGovMsgType.WITHDRAW -> {
+                        val msg = triple.third.toMsgWithdrawProposalGroup()
+                        val proposal = groupService.getProposalById(msg.proposalId)!!
+
+                        txUpdate.apply {
+                            this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
+                        }
+
+                        transaction {
+                            proposal.apply { this.proposalStatus = ProposalStatus.PROPOSAL_STATUS_WITHDRAWN.name }
+                        }
+                    }
                 }
+            }
         } else {
-            tx.tx.body.messagesList.mapNotNull { it.getAssociatedGroupProposals() }
-                .forEachIndexed { _, pair ->
-                    when (pair.first) {
-                        GroupGovMsgType.PROPOSAL -> {
-                            val msg = pair.second.toMsgSubmitProposalGroup()
-                            txUpdate.apply {
-                                this.policyJoinAlt.add(groupService.buildTxGroupPolicy(msg.groupPolicyAddress, txInfo).first)
-                            }
+            govProposalMsgTuples.forEachIndexed { _, triple ->
+                when (triple.second) {
+                    GroupGovMsgType.PROPOSAL -> {
+                        val msg = triple.third.toMsgSubmitProposalGroup()
+                        txUpdate.apply {
+                            this.policyJoinAlt.add(groupService.buildTxGroupPolicy(msg.groupPolicyAddress, txInfo).first)
                         }
-                        GroupGovMsgType.VOTE -> {
-                            val msg = pair.second.toMsgVoteGroup()
-                            val proposal = groupService.getProposalById(msg.proposalId)!!
-                            txUpdate.apply {
-                                this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
-                            }
+                    }
+
+                    GroupGovMsgType.VOTE -> {
+                        val msg = triple.third.toMsgVoteGroup()
+                        val proposal = groupService.getProposalById(msg.proposalId)!!
+                        txUpdate.apply {
+                            this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
                         }
-                        GroupGovMsgType.EXEC -> {
-                            val msg = pair.second.toMsgExecGroup()
-                            val proposal = groupService.getProposalById(msg.proposalId)!!
-                            txUpdate.apply {
-                                this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
-                            }
+                    }
+
+                    GroupGovMsgType.EXEC -> {
+                        val msg = triple.third.toMsgExecGroup()
+                        val proposal = groupService.getProposalById(msg.proposalId)!!
+                        txUpdate.apply {
+                            this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
                         }
-                        GroupGovMsgType.WITHDRAW -> {
-                            val msg = pair.second.toMsgWithdrawProposalGroup()
-                            val proposal = groupService.getProposalById(msg.proposalId)!!
-                            txUpdate.apply {
-                                this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
-                            }
+                    }
+
+                    GroupGovMsgType.WITHDRAW -> {
+                        val msg = triple.third.toMsgWithdrawProposalGroup()
+                        val proposal = groupService.getProposalById(msg.proposalId)!!
+                        txUpdate.apply {
+                            this.policyJoinAlt.add(groupService.buildTxGroupPolicy(proposal.policyAddress, txInfo).first)
                         }
                     }
                 }
+            }
         }
     }
 

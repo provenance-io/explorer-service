@@ -39,6 +39,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Bug Fixes
 * Fix parsing of ibc json packet [#501](https://github.com/provenance-io/explorer-service/issues/501)
+* Fix groups proposal error [#499](https://github.com/provenance-io/explorer-service/issues/499)
 
 ## [v5.6.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.6.0) - 2023-07-05
 ### Release Name: Niels Peter
