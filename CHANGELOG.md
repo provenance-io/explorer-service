@@ -39,6 +39,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ### Improvements
 * Add aggregation of orderbooks for hash historical pricing [#496](https://github.com/provenance-io/explorer-service/issues/496)
 * Updated Prov Protos from 1.17.0 [#505](https://github.com/provenance-io/explorer-service/issues/505)
+* * Updated Prov Protos to 1.18.0-rc2 [#510](https://github.com/provenance-io/explorer-service/issues/510)
 
 ### Bug Fixes
 * Fix parsing of ibc json packet [#501](https://github.com/provenance-io/explorer-service/issues/501)
