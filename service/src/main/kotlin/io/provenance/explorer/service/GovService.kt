@@ -419,6 +419,7 @@ class GovService(
         GovProposalRecord.getAllPaginated(page.toOffset(count), count)
             .let { list ->
                 runBlocking {
+                    logger().debug("getting proposal list")
                     val filtered = list.filter { it.dataV1 == null }
                     if (filtered.isNotEmpty()) {
                         filtered.asFlow().collect { prop ->
