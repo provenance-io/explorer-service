@@ -638,7 +638,7 @@ fun Any.getTxIbcClientChannel() =
 
 fun Any.getIbcLedgerMsgs() =
     when {
-        typeUrl.endsWith("MsgInbTransferRequest") ||
+        typeUrl.endsWith("MsgIbcTransferRequest") ||
             typeUrl.endsWith("MsgTransfer") ||
             typeUrl.endsWith("MsgRecvPacket") ||
             typeUrl.endsWith("MsgAcknowledgement") ||
