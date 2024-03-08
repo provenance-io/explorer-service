@@ -437,7 +437,10 @@ class GovService(
                         list
                     }
                 }
-            }.map { mapProposalRecord(it) }
+            }.map {
+                logger().info("mapping proposal record: $it")
+                mapProposalRecord(it)
+            }
             .let {
                 val total = GovProposalRecord.getAllCount()
                 PagedResults(total.pageCountOfResults(count), it, total)
