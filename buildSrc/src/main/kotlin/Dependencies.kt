@@ -54,6 +54,7 @@ object Versions {
     const val ProvProto = "1.18.0-rc2"
     const val Postgres = "42.2.23"
     const val Protobuf = "3.21.9"
+    const val Reflections = "0.9.12"
 
     // Testing
     const val Jupiter = "5.9.1"
@@ -89,6 +90,7 @@ object Libraries {
     const val KtorClientContentNeg = "io.ktor:ktor-client-content-negotiation:${Versions.Ktor}"
     const val KaseChange = "net.pearx.kasechange:kasechange:${Versions.KaseChange}"
     const val Json = "org.json:json:${Versions.Json}"
+    const val Reflections = "org.reflections:reflections:${Versions.Reflections}"
 
     // Protobuf
     const val GrpcNetty = "io.grpc:grpc-netty:${Versions.Grpc}"

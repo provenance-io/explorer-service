@@ -1,5 +1,6 @@
 package io.provenance.explorer.config
 
+import com.google.protobuf.Descriptors
 import com.google.protobuf.util.JsonFormat
 import cosmos.auth.v1beta1.Auth
 import cosmos.authz.v1beta1.Authz
@@ -148,6 +149,8 @@ import io.provenance.reward.v1.MsgClaimAllRewardsRequest
 import io.provenance.reward.v1.MsgClaimRewardsRequest
 import io.provenance.reward.v1.MsgCreateRewardProgramRequest
 import io.provenance.reward.v1.MsgEndRewardProgramRequest
+import io.provenance.exchange.v1.MsgGovCreateMarketRequest
+import org.reflections.Reflections
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
@@ -156,6 +159,7 @@ import org.springframework.http.converter.protobuf.ProtobufJsonFormatHttpMessage
 import org.springframework.web.client.RestTemplate
 import org.springframework.web.servlet.config.annotation.CorsRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
+
 
 @Configuration
 class RestConfig {
@@ -233,8 +237,8 @@ fun pubKeyDescriptors() =
         cosmos.crypto.multisig.Keys.LegacyAminoPubKey.getDescriptor()
     )
 
-fun msgDescriptors() =
-    listOf(
+fun msgDescriptors(): List<Descriptors.Descriptor> {
+    val descriptors = mutableListOf(
         TxOuterClass.Tx.getDescriptor(),
         Tx.MsgSend.getDescriptor(),
         Tx.MsgMultiSend.getDescriptor(),
@@ -357,8 +361,26 @@ fun msgDescriptors() =
         MsgVote.getDescriptor(),
         MsgWithdrawProposal.getDescriptor(),
         MsgExec.getDescriptor(),
-        MsgLeaveGroup.getDescriptor()
+        MsgLeaveGroup.getDescriptor(),
     )
+
+    descriptors.addAll(findMsgDescriptorsInPackage("io.provenance.exchange.v1"))
+
+    return descriptors
+}
+
+private fun findMsgDescriptorsInPackage(packageName: String): List<Descriptors.Descriptor> {
+    val reflections = Reflections(packageName)
+    val messageClasses = reflections.getSubTypesOf(com.google.protobuf.Message::class.java)
+
+    return messageClasses.filter { it.simpleName.startsWith("Msg") }.mapNotNull {
+        try {
+            it.getMethod("getDescriptor").invoke(null) as Descriptors.Descriptor
+        } catch (e: Exception) {
+            null // or log error
+        }
+    }
+}
 
 fun contentDescriptors() =
     listOf(
