@@ -149,7 +149,6 @@ import io.provenance.reward.v1.MsgClaimAllRewardsRequest
 import io.provenance.reward.v1.MsgClaimRewardsRequest
 import io.provenance.reward.v1.MsgCreateRewardProgramRequest
 import io.provenance.reward.v1.MsgEndRewardProgramRequest
-import io.provenance.exchange.v1.MsgGovCreateMarketRequest
 import org.reflections.Reflections
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -159,7 +158,6 @@ import org.springframework.http.converter.protobuf.ProtobufJsonFormatHttpMessage
 import org.springframework.web.client.RestTemplate
 import org.springframework.web.servlet.config.annotation.CorsRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
-
 
 @Configuration
 class RestConfig {
@@ -361,7 +359,7 @@ fun msgDescriptors(): List<Descriptors.Descriptor> {
         MsgVote.getDescriptor(),
         MsgWithdrawProposal.getDescriptor(),
         MsgExec.getDescriptor(),
-        MsgLeaveGroup.getDescriptor(),
+        MsgLeaveGroup.getDescriptor()
     )
 
     descriptors.addAll(findMsgDescriptorsInPackage("io.provenance.exchange.v1"))
