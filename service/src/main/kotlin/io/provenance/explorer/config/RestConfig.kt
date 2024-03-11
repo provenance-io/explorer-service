@@ -48,107 +48,6 @@ import cosmwasm.wasm.v1.Proposal.UpdateInstantiateConfigProposal
 import ibc.applications.interchain_accounts.v1.Account.InterchainAccount
 import ibc.core.client.v1.Client
 import ibc.lightclients.tendermint.v1.Tendermint
-import io.provenance.attribute.v1.EventAttributeAdd
-import io.provenance.attribute.v1.EventAttributeDelete
-import io.provenance.attribute.v1.EventAttributeDistinctDelete
-import io.provenance.attribute.v1.MsgAddAttributeRequest
-import io.provenance.attribute.v1.MsgDeleteAttributeRequest
-import io.provenance.attribute.v1.MsgDeleteDistinctAttributeRequest
-import io.provenance.attribute.v1.MsgUpdateAttributeRequest
-import io.provenance.marker.v1.AddMarkerProposal
-import io.provenance.marker.v1.ChangeStatusProposal
-import io.provenance.marker.v1.EventDenomUnit
-import io.provenance.marker.v1.EventMarkerAccess
-import io.provenance.marker.v1.EventMarkerActivate
-import io.provenance.marker.v1.EventMarkerAdd
-import io.provenance.marker.v1.EventMarkerAddAccess
-import io.provenance.marker.v1.EventMarkerBurn
-import io.provenance.marker.v1.EventMarkerCancel
-import io.provenance.marker.v1.EventMarkerDelete
-import io.provenance.marker.v1.EventMarkerDeleteAccess
-import io.provenance.marker.v1.EventMarkerFinalize
-import io.provenance.marker.v1.EventMarkerMint
-import io.provenance.marker.v1.EventMarkerSetDenomMetadata
-import io.provenance.marker.v1.EventMarkerTransfer
-import io.provenance.marker.v1.EventMarkerWithdraw
-import io.provenance.marker.v1.MarkerAccount
-import io.provenance.marker.v1.MarkerTransferAuthorization
-import io.provenance.marker.v1.MsgActivateRequest
-import io.provenance.marker.v1.MsgAddAccessRequest
-import io.provenance.marker.v1.MsgAddMarkerRequest
-import io.provenance.marker.v1.MsgBurnRequest
-import io.provenance.marker.v1.MsgCancelRequest
-import io.provenance.marker.v1.MsgDeleteAccessRequest
-import io.provenance.marker.v1.MsgDeleteRequest
-import io.provenance.marker.v1.MsgFinalizeRequest
-import io.provenance.marker.v1.MsgMintRequest
-import io.provenance.marker.v1.MsgSetDenomMetadataRequest
-import io.provenance.marker.v1.MsgTransferRequest
-import io.provenance.marker.v1.MsgWithdrawRequest
-import io.provenance.marker.v1.RemoveAdministratorProposal
-import io.provenance.marker.v1.SetAdministratorProposal
-import io.provenance.marker.v1.SetDenomMetadataProposal
-import io.provenance.marker.v1.SupplyDecreaseProposal
-import io.provenance.marker.v1.SupplyIncreaseProposal
-import io.provenance.marker.v1.WithdrawEscrowProposal
-import io.provenance.metadata.v1.EventContractSpecificationCreated
-import io.provenance.metadata.v1.EventContractSpecificationDeleted
-import io.provenance.metadata.v1.EventContractSpecificationUpdated
-import io.provenance.metadata.v1.EventOSLocatorCreated
-import io.provenance.metadata.v1.EventOSLocatorDeleted
-import io.provenance.metadata.v1.EventOSLocatorUpdated
-import io.provenance.metadata.v1.EventRecordCreated
-import io.provenance.metadata.v1.EventRecordDeleted
-import io.provenance.metadata.v1.EventRecordSpecificationCreated
-import io.provenance.metadata.v1.EventRecordSpecificationDeleted
-import io.provenance.metadata.v1.EventRecordSpecificationUpdated
-import io.provenance.metadata.v1.EventRecordUpdated
-import io.provenance.metadata.v1.EventScopeCreated
-import io.provenance.metadata.v1.EventScopeDeleted
-import io.provenance.metadata.v1.EventScopeSpecificationCreated
-import io.provenance.metadata.v1.EventScopeSpecificationDeleted
-import io.provenance.metadata.v1.EventScopeSpecificationUpdated
-import io.provenance.metadata.v1.EventScopeUpdated
-import io.provenance.metadata.v1.EventSessionCreated
-import io.provenance.metadata.v1.EventSessionDeleted
-import io.provenance.metadata.v1.EventSessionUpdated
-import io.provenance.metadata.v1.EventTxCompleted
-import io.provenance.metadata.v1.MsgAddContractSpecToScopeSpecRequest
-import io.provenance.metadata.v1.MsgAddScopeDataAccessRequest
-import io.provenance.metadata.v1.MsgAddScopeOwnerRequest
-import io.provenance.metadata.v1.MsgBindOSLocatorRequest
-import io.provenance.metadata.v1.MsgDeleteContractSpecFromScopeSpecRequest
-import io.provenance.metadata.v1.MsgDeleteContractSpecificationRequest
-import io.provenance.metadata.v1.MsgDeleteOSLocatorRequest
-import io.provenance.metadata.v1.MsgDeleteRecordRequest
-import io.provenance.metadata.v1.MsgDeleteRecordSpecificationRequest
-import io.provenance.metadata.v1.MsgDeleteScopeDataAccessRequest
-import io.provenance.metadata.v1.MsgDeleteScopeOwnerRequest
-import io.provenance.metadata.v1.MsgDeleteScopeRequest
-import io.provenance.metadata.v1.MsgDeleteScopeSpecificationRequest
-import io.provenance.metadata.v1.MsgModifyOSLocatorRequest
-import io.provenance.metadata.v1.MsgP8eMemorializeContractRequest
-import io.provenance.metadata.v1.MsgWriteContractSpecificationRequest
-import io.provenance.metadata.v1.MsgWriteP8eContractSpecRequest
-import io.provenance.metadata.v1.MsgWriteRecordRequest
-import io.provenance.metadata.v1.MsgWriteRecordSpecificationRequest
-import io.provenance.metadata.v1.MsgWriteScopeRequest
-import io.provenance.metadata.v1.MsgWriteScopeSpecificationRequest
-import io.provenance.metadata.v1.MsgWriteSessionRequest
-import io.provenance.msgfees.v1.AddMsgFeeProposal
-import io.provenance.msgfees.v1.RemoveMsgFeeProposal
-import io.provenance.msgfees.v1.UpdateConversionFeeDenomProposal
-import io.provenance.msgfees.v1.UpdateMsgFeeProposal
-import io.provenance.msgfees.v1.UpdateNhashPerUsdMilProposal
-import io.provenance.name.v1.CreateRootNameProposal
-import io.provenance.name.v1.EventNameBound
-import io.provenance.name.v1.EventNameUnbound
-import io.provenance.name.v1.MsgBindNameRequest
-import io.provenance.name.v1.MsgDeleteNameRequest
-import io.provenance.reward.v1.MsgClaimAllRewardsRequest
-import io.provenance.reward.v1.MsgClaimRewardsRequest
-import io.provenance.reward.v1.MsgCreateRewardProgramRequest
-import io.provenance.reward.v1.MsgEndRewardProgramRequest
 import org.reflections.Reflections
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -171,6 +70,7 @@ class RestConfig {
             .add(contentDescriptors())
             .add(events())
             .add(miscAnys())
+            .add(packageDescriptors())
             .build()
         return JsonFormat.printer().usingTypeRegistry(typeRegistry)
     }
@@ -184,6 +84,7 @@ class RestConfig {
             .add(contentDescriptors())
             .add(events())
             .add(miscAnys())
+            .add(packageDescriptors())
             .build()
         return JsonFormat.parser().usingTypeRegistry(typeRegistry)
     }
@@ -216,7 +117,6 @@ class RestConfig {
 
 fun accountDescriptors() =
     listOf(
-        MarkerAccount.getDescriptor(),
         Auth.BaseAccount.getDescriptor(),
         Auth.ModuleAccount.getDescriptor(),
         Vesting.BaseVestingAccount.getDescriptor(),
@@ -262,38 +162,6 @@ fun msgDescriptors(): List<Descriptors.Descriptor> {
         cosmos.staking.v1beta1.Tx.MsgUndelegate.getDescriptor(),
         cosmos.vesting.v1beta1.Tx.MsgCreateVestingAccount.getDescriptor(),
         MsgCancelUnbondingDelegation.getDescriptor(),
-        MsgWithdrawRequest.getDescriptor(),
-        MsgAddMarkerRequest.getDescriptor(),
-        MsgAddAccessRequest.getDescriptor(),
-        MsgDeleteAccessRequest.getDescriptor(),
-        MsgFinalizeRequest.getDescriptor(),
-        MsgActivateRequest.getDescriptor(),
-        MsgCancelRequest.getDescriptor(),
-        MsgDeleteRequest.getDescriptor(),
-        MsgMintRequest.getDescriptor(),
-        MsgBurnRequest.getDescriptor(),
-        MsgTransferRequest.getDescriptor(),
-        MsgSetDenomMetadataRequest.getDescriptor(),
-        MsgBindNameRequest.getDescriptor(),
-        MsgDeleteNameRequest.getDescriptor(),
-        MsgAddAttributeRequest.getDescriptor(),
-        MsgDeleteAttributeRequest.getDescriptor(),
-        MsgWriteP8eContractSpecRequest.getDescriptor(),
-        MsgP8eMemorializeContractRequest.getDescriptor(),
-        MsgWriteScopeRequest.getDescriptor(),
-        MsgDeleteScopeRequest.getDescriptor(),
-        MsgWriteSessionRequest.getDescriptor(),
-        MsgWriteRecordRequest.getDescriptor(),
-        MsgDeleteRecordRequest.getDescriptor(),
-        MsgWriteScopeSpecificationRequest.getDescriptor(),
-        MsgDeleteScopeSpecificationRequest.getDescriptor(),
-        MsgWriteContractSpecificationRequest.getDescriptor(),
-        MsgDeleteContractSpecificationRequest.getDescriptor(),
-        MsgWriteRecordSpecificationRequest.getDescriptor(),
-        MsgDeleteRecordSpecificationRequest.getDescriptor(),
-        MsgBindOSLocatorRequest.getDescriptor(),
-        MsgDeleteOSLocatorRequest.getDescriptor(),
-        MsgModifyOSLocatorRequest.getDescriptor(),
         cosmwasm.wasm.v1.Tx.MsgStoreCode.getDescriptor(),
         cosmwasm.wasm.v1.Tx.MsgInstantiateContract.getDescriptor(),
         cosmwasm.wasm.v1.Tx.MsgExecuteContract.getDescriptor(),
@@ -326,14 +194,6 @@ fun msgDescriptors(): List<Descriptors.Descriptor> {
         ibc.core.connection.v1.Tx.MsgConnectionOpenTry.getDescriptor(),
         ibc.core.connection.v1.Tx.MsgConnectionOpenAck.getDescriptor(),
         ibc.core.connection.v1.Tx.MsgConnectionOpenConfirm.getDescriptor(),
-        MsgAddScopeDataAccessRequest.getDescriptor(),
-        MsgDeleteScopeDataAccessRequest.getDescriptor(),
-        MsgAddScopeOwnerRequest.getDescriptor(),
-        MsgDeleteScopeOwnerRequest.getDescriptor(),
-        MsgUpdateAttributeRequest.getDescriptor(),
-        MsgDeleteDistinctAttributeRequest.getDescriptor(),
-        MsgAddContractSpecToScopeSpecRequest.getDescriptor(),
-        MsgDeleteContractSpecFromScopeSpecRequest.getDescriptor(),
         cosmos.authz.v1beta1.Tx.MsgGrant.getDescriptor(),
         cosmos.authz.v1beta1.Tx.MsgExec.getDescriptor(),
         cosmos.authz.v1beta1.Tx.MsgRevoke.getDescriptor(),
@@ -342,10 +202,6 @@ fun msgDescriptors(): List<Descriptors.Descriptor> {
         Ibc.MsgIBCSend.getDescriptor(),
         Ibc.MsgIBCCloseChannel.getDescriptor(),
         MsgSend.getDescriptor(),
-        MsgCreateRewardProgramRequest.getDescriptor(),
-        MsgEndRewardProgramRequest.getDescriptor(),
-        MsgClaimRewardsRequest.getDescriptor(),
-        MsgClaimAllRewardsRequest.getDescriptor(),
         MsgCreateGroup.getDescriptor(),
         MsgCreateGroupWithPolicy.getDescriptor(),
         MsgCreateGroupPolicy.getDescriptor(),
@@ -361,17 +217,32 @@ fun msgDescriptors(): List<Descriptors.Descriptor> {
         MsgExec.getDescriptor(),
         MsgLeaveGroup.getDescriptor()
     )
-
-    descriptors.addAll(findMsgDescriptorsInPackage("io.provenance.exchange.v1"))
-
     return descriptors
 }
 
-private fun findMsgDescriptorsInPackage(packageName: String): List<Descriptors.Descriptor> {
+fun packageDescriptors(): List<Descriptors.Descriptor> {
+    val descriptors = mutableListOf<Descriptors.Descriptor>()
+    descriptors.addAll(findDescriptorsInPackage("io.provenance.attribute.v1"))
+    descriptors.addAll(findDescriptorsInPackage("io.provenance.exchange.v1"))
+    descriptors.addAll(findDescriptorsInPackage("io.provenance.hold.v1"))
+    descriptors.addAll(findDescriptorsInPackage("io.provenance.ibchooks.v1"))
+    descriptors.addAll(findDescriptorsInPackage("io.provenance.ibcratelimit.v1"))
+    descriptors.addAll(findDescriptorsInPackage("io.provenance.marker.v1"))
+    descriptors.addAll(findDescriptorsInPackage("io.provenance.metadata.v1"))
+    descriptors.addAll(findDescriptorsInPackage("io.provenance.msgfees.v1"))
+    descriptors.addAll(findDescriptorsInPackage("io.provenance.name.v1"))
+    descriptors.addAll(findDescriptorsInPackage("io.provenance.oracle.v1"))
+    descriptors.addAll(findDescriptorsInPackage("io.provenance.reward.v1"))
+    descriptors.addAll(findDescriptorsInPackage("io.provenance.trigger.v1"))
+    return descriptors
+}
+
+
+private fun findDescriptorsInPackage(packageName: String): List<Descriptors.Descriptor> {
     val reflections = Reflections(packageName)
     val messageClasses = reflections.getSubTypesOf(com.google.protobuf.Message::class.java)
 
-    return messageClasses.filter { it.simpleName.startsWith("Msg") }.mapNotNull {
+    return messageClasses.mapNotNull {
         try {
             it.getMethod("getDescriptor").invoke(null) as Descriptors.Descriptor
         } catch (e: Exception) {
@@ -388,15 +259,6 @@ fun contentDescriptors() =
         Upgrade.CancelSoftwareUpgradeProposal.getDescriptor(),
         Distribution.CommunityPoolSpendProposal.getDescriptor(),
         Distribution.CommunityPoolSpendProposalWithDeposit.getDescriptor(),
-        AddMarkerProposal.getDescriptor(),
-        SupplyIncreaseProposal.getDescriptor(),
-        SupplyDecreaseProposal.getDescriptor(),
-        SetAdministratorProposal.getDescriptor(),
-        RemoveAdministratorProposal.getDescriptor(),
-        ChangeStatusProposal.getDescriptor(),
-        WithdrawEscrowProposal.getDescriptor(),
-        SetDenomMetadataProposal.getDescriptor(),
-        CreateRootNameProposal.getDescriptor(),
         Proposal.StoreCodeProposal.getDescriptor(),
         Proposal.InstantiateContractProposal.getDescriptor(),
         Proposal.MigrateContractProposal.getDescriptor(),
@@ -415,56 +277,10 @@ fun contentDescriptors() =
         cosmwasm.wasm.v1beta1.Proposal.PinCodesProposal.getDescriptor(),
         cosmwasm.wasm.v1beta1.Proposal.UnpinCodesProposal.getDescriptor(),
         Client.ClientUpdateProposal.getDescriptor(),
-        Client.UpgradeProposal.getDescriptor(),
-        AddMsgFeeProposal.getDescriptor(),
-        UpdateMsgFeeProposal.getDescriptor(),
-        RemoveMsgFeeProposal.getDescriptor(),
-        UpdateNhashPerUsdMilProposal.getDescriptor(),
-        UpdateConversionFeeDenomProposal.getDescriptor()
+        Client.UpgradeProposal.getDescriptor()
     )
 
 fun events() = listOf(
-    EventNameBound.getDescriptor(),
-    EventNameUnbound.getDescriptor(),
-    EventMarkerAdd.getDescriptor(),
-    EventMarkerAddAccess.getDescriptor(),
-    EventMarkerAccess.getDescriptor(),
-    EventMarkerDeleteAccess.getDescriptor(),
-    EventMarkerFinalize.getDescriptor(),
-    EventMarkerActivate.getDescriptor(),
-    EventMarkerCancel.getDescriptor(),
-    EventMarkerDelete.getDescriptor(),
-    EventMarkerMint.getDescriptor(),
-    EventMarkerBurn.getDescriptor(),
-    EventMarkerWithdraw.getDescriptor(),
-    EventMarkerTransfer.getDescriptor(),
-    EventMarkerSetDenomMetadata.getDescriptor(),
-    EventDenomUnit.getDescriptor(),
-    EventTxCompleted.getDescriptor(),
-    EventScopeCreated.getDescriptor(),
-    EventScopeUpdated.getDescriptor(),
-    EventScopeDeleted.getDescriptor(),
-    EventSessionCreated.getDescriptor(),
-    EventSessionUpdated.getDescriptor(),
-    EventSessionDeleted.getDescriptor(),
-    EventRecordCreated.getDescriptor(),
-    EventRecordUpdated.getDescriptor(),
-    EventRecordDeleted.getDescriptor(),
-    EventScopeSpecificationCreated.getDescriptor(),
-    EventScopeSpecificationUpdated.getDescriptor(),
-    EventScopeSpecificationDeleted.getDescriptor(),
-    EventContractSpecificationCreated.getDescriptor(),
-    EventContractSpecificationUpdated.getDescriptor(),
-    EventContractSpecificationDeleted.getDescriptor(),
-    EventRecordSpecificationCreated.getDescriptor(),
-    EventRecordSpecificationUpdated.getDescriptor(),
-    EventRecordSpecificationDeleted.getDescriptor(),
-    EventOSLocatorCreated.getDescriptor(),
-    EventOSLocatorUpdated.getDescriptor(),
-    EventOSLocatorDeleted.getDescriptor(),
-    EventAttributeAdd.getDescriptor(),
-    EventAttributeDelete.getDescriptor(),
-    EventAttributeDistinctDelete.getDescriptor(),
     Event.EventGrant.getDescriptor(),
     Event.EventRevoke.getDescriptor(),
     EventCreateGroup.getDescriptor(),
@@ -486,7 +302,6 @@ fun miscAnys() = listOf(
     Feegrant.PeriodicAllowance.getDescriptor(),
     Feegrant.AllowedMsgAllowance.getDescriptor(),
     cosmos.staking.v1beta1.Authz.StakeAuthorization.getDescriptor(),
-    MarkerTransferAuthorization.getDescriptor(),
     CountAuthorization.getDescriptor(),
     GrantAuthorization.getDescriptor(),
     ThresholdDecisionPolicy.getDescriptor(),
