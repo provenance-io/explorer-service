@@ -27,6 +27,7 @@ dependencies {
     implementation(Libraries.KotlinStdlib)
     implementation(Libraries.ProtobufKotlin)
     implementation(Libraries.ProvenanceProto)
+    implementation(Libraries.Reflections)
 
     implementation(Libraries.SpringBootStarterWeb)
     implementation(Libraries.SpringBootStarterJdbc)
