@@ -237,7 +237,6 @@ fun packageDescriptors(): List<Descriptors.Descriptor> {
     return descriptors
 }
 
-
 private fun findDescriptorsInPackage(packageName: String): List<Descriptors.Descriptor> {
     val reflections = Reflections(packageName)
     val messageClasses = reflections.getSubTypesOf(com.google.protobuf.Message::class.java)
