@@ -245,7 +245,7 @@ private fun findDescriptorsInPackage(packageName: String): List<Descriptors.Desc
         try {
             it.getMethod("getDescriptor").invoke(null) as Descriptors.Descriptor
         } catch (e: Exception) {
-            null // or log error
+            null
         }
     }
 }
