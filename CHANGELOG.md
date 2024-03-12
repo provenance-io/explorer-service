@@ -38,6 +38,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Improvements
 * Updated Prov Protos to 1.18.0-rc2 [#510](https://github.com/provenance-io/explorer-service/issues/510)
+* Automate the registration of Provenance protobuf module descriptors [#514](https://github.com/provenance-io/explorer-service/issues/514)
 
 ## [v5.7.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.7.0) - 2023-11-14
 ### Release Name: Peter Fidler
