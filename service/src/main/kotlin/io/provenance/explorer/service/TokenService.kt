@@ -274,9 +274,9 @@ class TokenService(private val accountClient: AccountGrpcClient) {
         return zos
     }
 
-    suspend fun fetchOsmosisData(fromDate: DateTime?): List<OsmosisHistoricalPrice> {
+    fun fetchOsmosisData(fromDate: DateTime?): List<OsmosisHistoricalPrice> = runBlocking {
         val input = buildInputQuery(fromDate)
-        return try {
+        try {
             val url = """https://app.osmosis.zone/api/edge-trpc-assets/assets.getAssetHistoricalPrice?input=$input"""
             val response: HttpResponse = KTOR_CLIENT_JAVA.get(url) {
                 accept(ContentType.Application.Json)
