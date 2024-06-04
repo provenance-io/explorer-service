@@ -47,11 +47,13 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
+import org.joda.time.DateTimeZone
+import org.joda.time.Duration
 import org.joda.time.format.DateTimeFormat
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
-import java.net.URLEncoder
+
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.servlet.ServletOutputStream
@@ -271,12 +273,11 @@ class TokenService(private val accountClient: AccountGrpcClient) {
         zos.close()
         return zos
     }
-    private val dateFormat = DateTimeFormat.forPattern("yyyy-MM-dd")
 
-    suspend fun fetchOsmosisData(fromDate: DateTime?, toDate: DateTime?): List<OsmosisHistoricalPrice> {
-        val input = buildInputQuery(fromDate, toDate)
+    suspend fun fetchOsmosisData(fromDate: DateTime?): List<OsmosisHistoricalPrice> {
+        val input = buildInputQuery(fromDate)
         return try {
-            val url = """https://app.osmosis.zone/api/edge-trpc-assets/assets.getAssetHistoricalPrice?input=%7B%22json%22%3A%7B%22coinDenom%22%3A%22ibc%2FCE5BFF1D9BADA03BB5CCA5F56939392A761B53A10FBD03B37506669C3218D3B2%22%2C%22timeFrame%22%3A%7B%22custom%22%3A%7B%22timeFrame%22%3A5%2C%22numRecentFrames%22%3A576%7D%7D%7D%7D"""
+            val url = """https://app.osmosis.zone/api/edge-trpc-assets/assets.getAssetHistoricalPrice?input=$input"""
             val response: HttpResponse = KTOR_CLIENT_JAVA.get(url) {
                 accept(ContentType.Application.Json)
             }
@@ -284,7 +285,7 @@ class TokenService(private val accountClient: AccountGrpcClient) {
             val rawResponse: String = response.bodyAsText()
             println("Raw Response: $rawResponse")
 
-            val osmosisApiResponse: OsmosisApiResponse = response.body()  // Deserialize to OsmosisApiResponse
+            val osmosisApiResponse: OsmosisApiResponse = response.body()
             osmosisApiResponse.result.data.json
         } catch (e: ResponseException) {
             logger.error("Error fetching from Osmosis API: ${e.response}")
@@ -295,13 +296,13 @@ class TokenService(private val accountClient: AccountGrpcClient) {
         }
     }
 
-    private fun buildInputQuery(fromDate: DateTime?, toDate: DateTime?): String {
-//        val coinDenom = "ibc/CE5BFF1D9BADA03BB5CCA5F56939392A761B53A10FBD03B37506669C3218D3B2"
-//        val timeFrame = 120
-//        val numRecentFrames = 100
-//        val json = """{"json":{"coinDenom":"$coinDenom","timeFrame":{"custom":{"timeFrame":$timeFrame,"numRecentFrames":$numRecentFrames}}}}"""
-//        return URLEncoder.encode(json, "UTF-8")
-        return """%7B"json"%3A%7B"coinDenom"%3A"ibc%2FCE5BFF1D9BADA03BB5CCA5F56939392A761B53A10FBD03B37506669C3218D3B2"%2C"timeFrame"%3A%7B"custom"%3A%7B"timeFrame"%3A5%2C"numRecentFrames"%3A288%7D%7D%7D%7D"""
+    private fun buildInputQuery(fromDate: DateTime?): String {
+        val coinDenom = "ibc%2FCE5BFF1D9BADA03BB5CCA5F56939392A761B53A10FBD03B37506669C3218D3B2"
+        val timeFrame = 120
+        val now = DateTime.now(DateTimeZone.UTC)
+        val duration = Duration(fromDate, now)
+        val numRecentFrames = (duration.standardHours / 2).toInt()
+        return """%7B%22json%22%3A%7B%22coinDenom%22%3A%22$coinDenom%22%2C%22timeFrame%22%3A%7B%22custom%22%3A%7B%22timeFrame%22%3A$timeFrame%2C%22numRecentFrames%22%3A$numRecentFrames%7D%7D%7D%7D"""
     }
 
     fun getHashPricingDataDownloadOsmosis(filters: TokenHistoricalDataRequest, resp: ServletOutputStream): ZipOutputStream {
@@ -309,7 +310,7 @@ class TokenService(private val accountClient: AccountGrpcClient) {
         val baseFileName = filters.getFileNameBase()
 
         val fileList = runBlocking {
-            val data = fetchOsmosisData(filters.fromDate, filters.toDate)
+            val data = fetchOsmosisData(filters.fromDate)
             listOf(
                 CsvData(
                     "TokenHistoricalData",

@@ -338,7 +338,7 @@ class AsyncService(
                         )
                 )
             ).also { prevPrice = close }
-            TokenHistoricalDailyRecord.save(record.time_open.startOfDay(), record)
+            TokenHistoricalDailyRecord.save(record.time_open.startOfDay(), record, "dlob")
         }
     }
 
