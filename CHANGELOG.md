@@ -33,6 +33,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+* Update historical price data integration by removing figure's dlob and adding osmosis datasource [#519](https://github.com/provenance-io/explorer-service/issues/519)
+
 ## [v5.8.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.8.0) - 2024-03-05
 ### Release Name: Alfred Harrison
 
