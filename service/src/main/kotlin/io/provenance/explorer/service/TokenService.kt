@@ -309,7 +309,7 @@ class TokenService(private val accountClient: AccountGrpcClient) {
      * @param fromDate The starting date to determine the time frame.
      * @return The appropriate TimeFrame enum value.
      */
-    private fun determineTimeFrame(fromDate: DateTime?): TimeFrame {
+     fun determineTimeFrame(fromDate: DateTime?): TimeFrame {
         val now = DateTime.now(DateTimeZone.UTC)
         val duration = Duration(fromDate, now)
 
@@ -337,7 +337,7 @@ class TokenService(private val accountClient: AccountGrpcClient) {
      * @param timeFrame The time interval between updates, specified as a `TimeFrame` enum value.
      * @return A URL-encoded JSON string to be used as a query parameter for fetching historical data.
      */
-    private fun buildInputQuery(fromDate: DateTime?, timeFrame: TimeFrame): String {
+    fun buildInputQuery(fromDate: DateTime?, timeFrame: TimeFrame): String {
         val coinDenom = "ibc/CE5BFF1D9BADA03BB5CCA5F56939392A761B53A10FBD03B37506669C3218D3B2"
         val now = DateTime.now(DateTimeZone.UTC)
         val duration = Duration(fromDate, now)
