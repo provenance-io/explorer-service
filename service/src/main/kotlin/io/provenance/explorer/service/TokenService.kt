@@ -53,6 +53,7 @@ import org.joda.time.format.DateTimeFormat
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.net.URLEncoder
 
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -275,7 +276,7 @@ class TokenService(private val accountClient: AccountGrpcClient) {
     }
 
     fun fetchOsmosisData(fromDate: DateTime?): List<OsmosisHistoricalPrice> = runBlocking {
-        val input = buildInputQuery(fromDate)
+        val input = buildInputQuery(fromDate, determineTimeFrame(fromDate))
         try {
             val url = """https://app.osmosis.zone/api/edge-trpc-assets/assets.getAssetHistoricalPrice?input=$input"""
             val response: HttpResponse = KTOR_CLIENT_JAVA.get(url) {
@@ -296,13 +297,55 @@ class TokenService(private val accountClient: AccountGrpcClient) {
         }
     }
 
-    private fun buildInputQuery(fromDate: DateTime?): String {
-        val coinDenom = "ibc%2FCE5BFF1D9BADA03BB5CCA5F56939392A761B53A10FBD03B37506669C3218D3B2"
-        val timeFrame = 120
+    enum class TimeFrame(val minutes: Int) {
+        FIVE_MINUTES(5),
+        TWO_HOURS(120),
+        ONE_DAY(1440)
+    }
+
+    /**
+     * Determines the appropriate TimeFrame based on the fromDate.
+     *
+     * @param fromDate The starting date to determine the time frame.
+     * @return The appropriate TimeFrame enum value.
+     */
+    private fun determineTimeFrame(fromDate: DateTime?): TimeFrame {
         val now = DateTime.now(DateTimeZone.UTC)
         val duration = Duration(fromDate, now)
-        val numRecentFrames = (duration.standardHours / 2).toInt()
-        return """%7B%22json%22%3A%7B%22coinDenom%22%3A%22$coinDenom%22%2C%22timeFrame%22%3A%7B%22custom%22%3A%7B%22timeFrame%22%3A$timeFrame%2C%22numRecentFrames%22%3A$numRecentFrames%7D%7D%7D%7D"""
+
+        return when {
+            duration.standardDays <= 14 -> TimeFrame.FIVE_MINUTES
+            duration.standardDays <= 60 -> TimeFrame.TWO_HOURS
+            else -> TimeFrame.ONE_DAY
+        }
+    }
+
+    /**
+     * Builds the input query parameter for fetching historical data.
+     *
+     * This function constructs a URL-encoded JSON query parameter for fetching historical data based on the given
+     * `fromDate` and `timeFrame`. The `timeFrame` represents the number of minutes between updates. The allowed values
+     * for `timeFrame` are defined in the `TimeFrame` enum:
+     * - FIVE_MINUTES: data goes back 2 weeks.
+     * - TWO_HOURS: data goes back 2 months.
+     * - ONE_DAY: data goes back to the beginning of time.
+     *
+     * The function calculates the total number of frames (`numRecentFrames`) from the `fromDate` to the current time,
+     * based on the specified `timeFrame`.
+     *
+     * @param fromDate The starting date from which to calculate the number of frames.
+     * @param timeFrame The time interval between updates, specified as a `TimeFrame` enum value.
+     * @return A URL-encoded JSON string to be used as a query parameter for fetching historical data.
+     */
+    private fun buildInputQuery(fromDate: DateTime?, timeFrame: TimeFrame): String {
+        val coinDenom = "ibc/CE5BFF1D9BADA03BB5CCA5F56939392A761B53A10FBD03B37506669C3218D3B2"
+        val now = DateTime.now(DateTimeZone.UTC)
+        val duration = Duration(fromDate, now)
+        val numRecentFrames = (duration.standardMinutes / timeFrame.minutes).toInt()
+        return URLEncoder.encode(
+            """{"json":{"coinDenom":"$coinDenom","timeFrame":{"custom":{"timeFrame":${timeFrame.minutes},"numRecentFrames":$numRecentFrames}}}}""",
+            "UTF-8"
+        )
     }
 
     fun getHashPricingDataDownloadOsmosis(filters: TokenHistoricalDataRequest, resp: ServletOutputStream): ZipOutputStream {

@@ -21,12 +21,12 @@ class TokenServiceTest {
 
     @Test
     fun `test fetchOsmosisData and print results`() = runBlocking {
-        val fromDate = DateTime.parse("2024-04-08")
+        val fromDate = DateTime.parse("2024-05-08")
 
         val result: List<OsmosisHistoricalPrice> = tokenService.fetchOsmosisData(fromDate)
 
         result.forEach {
-            println("Time: ${it.time}, Open: ${it.open}, High: ${it.high}, Low: ${it.low}, Close: ${it.close}, Volume: ${it.volume}")
+            println("Time: ${DateTime(it.time* 1000)}, Open: ${it.open}, High: ${it.high}, Low: ${it.low}, Close: ${it.close}, Volume: ${it.volume}")
         }
     }
 }
