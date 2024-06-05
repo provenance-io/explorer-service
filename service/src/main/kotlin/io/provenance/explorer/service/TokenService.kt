@@ -284,7 +284,7 @@ class TokenService(private val accountClient: AccountGrpcClient) {
             }
 
             val rawResponse: String = response.bodyAsText()
-            println("Raw Response: $rawResponse")
+            logger.debug("Osmosis GET: $url Raw Response: $rawResponse")
 
             val osmosisApiResponse: OsmosisApiResponse = response.body()
             osmosisApiResponse.result.data.json
