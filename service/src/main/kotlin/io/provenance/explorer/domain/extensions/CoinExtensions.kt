@@ -103,6 +103,10 @@ fun List<CoinStr>.diff(newList: List<CoinStr>) =
 
 fun BigDecimal.roundWhole() = this.setScale(0, RoundingMode.HALF_EVEN)
 
+fun BigDecimal.toThirdDecimal(): BigDecimal {
+    return this.setScale(3, RoundingMode.DOWN)
+}
+
 fun List<CoinStr>.mapToProtoCoin() =
     this.groupBy({ it.denom }) { it.amount.toBigDecimal() }
         .mapValues { (_, v) -> v.sumOf { it } }

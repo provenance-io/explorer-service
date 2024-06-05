@@ -40,6 +40,7 @@ import io.provenance.explorer.domain.extensions.monthToQuarter
 import io.provenance.explorer.domain.extensions.percentChange
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
+import io.provenance.explorer.domain.extensions.toThirdDecimal
 import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
 import io.provenance.explorer.grpc.extensions.getMsgSubTypes
 import io.provenance.explorer.grpc.extensions.getMsgType
@@ -326,14 +327,14 @@ class AsyncService(
                 quote = mapOf(
                     USD_UPPER to
                         CmcQuote(
-                            open = open,
-                            high = high?.high ?: prevPrice,
-                            low = low?.low ?: prevPrice,
-                            close = close,
-                            volume = usdVolume,
+                            open = open.toThirdDecimal(),
+                            high = high?.high ?: prevPrice.toThirdDecimal(),
+                            low = low?.low ?: prevPrice.toThirdDecimal(),
+                            close = close.toThirdDecimal(),
+                            volume = usdVolume.toThirdDecimal(),
                             market_cap = close.multiply(
                                 tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)
-                            ),
+                            ).toThirdDecimal(),
                             timestamp = closeDate
                         )
                 )
@@ -351,18 +352,18 @@ class AsyncService(
             ?.let { list ->
                 val prevRecIdx = list.indexOfLast { DateTime(it.time * 1000).isBefore(today.minusDays(1)) }
                 val prevRecord = list[prevRecIdx]
-                val price = list.last().close
+                val price = list.last().close.toThirdDecimal()
                 val percentChg = if (prevRecIdx == list.lastIndex) {
                     BigDecimal.ZERO
                 } else {
-                    price.percentChange(prevRecord.close)
+                    price.percentChange(prevRecord.close.toThirdDecimal())
                 }
                 val vol24Hr = if (prevRecIdx == list.lastIndex) {
                     BigDecimal.ZERO
                 } else {
-                    list.subList(prevRecIdx + 1, list.lastIndex + 1).sumOf { it.volume }.stripTrailingZeros()
+                    list.subList(prevRecIdx + 1, list.lastIndex + 1).sumOf { it.volume.toThirdDecimal() }.stripTrailingZeros()
                 }
-                val marketCap = price.multiply(tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER))
+                val marketCap = price.multiply(tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)).toThirdDecimal()
                 val rec = CmcLatestDataAbbrev(
                     today,
                     mapOf(USD_UPPER to CmcLatestQuoteAbbrev(price, percentChg, vol24Hr, marketCap, today))
