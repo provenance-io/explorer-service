@@ -6,7 +6,6 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
-import io.ktor.client.request.parameter
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
@@ -35,7 +34,6 @@ import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toPercentage
 import io.provenance.explorer.domain.models.OsmosisApiResponse
 import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
-import io.provenance.explorer.domain.models.explorer.DlobHistBase
 import io.provenance.explorer.domain.models.explorer.TokenHistoricalDataRequest
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.model.AssetHolder
@@ -56,7 +54,6 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import org.joda.time.Duration
-import org.joda.time.format.DateTimeFormat
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -228,57 +225,11 @@ class TokenService(private val accountClient: AccountGrpcClient) {
                 )
             }
     }
-
-    fun getHistoricalFromDlob(startTime: DateTime, tickerId: String): DlobHistBase? = runBlocking {
-        try {
-            KTOR_CLIENT_JAVA.get("https://www.dlob.io:443/gecko/external/api/v1/exchange/historical_trades") {
-                parameter("ticker_id", tickerId)
-                parameter("type", "buy")
-                parameter("start_time", DateTimeFormat.forPattern("dd-MM-yyyy").print(startTime))
-                accept(ContentType.Application.Json)
-            }.body()
-        } catch (e: ResponseException) {
-            return@runBlocking null.also { logger.error("Error fetching from Dlob: ${e.response}") }
-        } catch (e: Exception) {
-            return@runBlocking null.also { logger.error("Error fetching from Dlob: ${e.message}") }
-        } catch (e: Throwable) {
-            return@runBlocking null.also { logger.error("Error fetching from Dlob: ${e.message}") }
-        }
-    }
-
-    fun getHistoricalFromDlob(startTime: DateTime): DlobHistBase? {
-        val tickerIds = listOf("HASH_USD", "HASH_USDOMNI")
-
-        val dlobHistorical = tickerIds
-            .flatMap { getHistoricalFromDlob(startTime, it)?.buy.orEmpty() }
-
-        return if (dlobHistorical.isNotEmpty()) DlobHistBase(dlobHistorical) else null
-    }
-
     fun getTokenHistorical(fromDate: DateTime?, toDate: DateTime?) =
         TokenHistoricalDailyRecord.findForDates(fromDate?.startOfDay(), toDate?.startOfDay())
 
     fun getTokenLatest() = CacheUpdateRecord.fetchCacheByKey(CacheKeys.UTILITY_TOKEN_LATEST.key)?.cacheValue?.let {
         VANILLA_MAPPER.readValue<CmcLatestDataAbbrev>(it)
-    }
-
-    fun getHashPricingDataDownload(filters: TokenHistoricalDataRequest, resp: ServletOutputStream): ZipOutputStream {
-        validate(filters.datesValidation())
-        val baseFileName = filters.getFileNameBase()
-        val fileList = filters.getFileList()
-
-        val zos = ZipOutputStream(resp)
-        fileList.forEach { file ->
-            zos.putNextEntry(ZipEntry("$baseFileName - ${file.fileName}.csv"))
-            zos.write(file.writeCsvEntry())
-            zos.closeEntry()
-        }
-        // Adding in a txt file with the applied filters
-        zos.putNextEntry(ZipEntry("$baseFileName - FILTERS.txt"))
-        zos.write(filters.writeFilters())
-        zos.closeEntry()
-        zos.close()
-        return zos
     }
 
     fun fetchOsmosisData(fromDate: DateTime?): List<OsmosisHistoricalPrice> = runBlocking {
@@ -354,7 +305,7 @@ class TokenService(private val accountClient: AccountGrpcClient) {
         )
     }
 
-    fun getHashPricingDataDownloadOsmosis(filters: TokenHistoricalDataRequest, resp: ServletOutputStream): ZipOutputStream {
+    fun getHashPricingDataDownload(filters: TokenHistoricalDataRequest, resp: ServletOutputStream): ZipOutputStream {
         validate(filters.datesValidation())
         val baseFileName = filters.getFileNameBase()
 
