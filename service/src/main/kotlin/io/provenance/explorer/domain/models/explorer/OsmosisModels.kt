@@ -22,4 +22,3 @@ data class OsmosisResult(
 data class OsmosisData(
     val json: List<OsmosisHistoricalPrice>
 )
-

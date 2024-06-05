@@ -41,7 +41,6 @@ import io.provenance.explorer.domain.extensions.percentChange
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
-import io.provenance.explorer.domain.models.explorer.DlobHistorical
 import io.provenance.explorer.grpc.extensions.getMsgSubTypes
 import io.provenance.explorer.grpc.extensions.getMsgType
 import io.provenance.explorer.model.CmcHistoricalQuote
