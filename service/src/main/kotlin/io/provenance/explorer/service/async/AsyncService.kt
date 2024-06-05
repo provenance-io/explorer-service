@@ -313,12 +313,12 @@ class AsyncService(
                 .groupBy { DateTime(it.time * 1000).startOfDay() }
         )
         baseMap.forEach { (k, v) ->
-            val high = v.maxByOrNull { it.high }
-            val low = v.minByOrNull { it.low }
+            val high = v.maxByOrNull { it.high.toThirdDecimal() }
+            val low = v.minByOrNull { it.low.toThirdDecimal() }
             val open = v.minByOrNull { DateTime(it.time * 1000) }?.open ?: prevPrice
             val close = v.maxByOrNull { DateTime(it.time * 1000) }?.close ?: prevPrice
             val closeDate = k.plusDays(1).minusMillis(1)
-            val usdVolume = v.sumOf { it.volume }.stripTrailingZeros()
+            val usdVolume = v.sumOf { it.volume.toThirdDecimal() }.stripTrailingZeros()
             val record = CmcHistoricalQuote(
                 time_open = k,
                 time_close = closeDate,
@@ -327,11 +327,11 @@ class AsyncService(
                 quote = mapOf(
                     USD_UPPER to
                         CmcQuote(
-                            open = open.toThirdDecimal(),
-                            high = high?.high ?: prevPrice.toThirdDecimal(),
-                            low = low?.low ?: prevPrice.toThirdDecimal(),
-                            close = close.toThirdDecimal(),
-                            volume = usdVolume.toThirdDecimal(),
+                            open = open,
+                            high = high?.high ?: prevPrice,
+                            low = low?.low ?: prevPrice,
+                            close = close,
+                            volume = usdVolume,
                             market_cap = close.multiply(
                                 tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)
                             ).toThirdDecimal(),
