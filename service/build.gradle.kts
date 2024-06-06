@@ -111,7 +111,6 @@ plugins.withType<com.adarshr.gradle.testlogger.TestLoggerPlugin> {
 tasks.withType<Test> {
     useJUnitPlatform {
         excludeTags("intTest")
-        includeTags("junit-jupiter", "junit-vintage")
     }
 
     failFast = true
