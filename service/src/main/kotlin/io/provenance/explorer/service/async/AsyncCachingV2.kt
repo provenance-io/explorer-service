@@ -308,7 +308,11 @@ class AsyncCachingV2(
         val markers = saveMarkers(txInfo, res, txUpdate)
         saveNftData(txInfo, res, txUpdate)
         saveGovData(res, txInfo, txUpdate)
-        saveIbcChannelData(res, txInfo, txUpdate)
+        try {
+            saveIbcChannelData(res, txInfo, txUpdate)
+        } catch (e: Exception) {
+            logger.info("exception saving ibc data $e")
+        }
         saveSmartContractData(res, txInfo, txUpdate)
         saveNameData(res, txInfo)
         saveGroups(res, txInfo, txUpdate)
@@ -872,7 +876,6 @@ class AsyncCachingV2(
                             GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.event,
                             GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.idField.toList()
                         )[GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.idField.first()]!!.toLong()
-
                         val msg = triple.third.toMsgSubmitProposalGroup()
                         val nodeData = groupService.proposalAtHeight(proposalId, txInfo.blockHeight)?.proposal
                         val policy = groupService.policyAtHeight(msg.groupPolicyAddress, txInfo.blockHeight)!!.info
