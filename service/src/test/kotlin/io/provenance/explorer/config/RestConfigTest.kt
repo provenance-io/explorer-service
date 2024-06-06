@@ -203,7 +203,10 @@ class RestConfigTest {
             cosmos.authz.v1beta1.Authz.CountAuthorization.getDescriptor(),
             cosmos.authz.v1beta1.Authz.GrantAuthorization.getDescriptor(),
             cosmos.group.v1.Types.ThresholdDecisionPolicy.getDescriptor(),
-            cosmos.group.v1.Types.PercentageDecisionPolicy.getDescriptor()
+            cosmos.group.v1.Types.PercentageDecisionPolicy.getDescriptor(),
+
+            // issue: 517: https://github.com/provenance-io/explorer-service/issues/517
+            cosmos.quarantine.v1beta1.Tx.MsgAccept.getDescriptor()
         )
     }
 }
