@@ -241,16 +241,18 @@ object TokenHistoricalDailyTable : IdTable<DateTime>(name = "token_historical_da
     val timestamp = datetime("historical_timestamp")
     override val id = timestamp.entityId()
     val data = jsonb<TokenHistoricalDailyTable, CmcHistoricalQuote>("data", OBJECT_MAPPER)
+    val dataSource = text("source")
 }
 
 class TokenHistoricalDailyRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) {
     companion object : EntityClass<DateTime, TokenHistoricalDailyRecord>(TokenHistoricalDailyTable) {
 
-        fun save(date: DateTime, data: CmcHistoricalQuote) =
+        fun save(date: DateTime, data: CmcHistoricalQuote, source: String) =
             transaction {
                 TokenHistoricalDailyTable.insertIgnore {
                     it[this.timestamp] = date
                     it[this.data] = data
+                    it[this.dataSource] = source
                 }
             }
 

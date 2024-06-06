@@ -43,7 +43,7 @@ data class TokenHistoricalDataRequest(
             )
         )
 
-    private val tokenHistoricalCsvBaseHeaders: MutableList<String> =
+    val tokenHistoricalCsvBaseHeaders: MutableList<String> =
         mutableListOf("Date", "Open", "High", "Low", "Close", "Volume - USD")
 
     fun datesValidation() =

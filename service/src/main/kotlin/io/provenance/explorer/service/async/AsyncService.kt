@@ -40,7 +40,8 @@ import io.provenance.explorer.domain.extensions.monthToQuarter
 import io.provenance.explorer.domain.extensions.percentChange
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
-import io.provenance.explorer.domain.models.explorer.DlobHistorical
+import io.provenance.explorer.domain.extensions.toThirdDecimal
+import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
 import io.provenance.explorer.grpc.extensions.getMsgSubTypes
 import io.provenance.explorer.grpc.extensions.getMsgType
 import io.provenance.explorer.model.CmcHistoricalQuote
@@ -298,47 +299,47 @@ class AsyncService(
         if (latest != null) {
             startDate = latest.timestamp.minusDays(1).startOfDay()
         }
-        val dlobRes = tokenService.getHistoricalFromDlob(startDate) ?: return
-        logger.info("Updating token historical data starting from $startDate with ${dlobRes.buy.size} buy records for roll-up.")
+        val dlobRes = tokenService.fetchOsmosisData(startDate) ?: return
+        logger.info("Updating token historical data starting from $startDate with ${dlobRes.size} buy records for roll-up.")
 
         val baseMap = Interval(startDate, today)
             .let { int -> generateSequence(int.start) { dt -> dt.plusDays(1) }.takeWhile { dt -> dt < int.end } }
-            .map { it to emptyList<DlobHistorical>() }.toMap().toMutableMap()
+            .map { it to emptyList<OsmosisHistoricalPrice>() }.toMap().toMutableMap()
         var prevPrice = TokenHistoricalDailyRecord.lastKnownPriceForDate(startDate)
 
         baseMap.putAll(
-            dlobRes.buy
-                .filter { DateTime(it.trade_timestamp * 1000).startOfDay() != today }
-                .groupBy { DateTime(it.trade_timestamp * 1000).startOfDay() }
+            dlobRes
+                .filter { DateTime(it.time * 1000).startOfDay() != today }
+                .groupBy { DateTime(it.time * 1000).startOfDay() }
         )
         baseMap.forEach { (k, v) ->
-            val high = v.maxByOrNull { it.price }
-            val low = v.minByOrNull { it.price }
-            val open = v.minByOrNull { DateTime(it.trade_timestamp * 1000) }?.price ?: prevPrice
-            val close = v.maxByOrNull { DateTime(it.trade_timestamp * 1000) }?.price ?: prevPrice
+            val high = v.maxByOrNull { it.high.toThirdDecimal() }
+            val low = v.minByOrNull { it.low.toThirdDecimal() }
+            val open = v.minByOrNull { DateTime(it.time * 1000) }?.open ?: prevPrice
+            val close = v.maxByOrNull { DateTime(it.time * 1000) }?.close ?: prevPrice
             val closeDate = k.plusDays(1).minusMillis(1)
-            val usdVolume = v.sumOf { it.target_volume }.stripTrailingZeros()
+            val usdVolume = v.sumOf { it.volume.toThirdDecimal() }.stripTrailingZeros()
             val record = CmcHistoricalQuote(
                 time_open = k,
                 time_close = closeDate,
-                time_high = if (high != null) DateTime(high.trade_timestamp * 1000) else k,
-                time_low = if (low != null) DateTime(low.trade_timestamp * 1000) else k,
+                time_high = if (high != null) DateTime(high.time * 1000) else k,
+                time_low = if (low != null) DateTime(low.time * 1000) else k,
                 quote = mapOf(
                     USD_UPPER to
                         CmcQuote(
                             open = open,
-                            high = high?.price ?: prevPrice,
-                            low = low?.price ?: prevPrice,
+                            high = high?.high ?: prevPrice,
+                            low = low?.low ?: prevPrice,
                             close = close,
                             volume = usdVolume,
                             market_cap = close.multiply(
                                 tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)
-                            ),
+                            ).toThirdDecimal(),
                             timestamp = closeDate
                         )
                 )
             ).also { prevPrice = close }
-            TokenHistoricalDailyRecord.save(record.time_open.startOfDay(), record)
+            TokenHistoricalDailyRecord.save(record.time_open.startOfDay(), record, "osmosis")
         }
     }
 
@@ -346,23 +347,23 @@ class AsyncService(
     fun updateTokenLatest() {
         val today = DateTime.now().withZone(DateTimeZone.UTC)
         val startDate = today.minusDays(7)
-        tokenService.getHistoricalFromDlob(startDate)?.buy
-            ?.sortedBy { it.trade_timestamp }
+        tokenService.fetchOsmosisData(startDate)
+            ?.sortedBy { it.time }
             ?.let { list ->
-                val prevRecIdx = list.indexOfLast { DateTime(it.trade_timestamp * 1000).isBefore(today.minusDays(1)) }
+                val prevRecIdx = list.indexOfLast { DateTime(it.time * 1000).isBefore(today.minusDays(1)) }
                 val prevRecord = list[prevRecIdx]
-                val price = list.last().price
+                val price = list.last().close.toThirdDecimal()
                 val percentChg = if (prevRecIdx == list.lastIndex) {
                     BigDecimal.ZERO
                 } else {
-                    price.percentChange(prevRecord.price)
+                    price.percentChange(prevRecord.close.toThirdDecimal())
                 }
                 val vol24Hr = if (prevRecIdx == list.lastIndex) {
                     BigDecimal.ZERO
                 } else {
-                    list.subList(prevRecIdx + 1, list.lastIndex + 1).sumOf { it.target_volume }.stripTrailingZeros()
+                    list.subList(prevRecIdx + 1, list.lastIndex + 1).sumOf { it.volume.toThirdDecimal() }.stripTrailingZeros()
                 }
-                val marketCap = price.multiply(tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER))
+                val marketCap = price.multiply(tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)).toThirdDecimal()
                 val rec = CmcLatestDataAbbrev(
                     today,
                     mapOf(USD_UPPER to CmcLatestQuoteAbbrev(price, percentChg, vol24Hr, marketCap, today))

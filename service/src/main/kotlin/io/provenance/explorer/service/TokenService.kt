@@ -6,7 +6,8 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
-import io.ktor.client.request.parameter
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.VANILLA_MAPPER
@@ -24,13 +25,15 @@ import io.provenance.explorer.domain.entities.TokenHistoricalDailyRecord
 import io.provenance.explorer.domain.entities.addressList
 import io.provenance.explorer.domain.entities.vestingAccountTypes
 import io.provenance.explorer.domain.exceptions.validate
+import io.provenance.explorer.domain.extensions.CsvData
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.roundWhole
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toPercentage
-import io.provenance.explorer.domain.models.explorer.DlobHistBase
+import io.provenance.explorer.domain.models.OsmosisApiResponse
+import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
 import io.provenance.explorer.domain.models.explorer.TokenHistoricalDataRequest
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.model.AssetHolder
@@ -49,10 +52,12 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
+import org.joda.time.DateTimeZone
+import org.joda.time.Duration
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.net.URLEncoder
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.servlet.ServletOutputStream
@@ -220,33 +225,6 @@ class TokenService(private val accountClient: AccountGrpcClient) {
                 )
             }
     }
-
-    fun getHistoricalFromDlob(startTime: DateTime, tickerId: String): DlobHistBase? = runBlocking {
-        try {
-            KTOR_CLIENT_JAVA.get("https://www.dlob.io:443/gecko/external/api/v1/exchange/historical_trades") {
-                parameter("ticker_id", tickerId)
-                parameter("type", "buy")
-                parameter("start_time", DateTimeFormat.forPattern("dd-MM-yyyy").print(startTime))
-                accept(ContentType.Application.Json)
-            }.body()
-        } catch (e: ResponseException) {
-            return@runBlocking null.also { logger.error("Error fetching from Dlob: ${e.response}") }
-        } catch (e: Exception) {
-            return@runBlocking null.also { logger.error("Error fetching from Dlob: ${e.message}") }
-        } catch (e: Throwable) {
-            return@runBlocking null.also { logger.error("Error fetching from Dlob: ${e.message}") }
-        }
-    }
-
-    fun getHistoricalFromDlob(startTime: DateTime): DlobHistBase? {
-        val tickerIds = listOf("HASH_USD", "HASH_USDOMNI")
-
-        val dlobHistorical = tickerIds
-            .flatMap { getHistoricalFromDlob(startTime, it)?.buy.orEmpty() }
-
-        return if (dlobHistorical.isNotEmpty()) DlobHistBase(dlobHistorical) else null
-    }
-
     fun getTokenHistorical(fromDate: DateTime?, toDate: DateTime?) =
         TokenHistoricalDailyRecord.findForDates(fromDate?.startOfDay(), toDate?.startOfDay())
 
@@ -254,10 +232,93 @@ class TokenService(private val accountClient: AccountGrpcClient) {
         VANILLA_MAPPER.readValue<CmcLatestDataAbbrev>(it)
     }
 
+    fun fetchOsmosisData(fromDate: DateTime?): List<OsmosisHistoricalPrice> = runBlocking {
+        val input = buildInputQuery(fromDate, determineTimeFrame(fromDate))
+        try {
+            val url = """https://app.osmosis.zone/api/edge-trpc-assets/assets.getAssetHistoricalPrice?input=$input"""
+            val response: HttpResponse = KTOR_CLIENT_JAVA.get(url) {
+                accept(ContentType.Application.Json)
+            }
+
+            val rawResponse: String = response.bodyAsText()
+            logger.debug("Osmosis GET: $url Raw Response: $rawResponse")
+
+            val osmosisApiResponse: OsmosisApiResponse = response.body()
+            osmosisApiResponse.result.data.json
+        } catch (e: ResponseException) {
+            logger.error("Error fetching from Osmosis API: ${e.response}")
+            emptyList()
+        } catch (e: Exception) {
+            logger.error("Error fetching from Osmosis API: ${e.message}")
+            emptyList()
+        }
+    }
+
+    enum class TimeFrame(val minutes: Int) {
+        FIVE_MINUTES(5),
+        TWO_HOURS(120),
+        ONE_DAY(1440)
+    }
+
+    /**
+     * Determines the appropriate TimeFrame based on the fromDate.
+     *
+     * @param fromDate The starting date to determine the time frame.
+     * @return The appropriate TimeFrame enum value.
+     */
+    fun determineTimeFrame(fromDate: DateTime?): TimeFrame {
+        val now = DateTime.now(DateTimeZone.UTC)
+        val duration = Duration(fromDate, now)
+
+        return when {
+            duration.standardDays <= 14 -> TimeFrame.FIVE_MINUTES
+            duration.standardDays <= 60 -> TimeFrame.TWO_HOURS
+            else -> TimeFrame.ONE_DAY
+        }
+    }
+
+    /**
+     * Builds the input query parameter for fetching historical data.
+     *
+     * This function constructs a URL-encoded JSON query parameter for fetching historical data based on the given
+     * `fromDate` and `timeFrame`. The `timeFrame` represents the number of minutes between updates. The allowed values
+     * for `timeFrame` are defined in the `TimeFrame` enum:
+     * - FIVE_MINUTES: data goes back 2 weeks.
+     * - TWO_HOURS: data goes back 2 months.
+     * - ONE_DAY: data goes back to the beginning of time.
+     *
+     * The function calculates the total number of frames (`numRecentFrames`) from the `fromDate` to the current time,
+     * based on the specified `timeFrame`.
+     *
+     * @param fromDate The starting date from which to calculate the number of frames.
+     * @param timeFrame The time interval between updates, specified as a `TimeFrame` enum value.
+     * @return A URL-encoded JSON string to be used as a query parameter for fetching historical data.
+     */
+    fun buildInputQuery(fromDate: DateTime?, timeFrame: TimeFrame): String {
+        val coinDenom = "ibc/CE5BFF1D9BADA03BB5CCA5F56939392A761B53A10FBD03B37506669C3218D3B2"
+        val now = DateTime.now(DateTimeZone.UTC)
+        val duration = Duration(fromDate, now)
+        val numRecentFrames = (duration.standardMinutes / timeFrame.minutes).toInt()
+        return URLEncoder.encode(
+            """{"json":{"coinDenom":"$coinDenom","timeFrame":{"custom":{"timeFrame":${timeFrame.minutes},"numRecentFrames":$numRecentFrames}}}}""",
+            "UTF-8"
+        )
+    }
+
     fun getHashPricingDataDownload(filters: TokenHistoricalDataRequest, resp: ServletOutputStream): ZipOutputStream {
         validate(filters.datesValidation())
         val baseFileName = filters.getFileNameBase()
-        val fileList = filters.getFileList()
+
+        val fileList = runBlocking {
+            val data = fetchOsmosisData(filters.fromDate)
+            listOf(
+                CsvData(
+                    "TokenHistoricalData",
+                    filters.tokenHistoricalCsvBaseHeaders,
+                    data.map { it.toCsv() }
+                )
+            )
+        }
 
         val zos = ZipOutputStream(resp)
         fileList.forEach { file ->
@@ -265,12 +326,22 @@ class TokenService(private val accountClient: AccountGrpcClient) {
             zos.write(file.writeCsvEntry())
             zos.closeEntry()
         }
-        // Adding in a txt file with the applied filters
         zos.putNextEntry(ZipEntry("$baseFileName - FILTERS.txt"))
         zos.write(filters.writeFilters())
         zos.closeEntry()
         zos.close()
         return zos
+    }
+
+    private fun OsmosisHistoricalPrice.toCsv(): List<String> {
+        return listOf(
+            time.toString(),
+            open.toString(),
+            high.toString(),
+            low.toString(),
+            close.toString(),
+            volume.toString()
+        )
     }
 }
 
