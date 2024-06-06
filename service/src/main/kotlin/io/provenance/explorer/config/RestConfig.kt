@@ -57,7 +57,6 @@ class RestConfig {
     }
 }
 
-
 private fun packageDescriptors(): List<Descriptors.Descriptor> {
     val descriptors = mutableListOf<Descriptors.Descriptor>()
     descriptors.addAll(findDescriptorsInPackage("cosmos"))
@@ -66,7 +65,6 @@ private fun packageDescriptors(): List<Descriptors.Descriptor> {
     descriptors.addAll(findDescriptorsInPackage("io.provenance"))
     return descriptors
 }
-
 
 private fun findDescriptorsInPackage(basePackageName: String): List<Descriptors.Descriptor> {
     val reflections = Reflections(basePackageName)

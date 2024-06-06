@@ -4,7 +4,6 @@ import com.google.protobuf.Any
 import io.provenance.explorer.domain.extensions.sigToAddress
 import io.provenance.explorer.domain.extensions.toByteString
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import java.util.Base64
 

@@ -203,7 +203,7 @@ class RestConfigTest {
             cosmos.authz.v1beta1.Authz.CountAuthorization.getDescriptor(),
             cosmos.authz.v1beta1.Authz.GrantAuthorization.getDescriptor(),
             cosmos.group.v1.Types.ThresholdDecisionPolicy.getDescriptor(),
-            cosmos.group.v1.Types.PercentageDecisionPolicy.getDescriptor(),
+            cosmos.group.v1.Types.PercentageDecisionPolicy.getDescriptor()
         )
     }
 }
