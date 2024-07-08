@@ -33,7 +33,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
-* Updated Prov Protos to 1.19.0-rc2 [#](https://github.com/provenance-io/explorer-service/pull/)
+* Updated Prov Protos to 1.19.0-rc2 [#522](https://github.com/provenance-io/explorer-service/pull/522)
 
 ## [v5.10.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.10.0) - 2024-06-11
 ### Release Name: Fridtjof Nansen
