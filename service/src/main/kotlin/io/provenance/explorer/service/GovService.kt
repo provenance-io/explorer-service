@@ -772,14 +772,11 @@ fun String.toProposalTypeList() = this.split(", ")
 fun GovProposalRecord?.getUpgradePlan() =
     this?.contentV1?.list
         ?.mapNotNull { msg ->
-            logger().info("Processing message with type_url: ${msg.typeUrl}")
             when {
                 msg.typeUrl.contains("MsgSoftwareUpgrade") -> msg.toMsgSoftwareUpgrade().plan
                 msg.typeUrl.contains("cosmos.gov.v1.MsgExecLegacyContent") ->
                     msg.toMsgExecLegacyContent().content.let {
-                        logger().info("Processing sub message with type_url: ${msg.typeUrl}")
-                        if (it.typeUrl.contains("SoftwareUpgradeProposal")) {
-                            logger().info("toSoftwareUpgradeProposal: ${msg.value?.toStringUtf8()}")
+                        if (it.typeUrl.contains("cosmos.upgrade.v1beta1.SoftwareUpgradeProposal")) {
                             it.toSoftwareUpgradeProposal().plan
                         } else {
                             null
@@ -790,7 +787,6 @@ fun GovProposalRecord?.getUpgradePlan() =
             }
         }?.first()
         ?: this?.dataV1beta1?.content?.toSoftwareUpgradeProposal()?.plan
-
 
 fun String.toVoteMetadata() =
     if (this.isBlank()) {
