@@ -52,7 +52,7 @@ class TransactionGrpcClient(channelUri: URI) {
         do {
             txClient.getTxsEvent(
                 getTxsEventRequest {
-                    this.events.add("tx.height=$height")
+                    this.query = "tx.height=$height"
                     this.limit = limit.toLong()
                     this.page = page.toLong()
                 }
