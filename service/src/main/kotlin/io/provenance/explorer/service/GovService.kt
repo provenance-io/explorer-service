@@ -775,9 +775,11 @@ fun GovProposalRecord?.getUpgradePlan() =
             logger().info("Processing message with type_url: ${msg.typeUrl}")
             when {
                 msg.typeUrl.contains("MsgSoftwareUpgrade") -> msg.toMsgSoftwareUpgrade().plan
-                msg.typeUrl.contains("gov.v1.MsgExecLegacyContent") ->
+                msg.typeUrl.contains("cosmos.gov.v1.MsgExecLegacyContent") ->
                     msg.toMsgExecLegacyContent().content.let {
+                        logger().info("Processing sub message with type_url: ${msg.typeUrl}")
                         if (it.typeUrl.contains("SoftwareUpgradeProposal")) {
+                            logger().info("toSoftwareUpgradeProposal: ${msg.value?.toStringUtf8()}")
                             it.toSoftwareUpgradeProposal().plan
                         } else {
                             null
