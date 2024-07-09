@@ -14,7 +14,6 @@ import io.provenance.explorer.domain.extensions.toDbHash
 import io.provenance.explorer.domain.models.explorer.LedgerBySliceRes
 import io.provenance.explorer.domain.models.explorer.LedgerInfo
 import io.provenance.explorer.domain.models.explorer.TxData
-import io.provenance.explorer.grpc.extensions.toLocalhostClientState
 import io.provenance.explorer.grpc.extensions.toTendermintClientState
 import io.provenance.explorer.model.IbcRelayer
 import org.jetbrains.exposed.dao.IntEntity
