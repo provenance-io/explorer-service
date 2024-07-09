@@ -34,6 +34,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ## Unreleased
 
 * Updated Prov Protos to 1.19.0-rc2 [#522](https://github.com/provenance-io/explorer-service/pull/522)
+* Updated gRPC query to use `query` field instead of `events` field [#523](https://github.com/provenance-io/explorer-service/pull/523)
+
 
 ## [v5.10.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.10.0) - 2024-06-11
 ### Release Name: Fridtjof Nansen
