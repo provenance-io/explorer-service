@@ -218,7 +218,7 @@ class GovService(
                 content.typeUrl.endsWith("v1.StoreCodeProposal") ->
                     MonitorProposalType.STORE_CODE to
                         // base64(sha256(gzipUncompress(wasmByteCode))) == base64(storedCode.data_hash)
-                        content.unpack(cosmwasm.wasm.v1.Proposal.StoreCodeProposal::class.java)
+                        content.unpack(cosmwasm.wasm.v1.ProposalLegacy.StoreCodeProposal::class.java)
                             .wasmByteCode.gzipUncompress().to256Hash()
                 content.typeUrl.endsWith("v1.MsgStoreCode") ->
                     MonitorProposalType.STORE_CODE to content.toMsgStoreCode().wasmByteCode.gzipUncompress().to256Hash()
@@ -651,7 +651,9 @@ class GovService(
                             wasmByteCode = wasmFile.bytes.gzipCompress().toByteString()
                             content.accessConfig?.let { config ->
                                 instantiatePermission = accessConfig {
-                                    config.address?.let { this.address = it }
+                                    config.address?.let {
+                                        this.addresses.addAll(listOf(it))
+                                    }
                                     permission = config.type
                                 }
                             }

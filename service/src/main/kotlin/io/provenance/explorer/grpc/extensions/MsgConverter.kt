@@ -44,8 +44,8 @@ import ibc.core.connection.v1.Tx.MsgConnectionOpenAck
 import ibc.core.connection.v1.Tx.MsgConnectionOpenConfirm
 import ibc.core.connection.v1.Tx.MsgConnectionOpenInit
 import ibc.core.connection.v1.Tx.MsgConnectionOpenTry
-import ibc.lightclients.localhost.v1.Localhost
-import ibc.lightclients.solomachine.v1.Solomachine
+import ibc.lightclients.localhost.v2.Localhost
+import ibc.lightclients.solomachine.v2.Solomachine
 import ibc.lightclients.tendermint.v1.Tendermint
 import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest

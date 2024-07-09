@@ -21,8 +21,7 @@ enum class ProposalType(val example: BaseProposal) {
         StoreCodeData(
             "run as address",
             StoreCodeAccessConfig(
-                Types.AccessType.ACCESS_TYPE_EVERYBODY,
-                "Only set to an address if ${Types.AccessType.ACCESS_TYPE_ONLY_ADDRESS.name}, else null"
+                Types.AccessType.ACCESS_TYPE_EVERYBODY
             )
         )
     ),

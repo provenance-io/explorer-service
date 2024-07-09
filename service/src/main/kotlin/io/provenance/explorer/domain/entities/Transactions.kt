@@ -812,8 +812,8 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
             // find tx level msg event
             val definedMsgFeeList = tx.txResponse.eventsList
                 .firstOrNull { it.type == getEventMsgFeesType().removeFirstSlash() }
-                ?.attributesList?.first { it.key.toStringUtf8() == "msg_fees" }
-                ?.value?.let { VANILLA_MAPPER.readValue<List<EventFee>>(it.toStringUtf8()) }
+                ?.attributesList?.first { it.key == "msg_fees" }
+                ?.value?.let { VANILLA_MAPPER.readValue<List<EventFee>>(it) }
 
             // Adds any defined fees to fee map
             definedMsgFeeList?.forEach { fee ->
