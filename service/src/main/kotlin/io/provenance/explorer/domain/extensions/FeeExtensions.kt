@@ -49,7 +49,7 @@ fun Abci.TxResponse.getSuccessTotalBaseFee(msgFeeClient: MsgFeeGrpcClient, heigh
             ?: (
                 this.eventsList
                     .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key }.contains("fee") }
-                    ?.attributesList?.first { it.key== "fee" }
+                    ?.attributesList?.first { it.key == "fee" }
                     ?.value?.denomAmountToPair()?.first?.toBigDecimal()
                     ?: this.getFeeTotalPaid()
                 )
@@ -108,7 +108,7 @@ fun ServiceOuterClass.GetTxResponse.identifyMsgBasedFeesOld(msgFeeClient: MsgFee
             // for each event obj, count the unique field, multiply by fee, and add to map (type to full amount)
             val match = definedEvents[event.type]!!
             val msgFee = msgFees[match.msg]!!
-            val count = event.attributesList.count { it.key== match.uniqueField }
+            val count = event.attributesList.count { it.key == match.uniqueField }
             val amount = msgFee.amount.toLong() * count
             msgToFee[match.msg]?.add(amount) ?: msgToFee.put(match.msg, mutableListOf(amount))
         }
