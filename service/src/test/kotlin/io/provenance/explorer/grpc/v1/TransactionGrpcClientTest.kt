@@ -2,10 +2,10 @@ package io.provenance.explorer.grpc.v1
 
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.domain.exceptions.TendermintApiException
-import java.net.URI
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import java.net.URI
 
 class TransactionGrpcClientTest {
 
@@ -29,5 +29,4 @@ class TransactionGrpcClientTest {
             println("Error occurred: ${e.message}")
         }
     }
-
 }
