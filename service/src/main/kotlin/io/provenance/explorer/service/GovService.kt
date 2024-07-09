@@ -769,15 +769,13 @@ fun List<Any>.getProposalTypeList() = this.joinToString(", ") { msg -> msg.getPr
 
 fun String.toProposalTypeList() = this.split(", ")
 
-fun GovProposalRecord?.getUpgradePlan(): Upgrade.Plan? {
-    return this?.contentV1?.list
+fun GovProposalRecord?.getUpgradePlan() =
+    this?.contentV1?.list
         ?.mapNotNull { msg ->
             logger().info("Processing message with type_url: ${msg.typeUrl}")
             when {
-                msg.typeUrl.contains("MsgSoftwareUpgrade") -> {
-                    msg.toMsgSoftwareUpgrade().plan
-                }
-                msg.typeUrl.contains("gov.v1.MsgExecLegacyContent") -> {
+                msg.typeUrl.contains("MsgSoftwareUpgrade") -> msg.toMsgSoftwareUpgrade().plan
+                msg.typeUrl.contains("gov.v1.MsgExecLegacyContent") ->
                     msg.toMsgExecLegacyContent().content.let {
                         if (it.typeUrl.contains("SoftwareUpgradeProposal")) {
                             it.toSoftwareUpgradeProposal().plan
@@ -785,12 +783,12 @@ fun GovProposalRecord?.getUpgradePlan(): Upgrade.Plan? {
                             null
                         }
                     }
-                }
+
                 else -> null
             }
         }?.first()
         ?: this?.dataV1beta1?.content?.toSoftwareUpgradeProposal()?.plan
-}
+
 
 fun String.toVoteMetadata() =
     if (this.isBlank()) {
