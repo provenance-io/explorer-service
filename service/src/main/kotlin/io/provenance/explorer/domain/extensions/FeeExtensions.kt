@@ -43,14 +43,14 @@ fun Abci.TxResponse.getSuccessTotalBaseFee(msgFeeClient: MsgFeeGrpcClient, heigh
         this.defaultBaseFees(msgFeeClient, height)
     } else {
         this.eventsList
-            .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("basefee") }
-            ?.attributesList?.first { it.key.toStringUtf8() == "basefee" }
-            ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.toBigDecimal()
+            .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key }.contains("basefee") }
+            ?.attributesList?.first { it.key == "basefee" }
+            ?.value?.denomAmountToPair()?.first?.toBigDecimal()
             ?: (
                 this.eventsList
-                    .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("fee") }
-                    ?.attributesList?.first { it.key.toStringUtf8() == "fee" }
-                    ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.toBigDecimal()
+                    .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key }.contains("fee") }
+                    ?.attributesList?.first { it.key== "fee" }
+                    ?.value?.denomAmountToPair()?.first?.toBigDecimal()
                     ?: this.getFeeTotalPaid()
                 )
     }
@@ -62,14 +62,14 @@ fun Abci.TxResponse.getSuccessTotalBaseFee(msgFeeClient: MsgFeeGrpcClient, heigh
 // If no msg fee set, use the total fee paid (usually used for older txs)
 fun Abci.TxResponse.getFailureTotalBaseFee(msgFeeClient: MsgFeeGrpcClient, height: Int) =
     this.eventsList
-        .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("min_fee_charged") }
-        ?.attributesList?.first { it.key.toStringUtf8() == "min_fee_charged" }
-        ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.toBigDecimal()
+        .firstOrNull { it.type == "tx" && it.attributesList.map { attr -> attr.key }.contains("min_fee_charged") }
+        ?.attributesList?.first { it.key == "min_fee_charged" }
+        ?.value?.denomAmountToPair()?.first?.toBigDecimal()
         ?: (
             this.eventsList
-                .firstOrNull { it.type == "coin_spent" && it.attributesList.map { attr -> attr.key.toStringUtf8() }.contains("amount") }
-                ?.attributesList?.first { it.key.toStringUtf8() == "amount" }
-                ?.value?.toStringUtf8()?.denomAmountToPair()?.first?.toBigDecimal()
+                .firstOrNull { it.type == "coin_spent" && it.attributesList.map { attr -> attr.key }.contains("amount") }
+                ?.attributesList?.first { it.key == "amount" }
+                ?.value?.denomAmountToPair()?.first?.toBigDecimal()
                 ?: (
                     sigErrorComboList.firstOrNull { it == Pair(this.codespace, this.code) }?.let { BigDecimal.ZERO }
                         ?: (
@@ -108,7 +108,7 @@ fun ServiceOuterClass.GetTxResponse.identifyMsgBasedFeesOld(msgFeeClient: MsgFee
             // for each event obj, count the unique field, multiply by fee, and add to map (type to full amount)
             val match = definedEvents[event.type]!!
             val msgFee = msgFees[match.msg]!!
-            val count = event.attributesList.count { it.key.toStringUtf8() == match.uniqueField }
+            val count = event.attributesList.count { it.key== match.uniqueField }
             val amount = msgFee.amount.toLong() * count
             msgToFee[match.msg]?.add(amount) ?: msgToFee.put(match.msg, mutableListOf(amount))
         }

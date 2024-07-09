@@ -78,7 +78,7 @@ import org.joda.time.DateTime
 import org.json.JSONArray
 import org.json.JSONObject
 import org.springframework.stereotype.Service
-import tendermint.types.Types
+import tendermint.types.ValidatorOuterClass
 import java.math.BigDecimal
 
 @Service
@@ -135,7 +135,7 @@ class ExplorerService(
     ) = let {
         val proposer = transaction { BlockProposerRecord.findById(blockResponse.block.height())!! }
         val stakingValidator = validatorService.getStakingValidator(proposer.proposerOperatorAddress)
-        val votingVals = nextBlock?.getVotingSet(Types.BlockIDFlag.BLOCK_ID_FLAG_ABSENT_VALUE)?.keys
+        val votingVals = nextBlock?.getVotingSet(ValidatorOuterClass.BlockIDFlag.BLOCK_ID_FLAG_ABSENT_VALUE)?.keys
         BlockSummary(
             height = blockResponse.block.height(),
             hash = blockResponse.blockId.hash.toHash(),
@@ -382,7 +382,7 @@ class ExplorerService(
         val valFilter = validatorSet.map { it.address }
         val stakingValidators = validatorService.getStakingValidators(status, valFilter, page.toOffset(count), count)
         val votingSet = asyncV2.getBlock(height + 1)!!
-            .getVotingSet(Types.BlockIDFlag.BLOCK_ID_FLAG_ABSENT_VALUE).keys
+            .getVotingSet(ValidatorOuterClass.BlockIDFlag.BLOCK_ID_FLAG_ABSENT_VALUE).keys
         val proposer = transaction { BlockProposerRecord.findById(height)!! }
         val results =
             validatorService.hydrateValidators(validatorSet, listOf(), stakingValidators, height.toLong()).map {

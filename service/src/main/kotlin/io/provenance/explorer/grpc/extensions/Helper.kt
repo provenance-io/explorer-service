@@ -18,7 +18,7 @@ fun String.removeFirstSlash() = this.split("/")[1]
 fun ServiceOuterClass.GetTxResponse.mapTxEventAttrValues(eventType: String, attrKey: String) =
     this.txResponse.eventsList
         .filterIndexed { _, event ->
-            event.type == eventType && event.attributesList.map { it.key.toStringUtf8() }.contains(attrKey)
+            event.type == eventType && event.attributesList.map { it.key }.contains(attrKey)
         }.mapIndexed { idx, event ->
-            idx to event.attributesList.first { it.key.toStringUtf8() == attrKey }.value.toStringUtf8()
+            idx to event.attributesList.first { it.key == attrKey }.value
         }.toMap()

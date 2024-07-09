@@ -55,8 +55,6 @@ fun Any.getChainName() =
     when {
         typeUrl.contains("ibc.lightclients.tendermint.v1.ClientState") ->
             this.toTendermintClientState().chainId
-        typeUrl.contains("ibc.lightclients.localhost.v1.ClientState") ->
-            this.toLocalhostClientState().chainId
         typeUrl.contains("ibc.lightclients.solomachine.v1.ClientState") -> "Unknown"
         else -> throw ResourceNotFoundException("The Client State type is unknown: '$typeUrl'")
     }
