@@ -177,15 +177,25 @@ class TransactionService(
             .ifEmpty { throw ResourceNotFoundException("Invalid transaction hash: '$txnHash'") }
             .getMainState(blockHeight).txV2.let { protoPrinter.print(it) }
 
-    fun getTransactionByHash(hash: String, blockHeight: Int? = null) =
-        getTxByHash(hash)
-            .ifEmpty { throw ResourceNotFoundException("Invalid transaction hash: '$hash'") }
+    fun getTransactionByHash(hash: String, blockHeight: Int? = null): TxDetails {
+        logger.info("Fetching transaction for hash: $hash with blockHeight: $blockHeight")
+
+        return getTxByHash(hash)
+            .ifEmpty {
+                logger.error("No transaction found for hash: $hash")
+                throw ResourceNotFoundException("Invalid transaction hash: '$hash'")
+            }
             .let { list ->
                 val state = list.getMainState(blockHeight)
-
+                logger.info("Main state found for transaction hash: $hash at height: ${state.height}")
+                logger.info("State: ${state}")
                 hydrateTxDetails(state)
-                    .apply { this.additionalHeights = list.filterNot { it.height == state.height }.map { it.height } }
+                    .apply {
+                        this.additionalHeights = list.filterNot { it.height == state.height }.map { it.height }
+                        logger.info("Hydrated transaction details for hash: $hash with additional heights: $additionalHeights")
+                    }
             }
+    }
 
     private fun hydrateTxDetails(tx: TxCacheRecord) = transaction {
         TxDetails(
