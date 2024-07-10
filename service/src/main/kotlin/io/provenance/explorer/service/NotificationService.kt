@@ -47,7 +47,7 @@ class NotificationService(
         val currentHeight = blockService.getLatestBlockHeightIndexOrFromChain()
 
         val upgrades = GovProposalRecord.findByProposalType(govService.getUpgradeProtoType())
-            .filter { it.status == Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name }
+            .filter { it.status == Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name && it.getUpgradePlan() != null}
             .filter { proposal ->
                 val name = proposal.getUpgradePlan()!!.name
                 govClient.getIfUpgradeApplied(name).height == 0L &&
