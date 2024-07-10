@@ -179,21 +179,16 @@ class TransactionService(
 
     fun getTransactionByHash(hash: String, blockHeight: Int? = null): TxDetails {
         logger.info("Fetching transaction for hash: $hash with blockHeight: $blockHeight")
-
         return try {
             getTxByHash(hash)
                 .ifEmpty {
-                    logger.error("No transaction found for hash: $hash")
                     throw ResourceNotFoundException("Invalid transaction hash: '$hash'")
                 }
                 .let { list ->
                     val state = list.getMainState(blockHeight)
-                    logger.info("Main state found for transaction hash: $hash at height: ${state.height}")
-                    logger.info("State: $state")
                     hydrateTxDetails(state)
                         .apply {
                             this.additionalHeights = list.filterNot { it.height == state.height }.map { it.height }
-                            logger.info("Hydrated transaction details for hash: $hash with additional heights: $additionalHeights")
                         }
                 }
         } catch (e: Exception) {
