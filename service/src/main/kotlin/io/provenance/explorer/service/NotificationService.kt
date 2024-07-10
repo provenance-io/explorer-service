@@ -43,39 +43,32 @@ class NotificationService(
         OpenProposals(nonUpgrades.map { it.second }, upgrades.map { it.second })
     }
 
-    fun fetchScheduledUpgrades(): List<ScheduledUpgrade> = runBlocking {
+    fun fetchScheduledUpgrades() = runBlocking {
         val currentHeight = blockService.getLatestBlockHeightIndexOrFromChain()
 
-        val proposalsWithPlans = GovProposalRecord.findByProposalType(govService.getUpgradeProtoType())
-            .mapNotNull { proposal ->
-                val upgradePlan = proposal.getUpgradePlan()
-                if (proposal.status == Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name && upgradePlan != null) {
-                    proposal to upgradePlan
-                } else {
-                    null
-                }
-            }
-
-        val filteredUpgrades = proposalsWithPlans.filter { (_, upgradePlan) ->
-            val name = upgradePlan.name
-            val upgradeApplied = govClient.getIfUpgradeApplied(name)
-            upgradeApplied.height == 0L && upgradePlan.height > currentHeight
-        }.sortedBy { (proposal, _) -> proposal.proposalId }
+        val upgrades = GovProposalRecord.findByProposalType(govService.getUpgradeProtoType())
+            .filter { it.status == Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name && it.getUpgradePlan() != null}
+            .filter { proposal ->
+                val name = proposal.getUpgradePlan()!!.name
+                govClient.getIfUpgradeApplied(name).height == 0L &&
+                    proposal.getUpgradePlan()!!.height > currentHeight
+            }.sortedBy { it.proposalId }
 
         val avgBlockTime = cacheService.getAvgBlockTime()
         val currentTimeMs = DateTime.now(DateTimeZone.UTC).millis
 
-        filteredUpgrades.map { (proposal, upgradePlan) ->
-            val plannedHeight = upgradePlan.height
+        upgrades.map {
+            val plan = it.getUpgradePlan()!!
+            val plannedHeight = plan.height
             val heightDiff = plannedHeight - currentHeight
             val additionalMs = avgBlockTime.multiply(BigDecimal(1000)).multiply(BigDecimal(heightDiff)).toLong()
             val approxUpgrade = DateTime(currentTimeMs + additionalMs, DateTimeZone.UTC)
 
             ScheduledUpgrade(
-                proposal.proposalId,
-                proposal.title,
-                upgradePlan.name,
-                upgradePlan.info.getChainVersionFromUrl(props.upgradeVersionRegex),
+                it.proposalId,
+                it.title,
+                plan.name,
+                plan.info.getChainVersionFromUrl(props.upgradeVersionRegex),
                 plannedHeight,
                 approxUpgrade
             )
