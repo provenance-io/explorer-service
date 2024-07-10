@@ -773,7 +773,7 @@ fun GovProposalRecord?.getUpgradePlan() =
     this?.contentV1?.list
         ?.mapNotNull { msg ->
             when {
-                msg.typeUrl.contains("MsgSoftwareUpgrade") -> msg.toMsgSoftwareUpgrade().plan
+                msg.typeUrl.contains("cosmos.upgrade.v1beta1.MsgSoftwareUpgrade") -> msg.toMsgSoftwareUpgrade().plan
                 msg.typeUrl.contains("cosmos.gov.v1.MsgExecLegacyContent") ->
                     msg.toMsgExecLegacyContent().content.let {
                         if (it.typeUrl.contains("cosmos.upgrade.v1beta1.SoftwareUpgradeProposal")) {
@@ -785,7 +785,7 @@ fun GovProposalRecord?.getUpgradePlan() =
 
                 else -> null
             }
-        }?.first()
+        }?.firstOrNull()
         ?: this?.dataV1beta1?.content?.toSoftwareUpgradeProposal()?.plan
 
 fun String.toVoteMetadata() =
