@@ -230,6 +230,8 @@ class ExplorerService(
         }
         val upgrades = proposals.windowed(2, 1, true) { chunk ->
             (chunk.first() to chunk.getOrNull(1)).let { (one, two) ->
+                logger().info("First proposal $one")
+                logger().info("Second proposal $two")
                 val nextUpgrade = two?.getUpgradePlan()?.info
                 val (version, url) = one.getUpgradePlan()!!.info
                     .getLatestPatchVersion(knownReleases, props.upgradeVersionRegex, nextUpgrade)

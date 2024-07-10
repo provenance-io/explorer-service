@@ -15,6 +15,7 @@ import cosmos.gov.v1.weightedVoteOption
 import cosmos.gov.v1beta1.textProposal
 import cosmos.params.v1beta1.paramChange
 import cosmos.params.v1beta1.parameterChangeProposal
+import cosmos.upgrade.v1beta1.Upgrade
 import cosmos.upgrade.v1beta1.cancelSoftwareUpgradeProposal
 import cosmos.upgrade.v1beta1.plan
 import cosmos.upgrade.v1beta1.softwareUpgradeProposal
@@ -769,24 +770,37 @@ fun List<Any>.getProposalTypeList() = this.joinToString(", ") { msg -> msg.getPr
 
 fun String.toProposalTypeList() = this.split(", ")
 
-fun GovProposalRecord?.getUpgradePlan() =
-    this?.contentV1?.list
-        ?.mapNotNull { msg ->
-            when {
-                msg.typeUrl.contains("cosmos.upgrade.v1beta1.MsgSoftwareUpgrade") -> msg.toMsgSoftwareUpgrade().plan
-                msg.typeUrl.contains("cosmos.gov.v1.MsgExecLegacyContent") ->
-                    msg.toMsgExecLegacyContent().content.let {
-                        if (it.typeUrl.contains("cosmos.upgrade.v1beta1.SoftwareUpgradeProposal")) {
-                            it.toSoftwareUpgradeProposal().plan
-                        } else {
-                            null
-                        }
-                    }
+fun GovProposalRecord?.getUpgradePlan(): Upgrade.Plan? {
+    return this?.let {
+        getUpgradePlanFromContentV1(it) ?: getUpgradePlanFromDataV1beta1(it)
+    }
+}
 
-                else -> null
+private fun getUpgradePlanFromContentV1(record: GovProposalRecord): Upgrade.Plan? {
+    return record.contentV1?.list
+        ?.mapNotNull { msg -> processUpgradeProposalMessage(msg) }
+        ?.firstOrNull()
+}
+
+private fun getUpgradePlanFromDataV1beta1(record: GovProposalRecord): Upgrade.Plan? {
+    return record.dataV1beta1?.content?.toSoftwareUpgradeProposal()?.plan
+}
+
+private fun processUpgradeProposalMessage(msg: Any): Upgrade.Plan? {
+    return when {
+        msg.typeUrl.contains("cosmos.upgrade.v1beta1.MsgSoftwareUpgrade") -> msg.toMsgSoftwareUpgrade().plan
+        msg.typeUrl.contains("cosmos.gov.v1.MsgExecLegacyContent") -> {
+            msg.toMsgExecLegacyContent().content.let {
+                if (it.typeUrl.contains("cosmos.upgrade.v1beta1.SoftwareUpgradeProposal")) {
+                    it.toSoftwareUpgradeProposal().plan
+                } else {
+                    null
+                }
             }
-        }?.firstOrNull()
-        ?: this?.dataV1beta1?.content?.toSoftwareUpgradeProposal()?.plan
+        }
+        else -> null
+    }
+}
 
 fun String.toVoteMetadata() =
     if (this.isBlank()) {
