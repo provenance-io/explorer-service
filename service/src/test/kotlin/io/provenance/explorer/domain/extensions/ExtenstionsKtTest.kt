@@ -29,4 +29,23 @@ class ExtensionsKtTest {
             assertEquals("{\"marker\":{\"transfer-auths\":[\"tp19zf8q9swrsspkdljumwh04zjac4nkfvju6ehl9\",\"tp1tk6fqws0su7fzp090edrauaa756mdyjfdw0507\",\"tp1a53udazy8ayufvy0s434pfwjcedzqv34vfvvyc\"],\"allow-force-transfer\":false}}", actualJsonObj.get("memo").asText(), testname)
         }
     }
+
+    @Test
+    fun `test tryFromBase64 with various cases`() {
+        val base64String = "SGVsbG8gd29ybGQ="
+        val expectedDecodedString = "Hello world"
+        assertEquals(expectedDecodedString, base64String.tryFromBase64(), "Valid Base64 string should decode to 'Hello world'")
+
+        val invalidBase64String = "Hello world"
+        val expectedInvalidOutput = invalidBase64String
+        assertEquals(expectedInvalidOutput, invalidBase64String.tryFromBase64(), "Invalid Base64 string should return the original string")
+
+        val emptyString = ""
+        val expectedEmptyOutput = emptyString
+        assertEquals(expectedEmptyOutput, emptyString.tryFromBase64(), "Empty string should return the original string")
+
+        val malformedBase64String = "SGVsbG8gd29ybGQ" // Missing padding character '='
+        val expectedMalformedOutput = malformedBase64String
+        assertEquals(expectedMalformedOutput, malformedBase64String.tryFromBase64(), "Malformed Base64 string should return the original string")
+    }
 }

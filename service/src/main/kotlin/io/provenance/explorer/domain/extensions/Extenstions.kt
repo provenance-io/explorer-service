@@ -41,6 +41,14 @@ fun String.toByteString() = ByteString.copyFromUtf8(this)
 fun ByteArray.toByteString() = ByteString.copyFrom(this)
 fun ByteString.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
 fun String.fromBase64() = Base64.getDecoder().decode(this).decodeToString()
+
+fun String.tryFromBase64(): String {
+    return try {
+        return Base64.getDecoder().decode(this).decodeToString()
+    } catch (e: IllegalArgumentException) {
+        this
+    }
+}
 fun String.fromBase64ToMAddress() = Base64.getDecoder().decode(this).toByteString().toMAddress()
 fun String.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
 fun ByteArray.base64EncodeString(): String = String(Base64.getEncoder().encode(this))
