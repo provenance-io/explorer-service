@@ -3,6 +3,7 @@ package io.provenance.explorer.service
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.google.protobuf.Any
+import com.google.protobuf.InvalidProtocolBufferException
 import com.google.protobuf.util.JsonFormat
 import cosmos.gov.v1.Gov
 import cosmos.gov.v1.Gov.VoteOption
@@ -783,7 +784,12 @@ private fun getUpgradePlanFromContentV1(record: GovProposalRecord): Upgrade.Plan
 }
 
 private fun getUpgradePlanFromDataV1beta1(record: GovProposalRecord): Upgrade.Plan? {
-    return record.dataV1beta1?.content?.toSoftwareUpgradeProposal()?.plan
+    return try {
+        record.dataV1beta1?.content?.toSoftwareUpgradeProposal()?.plan
+    } catch (e: InvalidProtocolBufferException) {
+        logger().error("unable to unpack ${record.dataV1beta1?.content} to SoftwareUpgradeProposal")
+        null
+    }
 }
 
 private fun processUpgradeProposalMessage(msg: Any): Upgrade.Plan? {
