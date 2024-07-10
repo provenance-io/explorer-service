@@ -33,8 +33,14 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+
 * Updated Prov Protos to 1.19.0-rc2 [#522](https://github.com/provenance-io/explorer-service/pull/522)
 * Updated gRPC query to use `query` field instead of `events` field [#523](https://github.com/provenance-io/explorer-service/pull/523)
+
+### Bug Fixes
+
+* Fixed issue with Proto deserialization incorrectly matching `cosmos.upgrade.v1beta1.CancelSoftwareUpgradeProposal` as `cosmos.upgrade.v1beta1.SoftwareUpgradeProposal`, ensuring accurate type URL handling. [#524](https://github.com/provenance-io/explorer-service/pull/524)
 
 ## [v5.10.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.10.0) - 2024-06-11
 ### Release Name: Fridtjof Nansen

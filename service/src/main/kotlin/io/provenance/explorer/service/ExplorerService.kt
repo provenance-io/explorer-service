@@ -208,7 +208,9 @@ class ExplorerService(
         val typeUrl = govService.getUpgradeProtoType()
         val scheduledName = runBlocking { govClient.getIfUpgradeScheduled()?.plan?.name }
         val proposals = GovProposalRecord.findByProposalType(typeUrl)
-            .filter { it.status == Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name }
+            .filter {
+                it.status == Gov.ProposalStatus.PROPOSAL_STATUS_PASSED.name && it.getUpgradePlan() != null
+            }
         val knownReleases =
             CacheUpdateRecord.fetchCacheByKey(CacheKeys.CHAIN_RELEASES.key)?.cacheValue?.let {
                 VANILLA_MAPPER.readValue<List<GithubReleaseData>>(it)
