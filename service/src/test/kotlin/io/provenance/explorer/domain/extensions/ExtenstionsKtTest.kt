@@ -44,7 +44,7 @@ class ExtensionsKtTest {
         val expectedEmptyOutput = emptyString
         assertEquals(expectedEmptyOutput, emptyString.tryFromBase64(), "Empty string should return the original string")
 
-        val malformedBase64String = "SGVsbG8gd29ybGQ" // Missing padding character '='
+        val malformedBase64String = "SGVsbG8gd29ybGQ"
         val expectedMalformedOutput = malformedBase64String
         assertEquals(expectedMalformedOutput, malformedBase64String.tryFromBase64(), "Malformed Base64 string should return the original string")
     }

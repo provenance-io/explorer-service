@@ -43,11 +43,20 @@ fun ByteString.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray(
 fun String.fromBase64() = Base64.getDecoder().decode(this).decodeToString()
 
 fun String.tryFromBase64(): String {
-    return try {
-        return Base64.getDecoder().decode(this).decodeToString()
-    } catch (e: IllegalArgumentException) {
+    return if (isBase64(this)) {
+        try {
+            Base64.getDecoder().decode(this).decodeToString()
+        } catch (e: IllegalArgumentException) {
+            this
+        }
+    } else {
         this
     }
+}
+
+private fun isBase64(str: String): Boolean {
+    if (str.length % 4 != 0) return false
+    return str.matches(Regex("^[A-Za-z0-9+/=]+\$"))
 }
 fun String.fromBase64ToMAddress() = Base64.getDecoder().decode(this).toByteString().toMAddress()
 fun String.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
