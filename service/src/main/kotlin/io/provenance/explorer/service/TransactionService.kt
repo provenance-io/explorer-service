@@ -188,7 +188,7 @@ class TransactionService(
             .let { list ->
                 val state = list.getMainState(blockHeight)
                 logger.info("Main state found for transaction hash: $hash at height: ${state.height}")
-                logger.info("State: ${state}")
+                logger.info("State: $state")
                 hydrateTxDetails(state)
                     .apply {
                         this.additionalHeights = list.filterNot { it.height == state.height }.map { it.height }
