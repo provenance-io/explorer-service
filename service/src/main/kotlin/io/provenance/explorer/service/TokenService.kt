@@ -297,11 +297,12 @@ class TokenService(private val accountClient: AccountGrpcClient) {
      */
     fun buildInputQuery(fromDate: DateTime?, timeFrame: TimeFrame): String {
         val coinDenom = "ibc/CE5BFF1D9BADA03BB5CCA5F56939392A761B53A10FBD03B37506669C3218D3B2"
+        val coinMinimalDenom = "ibc/CE5BFF1D9BADA03BB5CCA5F56939392A761B53A10FBD03B37506669C3218D3B2"
         val now = DateTime.now(DateTimeZone.UTC)
         val duration = Duration(fromDate, now)
         val numRecentFrames = (duration.standardMinutes / timeFrame.minutes).toInt()
         return URLEncoder.encode(
-            """{"json":{"coinDenom":"$coinDenom","timeFrame":{"custom":{"timeFrame":${timeFrame.minutes},"numRecentFrames":$numRecentFrames}}}}""",
+            """{"json":{"coinDenom":"$coinDenom","coinMinimalDenom":"$coinMinimalDenom","timeFrame":{"custom":{"timeFrame":${timeFrame.minutes},"numRecentFrames":$numRecentFrames}}}}""",
             "UTF-8"
         )
     }
