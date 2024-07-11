@@ -236,6 +236,7 @@ class TokenService(private val accountClient: AccountGrpcClient) {
         val input = buildInputQuery(fromDate, determineTimeFrame(fromDate))
         try {
             val url = """https://app.osmosis.zone/api/edge-trpc-assets/assets.getAssetHistoricalPrice?input=$input"""
+            logger.info("Calling $url with input $input for fromDate $fromDate")
             val response: HttpResponse = KTOR_CLIENT_JAVA.get(url) {
                 accept(ContentType.Application.Json)
             }
@@ -246,10 +247,10 @@ class TokenService(private val accountClient: AccountGrpcClient) {
             val osmosisApiResponse: OsmosisApiResponse = response.body()
             osmosisApiResponse.result.data.json
         } catch (e: ResponseException) {
-            logger.error("Error fetching from Osmosis API: ${e.response}")
+            logger.error("Error fetching from Osmosis API: ${e.response}", e)
             emptyList()
         } catch (e: Exception) {
-            logger.error("Error fetching from Osmosis API: ${e.message}")
+            logger.error("Error fetching from Osmosis API: ${e.message}", e)
             emptyList()
         }
     }
