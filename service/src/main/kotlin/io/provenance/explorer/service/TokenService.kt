@@ -270,7 +270,7 @@ class TokenService(private val accountClient: AccountGrpcClient) {
     fun determineTimeFrame(fromDate: DateTime?): TimeFrame {
         val now = DateTime.now(DateTimeZone.UTC)
         val duration = Duration(fromDate, now)
-
+        logger.info("fromDate: $fromDate now: $now duration: $duration")
         return when {
             duration.standardDays <= 14 -> TimeFrame.FIVE_MINUTES
             duration.standardDays <= 60 -> TimeFrame.TWO_HOURS
