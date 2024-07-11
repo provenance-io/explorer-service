@@ -236,7 +236,7 @@ class TokenService(private val accountClient: AccountGrpcClient) {
         val input = buildInputQuery(fromDate, determineTimeFrame(fromDate))
         try {
             val url = """https://app.osmosis.zone/api/edge-trpc-assets/assets.getAssetHistoricalPrice?input=$input"""
-            logger.info("Calling $url with input $input for fromDate $fromDate")
+            logger.info("Calling $url with fromDate $fromDate")
             val response: HttpResponse = KTOR_CLIENT_JAVA.get(url) {
                 accept(ContentType.Application.Json)
             }
@@ -270,7 +270,6 @@ class TokenService(private val accountClient: AccountGrpcClient) {
     fun determineTimeFrame(fromDate: DateTime?): TimeFrame {
         val now = DateTime.now(DateTimeZone.UTC)
         val duration = Duration(fromDate, now)
-        logger.info("fromDate: $fromDate now: $now duration: $duration")
         return when {
             duration.standardDays <= 14 -> TimeFrame.FIVE_MINUTES
             duration.standardDays <= 60 -> TimeFrame.TWO_HOURS
