@@ -31,6 +31,14 @@ Types of changes (Stanzas):
 Ref: https://keepachangelog.com/en/1.0.0/
 -->
 
+## Unreleased
+
+## [v5.10.1](https://github.com/provenance-io/explorer-service/releases/tag/v5.10.1) - 2024-07-12
+
+### Bug Fixes
+
+* Update osmosis pricing query with new required field `coinMinimalDenom` [#526](https://github.com/provenance-io/explorer-service/pull/526)
+
 ## [v5.10.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.10.0) - 2024-06-11
 ### Release Name: Fridtjof Nansen
 
