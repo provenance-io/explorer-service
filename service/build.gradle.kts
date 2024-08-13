@@ -73,6 +73,7 @@ dependencies {
         exclude(module = "assertj-core")
     }
     testImplementation(Libraries.JunitJupiterApi)
+    testImplementation("com.h2database:h2:2.2.224")
     testRuntimeOnly(Libraries.JunitJupiterEngine)
     testImplementation(Libraries.SpringMockk)
     testImplementation(Libraries.KotestAssert)

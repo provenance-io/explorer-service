@@ -103,10 +103,10 @@ class GroupService(
      fun saveGroups(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, txUpdate: TxUpdate) = transaction {
         // get groups, save
         val msgGroups = tx.tx.body.messagesList.mapNotNull { it.getAssociatedGroups() }
-        val eventGroups = tx.txResponse.logsList
-            .flatMap { it.eventsList }
+            val gEvents = tx.txResponse.eventsList
             .filter { it.type in GroupEvents.values().map { grp -> grp.event } }
-            .flatMap { e ->
+
+         val eventGroups =  gEvents.flatMap { e ->
                 getGroupEventByEvent(e.type)!!.let {
                     e.attributesList
                         .filter { attr -> attr.key in it.idField }
@@ -126,8 +126,7 @@ class GroupService(
 
         // get policies, save
         val msgPolicies = tx.tx.body.messagesList.mapNotNull { it.getAssociatedGroupPolicies() }
-        val eventPolicies = tx.txResponse.logsList
-            .flatMap { it.eventsList }
+        val eventPolicies = tx.txResponse.eventsList
             .filter { it.type in GroupPolicyEvents.values().map { pol -> pol.event } }
             .flatMap { e ->
                 getGroupPolicyEventByEvent(e.type)!!.let {
