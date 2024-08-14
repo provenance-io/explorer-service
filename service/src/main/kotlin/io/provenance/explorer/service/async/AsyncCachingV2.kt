@@ -185,7 +185,7 @@ class AsyncCachingV2(
         try {
             BlockCacheRecord.insertToProcedure(blockUpdate)
         } catch (e: Exception) {
-            logger.error("Failed to save block: ${blockRes.block.height()}", e.message)
+            logger.error("Failed to save block: ${blockRes.block.height()}", e)
             BlockTxRetryRecord.insertOrUpdate(blockRes.block.height(), e)
         }
         return blockRes
