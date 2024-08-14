@@ -25,7 +25,7 @@ data class GroupsProposalData(
 
 data class GroupsProposalInsertData(
     val groupId: Long,
-    val policy: GroupsPolicyRecord,
+    val policyAddress: String,
     val proposalId: Long,
     val data: GroupsProposalData,
     val nodeData: Proposal? = null,

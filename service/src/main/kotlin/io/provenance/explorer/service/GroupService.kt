@@ -104,10 +104,8 @@ class GroupService(
         result: ProposalExecutorResult,
         txInfo: TxData
     ) = transaction {
-        val policy = GroupsPolicyRecord.findByPolicyAddr(policyAddr)
-            ?: throw Exception("No policy found for address: $policyAddr")
         GroupsProposalRecord.buildInsert(
-            GroupsProposalInsertData(groupId, policy!!, proposalId, data, nodeData, status, result),
+            GroupsProposalInsertData(groupId, policyAddr, proposalId, data, nodeData, status, result),
             txInfo
         )
     }
