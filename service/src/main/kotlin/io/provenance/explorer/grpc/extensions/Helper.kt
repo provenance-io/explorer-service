@@ -2,7 +2,6 @@ package io.provenance.explorer.grpc.extensions
 
 import cosmos.tx.v1beta1.ServiceOuterClass
 
-
 fun ServiceOuterClass.GetTxResponse.mapEventAttrValues(idx: Int, event: String, attrList: List<String>): Map<String, String> {
     return if (this.txResponse.logsList == null || this.txResponse.logsList.size <= idx) {
         mapEventAttrValuesByMsgIndex(idx, event, attrList)
@@ -16,6 +15,7 @@ fun ServiceOuterClass.GetTxResponse.mapEventAttrValuesFromLogs(idx: Int, event: 
         ?.attributesList?.let { list -> attrList.map { attr -> attr to list.first { it.key == attr }.value.scrubQuotes() } }
         ?.toMap() ?: mapOf()
 }
+
 fun ServiceOuterClass.GetTxResponse.mapEventAttrValuesByMsgIndex(idx: Int, event: String, attrList: List<String>): Map<String, String> {
     return this.txResponse.eventsList
         .firstOrNull { eventEntry ->
