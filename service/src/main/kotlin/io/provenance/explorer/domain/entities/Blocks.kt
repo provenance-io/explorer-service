@@ -52,6 +52,7 @@ import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertIgnore
+import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.jodatime.DateColumnType
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.leftJoin
@@ -515,10 +516,16 @@ object BlockTxRetryTable : IdTable<Int>(name = "block_tx_retry") {
 class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<BlockTxRetryRecord>(BlockTxRetryTable) {
 
-        fun insert(height: Int, e: Exception) = transaction {
-            BlockTxRetryTable.insertIgnore {
-                it[this.height] = height
+        fun insertOrUpdate(height: Int, e: Exception) = transaction {
+            val rowsUpdated = BlockTxRetryTable.update({ BlockTxRetryTable.height eq height }) {
                 it[this.errorBlock] = e.stackTraceToString()
+            }
+
+            if (rowsUpdated == 0) {
+                BlockTxRetryTable.insertIgnore {
+                    it[this.height] = height
+                    it[this.errorBlock] = e.stackTraceToString()
+                }
             }
         }
 

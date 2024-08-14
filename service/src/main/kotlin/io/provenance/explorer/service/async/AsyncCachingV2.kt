@@ -186,7 +186,7 @@ class AsyncCachingV2(
             BlockCacheRecord.insertToProcedure(blockUpdate)
         } catch (e: Exception) {
             logger.error("Failed to save block: ${blockRes.block.height()}", e.message)
-            BlockTxRetryRecord.insert(blockRes.block.height(), e)
+            BlockTxRetryRecord.insertOrUpdate(blockRes.block.height(), e)
         }
         return blockRes
     }
@@ -261,8 +261,8 @@ class AsyncCachingV2(
                 .map { addTxToCacheWithTimestamp(it, blockTime, proposerRec) }
         }
     } catch (e: Exception) {
-        logger.error("Failed to retrieve transactions at block: $blockHeight", e)
-        BlockTxRetryRecord.insert(blockHeight, e)
+        logger.error("Failed to retrieve transactions at block: $blockHeight error: ${e.message}", e)
+        BlockTxRetryRecord.insertOrUpdate(blockHeight, e)
         listOf()
     }
 
