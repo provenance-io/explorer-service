@@ -239,18 +239,20 @@ class AsyncService(
     @Scheduled(cron = "0/5 * * * * ?") // Every 5 seconds
     fun updateSpotlight() = explorerService.createSpotlight()
 
-    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minute
+    @Scheduled(cron = "0 0/1 * * * ?") // Every 5 minute
     fun retryBlockTxs() {
         logger.info("Retrying block/tx records")
         BlockTxRetryRecord.getRecordsToRetry().map { height ->
+            var retryException :Exception? = null
             val block = try {
                 asyncCache.saveBlockEtc(blockService.getBlockAtHeightFromChain(height), Pair(true, false))!!
             } catch (e: Exception) {
+                retryException = e
                 null
             }
             val success =
                 transaction { TxCacheRecord.findByHeight(height).toList() }.size == (block?.block?.data?.txsCount ?: -1)
-            BlockTxRetryRecord.updateRecord(height, success)
+            BlockTxRetryRecord.updateRecord(height, success, retryException)
             height
         }.let { if (it.isNotEmpty()) BlockTxRetryRecord.deleteRecords(it) }
     }

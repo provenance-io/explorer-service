@@ -557,10 +557,13 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
                 .map { it.height }
         }
 
-        fun updateRecord(height: Int, success: Boolean) = transaction {
+        fun updateRecord(height: Int, success: Boolean, e: Exception?) = transaction {
             BlockTxRetryRecord.find { BlockTxRetryTable.height eq height }.first().apply {
                 this.retried = true
                 this.success = success
+                if (e != null) {
+                    this.errorBlock = e.stackTraceToString()
+                }
             }
         }
 
