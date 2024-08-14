@@ -35,7 +35,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Improvements
 
-* Updated Prov Protos to 1.19.0-rc2 [#522](https://github.com/provenance-io/explorer-service/pull/522)
+* Updated Prov Protos to 1.19.0 [#527](https://github.com/provenance-io/explorer-service/pull/527)
 * Updated gRPC query to use `query` field instead of `events` field [#523](https://github.com/provenance-io/explorer-service/pull/523)
 * Fixed transaction details endpoint by handling Base64 and string encoding changes [#525](https://github.com/provenance-io/explorer-service/pull/525)
 
