@@ -3,9 +3,6 @@ package io.provenance.explorer.service.async
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.google.protobuf.Timestamp
 import cosmos.base.tendermint.v1beta1.Query
-import cosmos.group.v1.Types
-import cosmos.group.v1.Types.ProposalStatus
-import cosmos.group.v1.vote
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
@@ -32,7 +29,6 @@ import io.provenance.explorer.domain.entities.TxEventRecord
 import io.provenance.explorer.domain.entities.TxFeeRecord
 import io.provenance.explorer.domain.entities.TxFeepayerRecord
 import io.provenance.explorer.domain.entities.TxGasCacheRecord
-import io.provenance.explorer.domain.entities.TxGroupsPolicyTable
 import io.provenance.explorer.domain.entities.TxIbcRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.entities.TxMessageRecord
@@ -56,71 +52,10 @@ import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.BlockUpdate
-import io.provenance.explorer.domain.models.explorer.GroupsProposalData
 import io.provenance.explorer.domain.models.explorer.Name
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxUpdate
-import io.provenance.explorer.grpc.extensions.AddressEvents
-import io.provenance.explorer.grpc.extensions.DenomEvents
-import io.provenance.explorer.grpc.extensions.GovMsgType
-import io.provenance.explorer.grpc.extensions.GroupEvents
-import io.provenance.explorer.grpc.extensions.GroupGovMsgType
-import io.provenance.explorer.grpc.extensions.GroupPolicyEvents
-import io.provenance.explorer.grpc.extensions.GroupProposalEvents
-import io.provenance.explorer.grpc.extensions.NameEvents
-import io.provenance.explorer.grpc.extensions.SmContractEventKeys
-import io.provenance.explorer.grpc.extensions.SmContractValue
-import io.provenance.explorer.grpc.extensions.denomEventRegexParse
-import io.provenance.explorer.grpc.extensions.findAllMatchingEvents
-import io.provenance.explorer.grpc.extensions.getAddressEventByEvent
-import io.provenance.explorer.grpc.extensions.getAssociatedAddresses
-import io.provenance.explorer.grpc.extensions.getAssociatedDenoms
-import io.provenance.explorer.grpc.extensions.getAssociatedGovMsgs
-import io.provenance.explorer.grpc.extensions.getAssociatedGroupPolicies
-import io.provenance.explorer.grpc.extensions.getAssociatedGroupProposals
-import io.provenance.explorer.grpc.extensions.getAssociatedGroups
-import io.provenance.explorer.grpc.extensions.getAssociatedMetadata
-import io.provenance.explorer.grpc.extensions.getAssociatedMetadataEvents
-import io.provenance.explorer.grpc.extensions.getAssociatedSmContractMsgs
-import io.provenance.explorer.grpc.extensions.getDenomEventByEvent
-import io.provenance.explorer.grpc.extensions.getGroupEventByEvent
-import io.provenance.explorer.grpc.extensions.getGroupPolicyEventByEvent
-import io.provenance.explorer.grpc.extensions.getGroupsExecutorResult
-import io.provenance.explorer.grpc.extensions.getGroupsProposalStatus
-import io.provenance.explorer.grpc.extensions.getIbcLedgerMsgs
-import io.provenance.explorer.grpc.extensions.getMsgSubTypes
-import io.provenance.explorer.grpc.extensions.getMsgType
-import io.provenance.explorer.grpc.extensions.getNameEventTypes
-import io.provenance.explorer.grpc.extensions.getNameMsgs
-import io.provenance.explorer.grpc.extensions.getSmContractEventByEvent
-import io.provenance.explorer.grpc.extensions.getTxIbcClientChannel
-import io.provenance.explorer.grpc.extensions.isIbcTransferMsg
-import io.provenance.explorer.grpc.extensions.isMetadataDeletionMsg
-import io.provenance.explorer.grpc.extensions.isStandardAddress
-import io.provenance.explorer.grpc.extensions.isValidatorAddress
-import io.provenance.explorer.grpc.extensions.mapEventAttrValues
-import io.provenance.explorer.grpc.extensions.mapTxEventAttrValues
-import io.provenance.explorer.grpc.extensions.scrubQuotes
-import io.provenance.explorer.grpc.extensions.toMsgAcknowledgement
-import io.provenance.explorer.grpc.extensions.toMsgBindNameRequest
-import io.provenance.explorer.grpc.extensions.toMsgDeleteNameRequest
-import io.provenance.explorer.grpc.extensions.toMsgDeposit
-import io.provenance.explorer.grpc.extensions.toMsgDepositOld
-import io.provenance.explorer.grpc.extensions.toMsgExecGroup
-import io.provenance.explorer.grpc.extensions.toMsgIbcTransferRequest
-import io.provenance.explorer.grpc.extensions.toMsgRecvPacket
-import io.provenance.explorer.grpc.extensions.toMsgSubmitProposal
-import io.provenance.explorer.grpc.extensions.toMsgSubmitProposalGroup
-import io.provenance.explorer.grpc.extensions.toMsgSubmitProposalOld
-import io.provenance.explorer.grpc.extensions.toMsgTimeout
-import io.provenance.explorer.grpc.extensions.toMsgTimeoutOnClose
-import io.provenance.explorer.grpc.extensions.toMsgTransfer
-import io.provenance.explorer.grpc.extensions.toMsgVote
-import io.provenance.explorer.grpc.extensions.toMsgVoteGroup
-import io.provenance.explorer.grpc.extensions.toMsgVoteOld
-import io.provenance.explorer.grpc.extensions.toMsgVoteWeighted
-import io.provenance.explorer.grpc.extensions.toMsgVoteWeightedOld
-import io.provenance.explorer.grpc.extensions.toMsgWithdrawProposalGroup
+import io.provenance.explorer.grpc.extensions.*
 import io.provenance.explorer.grpc.v1.MsgFeeGrpcClient
 import io.provenance.explorer.grpc.v1.TransactionGrpcClient
 import io.provenance.explorer.model.base.isMAddress
@@ -724,8 +659,7 @@ class AsyncCachingV2(
                     }
                 }
 
-            tx.txResponse.logsList
-                .flatMap { it.eventsList }
+            tx.txResponse.eventsList
                 .filter { it.type in SmContractEventKeys.values().map { sc -> sc.eventType } }
                 .flatMap { e ->
                     getSmContractEventByEvent(e.type)!!.let {
@@ -780,8 +714,7 @@ class AsyncCachingV2(
                     }
                 }
 
-            tx.txResponse.logsList
-                .flatMap { it.eventsList }
+            tx.txResponse.eventsList
                 .filter { getNameEventTypes().contains(it.type) }
                 .map { e ->
                     when (e.type) {

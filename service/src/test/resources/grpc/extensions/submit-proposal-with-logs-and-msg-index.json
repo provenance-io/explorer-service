@@ -1,0 +1,589 @@
+{
+  "tx": {
+    "body": {
+      "messages": [
+        {
+          "@type": "/cosmos.authz.v1beta1.MsgGrant",
+          "grant": {
+            "authorization": {
+              "@type": "/cosmos.authz.v1beta1.GenericAuthorization",
+              "msg": "/provenance.metadata.v1.MsgWriteScopeRequest"
+            },
+            "expiration": "2024-03-22T11:57:26.011699069Z"
+          },
+          "grantee": "pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca",
+          "granter": "pb1xvd4k9jg5h0d4dhzr4z0txtwe9p5zxf58xcmxd"
+        },
+        {
+          "@type": "/cosmos.group.v1.MsgSubmitProposal",
+          "exec": "EXEC_TRY",
+          "groupPolicyAddress": "pb1whzz6j94tfsz2nyhqd2xu4ctfru28lj4zaa5npr5w39r6yy2slnsvyft3v",
+          "messages": [
+            {
+              "@type": "/cosmos.authz.v1beta1.MsgGrant",
+              "grant": {
+                "authorization": {
+                  "@type": "/cosmos.authz.v1beta1.GenericAuthorization",
+                  "msg": "/provenance.metadata.v1.MsgWriteScopeRequest"
+                },
+                "expiration": "2024-03-22T11:57:26.011636429Z"
+              },
+              "grantee": "pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca",
+              "granter": "pb1whzz6j94tfsz2nyhqd2xu4ctfru28lj4zaa5npr5w39r6yy2slnsvyft3v"
+            }
+          ],
+          "proposers": [
+            "pb1xvd4k9jg5h0d4dhzr4z0txtwe9p5zxf58xcmxd"
+          ]
+        }
+      ],
+      "timeoutHeight": "15622439"
+    },
+    "authInfo": {
+      "signerInfos": [
+        {
+          "publicKey": {
+            "@type": "/cosmos.crypto.secp256k1.PubKey",
+            "key": "AxfSB7+TgeQojPqXDpcIwT7gR4ghE9NC4vYsdNORgRr3"
+          },
+          "modeInfo": {
+            "single": {
+              "mode": "SIGN_MODE_DIRECT"
+            }
+          },
+          "sequence": "4543856"
+        }
+      ],
+      "fee": {
+        "amount": [
+          {
+            "denom": "nhash",
+            "amount": "3115236975"
+          }
+        ],
+        "gasLimit": "327059",
+        "granter": "pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca"
+      }
+    },
+    "signatures": [
+      "3ZljAQhyyhUrnmfqzFwWqFTMdaDC8YgLmJnPuPXN0dY/xY8A2OMdX89Qvq+Vb0dCl7R2NfhjJD4Y8K6kuXTXgA=="
+    ]
+  },
+  "txResponse": {
+    "height": "15622432",
+    "txhash": "F71919C0920AB49A7CE4624CB897A676AAFD4F4392D424FA59AD4C5383AC6CD7",
+    "data": "12280A262F636F736D6F732E617574687A2E763162657461312E4D73674772616E74526573706F6E736512320A2A2F636F736D6F732E67726F75702E76312E4D73675375626D697450726F706F73616C526573706F6E73651204088CE706",
+    "rawLog": "[{\"msg_index\":0,\"events\":[{\"type\":\"cosmos.authz.v1beta1.EventGrant\",\"attributes\":[{\"key\":\"grantee\",\"value\":\"\\\"pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca\\\"\"},{\"key\":\"granter\",\"value\":\"\\\"pb1xvd4k9jg5h0d4dhzr4z0txtwe9p5zxf58xcmxd\\\"\"},{\"key\":\"msg_type_url\",\"value\":\"\\\"/provenance.metadata.v1.MsgWriteScopeRequest\\\"\"}]},{\"type\":\"message\",\"attributes\":[{\"key\":\"action\",\"value\":\"/cosmos.authz.v1beta1.MsgGrant\"}]}]},{\"msg_index\":1,\"events\":[{\"type\":\"cosmos.authz.v1beta1.EventGrant\",\"attributes\":[{\"key\":\"grantee\",\"value\":\"\\\"pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca\\\"\"},{\"key\":\"granter\",\"value\":\"\\\"pb1whzz6j94tfsz2nyhqd2xu4ctfru28lj4zaa5npr5w39r6yy2slnsvyft3v\\\"\"},{\"key\":\"msg_type_url\",\"value\":\"\\\"/provenance.metadata.v1.MsgWriteScopeRequest\\\"\"}]},{\"type\":\"cosmos.group.v1.EventExec\",\"attributes\":[{\"key\":\"logs\",\"value\":\"\\\"\\\"\"},{\"key\":\"proposal_id\",\"value\":\"\\\"111500\\\"\"},{\"key\":\"result\",\"value\":\"\\\"PROPOSAL_EXECUTOR_RESULT_SUCCESS\\\"\"}]},{\"type\":\"cosmos.group.v1.EventProposalPruned\",\"attributes\":[{\"key\":\"proposal_id\",\"value\":\"\\\"111500\\\"\"},{\"key\":\"status\",\"value\":\"\\\"PROPOSAL_STATUS_ACCEPTED\\\"\"},{\"key\":\"tally_result\",\"value\":\"{\\\"yes_count\\\":\\\"100\\\",\\\"abstain_count\\\":\\\"0\\\",\\\"no_count\\\":\\\"0\\\",\\\"no_with_veto_count\\\":\\\"0\\\"}\"}]},{\"type\":\"cosmos.group.v1.EventSubmitProposal\",\"attributes\":[{\"key\":\"proposal_id\",\"value\":\"\\\"111500\\\"\"}]},{\"type\":\"cosmos.group.v1.EventVote\",\"attributes\":[{\"key\":\"proposal_id\",\"value\":\"\\\"111500\\\"\"}]},{\"type\":\"message\",\"attributes\":[{\"key\":\"action\",\"value\":\"/cosmos.group.v1.MsgSubmitProposal\"}]}]}]",
+    "logs": [
+      {
+        "events": [
+          {
+            "type": "cosmos.authz.v1beta1.EventGrant",
+            "attributes": [
+              {
+                "key": "grantee",
+                "value": "\"pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca\""
+              },
+              {
+                "key": "granter",
+                "value": "\"pb1xvd4k9jg5h0d4dhzr4z0txtwe9p5zxf58xcmxd\""
+              },
+              {
+                "key": "msg_type_url",
+                "value": "\"/provenance.metadata.v1.MsgWriteScopeRequest\""
+              }
+            ]
+          },
+          {
+            "type": "message",
+            "attributes": [
+              {
+                "key": "action",
+                "value": "/cosmos.authz.v1beta1.MsgGrant"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "msgIndex": 1,
+        "events": [
+          {
+            "type": "cosmos.authz.v1beta1.EventGrant",
+            "attributes": [
+              {
+                "key": "grantee",
+                "value": "\"pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca\""
+              },
+              {
+                "key": "granter",
+                "value": "\"pb1whzz6j94tfsz2nyhqd2xu4ctfru28lj4zaa5npr5w39r6yy2slnsvyft3v\""
+              },
+              {
+                "key": "msg_type_url",
+                "value": "\"/provenance.metadata.v1.MsgWriteScopeRequest\""
+              }
+            ]
+          },
+          {
+            "type": "cosmos.group.v1.EventExec",
+            "attributes": [
+              {
+                "key": "logs",
+                "value": "\"\""
+              },
+              {
+                "key": "proposal_id",
+                "value": "\"111500\""
+              },
+              {
+                "key": "result",
+                "value": "\"PROPOSAL_EXECUTOR_RESULT_SUCCESS\""
+              }
+            ]
+          },
+          {
+            "type": "cosmos.group.v1.EventProposalPruned",
+            "attributes": [
+              {
+                "key": "proposal_id",
+                "value": "\"111500\""
+              },
+              {
+                "key": "status",
+                "value": "\"PROPOSAL_STATUS_ACCEPTED\""
+              },
+              {
+                "key": "tally_result",
+                "value": "{\"yes_count\":\"100\",\"abstain_count\":\"0\",\"no_count\":\"0\",\"no_with_veto_count\":\"0\"}"
+              }
+            ]
+          },
+          {
+            "type": "cosmos.group.v1.EventSubmitProposal",
+            "attributes": [
+              {
+                "key": "proposal_id",
+                "value": "\"111500\""
+              }
+            ]
+          },
+          {
+            "type": "cosmos.group.v1.EventVote",
+            "attributes": [
+              {
+                "key": "proposal_id",
+                "value": "\"111500\""
+              }
+            ]
+          },
+          {
+            "type": "message",
+            "attributes": [
+              {
+                "key": "action",
+                "value": "/cosmos.group.v1.MsgSubmitProposal"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "gasWanted": "327059",
+    "gasUsed": "228753",
+    "tx": {
+      "@type": "/cosmos.tx.v1beta1.Tx",
+      "authInfo": {
+        "signerInfos": [
+          {
+            "publicKey": {
+              "@type": "/cosmos.crypto.secp256k1.PubKey",
+              "key": "AxfSB7+TgeQojPqXDpcIwT7gR4ghE9NC4vYsdNORgRr3"
+            },
+            "modeInfo": {
+              "single": {
+                "mode": "SIGN_MODE_DIRECT"
+              }
+            },
+            "sequence": "4543856"
+          }
+        ],
+        "fee": {
+          "amount": [
+            {
+              "denom": "nhash",
+              "amount": "3115236975"
+            }
+          ],
+          "gasLimit": "327059",
+          "granter": "pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca"
+        }
+      },
+      "body": {
+        "messages": [
+          {
+            "@type": "/cosmos.authz.v1beta1.MsgGrant",
+            "grant": {
+              "authorization": {
+                "@type": "/cosmos.authz.v1beta1.GenericAuthorization",
+                "msg": "/provenance.metadata.v1.MsgWriteScopeRequest"
+              },
+              "expiration": "2024-03-22T11:57:26.011699069Z"
+            },
+            "grantee": "pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca",
+            "granter": "pb1xvd4k9jg5h0d4dhzr4z0txtwe9p5zxf58xcmxd"
+          },
+          {
+            "@type": "/cosmos.group.v1.MsgSubmitProposal",
+            "exec": "EXEC_TRY",
+            "groupPolicyAddress": "pb1whzz6j94tfsz2nyhqd2xu4ctfru28lj4zaa5npr5w39r6yy2slnsvyft3v",
+            "messages": [
+              {
+                "@type": "/cosmos.authz.v1beta1.MsgGrant",
+                "grant": {
+                  "authorization": {
+                    "@type": "/cosmos.authz.v1beta1.GenericAuthorization",
+                    "msg": "/provenance.metadata.v1.MsgWriteScopeRequest"
+                  },
+                  "expiration": "2024-03-22T11:57:26.011636429Z"
+                },
+                "grantee": "pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca",
+                "granter": "pb1whzz6j94tfsz2nyhqd2xu4ctfru28lj4zaa5npr5w39r6yy2slnsvyft3v"
+              }
+            ],
+            "proposers": [
+              "pb1xvd4k9jg5h0d4dhzr4z0txtwe9p5zxf58xcmxd"
+            ]
+          }
+        ],
+        "timeoutHeight": "15622439"
+      },
+      "signatures": [
+        "3ZljAQhyyhUrnmfqzFwWqFTMdaDC8YgLmJnPuPXN0dY/xY8A2OMdX89Qvq+Vb0dCl7R2NfhjJD4Y8K6kuXTXgA=="
+      ]
+    },
+    "timestamp": "2024-03-22T01:57:35Z",
+    "events": [
+      {
+        "type": "use_feegrant",
+        "attributes": [
+          {
+            "key": "granter",
+            "value": "pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca"
+          },
+          {
+            "key": "grantee",
+            "value": "pb1xvd4k9jg5h0d4dhzr4z0txtwe9p5zxf58xcmxd"
+          }
+        ]
+      },
+      {
+        "type": "update_feegrant",
+        "attributes": [
+          {
+            "key": "granter",
+            "value": "pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca"
+          },
+          {
+            "key": "grantee",
+            "value": "pb1xvd4k9jg5h0d4dhzr4z0txtwe9p5zxf58xcmxd"
+          }
+        ]
+      },
+      {
+        "type": "coin_spent",
+        "attributes": [
+          {
+            "key": "spender",
+            "value": "pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca"
+          },
+          {
+            "key": "amount",
+            "value": "623047395nhash"
+          }
+        ]
+      },
+      {
+        "type": "coin_received",
+        "attributes": [
+          {
+            "key": "receiver",
+            "value": "pb17xpfvakm2amg962yls6f84z3kell8c5lehg9xp"
+          },
+          {
+            "key": "amount",
+            "value": "623047395nhash"
+          }
+        ]
+      },
+      {
+        "type": "transfer",
+        "attributes": [
+          {
+            "key": "recipient",
+            "value": "pb17xpfvakm2amg962yls6f84z3kell8c5lehg9xp"
+          },
+          {
+            "key": "sender",
+            "value": "pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca"
+          },
+          {
+            "key": "amount",
+            "value": "623047395nhash"
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "attributes": [
+          {
+            "key": "sender",
+            "value": "pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "fee",
+            "value": "3115236975nhash"
+          },
+          {
+            "key": "fee_payer",
+            "value": "pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca"
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "min_fee_charged",
+            "value": "623047395nhash"
+          },
+          {
+            "key": "fee_payer",
+            "value": "pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca"
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "acc_seq",
+            "value": "pb1xvd4k9jg5h0d4dhzr4z0txtwe9p5zxf58xcmxd/4543856"
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "signature",
+            "value": "3ZljAQhyyhUrnmfqzFwWqFTMdaDC8YgLmJnPuPXN0dY/xY8A2OMdX89Qvq+Vb0dCl7R2NfhjJD4Y8K6kuXTXgA=="
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "attributes": [
+          {
+            "key": "action",
+            "value": "/cosmos.authz.v1beta1.MsgGrant"
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "cosmos.authz.v1beta1.EventGrant",
+        "attributes": [
+          {
+            "key": "grantee",
+            "value": "\"pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca\""
+          },
+          {
+            "key": "granter",
+            "value": "\"pb1xvd4k9jg5h0d4dhzr4z0txtwe9p5zxf58xcmxd\""
+          },
+          {
+            "key": "msg_type_url",
+            "value": "\"/provenance.metadata.v1.MsgWriteScopeRequest\""
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "attributes": [
+          {
+            "key": "action",
+            "value": "/cosmos.group.v1.MsgSubmitProposal"
+          },
+          {
+            "key": "msg_index",
+            "value": "1",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "cosmos.group.v1.EventSubmitProposal",
+        "attributes": [
+          {
+            "key": "proposal_id",
+            "value": "\"111500\""
+          },
+          {
+            "key": "msg_index",
+            "value": "1",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "cosmos.group.v1.EventVote",
+        "attributes": [
+          {
+            "key": "proposal_id",
+            "value": "\"111500\""
+          },
+          {
+            "key": "msg_index",
+            "value": "1",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "cosmos.authz.v1beta1.EventGrant",
+        "attributes": [
+          {
+            "key": "grantee",
+            "value": "\"pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca\""
+          },
+          {
+            "key": "granter",
+            "value": "\"pb1whzz6j94tfsz2nyhqd2xu4ctfru28lj4zaa5npr5w39r6yy2slnsvyft3v\""
+          },
+          {
+            "key": "msg_type_url",
+            "value": "\"/provenance.metadata.v1.MsgWriteScopeRequest\""
+          },
+          {
+            "key": "msg_index",
+            "value": "1",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "cosmos.group.v1.EventProposalPruned",
+        "attributes": [
+          {
+            "key": "proposal_id",
+            "value": "\"111500\""
+          },
+          {
+            "key": "status",
+            "value": "\"PROPOSAL_STATUS_ACCEPTED\""
+          },
+          {
+            "key": "tally_result",
+            "value": "{\"yes_count\":\"100\",\"abstain_count\":\"0\",\"no_count\":\"0\",\"no_with_veto_count\":\"0\"}"
+          },
+          {
+            "key": "msg_index",
+            "value": "1",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "cosmos.group.v1.EventExec",
+        "attributes": [
+          {
+            "key": "logs",
+            "value": "\"\""
+          },
+          {
+            "key": "proposal_id",
+            "value": "\"111500\""
+          },
+          {
+            "key": "result",
+            "value": "\"PROPOSAL_EXECUTOR_RESULT_SUCCESS\""
+          },
+          {
+            "key": "msg_index",
+            "value": "1",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "coin_spent",
+        "attributes": [
+          {
+            "key": "spender",
+            "value": "pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca"
+          },
+          {
+            "key": "amount",
+            "value": "2492189580nhash"
+          }
+        ]
+      },
+      {
+        "type": "coin_received",
+        "attributes": [
+          {
+            "key": "receiver",
+            "value": "pb17xpfvakm2amg962yls6f84z3kell8c5lehg9xp"
+          },
+          {
+            "key": "amount",
+            "value": "2492189580nhash"
+          }
+        ]
+      },
+      {
+        "type": "transfer",
+        "attributes": [
+          {
+            "key": "recipient",
+            "value": "pb17xpfvakm2amg962yls6f84z3kell8c5lehg9xp"
+          },
+          {
+            "key": "sender",
+            "value": "pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca"
+          },
+          {
+            "key": "amount",
+            "value": "2492189580nhash"
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "attributes": [
+          {
+            "key": "sender",
+            "value": "pb1zsherr3eat6gvq9ptg3m0n3dj33xf2mwevk3ca",
+            "index": true
+          }
+        ]
+      }
+    ]
+  }
+}
