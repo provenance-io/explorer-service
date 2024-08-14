@@ -239,7 +239,7 @@ class AsyncService(
     @Scheduled(cron = "0/5 * * * * ?") // Every 5 seconds
     fun updateSpotlight() = explorerService.createSpotlight()
 
-    @Scheduled(cron = "0 0/1 * * * ?") // Every 5 minute
+    @Scheduled(cron = "*/10 * * * * ?") // Every 10 seconds
     fun retryBlockTxs() {
         logger.info("Retrying block/tx records")
         BlockTxRetryRecord.getRecordsToRetry().map { height ->
