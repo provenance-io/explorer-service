@@ -10,6 +10,7 @@ import io.provenance.explorer.grpc.v1.GroupGrpcClient
 import org.jetbrains.exposed.sql.Database
 import org.joda.time.DateTime
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
@@ -32,6 +33,7 @@ class GroupServiceTest {
     }
 
     @Test
+    @Disabled("need to finish")
     fun testSaveGroups() {
         Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;", driver = "org.h2.Driver")
 

@@ -69,7 +69,6 @@ dependencies {
 
     testImplementation(Libraries.SpringBootStarterTest) {
         exclude(module = "junit")
-        //exclude(module = "mockito-core")
         exclude(module = "assertj-core")
     }
     testImplementation(Libraries.JunitJupiterApi)
