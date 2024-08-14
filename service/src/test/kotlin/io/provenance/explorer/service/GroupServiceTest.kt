@@ -37,7 +37,7 @@ class GroupServiceTest {
     fun testSaveGroups() {
         Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;", driver = "org.h2.Driver")
 
-        val jsonFilePath = Paths.get("src/test/resources/group/group-18232283.json")
+        val jsonFilePath = Paths.get("src/test/resources/group/group-testnet-9CBD6E9465A4747043B7665338F00B71B6F6371AACA6388715B730978BB1EE6C.json")
         val jsonResponse = String(Files.readAllBytes(jsonFilePath))
         val txResponseBuilder = ServiceOuterClass.GetTxResponse.newBuilder()
         restConfig.protoParser()!!.merge(jsonResponse, txResponseBuilder)

@@ -261,7 +261,7 @@ class AsyncCachingV2(
                 .map { addTxToCacheWithTimestamp(it, blockTime, proposerRec) }
         }
     } catch (e: Exception) {
-        logger.error("Failed to retrieve transactions at block: $blockHeight", e.message)
+        logger.error("Failed to retrieve transactions at block: $blockHeight", e)
         BlockTxRetryRecord.insert(blockHeight, e)
         listOf()
     }

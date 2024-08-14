@@ -40,8 +40,6 @@ class TransactionGrpcClient(channelUri: URI) {
         txClient = ServiceGrpcKt.ServiceCoroutineStub(channel)
     }
 
-    fun getTxByHash(hash: String) = runBlocking { txClient.getTx(getTxRequest { this.hash = hash }) }
-
     suspend fun getTxsByHeight(height: Int, total: Int): List<ServiceOuterClass.GetTxResponse> {
         var page = 1
         val limit = 10
