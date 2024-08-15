@@ -6,7 +6,6 @@ import cosmos.group.v1.Types.Proposal
 import cosmos.group.v1.Types.ProposalExecutorResult
 import cosmos.group.v1.Types.ProposalStatus
 import cosmos.group.v1.Types.VoteOption
-import io.provenance.explorer.domain.entities.GroupsPolicyRecord
 import org.joda.time.DateTime
 
 data class GroupMembers(val list: MutableList<Types.Member>)
