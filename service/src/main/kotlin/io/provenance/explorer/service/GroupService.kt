@@ -124,9 +124,10 @@ class GroupService(
             .associate { it.address to BigDecimal(it.weight) }
         addresses.map { addr ->
             val addrData = accountService.getAddressDetails(addr)
-            if(members[addr] == null) {
+            if (members[addr] == null) {
                 throw IllegalArgumentException(
-                    "Member not found for the given address: $addr. Available addresses are: ${members.keys.joinToString(", ")}.")
+                    "Member not found for the given address: $addr. Available addresses are: ${members.keys.joinToString(", ")}."
+                )
             }
             GroupsVoteRecord.buildInsert(addrData, vote, members[addr]!!, txInfo)
         }

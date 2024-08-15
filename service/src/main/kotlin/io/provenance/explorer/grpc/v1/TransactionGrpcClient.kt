@@ -2,14 +2,12 @@ package io.provenance.explorer.grpc.v1
 
 import cosmos.tx.v1beta1.ServiceGrpcKt
 import cosmos.tx.v1beta1.ServiceOuterClass
-import cosmos.tx.v1beta1.getTxRequest
 import cosmos.tx.v1beta1.getTxResponse
 import cosmos.tx.v1beta1.getTxsEventRequest
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.exceptions.TendermintApiException
-import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
