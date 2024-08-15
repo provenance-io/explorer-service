@@ -56,16 +56,20 @@ class GroupService(
         groupClient.getGroupByIdAtHeight(groupId, height)
     }
 
-    fun groupMembersAHeight(groupId: Long, height: Int) = runBlocking {
+    fun groupMembersAtHeight(groupId: Long, height: Int) = runBlocking {
         groupClient.getMembersByGroupAtHeight(groupId, height)
     }
 
-    fun buildGroup(groupId: Long, txData: TxData) =
-        groupAtHeight(groupId, txData.blockHeight)
-            ?.let { res ->
-                val members = groupMembersAHeight(groupId, txData.blockHeight)
-                GroupsRecord.buildInsert(res.info, GroupMembers(members), txData)
-            }
+    fun buildGroup(groupId: Long, txData: TxData): String? {
+        val group = groupAtHeight(groupId, txData.blockHeight)
+
+        return if (group != null) {
+            val members = groupMembersAtHeight(groupId, txData.blockHeight)
+            GroupsRecord.buildInsert(group.info, GroupMembers(members), txData)
+        } else {
+            null
+        }
+    }
 
     fun buildTxGroup(groupId: Long, txData: TxData) = TxGroupsRecord.buildInsert(txData, groupId.toInt())
 
@@ -119,7 +123,7 @@ class GroupService(
     ) = transaction {
         val members = (
             GroupsHistoryRecord.getByIdAndVersion(groupId.toInt(), groupVer.toInt())?.groupMembers?.list
-                ?: groupMembersAHeight(groupId, txInfo.blockHeight)
+                ?: groupMembersAtHeight(groupId, txInfo.blockHeight)
             )
             .associate { it.address to BigDecimal(it.weight) }
         addresses.map { addr ->
@@ -170,7 +174,7 @@ class GroupService(
             }
         (msgPolicies + eventPolicies).toSet().forEach { addr ->
             buildGroupPolicy(addr, txInfo)
-                ?.also { ProcessQueueRecord.insertIgnore(ProcessQueueType.ACCOUNT, addr) }
+               ?.also { ProcessQueueRecord.insertIgnore(ProcessQueueType.ACCOUNT, addr) }
                 ?.let { policy ->
                     val (join, savedPolicy) = buildTxGroupPolicy(addr, txInfo)
                     txUpdate.apply {
