@@ -243,15 +243,18 @@ class AsyncService(
     fun retryBlockTxs() {
         logger.info("Retrying block/tx records")
         BlockTxRetryRecord.getRecordsToRetry().map { height ->
-            var retryException :Exception? = null
+            logger.info("Retrying block/tx record at $height.")
+            var retryException: Exception? = null
             val block = try {
                 asyncCache.saveBlockEtc(blockService.getBlockAtHeightFromChain(height), Pair(true, false))!!
             } catch (e: Exception) {
                 retryException = e
+                logger.error("Error saving block $height on retry.", e)
                 null
             }
             val success =
                 transaction { TxCacheRecord.findByHeight(height).toList() }.size == (block?.block?.data?.txsCount ?: -1)
+            logger.info("Finished retrying block/tx $height with success status:  $success")
             BlockTxRetryRecord.updateRecord(height, success, retryException)
             height
         }.let { if (it.isNotEmpty()) BlockTxRetryRecord.deleteRecords(it) }
