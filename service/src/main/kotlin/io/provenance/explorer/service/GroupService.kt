@@ -137,19 +137,19 @@ class GroupService(
         }
     }
 
-     fun saveGroups(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, txUpdate: TxUpdate) = transaction {
+    fun saveGroups(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, txUpdate: TxUpdate) = transaction {
         // get groups, save
         val msgGroups = tx.tx.body.messagesList.mapNotNull { it.getAssociatedGroups() }
-            val gEvents = tx.txResponse.eventsList
+        val gEvents = tx.txResponse.eventsList
             .filter { it.type in GroupEvents.values().map { grp -> grp.event } }
 
-         val eventGroups =  gEvents.flatMap { e ->
-                getGroupEventByEvent(e.type)!!.let {
-                    e.attributesList
-                        .filter { attr -> attr.key in it.idField }
-                        .map { found -> found.value.scrubQuotes().toLong() }
-                }
+        val eventGroups = gEvents.flatMap { e ->
+            getGroupEventByEvent(e.type)!!.let {
+                e.attributesList
+                    .filter { attr -> attr.key in it.idField }
+                    .map { found -> found.value.scrubQuotes().toLong() }
             }
+        }
         (msgGroups + eventGroups).toSet().forEach { id ->
             buildGroup(id, txInfo)?.let {
                 txUpdate.apply {
@@ -174,7 +174,7 @@ class GroupService(
             }
         (msgPolicies + eventPolicies).toSet().forEach { addr ->
             buildGroupPolicy(addr, txInfo)
-               ?.also { ProcessQueueRecord.insertIgnore(ProcessQueueType.ACCOUNT, addr) }
+                ?.also { ProcessQueueRecord.insertIgnore(ProcessQueueType.ACCOUNT, addr) }
                 ?.let { policy ->
                     val (join, savedPolicy) = buildTxGroupPolicy(addr, txInfo)
                     txUpdate.apply {
@@ -188,7 +188,8 @@ class GroupService(
                 }
         }
 
-        val govProposalMsgTuples = tx.tx.body.messagesList.mapIndexedNotNull { idx, msg -> msg.getAssociatedGroupProposals(idx) }
+        val govProposalMsgTuples =
+            tx.tx.body.messagesList.mapIndexedNotNull { idx, msg -> msg.getAssociatedGroupProposals(idx) }
         if (tx.txResponse.code == 0) {
             govProposalMsgTuples.forEach { triple ->
                 when (triple.second) {
