@@ -2,10 +2,10 @@ package io.provenance.explorer.grpc.extensions
 
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.config.RestConfig
-import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Paths
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
 
 class HelperTest {
     var restConfig = RestConfig()
