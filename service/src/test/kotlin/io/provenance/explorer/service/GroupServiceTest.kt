@@ -5,7 +5,6 @@ import io.provenance.explorer.config.RestConfig
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxUpdate
 import io.provenance.explorer.grpc.v1.GroupGrpcClient
-import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -18,7 +17,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 class GroupServiceTest {
-    private lateinit var restConfig : RestConfig
+    private lateinit var restConfig: RestConfig
     private lateinit var groupService: GroupService
     private lateinit var groupClient: GroupGrpcClient
     private lateinit var accountService: AccountService
@@ -49,26 +48,28 @@ class GroupServiceTest {
 
         Database.connect("jdbc:h2:mem:test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;", driver = "org.h2.Driver")
         transaction {
-            exec("""
+            exec(
+                """
         CREATE TABLE IF NOT EXISTS process_queue (
             id SERIAL PRIMARY KEY,
             process_type VARCHAR(128) NOT NULL,
             process_value TEXT NOT NULL,
             processing BOOLEAN NOT NULL DEFAULT FALSE
         );
-    """)
+    """
+            )
         }
 
-        val jsonFilePath = Paths.get("src/test/resources/group/group-testnet-417C18D1FAF6B18ECFF55F81CED5038FF8DD739CA6C5C29C8901AB0510426F65.json")
+        val jsonFilePath =
+            Paths.get("src/test/resources/group/group-testnet-417C18D1FAF6B18ECFF55F81CED5038FF8DD739CA6C5C29C8901AB0510426F65.json")
         val jsonResponse = String(Files.readAllBytes(jsonFilePath))
         val txResponseBuilder = ServiceOuterClass.GetTxResponse.newBuilder()
         restConfig.protoParser()!!.merge(jsonResponse, txResponseBuilder)
         val txResponse = txResponseBuilder.build()
 
-        val txData = TxData( txResponse.txResponse.height.toInt(), 0, txResponse.txResponse.txhash, DateTime())
-        val txUpdate = TxUpdate(txResponse.txResponse.txhash,)
+        val txData = TxData(txResponse.txResponse.height.toInt(), 0, txResponse.txResponse.txhash, DateTime())
+        val txUpdate = TxUpdate(txResponse.txResponse.txhash)
 
         groupService.saveGroups(txResponse, txData, txUpdate)
     }
-
 }
