@@ -8,17 +8,16 @@ import java.nio.file.Paths
 import org.junit.jupiter.api.Assertions.assertEquals
 
 class HelperTest {
-
     var restConfig = RestConfig()
 
     fun getTxResponse(fileName: String): ServiceOuterClass.GetTxResponse {
         val jsonFilePath = Paths.get("src/test/resources/grpc/extensions/$fileName")
-            val jsonResponse = String(Files.readAllBytes(jsonFilePath))
-            val txResponseBuilder = ServiceOuterClass.GetTxResponse.newBuilder()
-            val parser = restConfig.protoParser()
+        val jsonResponse = String(Files.readAllBytes(jsonFilePath))
+        val txResponseBuilder = ServiceOuterClass.GetTxResponse.newBuilder()
+        val parser = restConfig.protoParser()
 
-            parser?.merge(jsonResponse, txResponseBuilder)
-            return txResponseBuilder.build()
+        parser?.merge(jsonResponse, txResponseBuilder)
+        return txResponseBuilder.build()
     }
 
     @Test
@@ -31,7 +30,8 @@ class HelperTest {
         )[GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.idField.first()]!!.toLong()
         assertEquals(111500, proposalId)
 
-         proposalId = response.mapEventAttrValuesByMsgIndex(1,
+        proposalId = response.mapEventAttrValuesByMsgIndex(
+            1,
             GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.event,
             GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.idField.toList()
         )[GroupProposalEvents.GROUP_SUBMIT_PROPOSAL.idField.first()]!!.toLong()
