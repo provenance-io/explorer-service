@@ -236,10 +236,10 @@ class AsyncService(
         tokenService.updateTokenDistributionStats(UTILITY_TOKEN)
     }
 
-    @Scheduled(cron = "0/5 * * * * ?") // Every 5 seconds
+    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateSpotlight() = explorerService.createSpotlight()
 
-    @Scheduled(cron = "*/30 * * * * ?") // Every 30 seconds
+    @Scheduled(initialDelay = 0L, fixedDelay = 30000L)
     fun retryBlockTxs() {
         logger.info("Retrying block/tx records")
         BlockTxRetryRecord.getRecordsToRetry().map { height ->
