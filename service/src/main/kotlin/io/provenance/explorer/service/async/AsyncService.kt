@@ -252,13 +252,24 @@ class AsyncService(
                 logger.error("Error saving block $height on retry.", e)
                 null
             }
-            val success =
-                transaction { TxCacheRecord.findByHeight(height).toList() }.size == (block?.block?.data?.txsCount ?: -1)
-            logger.info("Finished retrying block/tx $height with success status:  $success")
+
+            val success = block?.let {
+                val txCount = block.block?.data?.txsCount ?: -1
+                val dbTxCount = transaction { TxCacheRecord.findByHeight(height).toList().size }
+
+                if (dbTxCount != txCount) {
+                    logger.error("Mismatch in transaction count for retrying block $height. Expected: $txCount, Found: $dbTxCount")
+                }
+
+                dbTxCount == txCount
+            } ?: false
+
+            logger.info("Finished retrying block/tx $height with success status: $success")
             BlockTxRetryRecord.updateRecord(height, success, retryException)
             height
         }.let { if (it.isNotEmpty()) BlockTxRetryRecord.deleteRecords(it) }
     }
+
 
     @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
     fun updateAssetPricing() {
