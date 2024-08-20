@@ -43,7 +43,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 * Fixed issue with Proto deserialization incorrectly matching `cosmos.upgrade.v1beta1.CancelSoftwareUpgradeProposal` as `cosmos.upgrade.v1beta1.SoftwareUpgradeProposal`, ensuring accurate type URL handling. [#524](https://github.com/provenance-io/explorer-service/pull/524)
 * Update osmosis pricing query with new required field `coinMinimalDenom` [#526](https://github.com/provenance-io/explorer-service/pull/526)
-* Fix group save tx processing [#526](https://github.com/provenance-io/explorer-service/pull/528), [#526](https://github.com/provenance-io/explorer-service/pull/529)
+* Fix group save tx processing [#526](https://github.com/provenance-io/explorer-service/issues/528), [#526](https://github.com/provenance-io/explorer-service/issues/529)
+* Fix validator proposer priority number type [#530](https://github.com/provenance-io/explorer-service/issues/530)
 
 ## [v5.10.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.10.0) - 2024-06-11
 ### Release Name: Fridtjof Nansen
