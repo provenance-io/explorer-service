@@ -179,10 +179,12 @@ class AsyncCachingV2(
             logger.info("attempting to query validator at height for block ${blockRes.block.height()}")
         }
         val valsAtHeight = validatorService.buildValidatorsAtHeight(blockRes.block.height())
-        if (rerunTxs.first) {
-            logger.info("attempting to calculate missing blocks for block ${blockRes.block.height()}")
+//        if (rerunTxs.first) {
+//            logger.info("attempting to calculate missing blocks for block ${blockRes.block.height()}")
+//        }
+        if (!rerunTxs.first) {
+            validatorService.saveMissedBlocks(blockRes, rerunTxs.first)
         }
-        validatorService.saveMissedBlocks(blockRes, rerunTxs.first)
         if (rerunTxs.first) {
             logger.info("attempting to save txs ${blockRes.block.data.txsCount} for block ${blockRes.block.height()}")
         }
