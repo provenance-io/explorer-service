@@ -69,10 +69,10 @@ dependencies {
 
     testImplementation(Libraries.SpringBootStarterTest) {
         exclude(module = "junit")
-        exclude(module = "mockito-core")
         exclude(module = "assertj-core")
     }
     testImplementation(Libraries.JunitJupiterApi)
+    testImplementation(Libraries.H2Database)
     testRuntimeOnly(Libraries.JunitJupiterEngine)
     testImplementation(Libraries.SpringMockk)
     testImplementation(Libraries.KotestAssert)

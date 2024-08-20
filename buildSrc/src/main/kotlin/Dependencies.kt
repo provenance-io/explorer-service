@@ -60,6 +60,7 @@ object Versions {
     const val Jupiter = "5.9.1"
     const val SpringMockk = "3.1.1"
     const val Kotest = "5.5.4"
+    const val H2Database = "1.4.200"
 }
 
 object Libraries {
@@ -113,4 +114,5 @@ object Libraries {
     const val JunitJupiterEngine = "org.junit.jupiter:junit-jupiter-engine:${Versions.Jupiter}"
     const val SpringMockk = "com.ninja-squad:springmockk:${Versions.SpringMockk}"
     const val KotestAssert = "io.kotest:kotest-assertions-core:${Versions.Kotest}"
+    const val H2Database = "com.h2database:h2:${Versions.H2Database}"
 }

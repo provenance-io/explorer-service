@@ -61,6 +61,7 @@ import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import java.sql.ResultSet
@@ -515,10 +516,16 @@ object BlockTxRetryTable : IdTable<Int>(name = "block_tx_retry") {
 class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<BlockTxRetryRecord>(BlockTxRetryTable) {
 
-        fun insert(height: Int, e: Exception) = transaction {
-            BlockTxRetryTable.insertIgnore {
-                it[this.height] = height
+        fun insertOrUpdate(height: Int, e: Exception) = transaction {
+            val rowsUpdated = BlockTxRetryTable.update({ BlockTxRetryTable.height eq height }) {
                 it[this.errorBlock] = e.stackTraceToString()
+            }
+
+            if (rowsUpdated == 0) {
+                BlockTxRetryTable.insertIgnore {
+                    it[this.height] = height
+                    it[this.errorBlock] = e.stackTraceToString()
+                }
             }
         }
 
@@ -550,10 +557,13 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
                 .map { it.height }
         }
 
-        fun updateRecord(height: Int, success: Boolean) = transaction {
+        fun updateRecord(height: Int, success: Boolean, e: Exception?) = transaction {
             BlockTxRetryRecord.find { BlockTxRetryTable.height eq height }.first().apply {
                 this.retried = true
                 this.success = success
+                if (e != null) {
+                    this.errorBlock = e.stackTraceToString()
+                }
             }
         }
 

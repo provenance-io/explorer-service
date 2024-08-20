@@ -236,21 +236,36 @@ class AsyncService(
         tokenService.updateTokenDistributionStats(UTILITY_TOKEN)
     }
 
-    @Scheduled(cron = "0/5 * * * * ?") // Every 5 seconds
+    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateSpotlight() = explorerService.createSpotlight()
 
-    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minute
+    @Scheduled(initialDelay = 0L, fixedDelay = 30000L)
     fun retryBlockTxs() {
         logger.info("Retrying block/tx records")
         BlockTxRetryRecord.getRecordsToRetry().map { height ->
+            logger.info("Retrying block/tx record at $height.")
+            var retryException: Exception? = null
             val block = try {
                 asyncCache.saveBlockEtc(blockService.getBlockAtHeightFromChain(height), Pair(true, false))!!
             } catch (e: Exception) {
+                retryException = e
+                logger.error("Error saving block $height on retry.", e)
                 null
             }
-            val success =
-                transaction { TxCacheRecord.findByHeight(height).toList() }.size == (block?.block?.data?.txsCount ?: -1)
-            BlockTxRetryRecord.updateRecord(height, success)
+
+            val success = block?.let {
+                val txCount = block.block?.data?.txsCount ?: -1
+                val dbTxCount = transaction { TxCacheRecord.findByHeight(height).toList().size }
+
+                if (dbTxCount != txCount) {
+                    logger.error("Mismatch in transaction count for retrying block $height. Expected: $txCount, Found: $dbTxCount")
+                }
+
+                dbTxCount == txCount
+            } ?: false
+
+            logger.info("Finished retrying block/tx $height with success status: $success")
+            BlockTxRetryRecord.updateRecord(height, success, retryException)
             height
         }.let { if (it.isNotEmpty()) BlockTxRetryRecord.deleteRecords(it) }
     }

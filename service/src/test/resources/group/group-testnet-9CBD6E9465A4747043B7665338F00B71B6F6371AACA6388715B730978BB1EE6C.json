@@ -1,0 +1,755 @@
+{
+  "tx": {
+    "body": {
+      "messages": [
+        {
+          "@type": "/cosmos.group.v1.MsgSubmitProposal",
+          "exec": "EXEC_TRY",
+          "groupPolicyAddress": "tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f",
+          "messages": [
+            {
+              "@type": "/provenance.metadata.v1.MsgWriteScopeRequest",
+              "scope": {
+                "scopeId": "AHdq69QeIEQ5pWHMdewbPqI=",
+                "specificationId": "BMxbojCcZ0KSkzR2l3RFh30=",
+                "owners": [
+                  {
+                    "address": "tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f",
+                    "role": "PARTY_TYPE_OWNER"
+                  }
+                ],
+                "dataAccess": [
+                  "tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f",
+                  "tp1nrchyhfg8uv9r4jlxfywzyldmqyrd3qp6lyxjl",
+                  "tp1v586fwt55n59cmh38w8ny2fxaxejg94kkdxafq"
+                ],
+                "valueOwnerAddress": "tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f"
+              },
+              "scopeUuid": "776aebd4-1e20-4439-a561-cc75ec1b3ea2",
+              "signers": [
+                "tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f"
+              ],
+              "specUuid": "cc5ba230-9c67-4292-9334-76977445877d"
+            },
+            {
+              "@type": "/provenance.metadata.v1.MsgWriteSessionRequest",
+              "session": {
+                "sessionId": "AXdq69QeIEQ5pWHMdewbPqJ+nwxErJlBT4d6L9Qs9nEE",
+                "specificationId": "Ax98xpB39kqkoKeQIw3xEG4=",
+                "parties": [
+                  {
+                    "address": "tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f",
+                    "role": "PARTY_TYPE_OWNER"
+                  }
+                ],
+                "name": "tech.figure.passport.StorePassport",
+                "audit": {
+                  "createdBy": "tp1nrchyhfg8uv9r4jlxfywzyldmqyrd3qp6lyxjl",
+                  "updatedBy": "tp1nrchyhfg8uv9r4jlxfywzyldmqyrd3qp6lyxjl"
+                }
+              },
+              "sessionIdComponents": {
+                "scopeUuid": "776aebd4-1e20-4439-a561-cc75ec1b3ea2",
+                "sessionUuid": "7e9f0c44-ac99-414f-877a-2fd42cf67104"
+              },
+              "signers": [
+                "tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f"
+              ]
+            },
+            {
+              "@type": "/provenance.metadata.v1.MsgWriteRecordRequest",
+              "contractSpecUuid": "1f7cc690-77f6-4aa4-a0a7-90230df1106e",
+              "record": {
+                "name": "Passport",
+                "sessionId": "AXdq69QeIEQ5pWHMdewbPqJ+nwxErJlBT4d6L9Qs9nEE",
+                "process": {
+                  "hash": "3239362c0ef8708cbd660dccaab7a26ba02a463d1b5c64d09864a0bc5e16792e",
+                  "name": "StorePassportProcess",
+                  "method": "StorePassport"
+                },
+                "inputs": [
+                  {
+                    "name": "Passport",
+                    "hash": "3l49UtxGr/ULdNd/tSBfAQa1hbxLRlOKbR8e1fpWEzM=",
+                    "typeName": "String",
+                    "status": "RECORD_INPUT_STATUS_PROPOSED"
+                  }
+                ],
+                "outputs": [
+                  {
+                    "hash": "3l49UtxGr/ULdNd/tSBfAQa1hbxLRlOKbR8e1fpWEzM=",
+                    "status": "RESULT_STATUS_PASS"
+                  }
+                ],
+                "specificationId": "BR98xpB39kqkoKeQIw3xEG7LxHHKYAkrvmxjHwK8Vzmb"
+              },
+              "signers": [
+                "tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f"
+              ]
+            }
+          ],
+          "metadata": "d7182b32-bdd9-41ec-92db-9f26131f8f89",
+          "proposers": [
+            "tp1nrchyhfg8uv9r4jlxfywzyldmqyrd3qp6lyxjl"
+          ]
+        }
+      ]
+    },
+    "authInfo": {
+      "signerInfos": [
+        {
+          "publicKey": {
+            "@type": "/cosmos.crypto.secp256k1.PubKey",
+            "key": "A98RWJMRsERkw6XWIB1DjJiXIA2Y8D/IAsSFK2wQAkam"
+          },
+          "modeInfo": {
+            "single": {
+              "mode": "SIGN_MODE_DIRECT"
+            }
+          },
+          "sequence": "1"
+        }
+      ],
+      "fee": {
+        "amount": [
+          {
+            "denom": "nhash",
+            "amount": "16721735350"
+          }
+        ],
+        "gasLimit": "352847",
+        "granter": "tp1v586fwt55n59cmh38w8ny2fxaxejg94kkdxafq"
+      }
+    },
+    "signatures": [
+      "rvKdkB6WP46kwz/Aeo5FCm6Nkr4SkdMzuNft4+tjLqc1WyeDD66YCuyhy5HoiySkirYb1M9d4rsQrCLf0sgNTA=="
+    ]
+  },
+  "txResponse": {
+    "height": "23900775",
+    "txhash": "9CBD6E9465A4747043B7665338F00B71B6F6371AACA6388715B730978BB1EE6C",
+    "data": "12320A2A2F636F736D6F732E67726F75702E76312E4D73675375626D697450726F706F73616C526573706F6E7365120408ACF505",
+    "gasWanted": "352847",
+    "gasUsed": "293325",
+    "tx": {
+      "@type": "/cosmos.tx.v1beta1.Tx",
+      "authInfo": {
+        "signerInfos": [
+          {
+            "publicKey": {
+              "@type": "/cosmos.crypto.secp256k1.PubKey",
+              "key": "A98RWJMRsERkw6XWIB1DjJiXIA2Y8D/IAsSFK2wQAkam"
+            },
+            "modeInfo": {
+              "single": {
+                "mode": "SIGN_MODE_DIRECT"
+              }
+            },
+            "sequence": "1"
+          }
+        ],
+        "fee": {
+          "amount": [
+            {
+              "denom": "nhash",
+              "amount": "16721735350"
+            }
+          ],
+          "gasLimit": "352847",
+          "granter": "tp1v586fwt55n59cmh38w8ny2fxaxejg94kkdxafq"
+        }
+      },
+      "body": {
+        "messages": [
+          {
+            "@type": "/cosmos.group.v1.MsgSubmitProposal",
+            "exec": "EXEC_TRY",
+            "groupPolicyAddress": "tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f",
+            "messages": [
+              {
+                "@type": "/provenance.metadata.v1.MsgWriteScopeRequest",
+                "scope": {
+                  "scopeId": "AHdq69QeIEQ5pWHMdewbPqI=",
+                  "specificationId": "BMxbojCcZ0KSkzR2l3RFh30=",
+                  "owners": [
+                    {
+                      "address": "tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f",
+                      "role": "PARTY_TYPE_OWNER"
+                    }
+                  ],
+                  "dataAccess": [
+                    "tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f",
+                    "tp1nrchyhfg8uv9r4jlxfywzyldmqyrd3qp6lyxjl",
+                    "tp1v586fwt55n59cmh38w8ny2fxaxejg94kkdxafq"
+                  ],
+                  "valueOwnerAddress": "tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f"
+                },
+                "scopeUuid": "776aebd4-1e20-4439-a561-cc75ec1b3ea2",
+                "signers": [
+                  "tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f"
+                ],
+                "specUuid": "cc5ba230-9c67-4292-9334-76977445877d"
+              },
+              {
+                "@type": "/provenance.metadata.v1.MsgWriteSessionRequest",
+                "session": {
+                  "sessionId": "AXdq69QeIEQ5pWHMdewbPqJ+nwxErJlBT4d6L9Qs9nEE",
+                  "specificationId": "Ax98xpB39kqkoKeQIw3xEG4=",
+                  "parties": [
+                    {
+                      "address": "tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f",
+                      "role": "PARTY_TYPE_OWNER"
+                    }
+                  ],
+                  "name": "tech.figure.passport.StorePassport",
+                  "audit": {
+                    "createdBy": "tp1nrchyhfg8uv9r4jlxfywzyldmqyrd3qp6lyxjl",
+                    "updatedBy": "tp1nrchyhfg8uv9r4jlxfywzyldmqyrd3qp6lyxjl"
+                  }
+                },
+                "sessionIdComponents": {
+                  "scopeUuid": "776aebd4-1e20-4439-a561-cc75ec1b3ea2",
+                  "sessionUuid": "7e9f0c44-ac99-414f-877a-2fd42cf67104"
+                },
+                "signers": [
+                  "tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f"
+                ]
+              },
+              {
+                "@type": "/provenance.metadata.v1.MsgWriteRecordRequest",
+                "contractSpecUuid": "1f7cc690-77f6-4aa4-a0a7-90230df1106e",
+                "record": {
+                  "name": "Passport",
+                  "sessionId": "AXdq69QeIEQ5pWHMdewbPqJ+nwxErJlBT4d6L9Qs9nEE",
+                  "process": {
+                    "hash": "3239362c0ef8708cbd660dccaab7a26ba02a463d1b5c64d09864a0bc5e16792e",
+                    "name": "StorePassportProcess",
+                    "method": "StorePassport"
+                  },
+                  "inputs": [
+                    {
+                      "name": "Passport",
+                      "hash": "3l49UtxGr/ULdNd/tSBfAQa1hbxLRlOKbR8e1fpWEzM=",
+                      "typeName": "String",
+                      "status": "RECORD_INPUT_STATUS_PROPOSED"
+                    }
+                  ],
+                  "outputs": [
+                    {
+                      "hash": "3l49UtxGr/ULdNd/tSBfAQa1hbxLRlOKbR8e1fpWEzM=",
+                      "status": "RESULT_STATUS_PASS"
+                    }
+                  ],
+                  "specificationId": "BR98xpB39kqkoKeQIw3xEG7LxHHKYAkrvmxjHwK8Vzmb"
+                },
+                "signers": [
+                  "tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f"
+                ]
+              }
+            ],
+            "metadata": "d7182b32-bdd9-41ec-92db-9f26131f8f89",
+            "proposers": [
+              "tp1nrchyhfg8uv9r4jlxfywzyldmqyrd3qp6lyxjl"
+            ]
+          }
+        ]
+      },
+      "signatures": [
+        "rvKdkB6WP46kwz/Aeo5FCm6Nkr4SkdMzuNft4+tjLqc1WyeDD66YCuyhy5HoiySkirYb1M9d4rsQrCLf0sgNTA=="
+      ]
+    },
+    "timestamp": "2024-08-01T22:36:52Z",
+    "events": [
+      {
+        "type": "use_feegrant",
+        "attributes": [
+          {
+            "key": "granter",
+            "value": "tp1v586fwt55n59cmh38w8ny2fxaxejg94kkdxafq",
+            "index": true
+          },
+          {
+            "key": "grantee",
+            "value": "tp1nrchyhfg8uv9r4jlxfywzyldmqyrd3qp6lyxjl",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "update_feegrant",
+        "attributes": [
+          {
+            "key": "granter",
+            "value": "tp1v586fwt55n59cmh38w8ny2fxaxejg94kkdxafq",
+            "index": true
+          },
+          {
+            "key": "grantee",
+            "value": "tp1nrchyhfg8uv9r4jlxfywzyldmqyrd3qp6lyxjl",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "coin_spent",
+        "attributes": [
+          {
+            "key": "spender",
+            "value": "tp1v586fwt55n59cmh38w8ny2fxaxejg94kkdxafq",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "6721735350nhash",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "coin_received",
+        "attributes": [
+          {
+            "key": "receiver",
+            "value": "tp17xpfvakm2amg962yls6f84z3kell8c5l2udfyt",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "6721735350nhash",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "transfer",
+        "attributes": [
+          {
+            "key": "recipient",
+            "value": "tp17xpfvakm2amg962yls6f84z3kell8c5l2udfyt",
+            "index": true
+          },
+          {
+            "key": "sender",
+            "value": "tp1v586fwt55n59cmh38w8ny2fxaxejg94kkdxafq",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "6721735350nhash",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "attributes": [
+          {
+            "key": "sender",
+            "value": "tp1v586fwt55n59cmh38w8ny2fxaxejg94kkdxafq",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "fee",
+            "value": "16721735350nhash",
+            "index": true
+          },
+          {
+            "key": "fee_payer",
+            "value": "tp1v586fwt55n59cmh38w8ny2fxaxejg94kkdxafq",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "min_fee_charged",
+            "value": "6721735350nhash",
+            "index": true
+          },
+          {
+            "key": "fee_payer",
+            "value": "tp1v586fwt55n59cmh38w8ny2fxaxejg94kkdxafq",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "acc_seq",
+            "value": "tp1nrchyhfg8uv9r4jlxfywzyldmqyrd3qp6lyxjl/1",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "signature",
+            "value": "rvKdkB6WP46kwz/Aeo5FCm6Nkr4SkdMzuNft4+tjLqc1WyeDD66YCuyhy5HoiySkirYb1M9d4rsQrCLf0sgNTA==",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "attributes": [
+          {
+            "key": "action",
+            "value": "/cosmos.group.v1.MsgSubmitProposal",
+            "index": true
+          },
+          {
+            "key": "sender",
+            "value": "tp1nrchyhfg8uv9r4jlxfywzyldmqyrd3qp6lyxjl",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "cosmos.group.v1.EventSubmitProposal",
+        "attributes": [
+          {
+            "key": "proposal_id",
+            "value": "\"96940\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "cosmos.group.v1.EventVote",
+        "attributes": [
+          {
+            "key": "proposal_id",
+            "value": "\"96940\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.metadata.v1.EventSetNetAssetValue",
+        "attributes": [
+          {
+            "key": "price",
+            "value": "\"0usd\"",
+            "index": true
+          },
+          {
+            "key": "scope_id",
+            "value": "\"scope1qpmk4675rcsygwd9v8x8tmqm863qvj6uul\"",
+            "index": true
+          },
+          {
+            "key": "source",
+            "value": "\"metadata\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.metadata.v1.EventScopeCreated",
+        "attributes": [
+          {
+            "key": "scope_addr",
+            "value": "\"scope1qpmk4675rcsygwd9v8x8tmqm863qvj6uul\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.metadata.v1.EventTxCompleted",
+        "attributes": [
+          {
+            "key": "endpoint",
+            "value": "\"WriteScope\"",
+            "index": true
+          },
+          {
+            "key": "module",
+            "value": "\"metadata\"",
+            "index": true
+          },
+          {
+            "key": "signers",
+            "value": "[\"tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f\"]",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.metadata.v1.EventSessionCreated",
+        "attributes": [
+          {
+            "key": "scope_addr",
+            "value": "\"scope1qpmk4675rcsygwd9v8x8tmqm863qvj6uul\"",
+            "index": true
+          },
+          {
+            "key": "session_addr",
+            "value": "\"session1q9mk4675rcsygwd9v8x8tmqm8638a8cvgjkfjs20saazl4pv7ecsg9w5upd\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.metadata.v1.EventTxCompleted",
+        "attributes": [
+          {
+            "key": "endpoint",
+            "value": "\"WriteSession\"",
+            "index": true
+          },
+          {
+            "key": "module",
+            "value": "\"metadata\"",
+            "index": true
+          },
+          {
+            "key": "signers",
+            "value": "[\"tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f\"]",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.metadata.v1.EventRecordCreated",
+        "attributes": [
+          {
+            "key": "record_addr",
+            "value": "\"record1qfmk4675rcsygwd9v8x8tmqm863vh3r3efsqj2a7d3337q4u2uuekxcku7c\"",
+            "index": true
+          },
+          {
+            "key": "scope_addr",
+            "value": "\"scope1qpmk4675rcsygwd9v8x8tmqm863qvj6uul\"",
+            "index": true
+          },
+          {
+            "key": "session_addr",
+            "value": "\"session1q9mk4675rcsygwd9v8x8tmqm8638a8cvgjkfjs20saazl4pv7ecsg9w5upd\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.metadata.v1.EventTxCompleted",
+        "attributes": [
+          {
+            "key": "endpoint",
+            "value": "\"WriteRecord\"",
+            "index": true
+          },
+          {
+            "key": "module",
+            "value": "\"metadata\"",
+            "index": true
+          },
+          {
+            "key": "signers",
+            "value": "[\"tp1354aynhwnjuzvtutu64lap4pldynqfgz0v0ayp9a8xqpgxfvt2msve434f\"]",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "cosmos.group.v1.EventProposalPruned",
+        "attributes": [
+          {
+            "key": "proposal_id",
+            "value": "\"96940\"",
+            "index": true
+          },
+          {
+            "key": "status",
+            "value": "\"PROPOSAL_STATUS_ACCEPTED\"",
+            "index": true
+          },
+          {
+            "key": "tally_result",
+            "value": "{\"yes_count\":\"100\",\"abstain_count\":\"0\",\"no_count\":\"0\",\"no_with_veto_count\":\"0\"}",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "cosmos.group.v1.EventExec",
+        "attributes": [
+          {
+            "key": "logs",
+            "value": "\"\"",
+            "index": true
+          },
+          {
+            "key": "proposal_id",
+            "value": "\"96940\"",
+            "index": true
+          },
+          {
+            "key": "result",
+            "value": "\"PROPOSAL_EXECUTOR_RESULT_SUCCESS\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "coin_spent",
+        "attributes": [
+          {
+            "key": "spender",
+            "value": "tp1v586fwt55n59cmh38w8ny2fxaxejg94kkdxafq",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "10000000000nhash",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "coin_received",
+        "attributes": [
+          {
+            "key": "receiver",
+            "value": "tp17xpfvakm2amg962yls6f84z3kell8c5l2udfyt",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "10000000000nhash",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "transfer",
+        "attributes": [
+          {
+            "key": "recipient",
+            "value": "tp17xpfvakm2amg962yls6f84z3kell8c5l2udfyt",
+            "index": true
+          },
+          {
+            "key": "sender",
+            "value": "tp1v586fwt55n59cmh38w8ny2fxaxejg94kkdxafq",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "10000000000nhash",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "attributes": [
+          {
+            "key": "sender",
+            "value": "tp1v586fwt55n59cmh38w8ny2fxaxejg94kkdxafq",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "additionalfee",
+            "value": "10000000000nhash",
+            "index": true
+          },
+          {
+            "key": "basefee",
+            "value": "6721735350nhash",
+            "index": true
+          },
+          {
+            "key": "fee_payer",
+            "value": "tp1v586fwt55n59cmh38w8ny2fxaxejg94kkdxafq",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.msgfees.v1.EventMsgFees",
+        "attributes": [
+          {
+            "key": "msg_fees",
+            "value": "[{\"msg_type\":\"/provenance.metadata.v1.MsgWriteScopeRequest\",\"count\":\"1\",\"total\":\"10000000000nhash\",\"recipient\":\"\"}]",
+            "index": true
+          }
+        ]
+      }
+    ]
+  }
+}

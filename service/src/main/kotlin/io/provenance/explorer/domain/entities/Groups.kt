@@ -208,11 +208,13 @@ class GroupsProposalRecord(id: EntityID<Int>) : IntEntity(id) {
             proposalData: GroupsProposalInsertData,
             txInfo: TxData
         ) = transaction {
+            val policyId = GroupsPolicyRecord.findByPolicyAddr(proposalData.policyAddress)?.id?.value
+                ?: throw IllegalStateException("Policy not found for address: ${proposalData.policyAddress}")
             listOf(
                 -1,
                 proposalData.groupId,
-                proposalData.policy.id.value,
-                proposalData.policy.policyAddress,
+                policyId,
+                proposalData.policyAddress,
                 proposalData.proposalId,
                 proposalData.data.stringify(),
                 proposalData.nodeData,
