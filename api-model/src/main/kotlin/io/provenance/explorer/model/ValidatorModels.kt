@@ -5,7 +5,6 @@ import io.provenance.explorer.model.base.CountStrTotal
 import io.provenance.explorer.model.base.CountTotal
 import org.joda.time.DateTime
 import java.math.BigDecimal
-import java.math.BigInteger
 
 data class ValidatorSummary(
     val moniker: String,
