@@ -502,6 +502,7 @@ class ValidatorService(
 
             currentVals.validatorsList.forEach { vali ->
                 if (!signatures.contains(vali.address)) {
+                    logger.info("Inserting missed block record for height ${lastBlock.height.toInt()} and validator ${vali.address}")
                     MissedBlocksRecord.insert(lastBlock.height.toInt(), vali.address)
                 }
             }

@@ -171,6 +171,7 @@ class AsyncCachingV2(
         val proposerRec = validatorService.buildProposerInsert(blockRes, blockTimestamp, blockRes.block.height())
         val valsAtHeight = validatorService.buildValidatorsAtHeight(blockRes.block.height())
         validatorService.saveMissedBlocks(blockRes)
+        logger.info("attempting to save txs ${blockRes.block.data.txsCount} for block ${blockRes.block.height()}")
         val txs =
             if (blockRes.block.data.txsCount > 0) {
                 saveTxs(
