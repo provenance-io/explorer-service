@@ -161,6 +161,9 @@ class AsyncCachingV2(
         if (blockRes == null) return null
         logger.info("saving block ${blockRes.block.height()}")
         val blockTimestamp = blockRes.block.header.time.toDateTime()
+        if (rerunTxs.second) {
+            logger.info("attempting to build insert for block cache for block ${blockRes.block.height()}")
+        }
         val block =
             BlockCacheRecord.buildInsert(
                 blockRes.block.height(),
@@ -168,10 +171,21 @@ class AsyncCachingV2(
                 blockTimestamp,
                 blockRes
             )
+        if (rerunTxs.second) {
+            logger.info("attempting to build proposer insert for block ${blockRes.block.height()}")
+        }
         val proposerRec = validatorService.buildProposerInsert(blockRes, blockTimestamp, blockRes.block.height())
+        if (rerunTxs.second) {
+            logger.info("attempting to query validator at height for block ${blockRes.block.height()}")
+        }
         val valsAtHeight = validatorService.buildValidatorsAtHeight(blockRes.block.height())
+        if (rerunTxs.second) {
+            logger.info("attempting to calculate missing blocks for block ${blockRes.block.height()}")
+        }
         validatorService.saveMissedBlocks(blockRes)
-        logger.info("attempting to save txs ${blockRes.block.data.txsCount} for block ${blockRes.block.height()}")
+        if (rerunTxs.second) {
+            logger.info("attempting to save txs ${blockRes.block.data.txsCount} for block ${blockRes.block.height()}")
+        }
         val txs =
             if (blockRes.block.data.txsCount > 0) {
                 saveTxs(
