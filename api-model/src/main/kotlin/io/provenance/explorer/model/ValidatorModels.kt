@@ -5,12 +5,13 @@ import io.provenance.explorer.model.base.CountStrTotal
 import io.provenance.explorer.model.base.CountTotal
 import org.joda.time.DateTime
 import java.math.BigDecimal
+import java.math.BigInteger
 
 data class ValidatorSummary(
     val moniker: String,
     val addressId: String,
     val consensusAddress: String,
-    val proposerPriority: Int?,
+    val proposerPriority: BigInteger?,
     val votingPower: CountTotal?,
     val commission: String,
     val bondedTokens: CountStrTotal,
@@ -70,7 +71,7 @@ data class ValidatorAtHeight(
     val moniker: String,
     val addressId: String,
     val consensusAddress: String,
-    val proposerPriority: Int?,
+    val proposerPriority: BigInteger?,
     val votingPower: CountTotal?,
     val imgUrl: String?,
     val isProposer: Boolean = false,
