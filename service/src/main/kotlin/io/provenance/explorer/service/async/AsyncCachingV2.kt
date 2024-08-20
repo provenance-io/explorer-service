@@ -288,7 +288,7 @@ class AsyncCachingV2(
         val markers = saveMarkers(txInfo, res, txUpdate)
         saveNftData(txInfo, res, txUpdate)
         saveGovData(res, txInfo, txUpdate)
-        // saveIbcChannelData(res, txInfo, txUpdate)
+        saveIbcChannelData(res, txInfo, txUpdate)
         saveSmartContractData(res, txInfo, txUpdate)
         saveNameData(res, txInfo)
         groupService.saveGroups(res, txInfo, txUpdate)
