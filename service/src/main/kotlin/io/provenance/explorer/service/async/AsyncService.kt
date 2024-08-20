@@ -270,7 +270,6 @@ class AsyncService(
         }.let { if (it.isNotEmpty()) BlockTxRetryRecord.deleteRecords(it) }
     }
 
-
     @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
     fun updateAssetPricing() {
         logger.info("Updating asset pricing")
