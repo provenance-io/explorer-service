@@ -334,7 +334,7 @@ class ValidatorService(
             moniker = stakingVal.json.description.moniker,
             addressId = stakingVal.operatorAddress,
             consensusAddress = stakingVal.consensusAddr,
-            proposerPriority = validator?.proposerPriority?.toBigInteger(),
+            proposerPriority = validator?.proposerPriority,
             votingPower = if (validator != null) {
                 CountTotal(
                     validator.votingPower.toBigInteger(),
