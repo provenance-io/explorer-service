@@ -23,23 +23,7 @@ import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
-import io.provenance.explorer.domain.extensions.average
-import io.provenance.explorer.domain.extensions.avg
-import io.provenance.explorer.domain.extensions.get24HrBlockHeight
-import io.provenance.explorer.domain.extensions.pageCountOfResults
-import io.provenance.explorer.domain.extensions.sigToAddress
-import io.provenance.explorer.domain.extensions.sigToBase64
-import io.provenance.explorer.domain.extensions.toCoinStr
-import io.provenance.explorer.domain.extensions.toDateTime
-import io.provenance.explorer.domain.extensions.toDecimal
-import io.provenance.explorer.domain.extensions.toDecimalStringOld
-import io.provenance.explorer.domain.extensions.toOffset
-import io.provenance.explorer.domain.extensions.toPercentage
-import io.provenance.explorer.domain.extensions.toPercentageOld
-import io.provenance.explorer.domain.extensions.translateAddress
-import io.provenance.explorer.domain.extensions.translateByteArray
-import io.provenance.explorer.domain.extensions.validatorMissedBlocks
-import io.provenance.explorer.domain.extensions.validatorUptime
+import io.provenance.explorer.domain.extensions.*
 import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.CurrentValidatorState
 import io.provenance.explorer.domain.models.explorer.hourlyBlockCount
@@ -492,19 +476,37 @@ class ValidatorService(
         return BlockProposer(blockHeight, proposer, timestamp)
     }
 
-    fun saveMissedBlocks(blockMeta: Query.GetBlockByHeightResponse) = transaction {
-        val lastBlock = blockMeta.block.lastCommit
-        if (lastBlock.height.toInt() > 0) {
-            val signatures = lastBlock.signaturesList
-                .map { it.validatorAddress.translateByteArray().consensusAccountAddr }
-            val currentVals = ValidatorsCacheRecord.findById(lastBlock.height.toInt())?.validators
-                ?: grpcClient.getValidatorsAtHeight(lastBlock.height.toInt())
+    fun saveMissedBlocks(blockMeta: Query.GetBlockByHeightResponse, log: Boolean = false) = transaction {
+        val blockHeight = blockMeta.block.height()
+        if (log) {
+            logger.info("Processing missed blocks for height: $blockHeight")
+        }
 
-            currentVals.validatorsList.forEach { vali ->
-                if (!signatures.contains(vali.address)) {
-                    logger.info("Inserting missed block record for height ${lastBlock.height.toInt()} and validator ${vali.address}")
-                    MissedBlocksRecord.insert(lastBlock.height.toInt(), vali.address)
+        val lastBlock = blockMeta.block.lastCommit
+        val lastBlockHeight = lastBlock.height.toInt()
+
+        if (lastBlockHeight > 0) {
+            val signatures = lastBlock.signaturesList.map { it.validatorAddress.translateByteArray().consensusAccountAddr }
+
+            var currentVals = ValidatorsCacheRecord.findById(lastBlockHeight)?.validators
+            if (currentVals == null) {
+                if (log) {
+                    logger.info("Fetching validators from gRPC client for height: $lastBlockHeight")
                 }
+                currentVals = grpcClient.getValidatorsAtHeight(lastBlockHeight)
+            }
+
+            currentVals.validatorsList.forEach { validator ->
+                if (!signatures.contains(validator.address)) {
+                    if (log) {
+                        logger.info("Validator ${validator.address} missed block at height: $lastBlockHeight")
+                    }
+                    MissedBlocksRecord.insert(lastBlockHeight, validator.address)
+                }
+            }
+
+            if (log) {
+                logger.info("Finished processing missed blocks for height: $blockHeight")
             }
         }
     }

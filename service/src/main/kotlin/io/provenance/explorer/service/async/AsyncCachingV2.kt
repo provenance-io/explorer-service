@@ -182,7 +182,7 @@ class AsyncCachingV2(
         if (rerunTxs.first) {
             logger.info("attempting to calculate missing blocks for block ${blockRes.block.height()}")
         }
-        validatorService.saveMissedBlocks(blockRes)
+        validatorService.saveMissedBlocks(blockRes, rerunTxs.first)
         if (rerunTxs.first) {
             logger.info("attempting to save txs ${blockRes.block.data.txsCount} for block ${blockRes.block.height()}")
         }
