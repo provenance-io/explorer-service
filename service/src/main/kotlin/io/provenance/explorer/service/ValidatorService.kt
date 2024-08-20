@@ -23,23 +23,7 @@ import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.entities.ValidatorsCacheRecord
 import io.provenance.explorer.domain.entities.updateHitCount
 import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
-import io.provenance.explorer.domain.extensions.average
-import io.provenance.explorer.domain.extensions.avg
-import io.provenance.explorer.domain.extensions.get24HrBlockHeight
-import io.provenance.explorer.domain.extensions.pageCountOfResults
-import io.provenance.explorer.domain.extensions.sigToAddress
-import io.provenance.explorer.domain.extensions.sigToBase64
-import io.provenance.explorer.domain.extensions.toCoinStr
-import io.provenance.explorer.domain.extensions.toDateTime
-import io.provenance.explorer.domain.extensions.toDecimal
-import io.provenance.explorer.domain.extensions.toDecimalStringOld
-import io.provenance.explorer.domain.extensions.toOffset
-import io.provenance.explorer.domain.extensions.toPercentage
-import io.provenance.explorer.domain.extensions.toPercentageOld
-import io.provenance.explorer.domain.extensions.translateAddress
-import io.provenance.explorer.domain.extensions.translateByteArray
-import io.provenance.explorer.domain.extensions.validatorMissedBlocks
-import io.provenance.explorer.domain.extensions.validatorUptime
+import io.provenance.explorer.domain.extensions.*
 import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.CurrentValidatorState
 import io.provenance.explorer.domain.models.explorer.hourlyBlockCount
@@ -507,7 +491,7 @@ class ValidatorService(
             var currentVals = ValidatorsCacheRecord.findById(lastBlockHeight)?.validators
             if (currentVals == null) {
                 if (log) {
-                    logger.info("Fetching validators from gRPC client for height: $lastBlockHeight")
+                    logger.info("Fetching validators from gRPC client for height: $lastBlockHeight for block: $blockHeight")
                 }
                 currentVals = grpcClient.getValidatorsAtHeight(lastBlockHeight)
             }
@@ -515,7 +499,7 @@ class ValidatorService(
             currentVals.validatorsList.forEach { validator ->
                 if (!signatures.contains(validator.address)) {
                     if (log) {
-                        logger.info("Validator ${validator.address} missed block at height: $lastBlockHeight")
+                        logger.info("Validator ${validator.address} missed block at height: $lastBlockHeight for block: $blockHeight")
                     }
                     MissedBlocksRecord.insert(lastBlockHeight, validator.address)
                 }
