@@ -84,8 +84,8 @@ class IbcService(
     fun buildIbcLedgerAck(ledger: LedgerInfo, txData: TxData, ledgerId: Int) =
         IbcLedgerAckRecord.buildInsert(ledger, txData, ledgerId)
 
-    fun parseTransfer(msg: MsgTransfer, logs: List<Abci.StringEvent>): LedgerInfo {
-        val typed = logs.associateBy { it.type }
+    fun parseTransfer(msg: MsgTransfer, events: List<Abci.StringEvent>): LedgerInfo {
+        val typed = events.associateBy { it.type }
         val channel = typed["send_packet"]!!.let { event ->
             val port = event.attributesList.first { it.key == "packet_src_port" }.value
             val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
@@ -135,14 +135,13 @@ class IbcService(
         return ledger
     }
 
-    fun parseRecv(txSuccess: Boolean, msg: MsgRecvPacket, logs: List<Abci.StringEvent>): LedgerInfo {
+    fun parseRecv(txSuccess: Boolean, msg: MsgRecvPacket, events: List<Abci.StringEvent>): LedgerInfo {
         val ledger = LedgerInfo()
-//        ledger.logs = logs
         ledger.ackType = IbcAckType.RECEIVE
         ledger.movementIn = true
         if (txSuccess) {
             ledger.ack = true
-            val typed = logs.associateBy { it.type }
+            val typed = events.associateBy { it.type }
             ledger.channel = typed["recv_packet"]!!.let { event ->
                 val port = event.attributesList.first { it.key == "packet_dst_port" }.value
                 val channel = event.attributesList.first { it.key == "packet_dst_channel" }.value
@@ -199,13 +198,12 @@ class IbcService(
         return ledger
     }
 
-    fun parseAcknowledge(txSuccess: Boolean, msg: MsgAcknowledgement, logs: List<Abci.StringEvent>): LedgerInfo {
+    fun parseAcknowledge(txSuccess: Boolean, msg: MsgAcknowledgement, events: List<Abci.StringEvent>): LedgerInfo {
         val ledger = LedgerInfo()
-//        ledger.logs = logs
         ledger.ackType = IbcAckType.ACKNOWLEDGEMENT
         if (txSuccess) {
             ledger.ack = true
-            val typed = logs.associateBy { it.type }
+            val typed = events.associateBy { it.type }
             ledger.channel = typed["acknowledge_packet"]!!.let { event ->
                 val port = event.attributesList.first { it.key == "packet_src_port" }.value
                 val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
@@ -236,13 +234,12 @@ class IbcService(
         return ledger
     }
 
-    fun parseTimeout(txSuccess: Boolean, msg: MsgTimeout, logs: List<Abci.StringEvent>): LedgerInfo {
+    fun parseTimeout(txSuccess: Boolean, msg: MsgTimeout, events: List<Abci.StringEvent>): LedgerInfo {
         val ledger = LedgerInfo()
-//        ledger.logs = logs
         ledger.ackType = IbcAckType.TIMEOUT
         if (txSuccess) {
             ledger.ack = true
-            val typed = logs.associateBy { it.type }
+            val typed = events.associateBy { it.type }
             ledger.channel = typed["timeout_packet"]!!.let { event ->
                 val port = event.attributesList.first { it.key == "packet_src_port" }.value
                 val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
@@ -269,13 +266,12 @@ class IbcService(
         return ledger
     }
 
-    fun parseTimeoutOnClose(txSuccess: Boolean, msg: MsgTimeoutOnClose, logs: List<Abci.StringEvent>): LedgerInfo {
+    fun parseTimeoutOnClose(txSuccess: Boolean, msg: MsgTimeoutOnClose, events: List<Abci.StringEvent>): LedgerInfo {
         val ledger = LedgerInfo()
-//        ledger.logs = logs
         ledger.ackType = IbcAckType.TIMEOUT
         if (txSuccess) {
             ledger.ack = true
-            val typed = logs.associateBy { it.type }
+            val typed = events.associateBy { it.type }
             ledger.channel = typed["timeout_packet"]!!.let { event ->
                 val port = event.attributesList.first { it.key == "packet_src_port" }.value
                 val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
