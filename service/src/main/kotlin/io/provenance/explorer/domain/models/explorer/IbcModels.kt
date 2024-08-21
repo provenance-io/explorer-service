@@ -10,7 +10,6 @@ import java.math.BigDecimal
 data class LedgerInfo(
     var channel: IbcChannelRecord? = null,
     var denom: String = "",
-    var logs: Abci.ABCIMessageLog? = null,
     var denomTrace: String = "",
     var balanceIn: String? = null,
     var balanceOut: String? = null,

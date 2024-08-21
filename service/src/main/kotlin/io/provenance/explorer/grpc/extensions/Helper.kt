@@ -1,5 +1,6 @@
 package io.provenance.explorer.grpc.extensions
 
+import cosmos.base.abci.v1beta1.Abci
 import cosmos.tx.v1beta1.ServiceOuterClass
 
 fun ServiceOuterClass.GetTxResponse.mapEventAttrValues(idx: Int, event: String, attrList: List<String>): Map<String, String> {
@@ -39,3 +40,28 @@ fun ServiceOuterClass.GetTxResponse.mapTxEventAttrValues(eventType: String, attr
         }.mapIndexed { idx, event ->
             idx to event.attributesList.first { it.key == attrKey }.value
         }.toMap()
+
+fun ServiceOuterClass.GetTxResponse.eventsAtIndex(index: Int): List<Abci.StringEvent> {
+    return if (this.txResponse.logsList == null || this.txResponse.logsList.size <= index) {
+        txResponse.eventsList.filter { event ->
+            event.attributesList.any { attribute ->
+                attribute.key == "msg_index" && attribute.value == index.toString()
+            }
+        }.map { event ->
+            val convertedAttributes = event.attributesList.map { attribute ->
+                Abci.Attribute.newBuilder()
+                    .setKey(attribute.key)
+                    .setValue(attribute.value)
+                    .build()
+            }
+            Abci.StringEvent.newBuilder()
+                .setType(event.type)
+                .addAllAttributes(convertedAttributes)
+                .build()
+        }
+    } else {
+        this.txResponse.logsList[index].eventsList
+    }
+}
+
+

@@ -126,7 +126,6 @@ object IbcLedgerTable : IntIdTable(name = "ibc_ledger") {
     val toAddress = varchar("to_address", 256)
     val passThroughAddrId = integer("pass_through_address_id")
     val passThroughAddr = varchar("pass_through_address", 128)
-    val logs = jsonb<IbcLedgerTable, Abci.ABCIMessageLog>("logs", OBJECT_MAPPER)
     val blockHeight = integer("block_height")
     val txHashId = integer("tx_hash_id")
     val txHash = varchar("tx_hash", 64)
@@ -163,7 +162,6 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
                 match?.toAddress ?: ledger.toAddress,
                 match?.passThroughAddrId ?: ledger.passThroughAddress!!.id.value,
                 match?.passThroughAddr ?: ledger.passThroughAddress!!.accountAddress,
-                match?.logs ?: ledger.logs,
                 match?.blockHeight ?: txData.blockHeight,
                 match?.txHashId ?: -1,
                 match?.txHash ?: txData.txHash,
@@ -309,7 +307,6 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
     var toAddress by IbcLedgerTable.toAddress
     var passThroughAddrId by IbcLedgerTable.passThroughAddrId
     var passThroughAddr by IbcLedgerTable.passThroughAddr
-    var logs by IbcLedgerTable.logs
     var blockHeight by IbcLedgerTable.blockHeight
     var txHashId by IbcLedgerTable.txHashId
     var txHash by IbcLedgerTable.txHash
@@ -329,7 +326,6 @@ object IbcLedgerAckTable : IntIdTable(name = "ibc_ledger_ack") {
     val txHashId = integer("tx_hash_id")
     val txHash = varchar("tx_hash", 64)
     val txTimestamp = datetime("tx_timestamp")
-    val logs = jsonb<IbcLedgerAckTable, Abci.ABCIMessageLog>("logs", OBJECT_MAPPER)
     val changesEffected = bool("changes_effected").default(false)
 }
 
@@ -345,7 +341,6 @@ class IbcLedgerAckRecord(id: EntityID<Int>) : IntEntity(id) {
                 -1,
                 txInfo.txHash,
                 txInfo.txTimestamp,
-                ledger.logs,
                 ledger.changesEffected
             ).toProcedureObject()
     }
@@ -356,7 +351,6 @@ class IbcLedgerAckRecord(id: EntityID<Int>) : IntEntity(id) {
     var txHashId by IbcLedgerAckTable.txHashId
     var txHash by IbcLedgerAckTable.txHash
     var txTimestamp by IbcLedgerAckTable.txTimestamp
-    var logs by IbcLedgerAckTable.logs
     var changesEffected by IbcLedgerAckTable.changesEffected
 }
 
