@@ -1,6 +1,5 @@
 package io.provenance.explorer.domain.models.explorer
 
-import cosmos.base.abci.v1beta1.Abci
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.IbcAckType
 import io.provenance.explorer.domain.entities.IbcChannelRecord

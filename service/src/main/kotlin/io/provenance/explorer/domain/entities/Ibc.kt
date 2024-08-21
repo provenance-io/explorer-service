@@ -1,7 +1,6 @@
 package io.provenance.explorer.domain.entities
 
 import com.google.protobuf.Any
-import cosmos.base.abci.v1beta1.Abci
 import ibc.core.channel.v1.QueryOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ResourceNotFoundException

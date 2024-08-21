@@ -100,6 +100,7 @@ class IbcService(
                         "recipient" -> ledger.passThroughAddress = accountService.getAccountRaw(it.value)
                     }
                 }
+
                 "send_packet" -> v.attributesList.forEach {
                     when (it.key) {
                         "packet_data_hex" ->
@@ -113,6 +114,7 @@ class IbcService(
                                     ledger.balanceOut = node.get("amount").asText()
                                 }
                             }
+
                         "packet_data" ->
                             if (ledger.denom.isEmpty()) {
                                 it.value.toObjectNode().let { node ->
@@ -124,6 +126,7 @@ class IbcService(
                                     ledger.balanceOut = node.get("amount").asText()
                                 }
                             }
+
                         "packet_sequence" -> ledger.sequence = it.value.toInt()
                     }
                 }
@@ -157,6 +160,7 @@ class IbcService(
                                         ledger.balanceIn = node.get("amount").asText()
                                     }
                                 }
+
                             "packet_data" ->
                                 if (ledger.toAddress.isEmpty()) {
                                     it.value.toObjectNode().let { node ->
@@ -165,9 +169,11 @@ class IbcService(
                                         ledger.balanceIn = node.get("amount").asText()
                                     }
                                 }
+
                             "packet_sequence" -> ledger.sequence = it.value.toInt()
                         }
                     }
+
                     "transfer" ->
                         v.attributesList.forEach {
                             when (it.key) {
@@ -212,6 +218,7 @@ class IbcService(
                             "packet_sequence" -> ledger.sequence = it.value.toInt()
                         }
                     }
+
                     "fungible_token_packet" -> v.attributesList.firstOrNull { it.key == "success" }
                         ?.let {
                             ledger.changesEffected = true
@@ -248,6 +255,7 @@ class IbcService(
                             "packet_sequence" -> ledger.sequence = it.value.toInt()
                         }
                     }
+
                     "timeout" -> ledger.changesEffected = true
                 }
             }
@@ -280,6 +288,7 @@ class IbcService(
                             "packet_sequence" -> ledger.sequence = it.value.toInt()
                         }
                     }
+
                     "timeout" -> ledger.changesEffected = true
                 }
             }
@@ -417,6 +426,7 @@ class IbcService(
                         ).let { it[obj.srcPortAttr]!! to it[obj.srcChannelAttr]!! }
                         saveIbcChannel(port, channel)
                     }
+
                     else -> null
                 }
 
@@ -425,6 +435,7 @@ class IbcService(
                     obj.msgClient != null -> obj.msgClient
                     obj.clientAttr != null ->
                         tx.mapEventAttrValues(idx, obj.event, listOf(obj.clientAttr))[obj.clientAttr]!!
+
                     else -> null
                 }
                 txUpdate.apply { this.ibcJoin.add(TxIbcRecord.buildInsert(txInfo, client, channel?.id?.value)) }
@@ -449,27 +460,33 @@ class IbcService(
                             val msg = any.toMsgTransfer()
                             parseTransfer(msg, tx.eventsAtIndex(idx))
                         }
+
                         any.typeUrl.endsWith("MsgIbcTransferRequest") -> {
                             if (!txSuccess) return@forEachIndexed
                             val msg = any.toMsgIbcTransferRequest()
                             parseTransfer(msg.transfer, tx.eventsAtIndex(idx))
                         }
+
                         any.typeUrl.endsWith("MsgRecvPacket") -> {
                             val msg = any.toMsgRecvPacket()
                             parseRecv(txSuccess, msg, tx.eventsAtIndex(idx))
                         }
+
                         any.typeUrl.endsWith("MsgAcknowledgement") -> {
                             val msg = any.toMsgAcknowledgement()
                             parseAcknowledge(txSuccess, msg, tx.eventsAtIndex(idx))
                         }
+
                         any.typeUrl.endsWith("MsgTimeout") -> {
                             val msg = any.toMsgTimeout()
                             parseTimeout(txSuccess, msg, tx.eventsAtIndex(idx))
                         }
+
                         any.typeUrl.endsWith("MsgTimeoutOnClose") -> {
                             val msg = any.toMsgTimeoutOnClose()
                             parseTimeoutOnClose(txSuccess, msg, tx.eventsAtIndex(idx))
                         }
+
                         else -> logger.debug("This typeUrl is not yet supported in as an ibc ledger msg: ${any.typeUrl}")
                             .let { return@forEachIndexed }
                     }
@@ -484,6 +501,7 @@ class IbcService(
                                 "No matching IBC ledger record for channel " +
                                         "${ledger.channel!!.srcPort}/${ledger.channel!!.srcChannel}, sequence ${ledger.sequence}"
                             )
+
                         IbcAckType.RECEIVE ->
                             IbcLedgerRecord.findMatchingRecord(ledger, txInfo.txHash)?.let {
                                 txUpdate.apply {
@@ -514,8 +532,10 @@ class IbcService(
                                     )
                                 )
                             }
+
                         IbcAckType.TRANSFER ->
                             txUpdate.apply { this.ibcLedgers.add(buildIbcLedger(ledger, txInfo, null)) }
+
                         else -> logger.debug("Invalid IBC ack type: ${ledger.ackType}").let { return@forEachIndexed }
                     }
                 }

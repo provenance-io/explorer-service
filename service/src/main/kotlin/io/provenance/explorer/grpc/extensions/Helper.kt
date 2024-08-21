@@ -63,5 +63,3 @@ fun ServiceOuterClass.GetTxResponse.eventsAtIndex(index: Int): List<Abci.StringE
         this.txResponse.logsList[index].eventsList
     }
 }
-
-
