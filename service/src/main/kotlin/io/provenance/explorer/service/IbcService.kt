@@ -142,10 +142,19 @@ class IbcService(
         if (txSuccess) {
             ledger.ack = true
             val typed = events.associateBy { it.type }
-            ledger.channel = typed["recv_packet"]!!.let { event ->
-                val port = event.attributesList.first { it.key == "packet_dst_port" }.value
-                val channel = event.attributesList.first { it.key == "packet_dst_channel" }.value
-                IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
+            try {
+                ledger.channel = typed["recv_packet"]!!.let { event ->
+                    val port = event.attributesList.first { it.key == "packet_dst_port" }.value
+                    val channel = event.attributesList.first { it.key == "packet_dst_channel" }.value
+                    IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
+                }
+            } catch (e: Exception) {
+                val errorMessage = buildString {
+                    append("An error occurred while processing the ledger channel creation: ${e.message}\n")
+                    append("Available keys in the typed map: ${typed.keys.joinToString(", ")}")
+                }
+                logger.error(errorMessage, e)
+                throw RuntimeException("Unable to process ledger channel creation due to an unexpected error.", e)
             }
             typed.forEach { (k, v) ->
                 when (k) {
