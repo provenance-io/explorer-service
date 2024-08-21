@@ -26,6 +26,7 @@ import io.provenance.explorer.domain.exceptions.InvalidArgumentException
 import io.provenance.explorer.domain.extensions.decodeHex
 import io.provenance.explorer.domain.extensions.getFirstSigner
 import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.stringify
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
@@ -86,6 +87,9 @@ class IbcService(
 
     fun parseTransfer(msg: MsgTransfer, events: List<Abci.StringEvent>): LedgerInfo {
         val typed = events.associateBy { it.type }
+        if (typed["send_packet"] == null ) {
+            logger.error("IBC send_packet not found in map: $typed")
+        }
         val channel = typed["send_packet"]!!.let { event ->
             val port = event.attributesList.first { it.key == "packet_src_port" }.value
             val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
@@ -143,6 +147,9 @@ class IbcService(
             ledger.ack = true
             val typed = events.associateBy { it.type }
             try {
+                if (typed["recv_packet"] == null ) {
+                    logger.error("IBC recv_packet not found in map: $typed")
+                }
                 ledger.channel = typed["recv_packet"]!!.let { event ->
                     val port = event.attributesList.first { it.key == "packet_dst_port" }.value
                     val channel = event.attributesList.first { it.key == "packet_dst_channel" }.value
@@ -213,6 +220,9 @@ class IbcService(
         if (txSuccess) {
             ledger.ack = true
             val typed = events.associateBy { it.type }
+            if (typed["recv_packet"] == null ) {
+                logger.error("IBC recv_packet not found in map: $typed")
+            }
             ledger.channel = typed["acknowledge_packet"]!!.let { event ->
                 val port = event.attributesList.first { it.key == "packet_src_port" }.value
                 val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
@@ -249,6 +259,9 @@ class IbcService(
         if (txSuccess) {
             ledger.ack = true
             val typed = events.associateBy { it.type }
+            if (typed["recv_packet"] == null ) {
+                logger.error("IBC recv_packet not found in map: $typed")
+            }
             ledger.channel = typed["timeout_packet"]!!.let { event ->
                 val port = event.attributesList.first { it.key == "packet_src_port" }.value
                 val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
@@ -281,6 +294,9 @@ class IbcService(
         if (txSuccess) {
             ledger.ack = true
             val typed = events.associateBy { it.type }
+            if (typed["recv_packet"] == null ) {
+                logger.error("IBC recv_packet not found in map: $typed")
+            }
             ledger.channel = typed["timeout_packet"]!!.let { event ->
                 val port = event.attributesList.first { it.key == "packet_src_port" }.value
                 val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
