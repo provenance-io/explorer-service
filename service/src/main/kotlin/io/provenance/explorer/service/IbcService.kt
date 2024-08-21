@@ -2,6 +2,7 @@ package io.provenance.explorer.service
 
 import com.google.protobuf.util.JsonFormat
 import cosmos.base.abci.v1beta1.Abci
+import cosmos.tx.v1beta1.ServiceOuterClass
 import ibc.applications.transfer.v1.Transfer
 import ibc.applications.transfer.v1.Tx.MsgTransfer
 import ibc.core.channel.v1.ChannelOuterClass
@@ -12,22 +13,37 @@ import ibc.core.channel.v1.Tx.MsgTimeoutOnClose
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.entities.BlockTxRetryRecord
 import io.provenance.explorer.domain.entities.IbcAckType
 import io.provenance.explorer.domain.entities.IbcChannelRecord
 import io.provenance.explorer.domain.entities.IbcLedgerAckRecord
 import io.provenance.explorer.domain.entities.IbcLedgerRecord
 import io.provenance.explorer.domain.entities.IbcRelayerRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
+import io.provenance.explorer.domain.entities.TxIbcRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
+import io.provenance.explorer.domain.exceptions.InvalidArgumentException
 import io.provenance.explorer.domain.extensions.decodeHex
+import io.provenance.explorer.domain.extensions.getFirstSigner
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.LedgerInfo
 import io.provenance.explorer.domain.models.explorer.TxData
+import io.provenance.explorer.domain.models.explorer.TxUpdate
 import io.provenance.explorer.grpc.extensions.denomEventRegexParse
+import io.provenance.explorer.grpc.extensions.getIbcLedgerMsgs
+import io.provenance.explorer.grpc.extensions.getTxIbcClientChannel
+import io.provenance.explorer.grpc.extensions.isIbcTransferMsg
+import io.provenance.explorer.grpc.extensions.mapEventAttrValues
 import io.provenance.explorer.grpc.extensions.scrubQuotes
+import io.provenance.explorer.grpc.extensions.toMsgAcknowledgement
+import io.provenance.explorer.grpc.extensions.toMsgIbcTransferRequest
+import io.provenance.explorer.grpc.extensions.toMsgRecvPacket
+import io.provenance.explorer.grpc.extensions.toMsgTimeout
+import io.provenance.explorer.grpc.extensions.toMsgTimeoutOnClose
+import io.provenance.explorer.grpc.extensions.toMsgTransfer
 import io.provenance.explorer.grpc.v1.IbcGrpcClient
 import io.provenance.explorer.model.Balance
 import io.provenance.explorer.model.BalanceByChannel
@@ -379,6 +395,130 @@ class IbcService(
             ?: throw ResourceNotFoundException("Invalid port and channel: $srcPort / $srcChannel")
         IbcRelayerRecord.getRelayersForChannel(channelId)
     }
+
+    fun saveIbcChannelData(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, txUpdate: TxUpdate) =
+        transaction {
+            val scrapedObjs = tx.tx.body.messagesList.map { it.getTxIbcClientChannel() }
+
+            // save channel data
+            // save tx_ibc
+            // save ibc_relayer
+            scrapedObjs.forEachIndexed { idx, obj ->
+                if (obj == null) return@forEachIndexed
+                // get channel, or null
+                val channel = when {
+                    obj.msgSrcChannel != null -> saveIbcChannel(obj.msgSrcPort!!, obj.msgSrcChannel)
+                    obj.srcChannelAttr != null -> {
+                        val (port, channel) = tx.mapEventAttrValues(
+                            idx,
+                            obj.event,
+                            listOf(obj.srcPortAttr!!, obj.srcChannelAttr!!)
+                        ).let { it[obj.srcPortAttr]!! to it[obj.srcChannelAttr]!! }
+                        saveIbcChannel(port, channel)
+                    }
+                    else -> null
+                }
+
+                val client = when {
+                    channel != null -> channel.client
+                    obj.msgClient != null -> obj.msgClient
+                    obj.clientAttr != null ->
+                        tx.mapEventAttrValues(idx, obj.event, listOf(obj.clientAttr))[obj.clientAttr]!!
+                    else -> null
+                }
+                txUpdate.apply { this.ibcJoin.add(TxIbcRecord.buildInsert(txInfo, client, channel?.id?.value)) }
+
+                val msg = tx.tx.body.messagesList[idx]
+                if (!msg.isIbcTransferMsg() && client != null) {
+                    val relayer = tx.getFirstSigner()
+                    val account = accountService.saveAccount(relayer)
+                    IbcRelayerRecord.insertIgnore(client, channel?.id?.value, account)
+                }
+            }
+
+            val txSuccess = tx.txResponse.code == 0
+            val successfulRecvHashes = mutableListOf<String>()
+            // save ledgers, acks
+            tx.tx.body.messagesList.map { it.getIbcLedgerMsgs() }
+                .forEachIndexed { idx, any ->
+                    if (any == null) return@forEachIndexed
+                    val ledger = when {
+                        any.typeUrl.endsWith("MsgTransfer") -> {
+                            if (!txSuccess) return@forEachIndexed
+                            val msg = any.toMsgTransfer()
+                            parseTransfer(msg, tx.txResponse.logsList[idx])
+                        }
+                        any.typeUrl.endsWith("MsgIbcTransferRequest") -> {
+                            if (!txSuccess) return@forEachIndexed
+                            val msg = any.toMsgIbcTransferRequest()
+                            parseTransfer(msg.transfer, tx.txResponse.logsList[idx])
+                        }
+                        any.typeUrl.endsWith("MsgRecvPacket") -> {
+                            val msg = any.toMsgRecvPacket()
+                            parseRecv(txSuccess, msg, tx.txResponse.logsList[idx])
+                        }
+                        any.typeUrl.endsWith("MsgAcknowledgement") -> {
+                            val msg = any.toMsgAcknowledgement()
+                            parseAcknowledge(txSuccess, msg, tx.txResponse.logsList[idx])
+                        }
+                        any.typeUrl.endsWith("MsgTimeout") -> {
+                            val msg = any.toMsgTimeout()
+                            parseTimeout(txSuccess, msg, tx.txResponse.logsList[idx])
+                        }
+                        any.typeUrl.endsWith("MsgTimeoutOnClose") -> {
+                            val msg = any.toMsgTimeoutOnClose()
+                            parseTimeoutOnClose(txSuccess, msg, tx.txResponse.logsList[idx])
+                        }
+                        else -> logger.debug("This typeUrl is not yet supported in as an ibc ledger msg: ${any.typeUrl}")
+                            .let { return@forEachIndexed }
+                    }
+                    when (ledger.ackType) {
+                        IbcAckType.ACKNOWLEDGEMENT, IbcAckType.TIMEOUT ->
+                            IbcLedgerRecord.findMatchingRecord(ledger, txInfo.txHash)?.let {
+                                txUpdate.apply {
+                                    this.ibcLedgers.add(buildIbcLedger(ledger, txInfo, it))
+                                    this.ibcLedgerAcks.add(buildIbcLedgerAck(ledger, txInfo, it.id.value))
+                                }
+                            } ?: throw InvalidArgumentException(
+                                "No matching IBC ledger record for channel " +
+                                        "${ledger.channel!!.srcPort}/${ledger.channel!!.srcChannel}, sequence ${ledger.sequence}"
+                            )
+                        IbcAckType.RECEIVE ->
+                            IbcLedgerRecord.findMatchingRecord(ledger, txInfo.txHash)?.let {
+                                txUpdate.apply {
+                                    this.ibcLedgerAcks.add(buildIbcLedgerAck(ledger, txInfo, it.id.value))
+                                }
+                            } ?: if (ledger.changesEffected) {
+                                txUpdate.apply {
+                                    this.ibcLedgers.add(buildIbcLedger(ledger, txInfo, null))
+                                }
+                                successfulRecvHashes.add(IbcLedgerRecord.getUniqueHash(ledger))
+                            } else if (successfulRecvHashes.contains(IbcLedgerRecord.getUniqueHash(ledger))) {
+                                BlockTxRetryRecord.insertNonBlockingRetry(
+                                    txInfo.blockHeight,
+                                    InvalidArgumentException(
+                                        "Matching IBC Ledger record has not been saved yet - " +
+                                                "${ledger.channel!!.srcPort}/${ledger.channel!!.srcChannel}, " +
+                                                "sequence ${ledger.sequence}. Retrying block to save non-effected RECV record."
+                                    )
+                                )
+                            } else {
+                                BlockTxRetryRecord.insertNonBlockingRetry(
+                                    txInfo.blockHeight,
+                                    InvalidArgumentException(
+                                        "Matching IBC Ledger record has not been saved yet - " +
+                                                "${ledger.channel!!.srcPort}/${ledger.channel!!.srcChannel}, " +
+                                                "sequence ${ledger.sequence}. Could be contained in another Tx in the " +
+                                                "same block."
+                                    )
+                                )
+                            }
+                        IbcAckType.TRANSFER ->
+                            txUpdate.apply { this.ibcLedgers.add(buildIbcLedger(ledger, txInfo, null)) }
+                        else -> logger.debug("Invalid IBC ack type: ${ledger.ackType}").let { return@forEachIndexed }
+                    }
+                }
+        }
 }
 
 fun String.getIbcHash() = this.split("ibc/").last()

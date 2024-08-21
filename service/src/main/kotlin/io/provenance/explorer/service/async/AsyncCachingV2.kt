@@ -305,7 +305,7 @@ class AsyncCachingV2(
         val markers = saveMarkers(txInfo, res, txUpdate)
         saveNftData(txInfo, res, txUpdate)
         saveGovData(res, txInfo, txUpdate)
-        saveIbcChannelData(res, txInfo, txUpdate)
+        ibcService.saveIbcChannelData(res, txInfo, txUpdate)
         saveSmartContractData(res, txInfo, txUpdate)
         saveNameData(res, txInfo)
         groupService.saveGroups(res, txInfo, txUpdate)
@@ -582,130 +582,6 @@ class AsyncCachingV2(
                 }
         }
     }
-
-    private fun saveIbcChannelData(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, txUpdate: TxUpdate) =
-        transaction {
-            val scrapedObjs = tx.tx.body.messagesList.map { it.getTxIbcClientChannel() }
-
-            // save channel data
-            // save tx_ibc
-            // save ibc_relayer
-            scrapedObjs.forEachIndexed { idx, obj ->
-                if (obj == null) return@forEachIndexed
-                // get channel, or null
-                val channel = when {
-                    obj.msgSrcChannel != null -> ibcService.saveIbcChannel(obj.msgSrcPort!!, obj.msgSrcChannel)
-                    obj.srcChannelAttr != null -> {
-                        val (port, channel) = tx.mapEventAttrValues(
-                            idx,
-                            obj.event,
-                            listOf(obj.srcPortAttr!!, obj.srcChannelAttr!!)
-                        ).let { it[obj.srcPortAttr]!! to it[obj.srcChannelAttr]!! }
-                        ibcService.saveIbcChannel(port, channel)
-                    }
-                    else -> null
-                }
-
-                val client = when {
-                    channel != null -> channel.client
-                    obj.msgClient != null -> obj.msgClient
-                    obj.clientAttr != null ->
-                        tx.mapEventAttrValues(idx, obj.event, listOf(obj.clientAttr))[obj.clientAttr]!!
-                    else -> null
-                }
-                txUpdate.apply { this.ibcJoin.add(TxIbcRecord.buildInsert(txInfo, client, channel?.id?.value)) }
-
-                val msg = tx.tx.body.messagesList[idx]
-                if (!msg.isIbcTransferMsg() && client != null) {
-                    val relayer = tx.getFirstSigner()
-                    val account = accountService.saveAccount(relayer)
-                    IbcRelayerRecord.insertIgnore(client, channel?.id?.value, account)
-                }
-            }
-
-            val txSuccess = tx.txResponse.code == 0
-            val successfulRecvHashes = mutableListOf<String>()
-            // save ledgers, acks
-            tx.tx.body.messagesList.map { it.getIbcLedgerMsgs() }
-                .forEachIndexed { idx, any ->
-                    if (any == null) return@forEachIndexed
-                    val ledger = when {
-                        any.typeUrl.endsWith("MsgTransfer") -> {
-                            if (!txSuccess) return@forEachIndexed
-                            val msg = any.toMsgTransfer()
-                            ibcService.parseTransfer(msg, tx.txResponse.logsList[idx])
-                        }
-                        any.typeUrl.endsWith("MsgIbcTransferRequest") -> {
-                            if (!txSuccess) return@forEachIndexed
-                            val msg = any.toMsgIbcTransferRequest()
-                            ibcService.parseTransfer(msg.transfer, tx.txResponse.logsList[idx])
-                        }
-                        any.typeUrl.endsWith("MsgRecvPacket") -> {
-                            val msg = any.toMsgRecvPacket()
-                            ibcService.parseRecv(txSuccess, msg, tx.txResponse.logsList[idx])
-                        }
-                        any.typeUrl.endsWith("MsgAcknowledgement") -> {
-                            val msg = any.toMsgAcknowledgement()
-                            ibcService.parseAcknowledge(txSuccess, msg, tx.txResponse.logsList[idx])
-                        }
-                        any.typeUrl.endsWith("MsgTimeout") -> {
-                            val msg = any.toMsgTimeout()
-                            ibcService.parseTimeout(txSuccess, msg, tx.txResponse.logsList[idx])
-                        }
-                        any.typeUrl.endsWith("MsgTimeoutOnClose") -> {
-                            val msg = any.toMsgTimeoutOnClose()
-                            ibcService.parseTimeoutOnClose(txSuccess, msg, tx.txResponse.logsList[idx])
-                        }
-                        else -> logger.debug("This typeUrl is not yet supported in as an ibc ledger msg: ${any.typeUrl}")
-                            .let { return@forEachIndexed }
-                    }
-                    when (ledger.ackType) {
-                        IbcAckType.ACKNOWLEDGEMENT, IbcAckType.TIMEOUT ->
-                            IbcLedgerRecord.findMatchingRecord(ledger, txInfo.txHash)?.let {
-                                txUpdate.apply {
-                                    this.ibcLedgers.add(ibcService.buildIbcLedger(ledger, txInfo, it))
-                                    this.ibcLedgerAcks.add(ibcService.buildIbcLedgerAck(ledger, txInfo, it.id.value))
-                                }
-                            } ?: throw InvalidArgumentException(
-                                "No matching IBC ledger record for channel " +
-                                    "${ledger.channel!!.srcPort}/${ledger.channel!!.srcChannel}, sequence ${ledger.sequence}"
-                            )
-                        IbcAckType.RECEIVE ->
-                            IbcLedgerRecord.findMatchingRecord(ledger, txInfo.txHash)?.let {
-                                txUpdate.apply {
-                                    this.ibcLedgerAcks.add(ibcService.buildIbcLedgerAck(ledger, txInfo, it.id.value))
-                                }
-                            } ?: if (ledger.changesEffected) {
-                                txUpdate.apply {
-                                    this.ibcLedgers.add(ibcService.buildIbcLedger(ledger, txInfo, null))
-                                }
-                                successfulRecvHashes.add(IbcLedgerRecord.getUniqueHash(ledger))
-                            } else if (successfulRecvHashes.contains(IbcLedgerRecord.getUniqueHash(ledger))) {
-                                BlockTxRetryRecord.insertNonBlockingRetry(
-                                    txInfo.blockHeight,
-                                    InvalidArgumentException(
-                                        "Matching IBC Ledger record has not been saved yet - " +
-                                            "${ledger.channel!!.srcPort}/${ledger.channel!!.srcChannel}, " +
-                                            "sequence ${ledger.sequence}. Retrying block to save non-effected RECV record."
-                                    )
-                                )
-                            } else {
-                                BlockTxRetryRecord.insertNonBlockingRetry(
-                                    txInfo.blockHeight,
-                                    InvalidArgumentException(
-                                        "Matching IBC Ledger record has not been saved yet - " +
-                                            "${ledger.channel!!.srcPort}/${ledger.channel!!.srcChannel}, " +
-                                            "sequence ${ledger.sequence}. Could be contained in another Tx in the " +
-                                            "same block."
-                                    )
-                                )
-                            }
-                        IbcAckType.TRANSFER ->
-                            txUpdate.apply { this.ibcLedgers.add(ibcService.buildIbcLedger(ledger, txInfo, null)) }
-                        else -> logger.debug("Invalid IBC ack type: ${ledger.ackType}").let { return@forEachIndexed }
-                    }
-                }
-        }
 
     private fun saveSmartContractData(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, txUpdate: TxUpdate) =
         transaction {
