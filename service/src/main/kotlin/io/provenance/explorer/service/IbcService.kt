@@ -26,7 +26,6 @@ import io.provenance.explorer.domain.exceptions.InvalidArgumentException
 import io.provenance.explorer.domain.extensions.decodeHex
 import io.provenance.explorer.domain.extensions.getFirstSigner
 import io.provenance.explorer.domain.extensions.pageCountOfResults
-import io.provenance.explorer.domain.extensions.stringify
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
@@ -85,18 +84,55 @@ class IbcService(
     fun buildIbcLedgerAck(ledger: LedgerInfo, txData: TxData, ledgerId: Int) =
         IbcLedgerAckRecord.buildInsert(ledger, txData, ledgerId)
 
+    /**
+     * Parses the transfer-related events from an IBC `MsgTransfer` message and constructs a `LedgerInfo` object
+     * containing detailed information about the transfer.
+     *
+     * @param msg The IBC `MsgTransfer` message representing the transfer operation being processed.
+     * @param events A list of `Abci.StringEvent` objects that contain various events related to the IBC message.
+     *
+     * @return A `LedgerInfo` object populated with the parsed transfer details.
+     *
+     * @throws Exception if required event attributes (such as `packet_src_port`, `packet_src_channel`, or `send_packet`)
+     *                   are missing or if the associated IBC channel cannot be found.
+     *
+     * The method performs the following steps:
+     * 1. Maps the events by their type using the `associateBy` function for easy lookup.
+     * 2. Sets the `ackType` of the `LedgerInfo` to `IbcAckType.TRANSFER`.
+     * 3. Looks for the "send_packet" event to extract the source port and channel, and uses these to find the
+     *    corresponding IBC channel. If the channel is not found, it logs an error and throws an exception.
+     * 4. Iterates over all events to extract additional transfer-related information:
+     *    - For the "transfer" event, it retrieves the recipient's address and sets it in `LedgerInfo`.
+     *    - For the "send_packet" event, it decodes the packet data to extract and populate fields such as the
+     *      denomination (`denom`), the trace of the denomination (`denomTrace`), the sender and receiver addresses,
+     *      and the amount being transferred (`balanceOut`).
+     *    - Extracts the packet sequence number and stores it in `LedgerInfo`.
+     */
     fun parseTransfer(msg: MsgTransfer, events: List<Abci.StringEvent>): LedgerInfo {
         val typed = events.associateBy { it.type }
-        if (typed["send_packet"] == null ) {
-            logger.error("IBC send_packet not found in map: $typed")
-        }
-        val channel = typed["send_packet"]!!.let { event ->
-            val port = event.attributesList.first { it.key == "packet_src_port" }.value
-            val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
-            IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
-        }
-        val ledger = LedgerInfo(channel = channel!!)
+        val ledger = LedgerInfo()
         ledger.ackType = IbcAckType.TRANSFER
+        typed["send_packet"]?.let { event ->
+            val port = event.attributesList.firstOrNull { it.key == "packet_src_port" }?.value
+            val channel = event.attributesList.firstOrNull { it.key == "packet_src_channel" }?.value
+
+            if (port != null && channel != null) {
+                ledger.channel = IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
+                if (ledger.channel == null) {
+                    val errorMsg = "No IBC channel found for port: $port, channel: $channel"
+                    logger.error(errorMsg)
+                    throw Exception(errorMsg)
+                }
+            } else {
+                val errorMsg = "Missing required attributes 'packet_src_port' or 'packet_src_channel' in event: $event"
+                logger.error(errorMsg)
+                throw Exception(errorMsg)
+            }
+        } ?: run {
+            val errorMsg = "IBC send_packet not found in map: $typed"
+            logger.error(errorMsg)
+            throw Exception(errorMsg)
+        }
         typed.forEach { (k, v) ->
             when (k) {
                 "transfer" -> v.attributesList.forEach {
@@ -139,6 +175,39 @@ class IbcService(
         return ledger
     }
 
+    /**
+     * Parses the receive packet-related events from an IBC `MsgRecvPacket` message and constructs a `LedgerInfo` object
+     * containing detailed information about the receipt of the packet.
+     *
+     * @param txSuccess A boolean indicating whether the transaction was successful.
+     * @param msg The IBC `MsgRecvPacket` message representing the receive packet operation being processed.
+     * @param events A list of `Abci.StringEvent` objects that contain various events related to the IBC message.
+     *
+     * @return A `LedgerInfo` object populated with the parsed receive packet details.
+     *
+     * @throws Exception if required event attributes (such as `packet_dst_port`, `packet_dst_channel`, or `recv_packet`)
+     *                   are missing, or if the associated IBC channel cannot be found.
+     *
+     * The method performs the following steps:
+     * 1. Initializes a `LedgerInfo` object, setting the acknowledgment type to `IbcAckType.RECEIVE` and marking the ledger
+     *    as an inbound movement (`movementIn = true`).
+     * 2. If `txSuccess` is true:
+     *    - Sets the acknowledgment (`ack`) to true.
+     *    - Maps the events by their type using the `associateBy` function for easy lookup.
+     *    - Looks for the "recv_packet" event to extract the destination port and channel, and uses these to find the
+     *      corresponding IBC channel. If the channel is not found, it logs an error and throws an exception.
+     *    - Iterates over all events to extract additional packet-related information:
+     *      - For the "recv_packet" event, it decodes the packet data to extract and populate fields such as the
+     *        sender and receiver addresses, the amount being transferred (`balanceIn`), and the packet sequence.
+     *      - For the "transfer" event, it retrieves the sender's address, parses the denomination (`denom`), and traces
+     *        the denomination (`denomTrace`).
+     *      - Marks that changes were effected and the acknowledgment was successful (`ackSuccess = true`).
+     * 3. If `txSuccess` is false:
+     *    - Retrieves the IBC channel based on the destination port and channel from the `msg`.
+     *    - Extracts the packet sequence from the `msg`.
+     *
+     * @return A populated `LedgerInfo` object with the details of the receive packet.
+     */
     fun parseRecv(txSuccess: Boolean, msg: MsgRecvPacket, events: List<Abci.StringEvent>): LedgerInfo {
         val ledger = LedgerInfo()
         ledger.ackType = IbcAckType.RECEIVE
@@ -146,22 +215,22 @@ class IbcService(
         if (txSuccess) {
             ledger.ack = true
             val typed = events.associateBy { it.type }
-            try {
-                if (typed["recv_packet"] == null ) {
-                    logger.error("IBC recv_packet not found in map: $typed")
+            typed["recv_packet"]?.let { event ->
+                val port = event.attributesList.firstOrNull { it.key == "packet_dst_port" }?.value
+                val channel = event.attributesList.firstOrNull { it.key == "packet_dst_channel" }?.value
+
+                if (port != null && channel != null) {
+                    ledger.channel = IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
+                } else {
+                    val errorMsg =
+                        "Missing required attributes 'packet_dst_port' or 'packet_dst_channel' in event: $event"
+                    logger.error(errorMsg)
+                    throw Exception(errorMsg)
                 }
-                ledger.channel = typed["recv_packet"]!!.let { event ->
-                    val port = event.attributesList.first { it.key == "packet_dst_port" }.value
-                    val channel = event.attributesList.first { it.key == "packet_dst_channel" }.value
-                    IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
-                }
-            } catch (e: Exception) {
-                val errorMessage = buildString {
-                    append("An error occurred while processing the ledger channel creation: ${e.message}\n")
-                    append("Available keys in the typed map: ${typed.keys.joinToString(", ")}")
-                }
-                logger.error(errorMessage, e)
-                throw RuntimeException("Unable to process ledger channel creation due to an unexpected error.", e)
+            } ?: run {
+                val errorMsg = "IBC recv_packet not found in map: $typed"
+                logger.error(errorMsg)
+                throw Exception(errorMsg)
             }
             typed.forEach { (k, v) ->
                 when (k) {
@@ -214,19 +283,57 @@ class IbcService(
         return ledger
     }
 
+    /**
+     * Parses the acknowledgment-related events from an IBC `MsgAcknowledgement` message and constructs a `LedgerInfo` object
+     * containing detailed information about the acknowledgment process.
+     *
+     * @param txSuccess A boolean indicating whether the transaction was successful.
+     * @param msg The IBC `MsgAcknowledgement` message representing the acknowledgment operation being processed.
+     * @param events A list of `Abci.StringEvent` objects that contain various events related to the IBC message.
+     *
+     * @return A `LedgerInfo` object populated with the parsed acknowledgment details.
+     *
+     * @throws Exception if required event attributes (such as `packet_src_port`, `packet_src_channel`, or `acknowledge_packet`)
+     *                   are missing, or if the associated IBC channel cannot be found.
+     *
+     * The method performs the following steps:
+     * 1. Initializes a `LedgerInfo` object, setting the acknowledgment type to `IbcAckType.ACKNOWLEDGEMENT`.
+     * 2. If `txSuccess` is true:
+     *    - Sets the acknowledgment (`ack`) to true.
+     *    - Maps the events by their type using the `associateBy` function for easy lookup.
+     *    - Looks for the "acknowledge_packet" event to extract the source port and channel, and uses these to find the
+     *      corresponding IBC channel. If the channel is not found, it logs an error and throws an exception.
+     *    - Iterates over all events to extract additional acknowledgment-related information:
+     *      - For the "acknowledge_packet" event, it extracts and sets the packet sequence in `LedgerInfo`.
+     *      - For the "fungible_token_packet" event, it checks for a "success" attribute to mark that changes were
+     *        effected and the acknowledgment was successful (`ackSuccess = true`).
+     * 3. If `txSuccess` is false:
+     *    - Retrieves the IBC channel based on the source port and channel from the `msg`.
+     *    - Extracts the packet sequence from the `msg`.
+     *
+     * @return A populated `LedgerInfo` object with the details of the acknowledgment.
+     */
     fun parseAcknowledge(txSuccess: Boolean, msg: MsgAcknowledgement, events: List<Abci.StringEvent>): LedgerInfo {
         val ledger = LedgerInfo()
         ledger.ackType = IbcAckType.ACKNOWLEDGEMENT
         if (txSuccess) {
             ledger.ack = true
             val typed = events.associateBy { it.type }
-            if (typed["recv_packet"] == null ) {
-                logger.error("IBC recv_packet not found in map: $typed")
-            }
-            ledger.channel = typed["acknowledge_packet"]!!.let { event ->
-                val port = event.attributesList.first { it.key == "packet_src_port" }.value
-                val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
-                IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
+            typed["acknowledge_packet"]?.let { event ->
+                val port = event.attributesList.firstOrNull { it.key == "packet_src_port" }?.value
+                val channel = event.attributesList.firstOrNull { it.key == "packet_src_channel" }?.value
+                if (port != null && channel != null) {
+                    ledger.channel = IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
+                } else {
+                    val errorMsg =
+                        "Missing required attributes 'packet_src_port' or 'packet_src_channel' in event: $event"
+                    logger.error(errorMsg)
+                    throw Exception(errorMsg)
+                }
+            } ?: run {
+                val errorMsg = "IBC acknowledge_packet not found in map: $typed"
+                logger.error(errorMsg)
+                throw Exception(errorMsg)
             }
             typed.forEach { (k, v) ->
                 when (k) {
@@ -253,19 +360,57 @@ class IbcService(
         return ledger
     }
 
+    /**
+     * Parses the timeout-related events from an IBC `MsgTimeout` message and constructs a `LedgerInfo` object
+     * containing detailed information about the timeout process.
+     *
+     * @param txSuccess A boolean indicating whether the transaction was successful.
+     * @param msg The IBC `MsgTimeout` message representing the timeout operation being processed.
+     * @param events A list of `Abci.StringEvent` objects that contain various events related to the IBC message.
+     *
+     * @return A `LedgerInfo` object populated with the parsed timeout details.
+     *
+     * @throws Exception if required event attributes (such as `packet_src_port`, `packet_src_channel`, or `timeout_packet`)
+     *                   are missing, or if the associated IBC channel cannot be found.
+     *
+     * The method performs the following steps:
+     * 1. Initializes a `LedgerInfo` object, setting the acknowledgment type to `IbcAckType.TIMEOUT`.
+     * 2. If `txSuccess` is true:
+     *    - Sets the acknowledgment (`ack`) to true.
+     *    - Maps the events by their type using the `associateBy` function for easy lookup.
+     *    - Looks for the "timeout_packet" event to extract the source port and channel, and uses these to find the
+     *      corresponding IBC channel. If the channel is not found, it logs an error and throws an exception.
+     *    - Iterates over all events to extract additional timeout-related information:
+     *      - For the "timeout_packet" event, it extracts and sets the packet sequence in `LedgerInfo`.
+     *      - For the "timeout" event, it marks that changes were effected.
+     * 3. If `txSuccess` is false:
+     *    - Retrieves the IBC channel based on the source port and channel from the `msg`.
+     *    - Extracts the packet sequence from the `msg`.
+     *
+     * @return A populated `LedgerInfo` object with the details of the timeout.
+     */
     fun parseTimeout(txSuccess: Boolean, msg: MsgTimeout, events: List<Abci.StringEvent>): LedgerInfo {
         val ledger = LedgerInfo()
         ledger.ackType = IbcAckType.TIMEOUT
         if (txSuccess) {
             ledger.ack = true
             val typed = events.associateBy { it.type }
-            if (typed["recv_packet"] == null ) {
-                logger.error("IBC recv_packet not found in map: $typed")
-            }
-            ledger.channel = typed["timeout_packet"]!!.let { event ->
-                val port = event.attributesList.first { it.key == "packet_src_port" }.value
-                val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
-                IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
+            typed["timeout_packet"]?.let { event ->
+                val port = event.attributesList.firstOrNull { it.key == "packet_src_port" }?.value
+                val channel = event.attributesList.firstOrNull { it.key == "packet_src_channel" }?.value
+
+                if (port != null && channel != null) {
+                    ledger.channel = IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
+                } else {
+                    val errorMsg =
+                        "Missing required attributes 'packet_src_port' or 'packet_src_channel' in event: $event"
+                    logger.error(errorMsg)
+                    throw Exception(errorMsg)
+                }
+            } ?: run {
+                val errorMsg = "IBC timeout_packet not found in map: $typed"
+                logger.error(errorMsg)
+                throw Exception(errorMsg)
             }
             typed.forEach { (k, v) ->
                 when (k) {
@@ -288,14 +433,44 @@ class IbcService(
         return ledger
     }
 
+    /**
+     * Parses the timeout-on-close-related events from an IBC `MsgTimeoutOnClose` message and constructs a `LedgerInfo` object
+     * containing detailed information about the timeout-on-close process.
+     *
+     * @param txSuccess A boolean indicating whether the transaction was successful.
+     * @param msg The IBC `MsgTimeoutOnClose` message representing the timeout-on-close operation being processed.
+     * @param events A list of `Abci.StringEvent` objects that contain various events related to the IBC message.
+     *
+     * @return A `LedgerInfo` object populated with the parsed timeout-on-close details.
+     *
+     * @throws Exception if required event attributes (such as `packet_src_port`, `packet_src_channel`, or `timeout_packet`)
+     *                   are missing, or if the associated IBC channel cannot be found.
+     *
+     * The method performs the following steps:
+     * 1. Initializes a `LedgerInfo` object, setting the acknowledgment type to `IbcAckType.TIMEOUT`.
+     * 2. If `txSuccess` is true:
+     *    - Sets the acknowledgment (`ack`) to true.
+     *    - Maps the events by their type using the `associateBy` function for easy lookup.
+     *    - Ensures the "timeout_packet" event is present in the mapped events. If not, logs an error.
+     *    - Extracts the source port and channel from the "timeout_packet" event and uses these to find the
+     *      corresponding IBC channel.
+     *    - Iterates over all events to extract additional timeout-on-close-related information:
+     *      - For the "timeout_packet" event, it extracts and sets the packet sequence in `LedgerInfo`.
+     *      - For the "timeout" event, it marks that changes were effected.
+     * 3. If `txSuccess` is false:
+     *    - Retrieves the IBC channel based on the source port and channel from the `msg`.
+     *    - Extracts the packet sequence from the `msg`.
+     *
+     * @return A populated `LedgerInfo` object with the details of the timeout-on-close.
+     */
     fun parseTimeoutOnClose(txSuccess: Boolean, msg: MsgTimeoutOnClose, events: List<Abci.StringEvent>): LedgerInfo {
         val ledger = LedgerInfo()
         ledger.ackType = IbcAckType.TIMEOUT
         if (txSuccess) {
             ledger.ack = true
             val typed = events.associateBy { it.type }
-            if (typed["recv_packet"] == null ) {
-                logger.error("IBC recv_packet not found in map: $typed")
+            if (typed["timeout_packet"] == null) {
+                logger.error("IBC timeout_packet not found in map: $typed")
             }
             ledger.channel = typed["timeout_packet"]!!.let { event ->
                 val port = event.attributesList.first { it.key == "packet_src_port" }.value
