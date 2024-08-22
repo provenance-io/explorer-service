@@ -26,6 +26,7 @@ import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
 import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.avg
 import io.provenance.explorer.domain.extensions.get24HrBlockHeight
+import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.sigToAddress
 import io.provenance.explorer.domain.extensions.sigToBase64
@@ -492,18 +493,37 @@ class ValidatorService(
         return BlockProposer(blockHeight, proposer, timestamp)
     }
 
-    fun saveMissedBlocks(blockMeta: Query.GetBlockByHeightResponse) = transaction {
-        val lastBlock = blockMeta.block.lastCommit
-        if (lastBlock.height.toInt() > 0) {
-            val signatures = lastBlock.signaturesList
-                .map { it.validatorAddress.translateByteArray().consensusAccountAddr }
-            val currentVals = ValidatorsCacheRecord.findById(lastBlock.height.toInt())?.validators
-                ?: grpcClient.getValidatorsAtHeight(lastBlock.height.toInt())
+    fun saveMissedBlocks(blockMeta: Query.GetBlockByHeightResponse, log: Boolean = false) = transaction {
+        val blockHeight = blockMeta.block.height()
+        if (log) {
+            logger.info("Processing missed blocks for height: $blockHeight")
+        }
 
-            currentVals.validatorsList.forEach { vali ->
-                if (!signatures.contains(vali.address)) {
-                    MissedBlocksRecord.insert(lastBlock.height.toInt(), vali.address)
+        val lastBlock = blockMeta.block.lastCommit
+        val lastBlockHeight = lastBlock.height.toInt()
+
+        if (lastBlockHeight > 0) {
+            val signatures = lastBlock.signaturesList.map { it.validatorAddress.translateByteArray().consensusAccountAddr }
+
+            var currentVals = ValidatorsCacheRecord.findById(lastBlockHeight)?.validators
+            if (currentVals == null) {
+                if (log) {
+                    logger.info("Fetching validators from gRPC client for height: $lastBlockHeight for block: $blockHeight")
                 }
+                currentVals = grpcClient.getValidatorsAtHeight(lastBlockHeight)
+            }
+
+            currentVals.validatorsList.forEach { validator ->
+                if (!signatures.contains(validator.address)) {
+                    if (log) {
+                        logger.info("Validator ${validator.address} missed block at height: $lastBlockHeight for block: $blockHeight")
+                    }
+                    MissedBlocksRecord.insert(lastBlockHeight, validator.address)
+                }
+            }
+
+            if (log) {
+                logger.info("Finished processing missed blocks for height: $blockHeight")
             }
         }
     }
