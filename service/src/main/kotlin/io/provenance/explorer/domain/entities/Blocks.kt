@@ -213,7 +213,7 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
         fun getRecordsForProposer(address: String, limit: Int) = transaction {
             BlockProposerRecord.find {
                 (BlockProposerTable.proposerOperatorAddress eq address) and
-                    (BlockProposerTable.blockLatency.isNotNull())
+                        (BlockProposerTable.blockLatency.isNotNull())
             }.orderBy(Pair(BlockProposerTable.blockHeight, SortOrder.DESC))
                 .limit(limit)
                 .toList()
@@ -353,13 +353,14 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
             BlockCacheHourlyTxCountsTable.slice(txSum).selectAll().map { it[txSum] }.first()!!
         }
 
-        fun getTxCountsForParams(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity) = transaction {
-            when (granularity) {
-                DAY, MONTH -> getGranularityCounts(fromDate, toDate, granularity)
-                HOUR -> getHourlyCounts(fromDate, toDate)
-                MINUTE -> emptyList()
+        fun getTxCountsForParams(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity) =
+            transaction {
+                when (granularity) {
+                    DAY, MONTH -> getGranularityCounts(fromDate, toDate, granularity)
+                    HOUR -> getHourlyCounts(fromDate, toDate)
+                    MINUTE -> emptyList()
+                }
             }
-        }
 
         fun getTxHeatmap(fromDate: DateTime? = null, toDate: DateTime? = null) = transaction {
             val blockTimestamp = BlockCacheHourlyTxCountsTable.blockTimestamp
@@ -399,22 +400,23 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
             TxHeatmapRes(result, dayTotals, hourTotals)
         }
 
-        private fun getGranularityCounts(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity) = transaction {
-            val dateTrunc = DateTrunc(granularity.name, BlockCacheHourlyTxCountsTable.blockTimestamp)
-            val txSum = BlockCacheHourlyTxCountsTable.txCount.sum()
-            BlockCacheHourlyTxCountsTable.slice(dateTrunc, txSum)
-                .select {
-                    dateTrunc.between(fromDate.startOfDay(), toDate.startOfDay())
-                }
-                .groupBy(dateTrunc)
-                .orderBy(dateTrunc, SortOrder.DESC)
-                .map {
-                    TxHistory(
-                        it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
-                        it[txSum]!!
-                    )
-                }
-        }
+        private fun getGranularityCounts(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity) =
+            transaction {
+                val dateTrunc = DateTrunc(granularity.name, BlockCacheHourlyTxCountsTable.blockTimestamp)
+                val txSum = BlockCacheHourlyTxCountsTable.txCount.sum()
+                BlockCacheHourlyTxCountsTable.slice(dateTrunc, txSum)
+                    .select {
+                        dateTrunc.between(fromDate.startOfDay(), toDate.startOfDay())
+                    }
+                    .groupBy(dateTrunc)
+                    .orderBy(dateTrunc, SortOrder.DESC)
+                    .map {
+                        TxHistory(
+                            it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
+                            it[txSum]!!
+                        )
+                    }
+            }
 
         private fun getHourlyCounts(fromDate: DateTime, toDate: DateTime) = transaction {
             BlockCacheHourlyTxCountsRecord.find {
@@ -536,7 +538,7 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.success] = false
                 it[this.errorBlock] =
                     "NON BLOCKING ERROR: Logged to know what happened, but didnt stop processing.\n " +
-                    e.stackTraceToString()
+                            e.stackTraceToString()
             }
         }
 
@@ -545,7 +547,7 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.height] = height
                 it[this.errorBlock] =
                     "NON BLOCKING ERROR: Logged to know what happened, but didnt stop processing.\n " +
-                    e.stackTraceToString()
+                            e.stackTraceToString()
             }
         }
 
@@ -571,8 +573,8 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
             BlockTxRetryTable
                 .deleteWhere {
                     (BlockTxRetryTable.retried eq true) and
-                        (BlockTxRetryTable.success eq true) and
-                        (BlockTxRetryTable.height inList heights)
+                            (BlockTxRetryTable.success eq true) and
+                            (BlockTxRetryTable.height inList heights)
                 }
         }
     }
