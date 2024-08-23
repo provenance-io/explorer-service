@@ -254,11 +254,11 @@ class AsyncCachingV2(
         if (pullFromDb) {
             transaction {
                 TxCacheRecord.findByHeight(blockHeight)
-                    .map { addTxToCacheWithTimestamp(it.txV2, blockTime, proposerRec) }
+                    .map { processAndSaveTransactionData(it.txV2, blockTime.toDateTime(), proposerRec) }
             }
         } else {
             runBlocking { txClient.getTxsByHeight(blockHeight, txCount) }
-                .map { addTxToCacheWithTimestamp(it, blockTime, proposerRec) }
+                .map { processAndSaveTransactionData(it, blockTime.toDateTime(), proposerRec) }
         }
     } catch (e: Exception) {
         logger.error("Failed to retrieve transactions at block: $blockHeight error: ${e.message}", e)
@@ -266,15 +266,8 @@ class AsyncCachingV2(
         listOf()
     }
 
-    fun addTxToCacheWithTimestamp(
-        res: ServiceOuterClass.GetTxResponse,
-        blockTime: Timestamp,
-        proposerRec: BlockProposer
-    ) =
-        addTxToCache(res, blockTime.toDateTime(), proposerRec)
-
     // Function that saves all the things under a transaction
-    fun addTxToCache(
+    fun processAndSaveTransactionData(
         res: ServiceOuterClass.GetTxResponse,
         blockTime: DateTime,
         proposerRec: BlockProposer
@@ -282,6 +275,7 @@ class AsyncCachingV2(
         val tx = TxCacheRecord.buildInsert(res, blockTime)
         val txUpdate = TxUpdate(tx)
         val txInfo = TxData(proposerRec.blockHeight, null, res.txResponse.txhash, blockTime)
+
         saveMessages(txInfo, res, txUpdate)
         saveTxFees(res, txInfo, txUpdate, proposerRec)
         val addrs = saveAddresses(txInfo, res, txUpdate)
@@ -293,6 +287,7 @@ class AsyncCachingV2(
         saveNameData(res, txInfo)
         groupService.saveGroups(res, txInfo, txUpdate)
         saveSignaturesTx(res, txInfo, txUpdate)
+
         return TxUpdatedItems(addrs, markers, txUpdate)
     }
 

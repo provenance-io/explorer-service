@@ -96,7 +96,7 @@ class UtilityService(
     fun parseRawTxJson(rawJson: String, blockHeight: Int = 1, timestamp: DateTime = DateTime.now()) = transaction {
         val builder = ServiceOuterClass.GetTxResponse.newBuilder()
         protoParser.ignoringUnknownFields().merge(rawJson, builder)
-        async.addTxToCache(builder.build(), DateTime.now(), BlockProposer(blockHeight, "", timestamp))
+        async.processAndSaveTransactionData(builder.build(), DateTime.now(), BlockProposer(blockHeight, "", timestamp))
     }
 
     fun saveRawTxJson(rawJson: String, blockHeight: Int = 1, timestamp: DateTime = DateTime.now()) = transaction {
