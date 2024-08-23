@@ -88,7 +88,7 @@ import java.time.ZoneOffset
 import javax.annotation.PostConstruct
 
 @Service
-class AsyncService(
+class ScheduledTaskService(
     private val props: ExplorerProperties,
     private val blockService: BlockService,
     private val assetService: AssetService,
@@ -103,7 +103,7 @@ class AsyncService(
     private val metricsService: MetricsService
 ) {
 
-    protected val logger = logger(AsyncService::class)
+    protected val logger = logger(ScheduledTaskService::class)
     protected var collectHistorical = true
 
     @PostConstruct
