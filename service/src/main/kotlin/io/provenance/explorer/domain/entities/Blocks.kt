@@ -582,3 +582,70 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
     var success by BlockTxRetryTable.success
     var errorBlock by BlockTxRetryTable.errorBlock
 }
+
+object TxProcessingFailuresTable : IdTable<Int>(name = "tx_processing_failures") {
+    val blockHeight = integer("block_height")
+    val txHash = varchar("tx_hash", 128)
+    val processType = varchar("process_type", 64)
+    val failureTime = datetime("failure_time")
+    val errorMessage = text("error_message").nullable()
+    val retried = bool("retried").default(false)
+    val success = bool("success").default(false)
+
+    override val id = integer("id").entityId()
+
+    init {
+        index(true, blockHeight, txHash, processType)
+    }
+}
+
+class TxProcessingFailureRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxProcessingFailureRecord>(TxProcessingFailuresTable) {
+
+        fun insertOrUpdate(
+            blockHeight: Int,
+            txHash: String,
+            processType: String,
+            errorMessage: String?,
+            success: Boolean
+        ) = transaction {
+            val existingRecord = TxProcessingFailureRecord.find {
+                (TxProcessingFailuresTable.blockHeight eq blockHeight) and
+                        (TxProcessingFailuresTable.txHash eq txHash) and
+                        (TxProcessingFailuresTable.processType eq processType)
+            }.firstOrNull()
+
+            if (existingRecord == null) {
+                TxProcessingFailuresTable.insertIgnore {
+                    it[this.blockHeight] = blockHeight
+                    it[this.txHash] = txHash
+                    it[this.processType] = processType
+                    it[this.errorMessage] = errorMessage
+                    it[this.success] = success
+                }
+            } else {
+                existingRecord.apply {
+                    this.errorMessage = errorMessage
+                    this.success = success
+                    this.retried = true
+                    this.failureTime = DateTime.now()
+                }
+            }
+        }
+
+        fun deleteProcessedRecords() = transaction {
+            TxProcessingFailuresTable.deleteWhere {
+                (TxProcessingFailuresTable.retried eq true) and
+                        (TxProcessingFailuresTable.success eq true)
+            }
+        }
+    }
+
+    var blockHeight by TxProcessingFailuresTable.blockHeight
+    var txHash by TxProcessingFailuresTable.txHash
+    var processType by TxProcessingFailuresTable.processType
+    var failureTime by TxProcessingFailuresTable.failureTime
+    var errorMessage by TxProcessingFailuresTable.errorMessage
+    var retried by TxProcessingFailuresTable.retried
+    var success by TxProcessingFailuresTable.success
+}

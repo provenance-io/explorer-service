@@ -8,40 +8,7 @@ import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.toArray
 import io.provenance.explorer.domain.core.sql.toObject
-import io.provenance.explorer.domain.entities.AccountRecord
-import io.provenance.explorer.domain.entities.BlockCacheRecord
-import io.provenance.explorer.domain.entities.BlockTxRetryRecord
-import io.provenance.explorer.domain.entities.FeePayer
-import io.provenance.explorer.domain.entities.IbcAckType
-import io.provenance.explorer.domain.entities.IbcLedgerRecord
-import io.provenance.explorer.domain.entities.IbcRelayerRecord
-import io.provenance.explorer.domain.entities.NameRecord
-import io.provenance.explorer.domain.entities.ProcessQueueRecord
-import io.provenance.explorer.domain.entities.ProcessQueueType
-import io.provenance.explorer.domain.entities.SignatureRecord
-import io.provenance.explorer.domain.entities.SignatureTxRecord
-import io.provenance.explorer.domain.entities.TxAddressJoinRecord
-import io.provenance.explorer.domain.entities.TxAddressJoinType
-import io.provenance.explorer.domain.entities.TxCacheRecord
-import io.provenance.explorer.domain.entities.TxEventAttrRecord
-import io.provenance.explorer.domain.entities.TxEventAttrTable
-import io.provenance.explorer.domain.entities.TxEventRecord
-import io.provenance.explorer.domain.entities.TxFeeRecord
-import io.provenance.explorer.domain.entities.TxFeepayerRecord
-import io.provenance.explorer.domain.entities.TxGasCacheRecord
-import io.provenance.explorer.domain.entities.TxIbcRecord
-import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
-import io.provenance.explorer.domain.entities.TxMessageRecord
-import io.provenance.explorer.domain.entities.TxMsgTypeSubtypeRecord
-import io.provenance.explorer.domain.entities.TxMsgTypeSubtypeTable
-import io.provenance.explorer.domain.entities.TxNftJoinRecord
-import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
-import io.provenance.explorer.domain.entities.TxSmCodeRecord
-import io.provenance.explorer.domain.entities.TxSmContractRecord
-import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
-import io.provenance.explorer.domain.entities.ValidatorStateRecord
-import io.provenance.explorer.domain.entities.buildInsert
-import io.provenance.explorer.domain.entities.updateHitCount
+import io.provenance.explorer.domain.entities.*
 import io.provenance.explorer.domain.exceptions.InvalidArgumentException
 import io.provenance.explorer.domain.extensions.TX_ACC_SEQ
 import io.provenance.explorer.domain.extensions.TX_EVENT
@@ -266,7 +233,6 @@ class AsyncCachingV2(
         listOf()
     }
 
-    // Function that saves all the things under a transaction
     fun processAndSaveTransactionData(
         res: ServiceOuterClass.GetTxResponse,
         blockTime: DateTime,
@@ -276,13 +242,25 @@ class AsyncCachingV2(
         val txUpdate = TxUpdate(tx)
         val txInfo = TxData(proposerRec.blockHeight, null, res.txResponse.txhash, blockTime)
 
+        // TODO: See: https://github.com/provenance-io/explorer-service/issues/538
         saveMessages(txInfo, res, txUpdate)
         saveTxFees(res, txInfo, txUpdate, proposerRec)
         val addrs = saveAddresses(txInfo, res, txUpdate)
         val markers = saveMarkers(txInfo, res, txUpdate)
         saveNftData(txInfo, res, txUpdate)
         saveGovData(res, txInfo, txUpdate)
-        saveIbcChannelData(res, txInfo, txUpdate)
+        try {
+            saveIbcChannelData(res, txInfo, txUpdate)
+        } catch (e: Exception) {
+            logger.error("Failed to process IBC channel data for tx ${txInfo.txHash} at height ${txInfo.blockHeight}. Error: ${e.message}")
+            TxProcessingFailureRecord.insertOrUpdate(
+                txInfo.blockHeight,
+                txInfo.txHash,
+                "ibc_channel_data",
+                e.stackTraceToString(),
+                false
+            )
+        }
         saveSmartContractData(res, txInfo, txUpdate)
         saveNameData(res, txInfo)
         groupService.saveGroups(res, txInfo, txUpdate)
