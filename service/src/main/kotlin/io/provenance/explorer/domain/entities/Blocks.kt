@@ -580,7 +580,7 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
     var errorBlock by BlockTxRetryTable.errorBlock
 }
 
-object TxProcessingFailuresTable : IdTable<Int>(name = "tx_processing_failures") {
+object TxProcessingFailureTable : IdTable<Int>(name = "tx_processing_failure") {
     val blockHeight = integer("block_height")
     val txHash = varchar("tx_hash", 128)
     val processType = varchar("process_type", 64)
@@ -597,7 +597,7 @@ object TxProcessingFailuresTable : IdTable<Int>(name = "tx_processing_failures")
 }
 
 class TxProcessingFailureRecord(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<TxProcessingFailureRecord>(TxProcessingFailuresTable) {
+    companion object : IntEntityClass<TxProcessingFailureRecord>(TxProcessingFailureTable) {
 
         fun insertOrUpdate(
             blockHeight: Int,
@@ -607,13 +607,13 @@ class TxProcessingFailureRecord(id: EntityID<Int>) : IntEntity(id) {
             success: Boolean
         ) = transaction {
             val existingRecord = TxProcessingFailureRecord.find {
-                (TxProcessingFailuresTable.blockHeight eq blockHeight) and
-                    (TxProcessingFailuresTable.txHash eq txHash) and
-                    (TxProcessingFailuresTable.processType eq processType)
+                (TxProcessingFailureTable.blockHeight eq blockHeight) and
+                    (TxProcessingFailureTable.txHash eq txHash) and
+                    (TxProcessingFailureTable.processType eq processType)
             }.firstOrNull()
 
             if (existingRecord == null) {
-                TxProcessingFailuresTable.insertIgnore {
+                TxProcessingFailureTable.insertIgnore {
                     it[this.blockHeight] = blockHeight
                     it[this.txHash] = txHash
                     it[this.processType] = processType
@@ -631,18 +631,18 @@ class TxProcessingFailureRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun deleteProcessedRecords() = transaction {
-            TxProcessingFailuresTable.deleteWhere {
-                (TxProcessingFailuresTable.retried eq true) and
-                    (TxProcessingFailuresTable.success eq true)
+            TxProcessingFailureTable.deleteWhere {
+                (TxProcessingFailureTable.retried eq true) and
+                    (TxProcessingFailureTable.success eq true)
             }
         }
     }
 
-    var blockHeight by TxProcessingFailuresTable.blockHeight
-    var txHash by TxProcessingFailuresTable.txHash
-    var processType by TxProcessingFailuresTable.processType
-    var failureTime by TxProcessingFailuresTable.failureTime
-    var errorMessage by TxProcessingFailuresTable.errorMessage
-    var retried by TxProcessingFailuresTable.retried
-    var success by TxProcessingFailuresTable.success
+    var blockHeight by TxProcessingFailureTable.blockHeight
+    var txHash by TxProcessingFailureTable.txHash
+    var processType by TxProcessingFailureTable.processType
+    var failureTime by TxProcessingFailureTable.failureTime
+    var errorMessage by TxProcessingFailureTable.errorMessage
+    var retried by TxProcessingFailureTable.retried
+    var success by TxProcessingFailureTable.success
 }

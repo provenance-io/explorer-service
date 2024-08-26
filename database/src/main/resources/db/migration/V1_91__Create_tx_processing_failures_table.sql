@@ -1,6 +1,6 @@
-SELECT 'Create tx_processing_failures table' AS comment;
+SELECT 'Create tx_processing_failure table' AS comment;
 
-CREATE TABLE IF NOT EXISTS tx_processing_failures (
+CREATE TABLE IF NOT EXISTS tx_processing_failure (
     id SERIAL PRIMARY KEY,
     block_height INT NOT NULL,
     tx_hash VARCHAR(128) NOT NULL,

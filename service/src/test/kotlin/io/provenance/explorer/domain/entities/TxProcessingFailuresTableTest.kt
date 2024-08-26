@@ -1,5 +1,5 @@
 import io.provenance.explorer.domain.entities.TxProcessingFailureRecord
-import io.provenance.explorer.domain.entities.TxProcessingFailuresTable
+import io.provenance.explorer.domain.entities.TxProcessingFailureTable
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
@@ -29,9 +29,9 @@ class TxProcessingFailureRecordTest {
             )
 
             var record = TxProcessingFailureRecord.find {
-                (TxProcessingFailuresTable.blockHeight eq 100) and
-                    (TxProcessingFailuresTable.txHash eq "testHash") and
-                    (TxProcessingFailuresTable.processType eq "testProcess")
+                (TxProcessingFailureTable.blockHeight eq 100) and
+                    (TxProcessingFailureTable.txHash eq "testHash") and
+                    (TxProcessingFailureTable.processType eq "testProcess")
             }.firstOrNull()
 
             assertNotNull(record, "Record should not be null")
@@ -52,9 +52,9 @@ class TxProcessingFailureRecordTest {
             )
 
             val record = TxProcessingFailureRecord.find {
-                (TxProcessingFailuresTable.blockHeight eq 100) and
-                    (TxProcessingFailuresTable.txHash eq "testHash") and
-                    (TxProcessingFailuresTable.processType eq "testProcess")
+                (TxProcessingFailureTable.blockHeight eq 100) and
+                    (TxProcessingFailureTable.txHash eq "testHash") and
+                    (TxProcessingFailureTable.processType eq "testProcess")
             }.firstOrNull()
 
             assertNotNull(record, "Record should not be null")
