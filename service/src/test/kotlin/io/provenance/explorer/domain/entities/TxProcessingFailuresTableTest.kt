@@ -1,8 +1,8 @@
 import io.provenance.explorer.domain.entities.TxProcessingFailureRecord
 import io.provenance.explorer.domain.entities.TxProcessingFailuresTable
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
@@ -14,7 +14,8 @@ class TxProcessingFailureRecordTest {
         Database.connect("jdbc:h2:mem:test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;", driver = "org.h2.Driver")
 
         transaction {
-            val sql = this::class.java.getResource("/db/migration/V1_91__Create_tx_processing_failures_table.sql")!!.readText()
+            val sql = this::class.java.getResource("/db/migration/V1_91__Create_tx_processing_failures_table.sql")!!
+                .readText()
             exec(sql)
         }
 
@@ -29,8 +30,8 @@ class TxProcessingFailureRecordTest {
 
             var record = TxProcessingFailureRecord.find {
                 (TxProcessingFailuresTable.blockHeight eq 100) and
-                        (TxProcessingFailuresTable.txHash eq "testHash") and
-                        (TxProcessingFailuresTable.processType eq "testProcess")
+                    (TxProcessingFailuresTable.txHash eq "testHash") and
+                    (TxProcessingFailuresTable.processType eq "testProcess")
             }.firstOrNull()
 
             assertNotNull(record, "Record should not be null")
@@ -52,8 +53,8 @@ class TxProcessingFailureRecordTest {
 
             val record = TxProcessingFailureRecord.find {
                 (TxProcessingFailuresTable.blockHeight eq 100) and
-                        (TxProcessingFailuresTable.txHash eq "testHash") and
-                        (TxProcessingFailuresTable.processType eq "testProcess")
+                    (TxProcessingFailuresTable.txHash eq "testHash") and
+                    (TxProcessingFailuresTable.processType eq "testProcess")
             }.firstOrNull()
 
             assertNotNull(record, "Record should not be null")
