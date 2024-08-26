@@ -69,7 +69,7 @@ import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.PREFIX_SCOPE
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.USD_UPPER
-import io.provenance.explorer.service.async.AsyncCachingV2
+import io.provenance.explorer.service.async.BlockAndTxProcessor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
@@ -88,7 +88,7 @@ class ExplorerService(
     private val blockService: BlockService,
     private val validatorService: ValidatorService,
     private val assetService: AssetService,
-    private val asyncV2: AsyncCachingV2,
+    private val asyncV2: BlockAndTxProcessor,
     private val govClient: GovGrpcClient,
     private val accountClient: AccountGrpcClient,
     private val ibcClient: IbcGrpcClient,

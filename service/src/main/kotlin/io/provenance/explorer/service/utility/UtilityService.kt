@@ -18,7 +18,7 @@ import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.getCategoryForType
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.service.AssetService
-import io.provenance.explorer.service.async.AsyncCachingV2
+import io.provenance.explorer.service.async.BlockAndTxProcessor
 import io.provenance.explorer.service.firstMatchLabel
 import kotlinx.coroutines.runBlocking
 import net.pearx.kasechange.toSnakeCase
@@ -33,7 +33,7 @@ class UtilityService(
     private val protoParser: JsonFormat.Parser,
     private val accountClient: AccountGrpcClient,
     private val assetService: AssetService,
-    private val async: AsyncCachingV2
+    private val async: BlockAndTxProcessor
 ) {
 
     protected val logger = logger(UtilityService::class)
@@ -96,7 +96,7 @@ class UtilityService(
     fun parseRawTxJson(rawJson: String, blockHeight: Int = 1, timestamp: DateTime = DateTime.now()) = transaction {
         val builder = ServiceOuterClass.GetTxResponse.newBuilder()
         protoParser.ignoringUnknownFields().merge(rawJson, builder)
-        async.addTxToCache(builder.build(), DateTime.now(), BlockProposer(blockHeight, "", timestamp))
+        async.processAndSaveTransactionData(builder.build(), DateTime.now(), BlockProposer(blockHeight, "", timestamp))
     }
 
     fun saveRawTxJson(rawJson: String, blockHeight: Int = 1, timestamp: DateTime = DateTime.now()) = transaction {

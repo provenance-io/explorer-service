@@ -212,8 +212,7 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun getRecordsForProposer(address: String, limit: Int) = transaction {
             BlockProposerRecord.find {
-                (BlockProposerTable.proposerOperatorAddress eq address) and
-                    (BlockProposerTable.blockLatency.isNotNull())
+                (BlockProposerTable.proposerOperatorAddress eq address) and (BlockProposerTable.blockLatency.isNotNull())
             }.orderBy(Pair(BlockProposerTable.blockHeight, SortOrder.DESC))
                 .limit(limit)
                 .toList()
@@ -353,13 +352,14 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
             BlockCacheHourlyTxCountsTable.slice(txSum).selectAll().map { it[txSum] }.first()!!
         }
 
-        fun getTxCountsForParams(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity) = transaction {
-            when (granularity) {
-                DAY, MONTH -> getGranularityCounts(fromDate, toDate, granularity)
-                HOUR -> getHourlyCounts(fromDate, toDate)
-                MINUTE -> emptyList()
+        fun getTxCountsForParams(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity) =
+            transaction {
+                when (granularity) {
+                    DAY, MONTH -> getGranularityCounts(fromDate, toDate, granularity)
+                    HOUR -> getHourlyCounts(fromDate, toDate)
+                    MINUTE -> emptyList()
+                }
             }
-        }
 
         fun getTxHeatmap(fromDate: DateTime? = null, toDate: DateTime? = null) = transaction {
             val blockTimestamp = BlockCacheHourlyTxCountsTable.blockTimestamp
@@ -399,22 +399,23 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<DateTime>) : Entity<DateTime>(
             TxHeatmapRes(result, dayTotals, hourTotals)
         }
 
-        private fun getGranularityCounts(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity) = transaction {
-            val dateTrunc = DateTrunc(granularity.name, BlockCacheHourlyTxCountsTable.blockTimestamp)
-            val txSum = BlockCacheHourlyTxCountsTable.txCount.sum()
-            BlockCacheHourlyTxCountsTable.slice(dateTrunc, txSum)
-                .select {
-                    dateTrunc.between(fromDate.startOfDay(), toDate.startOfDay())
-                }
-                .groupBy(dateTrunc)
-                .orderBy(dateTrunc, SortOrder.DESC)
-                .map {
-                    TxHistory(
-                        it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
-                        it[txSum]!!
-                    )
-                }
-        }
+        private fun getGranularityCounts(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity) =
+            transaction {
+                val dateTrunc = DateTrunc(granularity.name, BlockCacheHourlyTxCountsTable.blockTimestamp)
+                val txSum = BlockCacheHourlyTxCountsTable.txCount.sum()
+                BlockCacheHourlyTxCountsTable.slice(dateTrunc, txSum)
+                    .select {
+                        dateTrunc.between(fromDate.startOfDay(), toDate.startOfDay())
+                    }
+                    .groupBy(dateTrunc)
+                    .orderBy(dateTrunc, SortOrder.DESC)
+                    .map {
+                        TxHistory(
+                            it[dateTrunc]!!.withZone(DateTimeZone.UTC).toString("yyyy-MM-dd HH:mm:ss"),
+                            it[txSum]!!
+                        )
+                    }
+            }
 
         private fun getHourlyCounts(fromDate: DateTime, toDate: DateTime) = transaction {
             BlockCacheHourlyTxCountsRecord.find {
@@ -534,18 +535,14 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.height] = height
                 it[this.retried] = true
                 it[this.success] = false
-                it[this.errorBlock] =
-                    "NON BLOCKING ERROR: Logged to know what happened, but didnt stop processing.\n " +
-                    e.stackTraceToString()
+                it[this.errorBlock] = "NON BLOCKING ERROR: Logged to know what happened, but didnt stop processing.\n " + e.stackTraceToString()
             }
         }
 
         fun insertNonBlockingRetry(height: Int, e: Exception) = transaction {
             BlockTxRetryTable.insertIgnore {
                 it[this.height] = height
-                it[this.errorBlock] =
-                    "NON BLOCKING ERROR: Logged to know what happened, but didnt stop processing.\n " +
-                    e.stackTraceToString()
+                it[this.errorBlock] = "NON BLOCKING ERROR: Logged to know what happened, but didnt stop processing.\n " + e.stackTraceToString()
             }
         }
 
@@ -581,4 +578,71 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
     var retried by BlockTxRetryTable.retried
     var success by BlockTxRetryTable.success
     var errorBlock by BlockTxRetryTable.errorBlock
+}
+
+object TxProcessingFailureTable : IdTable<Int>(name = "tx_processing_failure") {
+    val blockHeight = integer("block_height")
+    val txHash = varchar("tx_hash", 128)
+    val processType = varchar("process_type", 64)
+    val failureTime = datetime("failure_time")
+    val errorMessage = text("error_message").nullable()
+    val retried = bool("retried").default(false)
+    val success = bool("success").default(false)
+
+    override val id = integer("id").entityId()
+
+    init {
+        index(true, blockHeight, txHash, processType)
+    }
+}
+
+class TxProcessingFailureRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxProcessingFailureRecord>(TxProcessingFailureTable) {
+
+        fun insertOrUpdate(
+            blockHeight: Int,
+            txHash: String,
+            processType: String,
+            errorMessage: String?,
+            success: Boolean
+        ) = transaction {
+            val existingRecord = TxProcessingFailureRecord.find {
+                (TxProcessingFailureTable.blockHeight eq blockHeight) and
+                    (TxProcessingFailureTable.txHash eq txHash) and
+                    (TxProcessingFailureTable.processType eq processType)
+            }.firstOrNull()
+
+            if (existingRecord == null) {
+                TxProcessingFailureTable.insertIgnore {
+                    it[this.blockHeight] = blockHeight
+                    it[this.txHash] = txHash
+                    it[this.processType] = processType
+                    it[this.errorMessage] = errorMessage
+                    it[this.success] = success
+                }
+            } else {
+                existingRecord.apply {
+                    this.errorMessage = errorMessage
+                    this.success = success
+                    this.retried = true
+                    this.failureTime = DateTime.now()
+                }
+            }
+        }
+
+        fun deleteProcessedRecords() = transaction {
+            TxProcessingFailureTable.deleteWhere {
+                (TxProcessingFailureTable.retried eq true) and
+                    (TxProcessingFailureTable.success eq true)
+            }
+        }
+    }
+
+    var blockHeight by TxProcessingFailureTable.blockHeight
+    var txHash by TxProcessingFailureTable.txHash
+    var processType by TxProcessingFailureTable.processType
+    var failureTime by TxProcessingFailureTable.failureTime
+    var errorMessage by TxProcessingFailureTable.errorMessage
+    var retried by TxProcessingFailureTable.retried
+    var success by TxProcessingFailureTable.success
 }

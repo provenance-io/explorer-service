@@ -35,6 +35,7 @@ import io.provenance.explorer.domain.entities.TxMessageRecord
 import io.provenance.explorer.domain.entities.TxMsgTypeSubtypeRecord
 import io.provenance.explorer.domain.entities.TxMsgTypeSubtypeTable
 import io.provenance.explorer.domain.entities.TxNftJoinRecord
+import io.provenance.explorer.domain.entities.TxProcessingFailureRecord
 import io.provenance.explorer.domain.entities.TxSingleMessageCacheRecord
 import io.provenance.explorer.domain.entities.TxSmCodeRecord
 import io.provenance.explorer.domain.entities.TxSmContractRecord
@@ -124,7 +125,7 @@ import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 
 @Service
-class AsyncCachingV2(
+class BlockAndTxProcessor(
     private val txClient: TransactionGrpcClient,
     private val blockService: BlockService,
     private val validatorService: ValidatorService,
@@ -139,7 +140,7 @@ class AsyncCachingV2(
     private val groupService: GroupService
 ) {
 
-    protected val logger = logger(AsyncCachingV2::class)
+    protected val logger = logger(BlockAndTxProcessor::class)
 
     protected var chainId: String = ""
 
@@ -254,11 +255,11 @@ class AsyncCachingV2(
         if (pullFromDb) {
             transaction {
                 TxCacheRecord.findByHeight(blockHeight)
-                    .map { addTxToCacheWithTimestamp(it.txV2, blockTime, proposerRec) }
+                    .map { processAndSaveTransactionData(it.txV2, blockTime.toDateTime(), proposerRec) }
             }
         } else {
             runBlocking { txClient.getTxsByHeight(blockHeight, txCount) }
-                .map { addTxToCacheWithTimestamp(it, blockTime, proposerRec) }
+                .map { processAndSaveTransactionData(it, blockTime.toDateTime(), proposerRec) }
         }
     } catch (e: Exception) {
         logger.error("Failed to retrieve transactions at block: $blockHeight error: ${e.message}", e)
@@ -266,15 +267,7 @@ class AsyncCachingV2(
         listOf()
     }
 
-    fun addTxToCacheWithTimestamp(
-        res: ServiceOuterClass.GetTxResponse,
-        blockTime: Timestamp,
-        proposerRec: BlockProposer
-    ) =
-        addTxToCache(res, blockTime.toDateTime(), proposerRec)
-
-    // Function that saves all the things under a transaction
-    fun addTxToCache(
+    fun processAndSaveTransactionData(
         res: ServiceOuterClass.GetTxResponse,
         blockTime: DateTime,
         proposerRec: BlockProposer
@@ -282,17 +275,31 @@ class AsyncCachingV2(
         val tx = TxCacheRecord.buildInsert(res, blockTime)
         val txUpdate = TxUpdate(tx)
         val txInfo = TxData(proposerRec.blockHeight, null, res.txResponse.txhash, blockTime)
+
+        // TODO: See: https://github.com/provenance-io/explorer-service/issues/538
         saveMessages(txInfo, res, txUpdate)
         saveTxFees(res, txInfo, txUpdate, proposerRec)
         val addrs = saveAddresses(txInfo, res, txUpdate)
         val markers = saveMarkers(txInfo, res, txUpdate)
         saveNftData(txInfo, res, txUpdate)
         saveGovData(res, txInfo, txUpdate)
-        saveIbcChannelData(res, txInfo, txUpdate)
+        try {
+            saveIbcChannelData(res, txInfo, txUpdate)
+        } catch (e: Exception) {
+            logger.error("Failed to process IBC channel data for tx ${txInfo.txHash} at height ${txInfo.blockHeight}. Error: ${e.message}")
+            TxProcessingFailureRecord.insertOrUpdate(
+                txInfo.blockHeight,
+                txInfo.txHash,
+                "ibc_channel_data",
+                e.stackTraceToString(),
+                false
+            )
+        }
         saveSmartContractData(res, txInfo, txUpdate)
         saveNameData(res, txInfo)
         groupService.saveGroups(res, txInfo, txUpdate)
         saveSignaturesTx(res, txInfo, txUpdate)
+
         return TxUpdatedItems(addrs, markers, txUpdate)
     }
 
