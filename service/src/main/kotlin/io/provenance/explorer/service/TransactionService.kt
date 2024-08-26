@@ -54,7 +54,7 @@ import io.provenance.explorer.model.base.isMAddress
 import io.provenance.explorer.model.base.toMAddress
 import io.provenance.explorer.model.base.toMAddressScope
 import io.provenance.explorer.model.download.TxHistoryChartData
-import io.provenance.explorer.service.async.AsyncCachingV2
+import io.provenance.explorer.service.async.BlockAndTxProcessor
 import io.provenance.explorer.service.async.getAddressType
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SizedIterable
@@ -68,7 +68,7 @@ import javax.servlet.ServletOutputStream
 @Service
 class TransactionService(
     private val protoPrinter: JsonFormat.Printer,
-    private val asyncV2: AsyncCachingV2,
+    private val asyncV2: BlockAndTxProcessor,
     private val nftService: NftService,
     private val valService: ValidatorService,
     private val ibcService: IbcService

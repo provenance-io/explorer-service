@@ -125,7 +125,7 @@ import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 
 @Service
-class AsyncCachingV2(
+class BlockAndTxProcessor(
     private val txClient: TransactionGrpcClient,
     private val blockService: BlockService,
     private val validatorService: ValidatorService,
@@ -140,7 +140,7 @@ class AsyncCachingV2(
     private val groupService: GroupService
 ) {
 
-    protected val logger = logger(AsyncCachingV2::class)
+    protected val logger = logger(BlockAndTxProcessor::class)
 
     protected var chainId: String = ""
 

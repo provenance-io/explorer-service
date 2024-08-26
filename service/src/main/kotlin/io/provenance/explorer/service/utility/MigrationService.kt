@@ -6,14 +6,14 @@ import io.provenance.explorer.domain.entities.BlockCacheTable
 import io.provenance.explorer.service.AccountService
 import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.ValidatorService
-import io.provenance.explorer.service.async.AsyncCachingV2
+import io.provenance.explorer.service.async.BlockAndTxProcessor
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 
 @Service
 class MigrationService(
-    private val asyncCaching: AsyncCachingV2,
+    private val asyncCaching: BlockAndTxProcessor,
     private val validatorService: ValidatorService,
     private val accountService: AccountService,
     private val blockService: BlockService

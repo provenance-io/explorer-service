@@ -93,7 +93,7 @@ class ScheduledTaskService(
     private val blockService: BlockService,
     private val assetService: AssetService,
     private val govService: GovService,
-    private val asyncCache: AsyncCachingV2,
+    private val asyncCache: BlockAndTxProcessor,
     private val explorerService: ExplorerService,
     private val cacheService: CacheService,
     private val tokenService: TokenService,
