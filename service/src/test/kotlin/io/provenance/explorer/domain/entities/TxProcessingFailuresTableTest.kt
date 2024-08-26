@@ -1,7 +1,7 @@
 import io.provenance.explorer.domain.entities.TxProcessingFailureRecord
 import io.provenance.explorer.domain.entities.TxProcessingFailureTable
-import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
