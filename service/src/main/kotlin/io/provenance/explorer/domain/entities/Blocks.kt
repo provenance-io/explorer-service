@@ -212,8 +212,7 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun getRecordsForProposer(address: String, limit: Int) = transaction {
             BlockProposerRecord.find {
-                (BlockProposerTable.proposerOperatorAddress eq address) and
-                        (BlockProposerTable.blockLatency.isNotNull())
+                (BlockProposerTable.proposerOperatorAddress eq address) and (BlockProposerTable.blockLatency.isNotNull())
             }.orderBy(Pair(BlockProposerTable.blockHeight, SortOrder.DESC))
                 .limit(limit)
                 .toList()
@@ -538,7 +537,7 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.success] = false
                 it[this.errorBlock] =
                     "NON BLOCKING ERROR: Logged to know what happened, but didnt stop processing.\n " +
-                            e.stackTraceToString()
+                        e.stackTraceToString()
             }
         }
 
@@ -547,7 +546,7 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.height] = height
                 it[this.errorBlock] =
                     "NON BLOCKING ERROR: Logged to know what happened, but didnt stop processing.\n " +
-                            e.stackTraceToString()
+                        e.stackTraceToString()
             }
         }
 
@@ -573,8 +572,8 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
             BlockTxRetryTable
                 .deleteWhere {
                     (BlockTxRetryTable.retried eq true) and
-                            (BlockTxRetryTable.success eq true) and
-                            (BlockTxRetryTable.height inList heights)
+                        (BlockTxRetryTable.success eq true) and
+                        (BlockTxRetryTable.height inList heights)
                 }
         }
     }
@@ -613,8 +612,8 @@ class TxProcessingFailureRecord(id: EntityID<Int>) : IntEntity(id) {
         ) = transaction {
             val existingRecord = TxProcessingFailureRecord.find {
                 (TxProcessingFailuresTable.blockHeight eq blockHeight) and
-                        (TxProcessingFailuresTable.txHash eq txHash) and
-                        (TxProcessingFailuresTable.processType eq processType)
+                    (TxProcessingFailuresTable.txHash eq txHash) and
+                    (TxProcessingFailuresTable.processType eq processType)
             }.firstOrNull()
 
             if (existingRecord == null) {
@@ -638,7 +637,7 @@ class TxProcessingFailureRecord(id: EntityID<Int>) : IntEntity(id) {
         fun deleteProcessedRecords() = transaction {
             TxProcessingFailuresTable.deleteWhere {
                 (TxProcessingFailuresTable.retried eq true) and
-                        (TxProcessingFailuresTable.success eq true)
+                    (TxProcessingFailuresTable.success eq true)
             }
         }
     }

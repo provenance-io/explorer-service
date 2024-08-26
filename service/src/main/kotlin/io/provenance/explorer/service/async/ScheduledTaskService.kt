@@ -93,7 +93,7 @@ class ScheduledTaskService(
     private val blockService: BlockService,
     private val assetService: AssetService,
     private val govService: GovService,
-    private val asyncCache: BlockAndTxProcessor,
+    private val blockAndTxProcessor: BlockAndTxProcessor,
     private val explorerService: ExplorerService,
     private val cacheService: CacheService,
     private val tokenService: TokenService,
@@ -135,7 +135,7 @@ class ScheduledTaskService(
                         shouldContinue = false
                         return
                     }
-                    asyncCache.saveBlockEtc(it)
+                    blockAndTxProcessor.saveBlockEtc(it)
                     indexHeight = it.block.height() - 1
                 }
                 blockService.updateBlockMinHeightIndex(indexHeight + 1)
@@ -144,7 +144,7 @@ class ScheduledTaskService(
         } else {
             while (indexHeight > index.first!!) {
                 blockService.getBlockAtHeightFromChain(indexHeight)?.let {
-                    asyncCache.saveBlockEtc(it)
+                    blockAndTxProcessor.saveBlockEtc(it)
                     indexHeight = it.block.height() - 1
                 }
             }
@@ -246,7 +246,7 @@ class ScheduledTaskService(
             logger.info("Retrying block/tx record at $height.")
             var retryException: Exception? = null
             val block = try {
-                asyncCache.saveBlockEtc(blockService.getBlockAtHeightFromChain(height), Pair(true, false))!!
+                blockAndTxProcessor.saveBlockEtc(blockService.getBlockAtHeightFromChain(height), Pair(true, false))!!
             } catch (e: Exception) {
                 retryException = e
                 logger.error("Error saving block $height on retry.", e)
@@ -409,7 +409,7 @@ class ScheduledTaskService(
         (startBlock.toInt()..minOf(props.oneElevenBugRange()!!.last, startBlock.toInt().plus(100))).toList()
             .let { BlockCacheRecord.getBlocksForRange(it.first(), it.last()) }
             .forEach { block ->
-                if (block.txCount > 0) asyncCache.saveBlockEtc(block.block, Pair(true, false))
+                if (block.txCount > 0) blockAndTxProcessor.saveBlockEtc(block.block, Pair(true, false))
                 // Check if the last processed block equals the end of the fee bug range
                 if (block.height == props.oneElevenBugRange()!!.last) {
                     cacheService.updateCacheValue(CacheKeys.FEE_BUG_ONE_ELEVEN_START_BLOCK.key, done)
