@@ -33,7 +33,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
-## [v5.11.0](https://github.com/provenance-io/explorer-service/releases/tag/vx.x.x) - 2024-08-27
+## [v5.11.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.11.0) - 2024-08-27
 
 ### Improvements
 
