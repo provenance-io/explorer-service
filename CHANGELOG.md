@@ -33,6 +33,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+## [v5.11.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.11.0) - 2024-08-27
+
 ### Improvements
 
 * Updated Prov Protos to 1.19.0 [#527](https://github.com/provenance-io/explorer-service/pull/527)
