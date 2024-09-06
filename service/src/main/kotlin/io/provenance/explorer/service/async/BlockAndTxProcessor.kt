@@ -157,39 +157,64 @@ class BlockAndTxProcessor(
 
     fun saveBlockEtc(
         blockRes: Query.GetBlockByHeightResponse?,
-        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false) // rerun txs, pull from db
+        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false)
     ): Query.GetBlockByHeightResponse? {
         if (blockRes == null) return null
-        logger.info("saving block ${blockRes.block.height()}")
+
+        val startTime = System.currentTimeMillis()
+        val blockHeight = blockRes.block.height()
+        logger.info("Block saving started. blockHeight=$blockHeight")
+
         val blockTimestamp = blockRes.block.header.time.toDateTime()
-        val block =
-            BlockCacheRecord.buildInsert(
-                blockRes.block.height(),
-                blockRes.block.data.txsCount,
-                blockTimestamp,
-                blockRes
-            )
-        val proposerRec = validatorService.buildProposerInsert(blockRes, blockTimestamp, blockRes.block.height())
-        val valsAtHeight = validatorService.buildValidatorsAtHeight(blockRes.block.height())
+        val block = BlockCacheRecord.buildInsert(
+            blockHeight,
+            blockRes.block.data.txsCount,
+            blockTimestamp,
+            blockRes
+        )
+
+        var stepTime = startTime
+
+        val proposerRec = validatorService.buildProposerInsert(blockRes, blockTimestamp, blockHeight)
+        logTimeElapsed("buildProposerInsert", stepTime, blockHeight)
+        stepTime = System.currentTimeMillis()
+
+        val valsAtHeight = validatorService.buildValidatorsAtHeight(blockHeight)
+        logTimeElapsed("buildValidatorsAtHeight", stepTime, blockHeight)
+        stepTime = System.currentTimeMillis()
+
         validatorService.saveMissedBlocks(blockRes)
-        val txs =
-            if (blockRes.block.data.txsCount > 0) {
-                saveTxs(
-                    blockRes,
-                    proposerRec,
-                    rerunTxs
-                ).map { it.toProcedureObject() }
-            } else {
-                listOf()
-            }
+        logTimeElapsed("saveMissedBlocks", stepTime, blockHeight)
+        stepTime = System.currentTimeMillis()
+
+        val txs = if (blockRes.block.data.txsCount > 0) {
+            saveTxs(blockRes, proposerRec, rerunTxs).map { it.toProcedureObject() }
+        } else {
+            listOf()
+        }
+        logTimeElapsed("saveTxs", stepTime, blockHeight)
+        stepTime = System.currentTimeMillis()
+
         val blockUpdate = BlockUpdate(block, proposerRec.buildInsert(), valsAtHeight, txs)
+
         try {
             BlockCacheRecord.insertToProcedure(blockUpdate)
         } catch (e: Exception) {
-            logger.error("Failed to save block: ${blockRes.block.height()}", e)
-            BlockTxRetryRecord.insertOrUpdate(blockRes.block.height(), e)
+            logger.error("Failed to save block: $blockHeight", e)
+            BlockTxRetryRecord.insertOrUpdate(blockHeight, e)
         }
+        logTimeElapsed("insertToProcedure", stepTime, blockHeight)
+
+        val totalTime = System.currentTimeMillis() - startTime
+        logger.info("Block saving completed. blockHeight=$blockHeight, totalDuration=${totalTime}ms")
+
         return blockRes
+    }
+
+    fun logTimeElapsed(stepName: String, startTime: Long, blockHeight: Int) {
+        val currentTime = System.currentTimeMillis()
+        val elapsed = currentTime - startTime
+        logger.info("$stepName completed. blockHeight=$blockHeight, duration=${elapsed}ms")
     }
 
     data class TxUpdatedItems(
@@ -267,40 +292,88 @@ class BlockAndTxProcessor(
         listOf()
     }
 
+
+    // TODO: See: https://github.com/provenance-io/explorer-service/issues/538
     fun processAndSaveTransactionData(
         res: ServiceOuterClass.GetTxResponse,
         blockTime: DateTime,
         proposerRec: BlockProposer
     ): TxUpdatedItems {
+        val startTime = System.currentTimeMillis()
+        val txHash = res.txResponse.txhash
+        val blockHeight = proposerRec.blockHeight
+        logger.info("Transaction processing started. blockHeight=$blockHeight, txHash=$txHash")
+
         val tx = TxCacheRecord.buildInsert(res, blockTime)
         val txUpdate = TxUpdate(tx)
-        val txInfo = TxData(proposerRec.blockHeight, null, res.txResponse.txhash, blockTime)
+        val txInfo = TxData(blockHeight, null, txHash, blockTime)
 
-        // TODO: See: https://github.com/provenance-io/explorer-service/issues/538
+        var stepTime = startTime
+
         saveMessages(txInfo, res, txUpdate)
+        logTimeElapsed("saveMessages", stepTime, blockHeight, txHash)
+        stepTime = System.currentTimeMillis()
+
         saveTxFees(res, txInfo, txUpdate, proposerRec)
+        logTimeElapsed("saveTxFees", stepTime, blockHeight, txHash)
+        stepTime = System.currentTimeMillis()
+
         val addrs = saveAddresses(txInfo, res, txUpdate)
+        logTimeElapsed("saveAddresses", stepTime, blockHeight, txHash)
+        stepTime = System.currentTimeMillis()
+
         val markers = saveMarkers(txInfo, res, txUpdate)
+        logTimeElapsed("saveMarkers", stepTime, blockHeight, txHash)
+        stepTime = System.currentTimeMillis()
+
         saveNftData(txInfo, res, txUpdate)
+        logTimeElapsed("saveNftData", stepTime, blockHeight, txHash)
+        stepTime = System.currentTimeMillis()
+
         saveGovData(res, txInfo, txUpdate)
+        logTimeElapsed("saveGovData", stepTime, blockHeight, txHash)
+        stepTime = System.currentTimeMillis()
+
         try {
             saveIbcChannelData(res, txInfo, txUpdate)
         } catch (e: Exception) {
-            logger.error("Failed to process IBC channel data for tx ${txInfo.txHash} at height ${txInfo.blockHeight}. Error: ${e.message}")
+            logger.error("Failed to process IBC channel data for tx $txHash at height $blockHeight. Error: ${e.message}")
             TxProcessingFailureRecord.insertOrUpdate(
-                txInfo.blockHeight,
-                txInfo.txHash,
+                blockHeight,
+                txHash,
                 "ibc_channel_data",
                 e.stackTraceToString(),
                 false
             )
         }
+        logTimeElapsed("saveIbcChannelData", stepTime, blockHeight, txHash)
+        stepTime = System.currentTimeMillis()
+
         saveSmartContractData(res, txInfo, txUpdate)
+        logTimeElapsed("saveSmartContractData", stepTime, blockHeight, txHash)
+        stepTime = System.currentTimeMillis()
+
         saveNameData(res, txInfo)
+        logTimeElapsed("saveNameData", stepTime, blockHeight, txHash)
+        stepTime = System.currentTimeMillis()
+
         groupService.saveGroups(res, txInfo, txUpdate)
+        logTimeElapsed("saveGroups", stepTime, blockHeight, txHash)
+        stepTime = System.currentTimeMillis()
+
         saveSignaturesTx(res, txInfo, txUpdate)
+        logTimeElapsed("saveSignaturesTx", stepTime, blockHeight, txHash)
+
+        val totalTime = System.currentTimeMillis() - startTime
+        logger.info("Transaction processing completed. blockHeight=$blockHeight, txHash=$txHash, totalDuration=${totalTime}ms")
 
         return TxUpdatedItems(addrs, markers, txUpdate)
+    }
+
+    fun logTimeElapsed(method: String, startTime: Long, blockHeight: Int, txHash: String) {
+        val currentTime = System.currentTimeMillis()
+        val elapsed = currentTime - startTime
+        logger.info("$method completed. blockHeight=$blockHeight, txHash=$txHash, duration=${elapsed}ms")
     }
 
     private fun saveTxFees(
