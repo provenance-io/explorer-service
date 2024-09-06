@@ -293,7 +293,6 @@ class BlockAndTxProcessor(
         listOf()
     }
 
-
     // TODO: See: https://github.com/provenance-io/explorer-service/issues/538
     fun processAndSaveTransactionData(
         res: ServiceOuterClass.GetTxResponse,
