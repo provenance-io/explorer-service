@@ -189,7 +189,7 @@ class BlockAndTxProcessor(
 
         val txs = if (blockRes.block.data.txsCount > 0) {
             val savedTxs = saveTxs(blockRes, proposerRec, rerunTxs).map { it.toProcedureObject() }
-            logTimeElapsed("saveTxs", stepTime, blockHeight)
+            logTimeElapsed("saveTxs count=${savedTxs.size}", stepTime, blockHeight)
             stepTime = System.currentTimeMillis()
             savedTxs
         } else {
