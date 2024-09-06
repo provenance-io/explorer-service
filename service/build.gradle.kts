@@ -90,7 +90,7 @@ tasks.getByName<BootRun>("bootRun") {
     args = mutableListOf("--spring.profiles.active=$profiles")
 }
 
-springBoot.mainClass.set("io.provenance.explorer.ApplicationKt")
+springBoot.mainClass.set("io.provenance.explorer.ExplorerServiceApplicationKt")
 
 println("\nExclude Spring Boot Dev tools? " + version.toString().contains("main"))
 tasks.getByName<BootJar>("bootJar") {
