@@ -45,6 +45,10 @@ import io.provenance.explorer.model.TokenSupply
 import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.CountStrTotal
 import io.provenance.explorer.model.base.PagedResults
+import io.provlabs.flow.api.NavEvent
+import io.provlabs.flow.api.NavEventRequest
+import io.provlabs.flow.api.NavEventResponse
+import io.provlabs.flow.api.NavServiceGrpc
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
@@ -63,7 +67,7 @@ import java.util.zip.ZipOutputStream
 import javax.servlet.ServletOutputStream
 
 @Service
-class TokenService(private val accountClient: AccountGrpcClient) {
+class TokenService(private val accountClient: AccountGrpcClient, private val navService: NavServiceGrpc.NavServiceBlockingStub) {
 
     protected val logger = logger(TokenService::class)
 
@@ -251,6 +255,21 @@ class TokenService(private val accountClient: AccountGrpcClient) {
             emptyList()
         } catch (e: Exception) {
             logger.error("Error fetching from Osmosis API: ${e.message}", e)
+            emptyList()
+        }
+    }
+
+    fun fetchOnChainNavData(denom: String, limit: Int = 100): List<NavEvent> = runBlocking {
+        val request = NavEventRequest.newBuilder()
+            .setDenom(denom)
+            .setLimit(limit)
+            .build()
+
+        try {
+            val response: NavEventResponse = navService.getNavEvents(request)
+            return@runBlocking response.navEventsList
+        } catch (e: Exception) {
+            logger.error("Error fetching Nav Events: ${e.message}", e)
             emptyList()
         }
     }

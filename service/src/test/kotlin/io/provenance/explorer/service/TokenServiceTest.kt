@@ -1,7 +1,11 @@
 package io.provenance.explorer.service
 
+import io.grpc.ManagedChannel
+import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
+import io.provlabs.flow.api.NavEvent
+import io.provlabs.flow.api.NavServiceGrpc
 import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
@@ -15,11 +19,18 @@ class TokenServiceTest {
 
     private lateinit var accountClient: AccountGrpcClient
     private lateinit var tokenService: TokenService
+    private lateinit var channel: ManagedChannel
+    private lateinit var navServiceStub: NavServiceGrpc.NavServiceBlockingStub
 
     @BeforeEach
     fun setUp() {
         accountClient = AccountGrpcClient(URI("https://www.google.com"))
-        tokenService = TokenService(accountClient)
+        channel = ManagedChannelBuilder.forAddress("localhost", 50051)
+            .usePlaintext()
+            .build()
+
+        navServiceStub = NavServiceGrpc.newBlockingStub(channel)
+        tokenService = TokenService(accountClient, navServiceStub)
     }
 
     @Test
@@ -60,5 +71,19 @@ class TokenServiceTest {
         val inputQuery1 = tokenService.buildInputQuery(fromDate1, timeFrame1)
         val expectedQuery1 = """%7B%22json%22%3A%7B%22coinDenom%22%3A%22ibc%2FCE5BFF1D9BADA03BB5CCA5F56939392A761B53A10FBD03B37506669C3218D3B2%22%2C%22coinMinimalDenom%22%3A%22ibc%2FCE5BFF1D9BADA03BB5CCA5F56939392A761B53A10FBD03B37506669C3218D3B2%22%2C%22timeFrame%22%3A%7B%22custom%22%3A%7B%22timeFrame%22%3A5%2C%22numRecentFrames%22%3A2880%7D%7D%7D%7D"""
         assertEquals(expectedQuery1, inputQuery1)
+    }
+
+    @Test
+    fun `test fetchOnChainNavData`()  {
+        val denom = "nhash"
+        val limit = 100
+
+        val result: List<NavEvent> = tokenService.fetchOnChainNavData(denom, limit)
+
+        result.forEach { navEvent ->
+            println("NavEvent: BlockHeight=${navEvent.blockHeight}, Denom=${navEvent.denom}")
+        }
+
+        assert(result.isNotEmpty()) { "Expected non-empty NavEvent list" }
     }
 }
