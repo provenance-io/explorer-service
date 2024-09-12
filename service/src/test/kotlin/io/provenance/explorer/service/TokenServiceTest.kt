@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.net.URI
+import java.util.*
 
 class TokenServiceTest {
 
@@ -74,16 +75,26 @@ class TokenServiceTest {
     }
 
     @Test
-    fun `test fetchOnChainNavData`()  {
+    @Disabled("Test was used to manually call the endpoint")
+    fun `test fetchOnChainNavData`() {
         val denom = "nhash"
+        val fromDate = DateTime.now().minusDays(7)
         val limit = 100
 
-        val result: List<NavEvent> = tokenService.fetchOnChainNavData(denom, limit)
+        val result: List<NavEvent> = tokenService.fetchOnChainNavData(denom, fromDate, limit)
+
+        val groupedByPriceDenom = result.groupBy { it.priceDenom }
+
+        groupedByPriceDenom.forEach { (priceDenom, events) ->
+            println("PriceDenom: $priceDenom, Count: ${events.size}")
+        }
 
         result.forEach { navEvent ->
-            println("NavEvent: BlockHeight=${navEvent.blockHeight}, Denom=${navEvent.denom}")
+            println("NavEvent: BlockHeight=${navEvent.blockHeight}, PriceDenom=${navEvent.priceDenom}")
         }
 
         assert(result.isNotEmpty()) { "Expected non-empty NavEvent list" }
     }
+
+
 }

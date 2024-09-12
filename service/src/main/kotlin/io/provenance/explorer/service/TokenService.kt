@@ -58,6 +58,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import org.joda.time.Duration
+import org.joda.time.format.DateTimeFormat
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -259,9 +260,13 @@ class TokenService(private val accountClient: AccountGrpcClient, private val nav
         }
     }
 
-    fun fetchOnChainNavData(denom: String, limit: Int = 100): List<NavEvent> = runBlocking {
+    fun fetchOnChainNavData(denom: String, fromDate: DateTime?, limit: Int = 100): List<NavEvent> = runBlocking {
+        val fromDateString = fromDate?.toString(DateTimeFormat.forPattern("yyyy-MM-dd")) ?: ""
         val request = NavEventRequest.newBuilder()
             .setDenom(denom)
+            .addPriceDenoms("uusd.trading")
+            .addPriceDenoms("uusdc.figure.se")
+            .setFromDate(fromDateString)
             .setLimit(limit)
             .build()
 

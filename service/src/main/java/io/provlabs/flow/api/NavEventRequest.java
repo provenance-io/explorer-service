@@ -5,7 +5,8 @@ package io.provlabs.flow.api;
 
 /**
  * <pre>
- * NavEventRequest represents a request for NavEvents by either denom or scope_id.
+ * NavEventRequest represents a request for NavEvents by either `denom` or `scope_id`.
+ * One of `denom` or `scope_id` must be provided; the other fields are optional.
  * </pre>
  *
  * Protobuf type {@code nav.NavEventRequest}
@@ -22,6 +23,9 @@ private static final long serialVersionUID = 0L;
   private NavEventRequest() {
     denom_ = "";
     scopeId_ = "";
+    priceDenoms_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+    fromDate_ = "";
+    toDate_ = "";
   }
 
   @java.lang.Override
@@ -44,6 +48,7 @@ private static final long serialVersionUID = 0L;
     if (extensionRegistry == null) {
       throw new java.lang.NullPointerException();
     }
+    int mutable_bitField0_ = 0;
     com.google.protobuf.UnknownFieldSet.Builder unknownFields =
         com.google.protobuf.UnknownFieldSet.newBuilder();
     try {
@@ -66,7 +71,28 @@ private static final long serialVersionUID = 0L;
             scopeId_ = s;
             break;
           }
-          case 24: {
+          case 26: {
+            java.lang.String s = input.readStringRequireUtf8();
+            if (!((mutable_bitField0_ & 0x00000001) != 0)) {
+              priceDenoms_ = new com.google.protobuf.LazyStringArrayList();
+              mutable_bitField0_ |= 0x00000001;
+            }
+            priceDenoms_.add(s);
+            break;
+          }
+          case 34: {
+            java.lang.String s = input.readStringRequireUtf8();
+
+            fromDate_ = s;
+            break;
+          }
+          case 42: {
+            java.lang.String s = input.readStringRequireUtf8();
+
+            toDate_ = s;
+            break;
+          }
+          case 48: {
 
             limit_ = input.readInt32();
             break;
@@ -86,6 +112,9 @@ private static final long serialVersionUID = 0L;
       throw new com.google.protobuf.InvalidProtocolBufferException(
           e).setUnfinishedMessage(this);
     } finally {
+      if (((mutable_bitField0_ & 0x00000001) != 0)) {
+        priceDenoms_ = priceDenoms_.getUnmodifiableView();
+      }
       this.unknownFields = unknownFields.build();
       makeExtensionsImmutable();
     }
@@ -106,6 +135,10 @@ private static final long serialVersionUID = 0L;
   public static final int DENOM_FIELD_NUMBER = 1;
   private volatile java.lang.Object denom_;
   /**
+   * <pre>
+   * The token denomination to filter events by. Either `denom` or `scope_id` is required.
+   * </pre>
+   *
    * <code>string denom = 1;</code>
    * @return The denom.
    */
@@ -123,6 +156,10 @@ private static final long serialVersionUID = 0L;
     }
   }
   /**
+   * <pre>
+   * The token denomination to filter events by. Either `denom` or `scope_id` is required.
+   * </pre>
+   *
    * <code>string denom = 1;</code>
    * @return The bytes for denom.
    */
@@ -144,6 +181,10 @@ private static final long serialVersionUID = 0L;
   public static final int SCOPE_ID_FIELD_NUMBER = 2;
   private volatile java.lang.Object scopeId_;
   /**
+   * <pre>
+   * The scope ID to filter events by. Either `denom` or `scope_id` is required.
+   * </pre>
+   *
    * <code>string scope_id = 2;</code>
    * @return The scopeId.
    */
@@ -161,6 +202,10 @@ private static final long serialVersionUID = 0L;
     }
   }
   /**
+   * <pre>
+   * The scope ID to filter events by. Either `denom` or `scope_id` is required.
+   * </pre>
+   *
    * <code>string scope_id = 2;</code>
    * @return The bytes for scopeId.
    */
@@ -179,10 +224,157 @@ private static final long serialVersionUID = 0L;
     }
   }
 
-  public static final int LIMIT_FIELD_NUMBER = 3;
+  public static final int PRICE_DENOMS_FIELD_NUMBER = 3;
+  private com.google.protobuf.LazyStringList priceDenoms_;
+  /**
+   * <pre>
+   * Optional. A list of price denominations to filter by.
+   * </pre>
+   *
+   * <code>repeated string price_denoms = 3;</code>
+   * @return A list containing the priceDenoms.
+   */
+  public com.google.protobuf.ProtocolStringList
+      getPriceDenomsList() {
+    return priceDenoms_;
+  }
+  /**
+   * <pre>
+   * Optional. A list of price denominations to filter by.
+   * </pre>
+   *
+   * <code>repeated string price_denoms = 3;</code>
+   * @return The count of priceDenoms.
+   */
+  public int getPriceDenomsCount() {
+    return priceDenoms_.size();
+  }
+  /**
+   * <pre>
+   * Optional. A list of price denominations to filter by.
+   * </pre>
+   *
+   * <code>repeated string price_denoms = 3;</code>
+   * @param index The index of the element to return.
+   * @return The priceDenoms at the given index.
+   */
+  public java.lang.String getPriceDenoms(int index) {
+    return priceDenoms_.get(index);
+  }
+  /**
+   * <pre>
+   * Optional. A list of price denominations to filter by.
+   * </pre>
+   *
+   * <code>repeated string price_denoms = 3;</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the priceDenoms at the given index.
+   */
+  public com.google.protobuf.ByteString
+      getPriceDenomsBytes(int index) {
+    return priceDenoms_.getByteString(index);
+  }
+
+  public static final int FROM_DATE_FIELD_NUMBER = 4;
+  private volatile java.lang.Object fromDate_;
+  /**
+   * <pre>
+   * Optional. The start date (in string format) to filter events.
+   * </pre>
+   *
+   * <code>string from_date = 4;</code>
+   * @return The fromDate.
+   */
+  @java.lang.Override
+  public java.lang.String getFromDate() {
+    java.lang.Object ref = fromDate_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      fromDate_ = s;
+      return s;
+    }
+  }
+  /**
+   * <pre>
+   * Optional. The start date (in string format) to filter events.
+   * </pre>
+   *
+   * <code>string from_date = 4;</code>
+   * @return The bytes for fromDate.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getFromDateBytes() {
+    java.lang.Object ref = fromDate_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      fromDate_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
+  }
+
+  public static final int TO_DATE_FIELD_NUMBER = 5;
+  private volatile java.lang.Object toDate_;
+  /**
+   * <pre>
+   * Optional. The end date (in string format) to filter events.
+   * </pre>
+   *
+   * <code>string to_date = 5;</code>
+   * @return The toDate.
+   */
+  @java.lang.Override
+  public java.lang.String getToDate() {
+    java.lang.Object ref = toDate_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      toDate_ = s;
+      return s;
+    }
+  }
+  /**
+   * <pre>
+   * Optional. The end date (in string format) to filter events.
+   * </pre>
+   *
+   * <code>string to_date = 5;</code>
+   * @return The bytes for toDate.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getToDateBytes() {
+    java.lang.Object ref = toDate_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      toDate_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
+  }
+
+  public static final int LIMIT_FIELD_NUMBER = 6;
   private int limit_;
   /**
-   * <code>int32 limit = 3;</code>
+   * <pre>
+   * Optional. The maximum number of results to return. If not provided, defaults to 100.
+   * </pre>
+   *
+   * <code>int32 limit = 6;</code>
    * @return The limit.
    */
   @java.lang.Override
@@ -210,8 +402,17 @@ private static final long serialVersionUID = 0L;
     if (!getScopeIdBytes().isEmpty()) {
       com.google.protobuf.GeneratedMessageV3.writeString(output, 2, scopeId_);
     }
+    for (int i = 0; i < priceDenoms_.size(); i++) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 3, priceDenoms_.getRaw(i));
+    }
+    if (!getFromDateBytes().isEmpty()) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 4, fromDate_);
+    }
+    if (!getToDateBytes().isEmpty()) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 5, toDate_);
+    }
     if (limit_ != 0) {
-      output.writeInt32(3, limit_);
+      output.writeInt32(6, limit_);
     }
     unknownFields.writeTo(output);
   }
@@ -228,9 +429,23 @@ private static final long serialVersionUID = 0L;
     if (!getScopeIdBytes().isEmpty()) {
       size += com.google.protobuf.GeneratedMessageV3.computeStringSize(2, scopeId_);
     }
+    {
+      int dataSize = 0;
+      for (int i = 0; i < priceDenoms_.size(); i++) {
+        dataSize += computeStringSizeNoTag(priceDenoms_.getRaw(i));
+      }
+      size += dataSize;
+      size += 1 * getPriceDenomsList().size();
+    }
+    if (!getFromDateBytes().isEmpty()) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(4, fromDate_);
+    }
+    if (!getToDateBytes().isEmpty()) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(5, toDate_);
+    }
     if (limit_ != 0) {
       size += com.google.protobuf.CodedOutputStream
-        .computeInt32Size(3, limit_);
+        .computeInt32Size(6, limit_);
     }
     size += unknownFields.getSerializedSize();
     memoizedSize = size;
@@ -251,6 +466,12 @@ private static final long serialVersionUID = 0L;
         .equals(other.getDenom())) return false;
     if (!getScopeId()
         .equals(other.getScopeId())) return false;
+    if (!getPriceDenomsList()
+        .equals(other.getPriceDenomsList())) return false;
+    if (!getFromDate()
+        .equals(other.getFromDate())) return false;
+    if (!getToDate()
+        .equals(other.getToDate())) return false;
     if (getLimit()
         != other.getLimit()) return false;
     if (!unknownFields.equals(other.unknownFields)) return false;
@@ -268,6 +489,14 @@ private static final long serialVersionUID = 0L;
     hash = (53 * hash) + getDenom().hashCode();
     hash = (37 * hash) + SCOPE_ID_FIELD_NUMBER;
     hash = (53 * hash) + getScopeId().hashCode();
+    if (getPriceDenomsCount() > 0) {
+      hash = (37 * hash) + PRICE_DENOMS_FIELD_NUMBER;
+      hash = (53 * hash) + getPriceDenomsList().hashCode();
+    }
+    hash = (37 * hash) + FROM_DATE_FIELD_NUMBER;
+    hash = (53 * hash) + getFromDate().hashCode();
+    hash = (37 * hash) + TO_DATE_FIELD_NUMBER;
+    hash = (53 * hash) + getToDate().hashCode();
     hash = (37 * hash) + LIMIT_FIELD_NUMBER;
     hash = (53 * hash) + getLimit();
     hash = (29 * hash) + unknownFields.hashCode();
@@ -367,7 +596,8 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * NavEventRequest represents a request for NavEvents by either denom or scope_id.
+   * NavEventRequest represents a request for NavEvents by either `denom` or `scope_id`.
+   * One of `denom` or `scope_id` must be provided; the other fields are optional.
    * </pre>
    *
    * Protobuf type {@code nav.NavEventRequest}
@@ -411,6 +641,12 @@ private static final long serialVersionUID = 0L;
 
       scopeId_ = "";
 
+      priceDenoms_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+      bitField0_ = (bitField0_ & ~0x00000001);
+      fromDate_ = "";
+
+      toDate_ = "";
+
       limit_ = 0;
 
       return this;
@@ -439,8 +675,16 @@ private static final long serialVersionUID = 0L;
     @java.lang.Override
     public io.provlabs.flow.api.NavEventRequest buildPartial() {
       io.provlabs.flow.api.NavEventRequest result = new io.provlabs.flow.api.NavEventRequest(this);
+      int from_bitField0_ = bitField0_;
       result.denom_ = denom_;
       result.scopeId_ = scopeId_;
+      if (((bitField0_ & 0x00000001) != 0)) {
+        priceDenoms_ = priceDenoms_.getUnmodifiableView();
+        bitField0_ = (bitField0_ & ~0x00000001);
+      }
+      result.priceDenoms_ = priceDenoms_;
+      result.fromDate_ = fromDate_;
+      result.toDate_ = toDate_;
       result.limit_ = limit_;
       onBuilt();
       return result;
@@ -498,6 +742,24 @@ private static final long serialVersionUID = 0L;
         scopeId_ = other.scopeId_;
         onChanged();
       }
+      if (!other.priceDenoms_.isEmpty()) {
+        if (priceDenoms_.isEmpty()) {
+          priceDenoms_ = other.priceDenoms_;
+          bitField0_ = (bitField0_ & ~0x00000001);
+        } else {
+          ensurePriceDenomsIsMutable();
+          priceDenoms_.addAll(other.priceDenoms_);
+        }
+        onChanged();
+      }
+      if (!other.getFromDate().isEmpty()) {
+        fromDate_ = other.fromDate_;
+        onChanged();
+      }
+      if (!other.getToDate().isEmpty()) {
+        toDate_ = other.toDate_;
+        onChanged();
+      }
       if (other.getLimit() != 0) {
         setLimit(other.getLimit());
       }
@@ -529,9 +791,14 @@ private static final long serialVersionUID = 0L;
       }
       return this;
     }
+    private int bitField0_;
 
     private java.lang.Object denom_ = "";
     /**
+     * <pre>
+     * The token denomination to filter events by. Either `denom` or `scope_id` is required.
+     * </pre>
+     *
      * <code>string denom = 1;</code>
      * @return The denom.
      */
@@ -548,6 +815,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The token denomination to filter events by. Either `denom` or `scope_id` is required.
+     * </pre>
+     *
      * <code>string denom = 1;</code>
      * @return The bytes for denom.
      */
@@ -565,6 +836,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The token denomination to filter events by. Either `denom` or `scope_id` is required.
+     * </pre>
+     *
      * <code>string denom = 1;</code>
      * @param value The denom to set.
      * @return This builder for chaining.
@@ -580,6 +855,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The token denomination to filter events by. Either `denom` or `scope_id` is required.
+     * </pre>
+     *
      * <code>string denom = 1;</code>
      * @return This builder for chaining.
      */
@@ -590,6 +869,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The token denomination to filter events by. Either `denom` or `scope_id` is required.
+     * </pre>
+     *
      * <code>string denom = 1;</code>
      * @param value The bytes for denom to set.
      * @return This builder for chaining.
@@ -608,6 +891,10 @@ private static final long serialVersionUID = 0L;
 
     private java.lang.Object scopeId_ = "";
     /**
+     * <pre>
+     * The scope ID to filter events by. Either `denom` or `scope_id` is required.
+     * </pre>
+     *
      * <code>string scope_id = 2;</code>
      * @return The scopeId.
      */
@@ -624,6 +911,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The scope ID to filter events by. Either `denom` or `scope_id` is required.
+     * </pre>
+     *
      * <code>string scope_id = 2;</code>
      * @return The bytes for scopeId.
      */
@@ -641,6 +932,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The scope ID to filter events by. Either `denom` or `scope_id` is required.
+     * </pre>
+     *
      * <code>string scope_id = 2;</code>
      * @param value The scopeId to set.
      * @return This builder for chaining.
@@ -656,6 +951,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The scope ID to filter events by. Either `denom` or `scope_id` is required.
+     * </pre>
+     *
      * <code>string scope_id = 2;</code>
      * @return This builder for chaining.
      */
@@ -666,6 +965,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The scope ID to filter events by. Either `denom` or `scope_id` is required.
+     * </pre>
+     *
      * <code>string scope_id = 2;</code>
      * @param value The bytes for scopeId to set.
      * @return This builder for chaining.
@@ -682,9 +985,351 @@ private static final long serialVersionUID = 0L;
       return this;
     }
 
+    private com.google.protobuf.LazyStringList priceDenoms_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+    private void ensurePriceDenomsIsMutable() {
+      if (!((bitField0_ & 0x00000001) != 0)) {
+        priceDenoms_ = new com.google.protobuf.LazyStringArrayList(priceDenoms_);
+        bitField0_ |= 0x00000001;
+       }
+    }
+    /**
+     * <pre>
+     * Optional. A list of price denominations to filter by.
+     * </pre>
+     *
+     * <code>repeated string price_denoms = 3;</code>
+     * @return A list containing the priceDenoms.
+     */
+    public com.google.protobuf.ProtocolStringList
+        getPriceDenomsList() {
+      return priceDenoms_.getUnmodifiableView();
+    }
+    /**
+     * <pre>
+     * Optional. A list of price denominations to filter by.
+     * </pre>
+     *
+     * <code>repeated string price_denoms = 3;</code>
+     * @return The count of priceDenoms.
+     */
+    public int getPriceDenomsCount() {
+      return priceDenoms_.size();
+    }
+    /**
+     * <pre>
+     * Optional. A list of price denominations to filter by.
+     * </pre>
+     *
+     * <code>repeated string price_denoms = 3;</code>
+     * @param index The index of the element to return.
+     * @return The priceDenoms at the given index.
+     */
+    public java.lang.String getPriceDenoms(int index) {
+      return priceDenoms_.get(index);
+    }
+    /**
+     * <pre>
+     * Optional. A list of price denominations to filter by.
+     * </pre>
+     *
+     * <code>repeated string price_denoms = 3;</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the priceDenoms at the given index.
+     */
+    public com.google.protobuf.ByteString
+        getPriceDenomsBytes(int index) {
+      return priceDenoms_.getByteString(index);
+    }
+    /**
+     * <pre>
+     * Optional. A list of price denominations to filter by.
+     * </pre>
+     *
+     * <code>repeated string price_denoms = 3;</code>
+     * @param index The index to set the value at.
+     * @param value The priceDenoms to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPriceDenoms(
+        int index, java.lang.String value) {
+      if (value == null) {
+    throw new NullPointerException();
+  }
+  ensurePriceDenomsIsMutable();
+      priceDenoms_.set(index, value);
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional. A list of price denominations to filter by.
+     * </pre>
+     *
+     * <code>repeated string price_denoms = 3;</code>
+     * @param value The priceDenoms to add.
+     * @return This builder for chaining.
+     */
+    public Builder addPriceDenoms(
+        java.lang.String value) {
+      if (value == null) {
+    throw new NullPointerException();
+  }
+  ensurePriceDenomsIsMutable();
+      priceDenoms_.add(value);
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional. A list of price denominations to filter by.
+     * </pre>
+     *
+     * <code>repeated string price_denoms = 3;</code>
+     * @param values The priceDenoms to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllPriceDenoms(
+        java.lang.Iterable<java.lang.String> values) {
+      ensurePriceDenomsIsMutable();
+      com.google.protobuf.AbstractMessageLite.Builder.addAll(
+          values, priceDenoms_);
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional. A list of price denominations to filter by.
+     * </pre>
+     *
+     * <code>repeated string price_denoms = 3;</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPriceDenoms() {
+      priceDenoms_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+      bitField0_ = (bitField0_ & ~0x00000001);
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional. A list of price denominations to filter by.
+     * </pre>
+     *
+     * <code>repeated string price_denoms = 3;</code>
+     * @param value The bytes of the priceDenoms to add.
+     * @return This builder for chaining.
+     */
+    public Builder addPriceDenomsBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) {
+    throw new NullPointerException();
+  }
+  checkByteStringIsUtf8(value);
+      ensurePriceDenomsIsMutable();
+      priceDenoms_.add(value);
+      onChanged();
+      return this;
+    }
+
+    private java.lang.Object fromDate_ = "";
+    /**
+     * <pre>
+     * Optional. The start date (in string format) to filter events.
+     * </pre>
+     *
+     * <code>string from_date = 4;</code>
+     * @return The fromDate.
+     */
+    public java.lang.String getFromDate() {
+      java.lang.Object ref = fromDate_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        fromDate_ = s;
+        return s;
+      } else {
+        return (java.lang.String) ref;
+      }
+    }
+    /**
+     * <pre>
+     * Optional. The start date (in string format) to filter events.
+     * </pre>
+     *
+     * <code>string from_date = 4;</code>
+     * @return The bytes for fromDate.
+     */
+    public com.google.protobuf.ByteString
+        getFromDateBytes() {
+      java.lang.Object ref = fromDate_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        fromDate_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <pre>
+     * Optional. The start date (in string format) to filter events.
+     * </pre>
+     *
+     * <code>string from_date = 4;</code>
+     * @param value The fromDate to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFromDate(
+        java.lang.String value) {
+      if (value == null) {
+    throw new NullPointerException();
+  }
+  
+      fromDate_ = value;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional. The start date (in string format) to filter events.
+     * </pre>
+     *
+     * <code>string from_date = 4;</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFromDate() {
+      
+      fromDate_ = getDefaultInstance().getFromDate();
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional. The start date (in string format) to filter events.
+     * </pre>
+     *
+     * <code>string from_date = 4;</code>
+     * @param value The bytes for fromDate to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFromDateBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) {
+    throw new NullPointerException();
+  }
+  checkByteStringIsUtf8(value);
+      
+      fromDate_ = value;
+      onChanged();
+      return this;
+    }
+
+    private java.lang.Object toDate_ = "";
+    /**
+     * <pre>
+     * Optional. The end date (in string format) to filter events.
+     * </pre>
+     *
+     * <code>string to_date = 5;</code>
+     * @return The toDate.
+     */
+    public java.lang.String getToDate() {
+      java.lang.Object ref = toDate_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        toDate_ = s;
+        return s;
+      } else {
+        return (java.lang.String) ref;
+      }
+    }
+    /**
+     * <pre>
+     * Optional. The end date (in string format) to filter events.
+     * </pre>
+     *
+     * <code>string to_date = 5;</code>
+     * @return The bytes for toDate.
+     */
+    public com.google.protobuf.ByteString
+        getToDateBytes() {
+      java.lang.Object ref = toDate_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        toDate_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <pre>
+     * Optional. The end date (in string format) to filter events.
+     * </pre>
+     *
+     * <code>string to_date = 5;</code>
+     * @param value The toDate to set.
+     * @return This builder for chaining.
+     */
+    public Builder setToDate(
+        java.lang.String value) {
+      if (value == null) {
+    throw new NullPointerException();
+  }
+  
+      toDate_ = value;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional. The end date (in string format) to filter events.
+     * </pre>
+     *
+     * <code>string to_date = 5;</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearToDate() {
+      
+      toDate_ = getDefaultInstance().getToDate();
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional. The end date (in string format) to filter events.
+     * </pre>
+     *
+     * <code>string to_date = 5;</code>
+     * @param value The bytes for toDate to set.
+     * @return This builder for chaining.
+     */
+    public Builder setToDateBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) {
+    throw new NullPointerException();
+  }
+  checkByteStringIsUtf8(value);
+      
+      toDate_ = value;
+      onChanged();
+      return this;
+    }
+
     private int limit_ ;
     /**
-     * <code>int32 limit = 3;</code>
+     * <pre>
+     * Optional. The maximum number of results to return. If not provided, defaults to 100.
+     * </pre>
+     *
+     * <code>int32 limit = 6;</code>
      * @return The limit.
      */
     @java.lang.Override
@@ -692,7 +1337,11 @@ private static final long serialVersionUID = 0L;
       return limit_;
     }
     /**
-     * <code>int32 limit = 3;</code>
+     * <pre>
+     * Optional. The maximum number of results to return. If not provided, defaults to 100.
+     * </pre>
+     *
+     * <code>int32 limit = 6;</code>
      * @param value The limit to set.
      * @return This builder for chaining.
      */
@@ -703,7 +1352,11 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>int32 limit = 3;</code>
+     * <pre>
+     * Optional. The maximum number of results to return. If not provided, defaults to 100.
+     * </pre>
+     *
+     * <code>int32 limit = 6;</code>
      * @return This builder for chaining.
      */
     public Builder clearLimit() {

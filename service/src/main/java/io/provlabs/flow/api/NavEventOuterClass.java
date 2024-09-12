@@ -44,13 +44,14 @@ public final class NavEventOuterClass {
       "t_order\030\005 \001(\005\022\022\n\nevent_type\030\006 \001(\t\022\020\n\010sco" +
       "pe_id\030\007 \001(\t\022\r\n\005denom\030\010 \001(\t\022\024\n\014price_amou" +
       "nt\030\t \001(\003\022\023\n\013price_denom\030\n \001(\t\022\016\n\006volume\030" +
-      "\013 \001(\003\022\016\n\006source\030\014 \001(\t\"A\n\017NavEventRequest" +
-      "\022\r\n\005denom\030\001 \001(\t\022\020\n\010scope_id\030\002 \001(\t\022\r\n\005lim" +
-      "it\030\003 \001(\005\"5\n\020NavEventResponse\022!\n\nnav_even" +
-      "ts\030\001 \003(\0132\r.nav.NavEvent2I\n\nNavService\022;\n" +
-      "\014GetNavEvents\022\024.nav.NavEventRequest\032\025.na" +
-      "v.NavEventResponseB \n\024io.provlabs.flow.a" +
-      "piP\001Z\006/typesb\006proto3"
+      "\013 \001(\003\022\016\n\006source\030\014 \001(\t\"{\n\017NavEventRequest" +
+      "\022\r\n\005denom\030\001 \001(\t\022\020\n\010scope_id\030\002 \001(\t\022\024\n\014pri" +
+      "ce_denoms\030\003 \003(\t\022\021\n\tfrom_date\030\004 \001(\t\022\017\n\007to" +
+      "_date\030\005 \001(\t\022\r\n\005limit\030\006 \001(\005\"5\n\020NavEventRe" +
+      "sponse\022!\n\nnav_events\030\001 \003(\0132\r.nav.NavEven" +
+      "t2I\n\nNavService\022;\n\014GetNavEvents\022\024.nav.Na" +
+      "vEventRequest\032\025.nav.NavEventResponseB \n\024" +
+      "io.provlabs.flow.apiP\001Z\006/typesb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -67,7 +68,7 @@ public final class NavEventOuterClass {
     internal_static_nav_NavEventRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_nav_NavEventRequest_descriptor,
-        new java.lang.String[] { "Denom", "ScopeId", "Limit", });
+        new java.lang.String[] { "Denom", "ScopeId", "PriceDenoms", "FromDate", "ToDate", "Limit", });
     internal_static_nav_NavEventResponse_descriptor =
       getDescriptor().getMessageTypes().get(2);
     internal_static_nav_NavEventResponse_fieldAccessorTable = new

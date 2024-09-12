@@ -5,7 +5,7 @@ package io.provlabs.flow.api;
 
 /**
  * <pre>
- * NavEvent represents a navigation event within a block.
+ * NavEvent represents a Net Asset Value (NAV) event within a block.
  * </pre>
  *
  * Protobuf type {@code nav.NavEvent}
@@ -159,6 +159,10 @@ private static final long serialVersionUID = 0L;
   public static final int BLOCK_HEIGHT_FIELD_NUMBER = 1;
   private int blockHeight_;
   /**
+   * <pre>
+   * The block height where this Nav event occurred.
+   * </pre>
+   *
    * <code>int32 block_height = 1;</code>
    * @return The blockHeight.
    */
@@ -170,6 +174,10 @@ private static final long serialVersionUID = 0L;
   public static final int BLOCK_TIME_FIELD_NUMBER = 2;
   private long blockTime_;
   /**
+   * <pre>
+   * The block time in UNIX epoch format when the Nav event occurred.
+   * </pre>
+   *
    * <code>uint64 block_time = 2;</code>
    * @return The blockTime.
    */
@@ -181,6 +189,10 @@ private static final long serialVersionUID = 0L;
   public static final int CHAIN_ID_FIELD_NUMBER = 3;
   private int chainId_;
   /**
+   * <pre>
+   * The unique chain ID representing the blockchain where this NAV event occurred.
+   * </pre>
+   *
    * <code>int32 chain_id = 3;</code>
    * @return The chainId.
    */
@@ -192,6 +204,10 @@ private static final long serialVersionUID = 0L;
   public static final int TX_HASH_FIELD_NUMBER = 4;
   private volatile java.lang.Object txHash_;
   /**
+   * <pre>
+   * The tx hash related to this NAV event.
+   * </pre>
+   *
    * <code>string tx_hash = 4;</code>
    * @return The txHash.
    */
@@ -209,6 +225,10 @@ private static final long serialVersionUID = 0L;
     }
   }
   /**
+   * <pre>
+   * The tx hash related to this NAV event.
+   * </pre>
+   *
    * <code>string tx_hash = 4;</code>
    * @return The bytes for txHash.
    */
@@ -230,6 +250,10 @@ private static final long serialVersionUID = 0L;
   public static final int EVENT_ORDER_FIELD_NUMBER = 5;
   private int eventOrder_;
   /**
+   * <pre>
+   * The order in which this event was emitted within the block_height and tx_hash.
+   * </pre>
+   *
    * <code>int32 event_order = 5;</code>
    * @return The eventOrder.
    */
@@ -241,6 +265,10 @@ private static final long serialVersionUID = 0L;
   public static final int EVENT_TYPE_FIELD_NUMBER = 6;
   private volatile java.lang.Object eventType_;
   /**
+   * <pre>
+   * The type of Nav event type.
+   * </pre>
+   *
    * <code>string event_type = 6;</code>
    * @return The eventType.
    */
@@ -258,6 +286,10 @@ private static final long serialVersionUID = 0L;
     }
   }
   /**
+   * <pre>
+   * The type of Nav event type.
+   * </pre>
+   *
    * <code>string event_type = 6;</code>
    * @return The bytes for eventType.
    */
@@ -279,6 +311,10 @@ private static final long serialVersionUID = 0L;
   public static final int SCOPE_ID_FIELD_NUMBER = 7;
   private volatile java.lang.Object scopeId_;
   /**
+   * <pre>
+   * The scope ID associated with this Nav.
+   * </pre>
+   *
    * <code>string scope_id = 7;</code>
    * @return The scopeId.
    */
@@ -296,6 +332,10 @@ private static final long serialVersionUID = 0L;
     }
   }
   /**
+   * <pre>
+   * The scope ID associated with this Nav.
+   * </pre>
+   *
    * <code>string scope_id = 7;</code>
    * @return The bytes for scopeId.
    */
@@ -317,6 +357,10 @@ private static final long serialVersionUID = 0L;
   public static final int DENOM_FIELD_NUMBER = 8;
   private volatile java.lang.Object denom_;
   /**
+   * <pre>
+   * The token denomination for the Nav.
+   * </pre>
+   *
    * <code>string denom = 8;</code>
    * @return The denom.
    */
@@ -334,6 +378,10 @@ private static final long serialVersionUID = 0L;
     }
   }
   /**
+   * <pre>
+   * The token denomination for the Nav.
+   * </pre>
+   *
    * <code>string denom = 8;</code>
    * @return The bytes for denom.
    */
@@ -355,6 +403,10 @@ private static final long serialVersionUID = 0L;
   public static final int PRICE_AMOUNT_FIELD_NUMBER = 9;
   private long priceAmount_;
   /**
+   * <pre>
+   * The price amount for the NAV.
+   * </pre>
+   *
    * <code>int64 price_amount = 9;</code>
    * @return The priceAmount.
    */
@@ -366,6 +418,10 @@ private static final long serialVersionUID = 0L;
   public static final int PRICE_DENOM_FIELD_NUMBER = 10;
   private volatile java.lang.Object priceDenom_;
   /**
+   * <pre>
+   * The denomination of the price.
+   * </pre>
+   *
    * <code>string price_denom = 10;</code>
    * @return The priceDenom.
    */
@@ -383,6 +439,10 @@ private static final long serialVersionUID = 0L;
     }
   }
   /**
+   * <pre>
+   * The denomination of the price.
+   * </pre>
+   *
    * <code>string price_denom = 10;</code>
    * @return The bytes for priceDenom.
    */
@@ -404,6 +464,10 @@ private static final long serialVersionUID = 0L;
   public static final int VOLUME_FIELD_NUMBER = 11;
   private long volume_;
   /**
+   * <pre>
+   * The volume of tokens involved in the Nav event.
+   * </pre>
+   *
    * <code>int64 volume = 11;</code>
    * @return The volume.
    */
@@ -415,6 +479,10 @@ private static final long serialVersionUID = 0L;
   public static final int SOURCE_FIELD_NUMBER = 12;
   private volatile java.lang.Object source_;
   /**
+   * <pre>
+   * The source of the NAV event.
+   * </pre>
+   *
    * <code>string source = 12;</code>
    * @return The source.
    */
@@ -432,6 +500,10 @@ private static final long serialVersionUID = 0L;
     }
   }
   /**
+   * <pre>
+   * The source of the NAV event.
+   * </pre>
+   *
    * <code>string source = 12;</code>
    * @return The bytes for source.
    */
@@ -725,7 +797,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <pre>
-   * NavEvent represents a navigation event within a block.
+   * NavEvent represents a Net Asset Value (NAV) event within a block.
    * </pre>
    *
    * Protobuf type {@code nav.NavEvent}
@@ -948,6 +1020,10 @@ private static final long serialVersionUID = 0L;
 
     private int blockHeight_ ;
     /**
+     * <pre>
+     * The block height where this Nav event occurred.
+     * </pre>
+     *
      * <code>int32 block_height = 1;</code>
      * @return The blockHeight.
      */
@@ -956,6 +1032,10 @@ private static final long serialVersionUID = 0L;
       return blockHeight_;
     }
     /**
+     * <pre>
+     * The block height where this Nav event occurred.
+     * </pre>
+     *
      * <code>int32 block_height = 1;</code>
      * @param value The blockHeight to set.
      * @return This builder for chaining.
@@ -967,6 +1047,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The block height where this Nav event occurred.
+     * </pre>
+     *
      * <code>int32 block_height = 1;</code>
      * @return This builder for chaining.
      */
@@ -979,6 +1063,10 @@ private static final long serialVersionUID = 0L;
 
     private long blockTime_ ;
     /**
+     * <pre>
+     * The block time in UNIX epoch format when the Nav event occurred.
+     * </pre>
+     *
      * <code>uint64 block_time = 2;</code>
      * @return The blockTime.
      */
@@ -987,6 +1075,10 @@ private static final long serialVersionUID = 0L;
       return blockTime_;
     }
     /**
+     * <pre>
+     * The block time in UNIX epoch format when the Nav event occurred.
+     * </pre>
+     *
      * <code>uint64 block_time = 2;</code>
      * @param value The blockTime to set.
      * @return This builder for chaining.
@@ -998,6 +1090,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The block time in UNIX epoch format when the Nav event occurred.
+     * </pre>
+     *
      * <code>uint64 block_time = 2;</code>
      * @return This builder for chaining.
      */
@@ -1010,6 +1106,10 @@ private static final long serialVersionUID = 0L;
 
     private int chainId_ ;
     /**
+     * <pre>
+     * The unique chain ID representing the blockchain where this NAV event occurred.
+     * </pre>
+     *
      * <code>int32 chain_id = 3;</code>
      * @return The chainId.
      */
@@ -1018,6 +1118,10 @@ private static final long serialVersionUID = 0L;
       return chainId_;
     }
     /**
+     * <pre>
+     * The unique chain ID representing the blockchain where this NAV event occurred.
+     * </pre>
+     *
      * <code>int32 chain_id = 3;</code>
      * @param value The chainId to set.
      * @return This builder for chaining.
@@ -1029,6 +1133,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The unique chain ID representing the blockchain where this NAV event occurred.
+     * </pre>
+     *
      * <code>int32 chain_id = 3;</code>
      * @return This builder for chaining.
      */
@@ -1041,6 +1149,10 @@ private static final long serialVersionUID = 0L;
 
     private java.lang.Object txHash_ = "";
     /**
+     * <pre>
+     * The tx hash related to this NAV event.
+     * </pre>
+     *
      * <code>string tx_hash = 4;</code>
      * @return The txHash.
      */
@@ -1057,6 +1169,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The tx hash related to this NAV event.
+     * </pre>
+     *
      * <code>string tx_hash = 4;</code>
      * @return The bytes for txHash.
      */
@@ -1074,6 +1190,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The tx hash related to this NAV event.
+     * </pre>
+     *
      * <code>string tx_hash = 4;</code>
      * @param value The txHash to set.
      * @return This builder for chaining.
@@ -1089,6 +1209,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The tx hash related to this NAV event.
+     * </pre>
+     *
      * <code>string tx_hash = 4;</code>
      * @return This builder for chaining.
      */
@@ -1099,6 +1223,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The tx hash related to this NAV event.
+     * </pre>
+     *
      * <code>string tx_hash = 4;</code>
      * @param value The bytes for txHash to set.
      * @return This builder for chaining.
@@ -1117,6 +1245,10 @@ private static final long serialVersionUID = 0L;
 
     private int eventOrder_ ;
     /**
+     * <pre>
+     * The order in which this event was emitted within the block_height and tx_hash.
+     * </pre>
+     *
      * <code>int32 event_order = 5;</code>
      * @return The eventOrder.
      */
@@ -1125,6 +1257,10 @@ private static final long serialVersionUID = 0L;
       return eventOrder_;
     }
     /**
+     * <pre>
+     * The order in which this event was emitted within the block_height and tx_hash.
+     * </pre>
+     *
      * <code>int32 event_order = 5;</code>
      * @param value The eventOrder to set.
      * @return This builder for chaining.
@@ -1136,6 +1272,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The order in which this event was emitted within the block_height and tx_hash.
+     * </pre>
+     *
      * <code>int32 event_order = 5;</code>
      * @return This builder for chaining.
      */
@@ -1148,6 +1288,10 @@ private static final long serialVersionUID = 0L;
 
     private java.lang.Object eventType_ = "";
     /**
+     * <pre>
+     * The type of Nav event type.
+     * </pre>
+     *
      * <code>string event_type = 6;</code>
      * @return The eventType.
      */
@@ -1164,6 +1308,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The type of Nav event type.
+     * </pre>
+     *
      * <code>string event_type = 6;</code>
      * @return The bytes for eventType.
      */
@@ -1181,6 +1329,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The type of Nav event type.
+     * </pre>
+     *
      * <code>string event_type = 6;</code>
      * @param value The eventType to set.
      * @return This builder for chaining.
@@ -1196,6 +1348,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The type of Nav event type.
+     * </pre>
+     *
      * <code>string event_type = 6;</code>
      * @return This builder for chaining.
      */
@@ -1206,6 +1362,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The type of Nav event type.
+     * </pre>
+     *
      * <code>string event_type = 6;</code>
      * @param value The bytes for eventType to set.
      * @return This builder for chaining.
@@ -1224,6 +1384,10 @@ private static final long serialVersionUID = 0L;
 
     private java.lang.Object scopeId_ = "";
     /**
+     * <pre>
+     * The scope ID associated with this Nav.
+     * </pre>
+     *
      * <code>string scope_id = 7;</code>
      * @return The scopeId.
      */
@@ -1240,6 +1404,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The scope ID associated with this Nav.
+     * </pre>
+     *
      * <code>string scope_id = 7;</code>
      * @return The bytes for scopeId.
      */
@@ -1257,6 +1425,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The scope ID associated with this Nav.
+     * </pre>
+     *
      * <code>string scope_id = 7;</code>
      * @param value The scopeId to set.
      * @return This builder for chaining.
@@ -1272,6 +1444,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The scope ID associated with this Nav.
+     * </pre>
+     *
      * <code>string scope_id = 7;</code>
      * @return This builder for chaining.
      */
@@ -1282,6 +1458,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The scope ID associated with this Nav.
+     * </pre>
+     *
      * <code>string scope_id = 7;</code>
      * @param value The bytes for scopeId to set.
      * @return This builder for chaining.
@@ -1300,6 +1480,10 @@ private static final long serialVersionUID = 0L;
 
     private java.lang.Object denom_ = "";
     /**
+     * <pre>
+     * The token denomination for the Nav.
+     * </pre>
+     *
      * <code>string denom = 8;</code>
      * @return The denom.
      */
@@ -1316,6 +1500,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The token denomination for the Nav.
+     * </pre>
+     *
      * <code>string denom = 8;</code>
      * @return The bytes for denom.
      */
@@ -1333,6 +1521,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The token denomination for the Nav.
+     * </pre>
+     *
      * <code>string denom = 8;</code>
      * @param value The denom to set.
      * @return This builder for chaining.
@@ -1348,6 +1540,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The token denomination for the Nav.
+     * </pre>
+     *
      * <code>string denom = 8;</code>
      * @return This builder for chaining.
      */
@@ -1358,6 +1554,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The token denomination for the Nav.
+     * </pre>
+     *
      * <code>string denom = 8;</code>
      * @param value The bytes for denom to set.
      * @return This builder for chaining.
@@ -1376,6 +1576,10 @@ private static final long serialVersionUID = 0L;
 
     private long priceAmount_ ;
     /**
+     * <pre>
+     * The price amount for the NAV.
+     * </pre>
+     *
      * <code>int64 price_amount = 9;</code>
      * @return The priceAmount.
      */
@@ -1384,6 +1588,10 @@ private static final long serialVersionUID = 0L;
       return priceAmount_;
     }
     /**
+     * <pre>
+     * The price amount for the NAV.
+     * </pre>
+     *
      * <code>int64 price_amount = 9;</code>
      * @param value The priceAmount to set.
      * @return This builder for chaining.
@@ -1395,6 +1603,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The price amount for the NAV.
+     * </pre>
+     *
      * <code>int64 price_amount = 9;</code>
      * @return This builder for chaining.
      */
@@ -1407,6 +1619,10 @@ private static final long serialVersionUID = 0L;
 
     private java.lang.Object priceDenom_ = "";
     /**
+     * <pre>
+     * The denomination of the price.
+     * </pre>
+     *
      * <code>string price_denom = 10;</code>
      * @return The priceDenom.
      */
@@ -1423,6 +1639,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The denomination of the price.
+     * </pre>
+     *
      * <code>string price_denom = 10;</code>
      * @return The bytes for priceDenom.
      */
@@ -1440,6 +1660,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The denomination of the price.
+     * </pre>
+     *
      * <code>string price_denom = 10;</code>
      * @param value The priceDenom to set.
      * @return This builder for chaining.
@@ -1455,6 +1679,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The denomination of the price.
+     * </pre>
+     *
      * <code>string price_denom = 10;</code>
      * @return This builder for chaining.
      */
@@ -1465,6 +1693,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The denomination of the price.
+     * </pre>
+     *
      * <code>string price_denom = 10;</code>
      * @param value The bytes for priceDenom to set.
      * @return This builder for chaining.
@@ -1483,6 +1715,10 @@ private static final long serialVersionUID = 0L;
 
     private long volume_ ;
     /**
+     * <pre>
+     * The volume of tokens involved in the Nav event.
+     * </pre>
+     *
      * <code>int64 volume = 11;</code>
      * @return The volume.
      */
@@ -1491,6 +1727,10 @@ private static final long serialVersionUID = 0L;
       return volume_;
     }
     /**
+     * <pre>
+     * The volume of tokens involved in the Nav event.
+     * </pre>
+     *
      * <code>int64 volume = 11;</code>
      * @param value The volume to set.
      * @return This builder for chaining.
@@ -1502,6 +1742,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The volume of tokens involved in the Nav event.
+     * </pre>
+     *
      * <code>int64 volume = 11;</code>
      * @return This builder for chaining.
      */
@@ -1514,6 +1758,10 @@ private static final long serialVersionUID = 0L;
 
     private java.lang.Object source_ = "";
     /**
+     * <pre>
+     * The source of the NAV event.
+     * </pre>
+     *
      * <code>string source = 12;</code>
      * @return The source.
      */
@@ -1530,6 +1778,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The source of the NAV event.
+     * </pre>
+     *
      * <code>string source = 12;</code>
      * @return The bytes for source.
      */
@@ -1547,6 +1799,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The source of the NAV event.
+     * </pre>
+     *
      * <code>string source = 12;</code>
      * @param value The source to set.
      * @return This builder for chaining.
@@ -1562,6 +1818,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The source of the NAV event.
+     * </pre>
+     *
      * <code>string source = 12;</code>
      * @return This builder for chaining.
      */
@@ -1572,6 +1832,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The source of the NAV event.
+     * </pre>
+     *
      * <code>string source = 12;</code>
      * @param value The bytes for source to set.
      * @return This builder for chaining.
