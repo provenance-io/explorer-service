@@ -333,14 +333,24 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun updateRecords(height: Int, valconsAddr: String, currRunning: Int, currTotal: Int) = transaction {
+            val logInfo = (valconsAddr == "pbvalcons1m9zt3xqppsacram7ch6muyf0gz26mmpjwczy3r")
+            val startTime = System.currentTimeMillis()
+
             val records = MissedBlocksRecord
                 .find { (MissedBlocksTable.valConsAddr eq valconsAddr) and (MissedBlocksTable.blockHeight greater height) }
                 .orderBy(Pair(MissedBlocksTable.blockHeight, SortOrder.ASC))
+
+            val recordCount = records.count()
+
+            if (logInfo) {
+                logger().info("Fetched $recordCount records for $valconsAddr from height $height (duration: ${System.currentTimeMillis() - startTime}ms)")
+            }
 
             BatchUpdateStatement(MissedBlocksTable).apply {
                 var lastHeight = height
                 var lastRunning = currRunning
                 var lastTotal = currTotal
+
                 records.forEach {
                     addBatch(it.id)
                     val running = if (lastHeight == it.blockHeight - 1) lastRunning + 1 else 1
@@ -350,9 +360,15 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
                     lastRunning = running
                     lastTotal += 1
                 }
+
                 execute(TransactionManager.current())
+
+                if (logInfo) {
+                    logger().info("Completed update for $valconsAddr (duration: ${System.currentTimeMillis() - startTime}ms)")
+                }
             }
         }
+
     }
 
     var blockHeight by MissedBlocksTable.blockHeight
