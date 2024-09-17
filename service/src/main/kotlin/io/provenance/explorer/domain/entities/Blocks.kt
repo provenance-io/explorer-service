@@ -311,7 +311,7 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
             val endTime = System.currentTimeMillis()
             val duration = endTime - startTime
 
-            // TODO: remove warning if problem is fixed after adding limit to queries
+            // TODO: remove warning if problem is fixed after adding limit to queries See: https://github.com/provenance-io/explorer-service/issues/546
             if (duration > 1000) {
                 logger().warn("Processing calculateMissedAndInsert took ${duration}ms for height: $height and valconsAddr: $valconsAddr")
             }
