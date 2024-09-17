@@ -279,23 +279,36 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun calculateMissedAndInsert(height: Int, valconsAddr: String) = transaction {
+            val logInfo = (valconsAddr == "pbvalcons1m9zt3xqppsacram7ch6muyf0gz26mmpjwczy3r")
             val startTime = System.currentTimeMillis()
 
+            if (logInfo) {
+                logger().info("Starting processing for $valconsAddr at height $height (duration: ${System.currentTimeMillis() - startTime}ms)")
+            }
+
             val (running, total, updateFromHeight) = findLatestForVal(valconsAddr)?.let { rec ->
+                if (logInfo) {
+                    logger().info("Found latest for $valconsAddr at height ${rec.blockHeight} (duration: ${System.currentTimeMillis() - startTime}ms)")
+                }
                 when {
                     rec.blockHeight == height - 1 -> listOf(rec.runningCount, rec.totalCount, null)
-                    rec.blockHeight > height ->
-                        when (val last = findForValFirstUnderHeight(valconsAddr, height - 1)) {
-                            null -> listOf(0, 0, height)
-                            else -> listOf(
-                                if (last.blockHeight == height - 1) last.runningCount else 0,
-                                last.totalCount,
-                                height
-                            )
+                    rec.blockHeight > height -> {
+                        val last = findForValFirstUnderHeight(valconsAddr, height - 1)
+                        if (logInfo) {
+                            logger().info("Checking for valcons $valconsAddr under height $height. Found: ${last?.blockHeight} (duration: ${System.currentTimeMillis() - startTime}ms)")
                         }
+                        when (last) {
+                            null -> listOf(0, 0, height)
+                            else -> listOf(if (last.blockHeight == height - 1) last.runningCount else 0, last.totalCount, height)
+                        }
+                    }
                     else -> listOf(0, rec.totalCount, null)
                 }
             } ?: listOf(0, 0, null)
+
+            if (logInfo) {
+                logger().info("Inserting new missed block record for $valconsAddr at height $height with running: $running and total: $total (duration: ${System.currentTimeMillis() - startTime}ms)")
+            }
 
             MissedBlocksTable.insertIgnore {
                 it[this.blockHeight] = height
@@ -305,13 +318,15 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
             }
 
             if (updateFromHeight != null) {
+                if (logInfo) {
+                    logger().info("Updating records from height $updateFromHeight for $valconsAddr (duration: ${System.currentTimeMillis() - startTime}ms)")
+                }
                 updateRecords(updateFromHeight, valconsAddr, running!! + 1, total!! + 1)
             }
 
             val endTime = System.currentTimeMillis()
             val duration = endTime - startTime
 
-            // TODO: remove warning if problem is fixed after adding limit to queries See: https://github.com/provenance-io/explorer-service/issues/546
             if (duration > 1000) {
                 logger().warn("Processing calculateMissedAndInsert took ${duration}ms for height: $height and valconsAddr: $valconsAddr")
             }
