@@ -33,6 +33,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Improvements
+
+* Add limit of 1 to missing block queries [#544](https://github.com/provenance-io/explorer-service/pull/544)
+
 ## [v5.11.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.11.0) - 2024-08-27
 
 ### Improvements
