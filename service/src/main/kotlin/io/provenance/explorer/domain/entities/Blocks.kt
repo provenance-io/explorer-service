@@ -2,6 +2,7 @@ package io.provenance.explorer.domain.entities
 
 import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.DateTrunc
 import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.ExtractDOW
@@ -265,6 +266,7 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findLatestForVal(valconsAddr: String) = transaction {
             MissedBlocksRecord.find { MissedBlocksTable.valConsAddr eq valconsAddr }
                 .orderBy(Pair(MissedBlocksTable.blockHeight, SortOrder.DESC))
+                .limit(1)
                 .firstOrNull()
         }
 
@@ -272,17 +274,17 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
             MissedBlocksRecord
                 .find { (MissedBlocksTable.valConsAddr eq valconsAddr) and (MissedBlocksTable.blockHeight lessEq height) }
                 .orderBy(Pair(MissedBlocksTable.blockHeight, SortOrder.DESC))
+                .limit(1)
                 .firstOrNull()
         }
 
-        fun insert(height: Int, valconsAddr: String) = transaction {
+        fun calculateMissedAndInsert(height: Int, valconsAddr: String) = transaction {
+            val startTime = System.currentTimeMillis()
+
             val (running, total, updateFromHeight) = findLatestForVal(valconsAddr)?.let { rec ->
                 when {
-                    // If current height follows the last height, continue sequences
                     rec.blockHeight == height - 1 -> listOf(rec.runningCount, rec.totalCount, null)
                     rec.blockHeight > height ->
-                        // If current height is under the found height, find the last one directly under current
-                        // height, and see if it follows the sequence
                         when (val last = findForValFirstUnderHeight(valconsAddr, height - 1)) {
                             null -> listOf(0, 0, height)
                             else -> listOf(
@@ -291,7 +293,6 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
                                 height
                             )
                         }
-                    // Restart running sequence
                     else -> listOf(0, rec.totalCount, null)
                 }
             } ?: listOf(0, 0, null)
@@ -303,9 +304,16 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.totalCount] = total!! + 1
             }
 
-            // Update following height records
             if (updateFromHeight != null) {
                 updateRecords(updateFromHeight, valconsAddr, running!! + 1, total!! + 1)
+            }
+
+            val endTime = System.currentTimeMillis()
+            val duration = endTime - startTime
+
+            // TODO: remove warning if problem is fixed after adding limit to queries See: https://github.com/provenance-io/explorer-service/issues/546
+            if (duration > 1000) {
+                logger().warn("Processing calculateMissedAndInsert took ${duration}ms for height: $height and valconsAddr: $valconsAddr")
             }
         }
 
