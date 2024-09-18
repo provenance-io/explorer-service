@@ -120,6 +120,7 @@ class ScheduledTaskService(
 
     @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateLatestBlockHeightJob() {
+        var count = 0
         val index = getBlockIndex()
         val startHeight = blockService.getLatestBlockHeight()
         var indexHeight = startHeight
@@ -139,6 +140,7 @@ class ScheduledTaskService(
                     blockAndTxProcessor.saveBlockEtc(it)
                     indexHeight = it.block.height() - 1
                 }
+                count++
                 blockService.updateBlockMinHeightIndex(indexHeight + 1)
             }
             blockService.updateBlockMaxHeightIndex(startHeight)
@@ -147,6 +149,7 @@ class ScheduledTaskService(
                 blockService.getBlockAtHeightFromChain(indexHeight)?.let {
                     blockAndTxProcessor.saveBlockEtc(it)
                     indexHeight = it.block.height() - 1
+                    count++
                 }
             }
             blockService.updateBlockMaxHeightIndex(startHeight)
@@ -157,6 +160,7 @@ class ScheduledTaskService(
         if (!cacheService.getCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key)!!.cacheValue.toBoolean()) {
             cacheService.updateCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key, true.toString())
         }
+        logger.info("Finished updateLatestBlockHeightJob added: $count")
     }
 
     fun getBlockIndex() = blockService.getBlockIndexFromCache()?.let {
