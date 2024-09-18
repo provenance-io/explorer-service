@@ -123,6 +123,7 @@ class ScheduledTaskService(
         val index = getBlockIndex()
         val startHeight = blockService.getLatestBlockHeight()
         var indexHeight = startHeight
+        logger.info("Starting updateLatestBlockHeightJob startHeight $startHeight")
         if (startCollectingHistoricalBlocks(index) ||
             continueCollectingHistoricalBlocks(index!!.first!!, index.second!!)
         ) {
