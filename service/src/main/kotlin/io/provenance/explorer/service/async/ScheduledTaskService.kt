@@ -143,6 +143,7 @@ class ScheduledTaskService(
                 count++
                 blockService.updateBlockMinHeightIndex(indexHeight + 1)
             }
+            logger.info("Finished updateLatestBlockHeightJob historical added: $count")
             blockService.updateBlockMaxHeightIndex(startHeight)
         } else {
             while (indexHeight > index.first!!) {
@@ -152,15 +153,16 @@ class ScheduledTaskService(
                     count++
                 }
             }
+            logger.info("Finished updateLatestBlockHeightJob added: $count")
             blockService.updateBlockMaxHeightIndex(startHeight)
         }
 
         BlockTxCountsCacheRecord.updateTxCounts()
-        BlockProposerRecord.calcLatency()
+        // BlockProposerRecord.calcLatency()
         if (!cacheService.getCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key)!!.cacheValue.toBoolean()) {
             cacheService.updateCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key, true.toString())
         }
-        logger.info("Finished updateLatestBlockHeightJob added: $count")
+        logger.info("Finished updateLatestBlockHeightJob")
     }
 
     fun getBlockIndex() = blockService.getBlockIndexFromCache()?.let {
