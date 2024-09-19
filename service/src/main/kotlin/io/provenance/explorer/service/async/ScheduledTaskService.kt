@@ -120,11 +120,9 @@ class ScheduledTaskService(
 
     @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateLatestBlockHeightJob() {
-        var count = 0
         val index = getBlockIndex()
         val startHeight = blockService.getLatestBlockHeight()
         var indexHeight = startHeight
-        logger.info("Starting updateLatestBlockHeightJob startHeight $startHeight")
         if (startCollectingHistoricalBlocks(index) ||
             continueCollectingHistoricalBlocks(index!!.first!!, index.second!!)
         ) {
@@ -140,29 +138,24 @@ class ScheduledTaskService(
                     blockAndTxProcessor.saveBlockEtc(it)
                     indexHeight = it.block.height() - 1
                 }
-                count++
                 blockService.updateBlockMinHeightIndex(indexHeight + 1)
             }
-            logger.info("Finished updateLatestBlockHeightJob historical added: $count")
             blockService.updateBlockMaxHeightIndex(startHeight)
         } else {
             while (indexHeight > index.first!!) {
                 blockService.getBlockAtHeightFromChain(indexHeight)?.let {
                     blockAndTxProcessor.saveBlockEtc(it)
                     indexHeight = it.block.height() - 1
-                    count++
                 }
             }
-            logger.info("Finished updateLatestBlockHeightJob added: $count")
             blockService.updateBlockMaxHeightIndex(startHeight)
         }
 
         BlockTxCountsCacheRecord.updateTxCounts()
-        // BlockProposerRecord.calcLatency()
+         BlockProposerRecord.calcLatency()
         if (!cacheService.getCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key)!!.cacheValue.toBoolean()) {
             cacheService.updateCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key, true.toString())
         }
-        logger.info("Finished updateLatestBlockHeightJob")
     }
 
     fun getBlockIndex() = blockService.getBlockIndexFromCache()?.let {
