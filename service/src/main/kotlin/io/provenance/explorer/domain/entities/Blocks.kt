@@ -200,7 +200,7 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
         FROM limited_blocks
     ) AS time_differences
     WHERE diff_in_seconds IS NOT NULL;
-    """.trimIndent()
+""".trimIndent()
             sqlQuery.execAndMap {
                 it.getBigDecimal("avg_block_creation_time")
             }.firstOrNull() ?: BigDecimal.ZERO
