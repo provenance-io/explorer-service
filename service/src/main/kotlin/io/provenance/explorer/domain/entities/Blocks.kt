@@ -2,7 +2,6 @@ package io.provenance.explorer.domain.entities
 
 import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.OBJECT_MAPPER
-import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.DateTrunc
 import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.ExtractDOW
@@ -58,9 +57,7 @@ import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.sum
-import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import org.joda.time.DateTime
@@ -263,79 +260,13 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
             query.exec(arguments).map { it.getString("val_cons_address") }
         }
 
-        fun findLatestForVal(valconsAddr: String) = transaction {
-            MissedBlocksRecord.find { MissedBlocksTable.valConsAddr eq valconsAddr }
-                .orderBy(Pair(MissedBlocksTable.blockHeight, SortOrder.DESC))
-                .limit(1)
-                .firstOrNull()
-        }
-
-        fun findForValFirstUnderHeight(valconsAddr: String, height: Int) = transaction {
-            MissedBlocksRecord
-                .find { (MissedBlocksTable.valConsAddr eq valconsAddr) and (MissedBlocksTable.blockHeight lessEq height) }
-                .orderBy(Pair(MissedBlocksTable.blockHeight, SortOrder.DESC))
-                .limit(1)
-                .firstOrNull()
-        }
-
-        fun calculateMissedAndInsert(height: Int, valconsAddr: String) = transaction {
-            val startTime = System.currentTimeMillis()
-
-            val (running, total, updateFromHeight) = findLatestForVal(valconsAddr)?.let { rec ->
-                when {
-                    rec.blockHeight == height - 1 -> listOf(rec.runningCount, rec.totalCount, null)
-                    rec.blockHeight > height ->
-                        when (val last = findForValFirstUnderHeight(valconsAddr, height - 1)) {
-                            null -> listOf(0, 0, height)
-                            else -> listOf(
-                                if (last.blockHeight == height - 1) last.runningCount else 0,
-                                last.totalCount,
-                                height
-                            )
-                        }
-                    else -> listOf(0, rec.totalCount, null)
-                }
-            } ?: listOf(0, 0, null)
-
+        fun insert(height: Int, valconsAddr: String) = transaction {
             MissedBlocksTable.insertIgnore {
                 it[this.blockHeight] = height
                 it[this.valConsAddr] = valconsAddr
-                it[this.runningCount] = running!! + 1
-                it[this.totalCount] = total!! + 1
-            }
-
-            if (updateFromHeight != null) {
-                updateRecords(updateFromHeight, valconsAddr, running!! + 1, total!! + 1)
-            }
-
-            val endTime = System.currentTimeMillis()
-            val duration = endTime - startTime
-
-            // TODO: remove warning if problem is fixed after adding limit to queries See: https://github.com/provenance-io/explorer-service/issues/546
-            if (duration > 1000) {
-                logger().warn("Processing calculateMissedAndInsert took ${duration}ms for height: $height and valconsAddr: $valconsAddr")
-            }
-        }
-
-        fun updateRecords(height: Int, valconsAddr: String, currRunning: Int, currTotal: Int) = transaction {
-            val records = MissedBlocksRecord
-                .find { (MissedBlocksTable.valConsAddr eq valconsAddr) and (MissedBlocksTable.blockHeight greater height) }
-                .orderBy(Pair(MissedBlocksTable.blockHeight, SortOrder.ASC))
-
-            BatchUpdateStatement(MissedBlocksTable).apply {
-                var lastHeight = height
-                var lastRunning = currRunning
-                var lastTotal = currTotal
-                records.forEach {
-                    addBatch(it.id)
-                    val running = if (lastHeight == it.blockHeight - 1) lastRunning + 1 else 1
-                    this[MissedBlocksTable.runningCount] = running
-                    this[MissedBlocksTable.totalCount] = lastTotal + 1
-                    lastHeight = it.blockHeight
-                    lastRunning = running
-                    lastTotal += 1
-                }
-                execute(TransactionManager.current())
+                // TODO: remove these column from database See: https://github.com/provenance-io/explorer-service/issues/549
+                it[this.runningCount] = -1
+                it[this.totalCount] = -1
             }
         }
     }
