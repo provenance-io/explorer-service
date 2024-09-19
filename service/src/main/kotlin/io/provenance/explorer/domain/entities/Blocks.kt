@@ -184,7 +184,8 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
             listOf(height, proposer, minGasFee, timestamp, null).toProcedureObject()
 
         fun findAvgBlockCreation(limit: Int): BigDecimal = transaction {
-            val sqlQuery = """
+            val sqlQuery =
+"""
     WITH limited_blocks AS (
         SELECT block_height, block_timestamp
         FROM block_proposer
