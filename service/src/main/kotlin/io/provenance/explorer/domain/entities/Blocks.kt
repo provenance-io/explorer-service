@@ -65,6 +65,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
+import java.math.BigDecimal
 import java.sql.ResultSet
 
 object BlockCacheTable : CacheIdTable<Int>(name = "block_cache") {
@@ -171,7 +172,6 @@ object BlockProposerTable : IdTable<Int>(name = "block_proposer") {
     override val id = blockHeight.entityId()
     val proposerOperatorAddress = varchar("proposer_operator_address", 96)
     val blockTimestamp = datetime("block_timestamp")
-    val blockLatency = decimal("block_latency", 50, 25).nullable()
 }
 
 fun BlockProposer.buildInsert() = listOf(
@@ -187,18 +187,27 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
         fun buildInsert(height: Int, minGasFee: Double, timestamp: DateTime, proposer: String) =
             listOf(height, proposer, minGasFee, timestamp, null).toProcedureObject()
 
-        fun calcLatency() = transaction {
-            val query = "CALL update_block_latency();"
-            this.exec(query)
-        }
-
-        fun findAvgBlockCreation(limit: Int) = transaction {
-            BlockProposerTable.slice(BlockProposerTable.blockLatency)
-                .select { BlockProposerTable.blockLatency.isNotNull() }
-                .orderBy(BlockProposerTable.blockHeight, SortOrder.DESC)
-                .limit(limit)
-                .mapNotNull { it[BlockProposerTable.blockLatency] }
-                .average()
+        fun findAvgBlockCreation(limit: Int): BigDecimal = transaction {
+            val sqlQuery = """
+    WITH limited_blocks AS (
+        SELECT block_height, block_timestamp
+        FROM BlockProposerTable
+        WHERE block_timestamp IS NOT NULL
+        ORDER BY block_height DESC
+        LIMIT $limit
+    )
+    SELECT AVG(EXTRACT(EPOCH FROM (block_timestamp - LAG(block_timestamp) 
+        OVER (ORDER BY block_height)))::numeric) AS avg_block_creation_time
+    FROM limited_blocks
+    WHERE block_timestamp IS NOT NULL;
+    """
+            exec(sqlQuery) { resultSet ->
+                if (resultSet.next()) {
+                    resultSet.getBigDecimal("avg_block_creation_time")
+                } else {
+                    BigDecimal.ZERO
+                }
+            } ?: BigDecimal.ZERO
         }
 
         fun findMissingRecords(min: Int, max: Int, limit: Int) = transaction {
@@ -213,7 +222,7 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun getRecordsForProposer(address: String, limit: Int) = transaction {
             BlockProposerRecord.find {
-                (BlockProposerTable.proposerOperatorAddress eq address) and (BlockProposerTable.blockLatency.isNotNull())
+                (BlockProposerTable.proposerOperatorAddress eq address)
             }.orderBy(Pair(BlockProposerTable.blockHeight, SortOrder.DESC))
                 .limit(limit)
                 .toList()
@@ -223,7 +232,6 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
     var blockHeight by BlockProposerTable.blockHeight
     var proposerOperatorAddress by BlockProposerTable.proposerOperatorAddress
     var blockTimestamp by BlockProposerTable.blockTimestamp
-    var blockLatency by BlockProposerTable.blockLatency
 }
 
 object MissedBlocksTable : IntIdTable(name = "missed_blocks") {

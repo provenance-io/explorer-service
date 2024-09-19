@@ -544,14 +544,14 @@ class ValidatorService(
         }
     }
 
-    fun getBlockLatencyData(address: String, blockCount: Int) =
-        getValidatorOperatorAddress(address)?.let { addr ->
-            BlockProposerRecord.getRecordsForProposer(addr.operatorAddress, blockCount).let { res ->
-                val average = res.map { it.blockLatency!! }.average()
-                val data = res.associate { it.blockHeight to it.blockLatency!! }
-                BlockLatencyData(addr.operatorAddress, data, average)
-            }
-        } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
+//    fun getBlockLatencyData(address: String, blockCount: Int) =
+//        getValidatorOperatorAddress(address)?.let { addr ->
+//            BlockProposerRecord.getRecordsForProposer(addr.operatorAddress, blockCount).let { res ->
+//                val average = res.map { it.blockLatency!! }.average()
+//                val data = res.associate { it.blockHeight to it.blockLatency!! }
+//                BlockLatencyData(addr.operatorAddress, data, average)
+//            }
+//        } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
     private fun getLatestHeight() = SpotlightCacheRecord.getSpotlight()?.latestBlock?.height ?: blockService.getMaxBlockCacheHeight()
 
