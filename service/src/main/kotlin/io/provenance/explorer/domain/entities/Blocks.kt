@@ -2,6 +2,7 @@ package io.provenance.explorer.domain.entities
 
 import cosmos.base.tendermint.v1beta1.Query
 import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.DateTrunc
 import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.ExtractDOW
@@ -200,6 +201,7 @@ FROM (
 ) AS time_differences
 WHERE diff_in_seconds IS NOT NULL;
     """
+            logger().info("findAvgBlockCreation starting query.")
             exec(sqlQuery) { resultSet ->
                 if (resultSet.next()) {
                     resultSet.getBigDecimal("avg_block_creation_time")
