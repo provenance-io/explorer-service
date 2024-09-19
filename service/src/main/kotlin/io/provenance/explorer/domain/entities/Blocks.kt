@@ -264,7 +264,7 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
             MissedBlocksTable.insertIgnore {
                 it[this.blockHeight] = height
                 it[this.valConsAddr] = valconsAddr
-                // TODO: remove these column from database
+                // TODO: remove these column from database See: https://github.com/provenance-io/explorer-service/issues/549
                 it[this.runningCount] = -1
                 it[this.totalCount] = -1
             }
