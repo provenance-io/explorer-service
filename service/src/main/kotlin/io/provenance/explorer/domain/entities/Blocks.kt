@@ -201,14 +201,11 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
     ) AS time_differences
     WHERE diff_in_seconds IS NOT NULL;
     """.trimIndent()
-            logger().info("findAvgBlockCreation starting query.")
-            sqlQuery.execAndMap { resultSet ->
-                if (resultSet.next()) {
-                    resultSet.getBigDecimal("avg_block_creation_time")
-                } else {
-                    BigDecimal.ZERO
-                }
+            val average = sqlQuery.execAndMap {
+                it.getBigDecimal("avg_block_creation_time")
             }.firstOrNull() ?: BigDecimal.ZERO
+            logger().info("findAvgBlockCreation average time $average")
+            average
         }
 
         fun findMissingRecords(min: Int, max: Int, limit: Int) = transaction {
