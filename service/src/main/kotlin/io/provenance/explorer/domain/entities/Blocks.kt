@@ -186,29 +186,29 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findAvgBlockCreation(limit: Int): BigDecimal = transaction {
             val sqlQuery = """
-WITH limited_blocks AS (
-    SELECT block_height, block_timestamp
-    FROM block_proposer
-    WHERE block_timestamp IS NOT NULL
-    ORDER BY block_height DESC
-    LIMIT $limit
-)
-SELECT AVG(diff_in_seconds) AS avg_block_creation_time
-FROM (
-    SELECT EXTRACT(EPOCH FROM (block_timestamp - LAG(block_timestamp) 
-        OVER (ORDER BY block_height))) AS diff_in_seconds
-    FROM limited_blocks
-) AS time_differences
-WHERE diff_in_seconds IS NOT NULL;
-    """
+    WITH limited_blocks AS (
+        SELECT block_height, block_timestamp
+        FROM block_proposer
+        WHERE block_timestamp IS NOT NULL
+        ORDER BY block_height DESC
+        LIMIT $limit
+    )
+    SELECT AVG(diff_in_seconds) AS avg_block_creation_time
+    FROM (
+        SELECT EXTRACT(EPOCH FROM (block_timestamp - LAG(block_timestamp) 
+            OVER (ORDER BY block_height))) AS diff_in_seconds
+        FROM limited_blocks
+    ) AS time_differences
+    WHERE diff_in_seconds IS NOT NULL;
+    """.trimIndent()
             logger().info("findAvgBlockCreation starting query.")
-            exec(sqlQuery) { resultSet ->
+            sqlQuery.execAndMap { resultSet ->
                 if (resultSet.next()) {
                     resultSet.getBigDecimal("avg_block_creation_time")
                 } else {
                     BigDecimal.ZERO
                 }
-            } ?: BigDecimal.ZERO
+            }.firstOrNull() ?: BigDecimal.ZERO
         }
 
         fun findMissingRecords(min: Int, max: Int, limit: Int) = transaction {
