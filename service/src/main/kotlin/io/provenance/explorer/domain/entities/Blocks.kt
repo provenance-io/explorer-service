@@ -9,7 +9,6 @@ import io.provenance.explorer.domain.core.sql.ExtractDay
 import io.provenance.explorer.domain.core.sql.ExtractHour
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
-import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.exec
 import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.map
