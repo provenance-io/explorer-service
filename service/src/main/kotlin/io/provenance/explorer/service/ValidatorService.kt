@@ -502,7 +502,7 @@ class ValidatorService(
 
             currentVals.validatorsList.forEach { vali ->
                 if (!signatures.contains(vali.address)) {
-                    MissedBlocksRecord.calculateMissedAndInsert(lastBlock.height.toInt(), vali.address)
+                    MissedBlocksRecord.insert(lastBlock.height.toInt(), vali.address)
                 }
             }
         }
