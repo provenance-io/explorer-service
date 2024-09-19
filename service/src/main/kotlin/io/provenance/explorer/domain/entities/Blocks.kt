@@ -185,17 +185,20 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findAvgBlockCreation(limit: Int): BigDecimal = transaction {
             val sqlQuery = """
-    WITH limited_blocks AS (
-        SELECT block_height, block_timestamp
-        FROM BlockProposerTable
-        WHERE block_timestamp IS NOT NULL
-        ORDER BY block_height DESC
-        LIMIT $limit
-    )
-    SELECT AVG(EXTRACT(EPOCH FROM (block_timestamp - LAG(block_timestamp) 
-        OVER (ORDER BY block_height)))::numeric) AS avg_block_creation_time
+WITH limited_blocks AS (
+    SELECT block_height, block_timestamp
+    FROM block_proposer
+    WHERE block_timestamp IS NOT NULL
+    ORDER BY block_height DESC
+    LIMIT $limit
+)
+SELECT AVG(diff_in_seconds) AS avg_block_creation_time
+FROM (
+    SELECT EXTRACT(EPOCH FROM (block_timestamp - LAG(block_timestamp) 
+        OVER (ORDER BY block_height))) AS diff_in_seconds
     FROM limited_blocks
-    WHERE block_timestamp IS NOT NULL;
+) AS time_differences
+WHERE diff_in_seconds IS NOT NULL;
     """
             exec(sqlQuery) { resultSet ->
                 if (resultSet.next()) {
