@@ -13,7 +13,6 @@ import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AddressImageRecord
-import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.MissedBlocksRecord
 import io.provenance.explorer.domain.entities.SpotlightCacheRecord
 import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
@@ -46,7 +45,6 @@ import io.provenance.explorer.domain.models.explorer.hourlyBlockCount
 import io.provenance.explorer.domain.models.explorer.zeroOutValidatorObj
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.ValidatorGrpcClient
-import io.provenance.explorer.model.BlockLatencyData
 import io.provenance.explorer.model.CommissionList
 import io.provenance.explorer.model.CommissionRate
 import io.provenance.explorer.model.Delegation
@@ -543,15 +541,6 @@ class ValidatorService(
             null
         }
     }
-
-    fun getBlockLatencyData(address: String, blockCount: Int) =
-        getValidatorOperatorAddress(address)?.let { addr ->
-            BlockProposerRecord.getRecordsForProposer(addr.operatorAddress, blockCount).let { res ->
-                val average = res.map { it.blockLatency!! }.average()
-                val data = res.associate { it.blockHeight to it.blockLatency!! }
-                BlockLatencyData(addr.operatorAddress, data, average)
-            }
-        } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
     private fun getLatestHeight() = SpotlightCacheRecord.getSpotlight()?.latestBlock?.height ?: blockService.getMaxBlockCacheHeight()
 
