@@ -165,17 +165,6 @@ class ValidatorControllerV2(
         dayCount: Int
     ) = validatorService.getValidatorMarketRateStats(address, fromDate, toDate, dayCount)
 
-    @ApiOperation("Returns block latency data for the validator")
-    @GetMapping("/{address}/latency")
-    fun blockLatency(
-        @ApiParam(value = "The Validator's operator, owning account, or consensus address")
-        @PathVariable
-        address: String,
-        @ApiParam(value = "The number of blocks of data returned", defaultValue = "100", required = false)
-        @RequestParam(defaultValue = "100")
-        blockCount: Int
-    ) = validatorService.getBlockLatencyData(address, blockCount)
-
     @ApiOperation("Returns distinct validators with missed blocks for the timeframe")
     @GetMapping("/missed_blocks/distinct")
     fun missedBlocksDistinct(

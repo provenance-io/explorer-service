@@ -9,7 +9,6 @@ import io.provenance.explorer.domain.core.sql.ExtractDay
 import io.provenance.explorer.domain.core.sql.ExtractHour
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
-import io.provenance.explorer.domain.extensions.average
 import io.provenance.explorer.domain.extensions.exec
 import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.map
@@ -57,13 +56,12 @@ import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.sum
-import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
+import java.math.BigDecimal
 import java.sql.ResultSet
 
 object BlockCacheTable : CacheIdTable<Int>(name = "block_cache") {
@@ -170,7 +168,6 @@ object BlockProposerTable : IdTable<Int>(name = "block_proposer") {
     override val id = blockHeight.entityId()
     val proposerOperatorAddress = varchar("proposer_operator_address", 96)
     val blockTimestamp = datetime("block_timestamp")
-    val blockLatency = decimal("block_latency", 50, 25).nullable()
 }
 
 fun BlockProposer.buildInsert() = listOf(
@@ -186,18 +183,27 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
         fun buildInsert(height: Int, minGasFee: Double, timestamp: DateTime, proposer: String) =
             listOf(height, proposer, minGasFee, timestamp, null).toProcedureObject()
 
-        fun calcLatency() = transaction {
-            val query = "CALL update_block_latency();"
-            this.exec(query)
-        }
-
-        fun findAvgBlockCreation(limit: Int) = transaction {
-            BlockProposerTable.slice(BlockProposerTable.blockLatency)
-                .select { BlockProposerTable.blockLatency.isNotNull() }
-                .orderBy(BlockProposerTable.blockHeight, SortOrder.DESC)
-                .limit(limit)
-                .mapNotNull { it[BlockProposerTable.blockLatency] }
-                .average()
+        fun findAvgBlockCreation(limit: Int): BigDecimal = transaction {
+            val sqlQuery =
+"""
+    WITH limited_blocks AS (
+        SELECT block_height, block_timestamp
+        FROM block_proposer
+        WHERE block_timestamp IS NOT NULL
+        ORDER BY block_height DESC
+        LIMIT $limit
+    )
+    SELECT AVG(diff_in_seconds) AS avg_block_creation_time
+    FROM (
+        SELECT EXTRACT(EPOCH FROM (block_timestamp - LAG(block_timestamp) 
+            OVER (ORDER BY block_height))) AS diff_in_seconds
+        FROM limited_blocks
+    ) AS time_differences
+    WHERE diff_in_seconds IS NOT NULL;
+""".trimIndent()
+            sqlQuery.execAndMap {
+                it.getBigDecimal("avg_block_creation_time")
+            }.firstOrNull() ?: BigDecimal.ZERO
         }
 
         fun findMissingRecords(min: Int, max: Int, limit: Int) = transaction {
@@ -212,7 +218,7 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun getRecordsForProposer(address: String, limit: Int) = transaction {
             BlockProposerRecord.find {
-                (BlockProposerTable.proposerOperatorAddress eq address) and (BlockProposerTable.blockLatency.isNotNull())
+                (BlockProposerTable.proposerOperatorAddress eq address)
             }.orderBy(Pair(BlockProposerTable.blockHeight, SortOrder.DESC))
                 .limit(limit)
                 .toList()
@@ -222,7 +228,6 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
     var blockHeight by BlockProposerTable.blockHeight
     var proposerOperatorAddress by BlockProposerTable.proposerOperatorAddress
     var blockTimestamp by BlockProposerTable.blockTimestamp
-    var blockLatency by BlockProposerTable.blockLatency
 }
 
 object MissedBlocksTable : IntIdTable(name = "missed_blocks") {
@@ -262,72 +267,13 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
             query.exec(arguments).map { it.getString("val_cons_address") }
         }
 
-        fun findLatestForVal(valconsAddr: String) = transaction {
-            MissedBlocksRecord.find { MissedBlocksTable.valConsAddr eq valconsAddr }
-                .orderBy(Pair(MissedBlocksTable.blockHeight, SortOrder.DESC))
-                .firstOrNull()
-        }
-
-        fun findForValFirstUnderHeight(valconsAddr: String, height: Int) = transaction {
-            MissedBlocksRecord
-                .find { (MissedBlocksTable.valConsAddr eq valconsAddr) and (MissedBlocksTable.blockHeight lessEq height) }
-                .orderBy(Pair(MissedBlocksTable.blockHeight, SortOrder.DESC))
-                .firstOrNull()
-        }
-
         fun insert(height: Int, valconsAddr: String) = transaction {
-            val (running, total, updateFromHeight) = findLatestForVal(valconsAddr)?.let { rec ->
-                when {
-                    // If current height follows the last height, continue sequences
-                    rec.blockHeight == height - 1 -> listOf(rec.runningCount, rec.totalCount, null)
-                    rec.blockHeight > height ->
-                        // If current height is under the found height, find the last one directly under current
-                        // height, and see if it follows the sequence
-                        when (val last = findForValFirstUnderHeight(valconsAddr, height - 1)) {
-                            null -> listOf(0, 0, height)
-                            else -> listOf(
-                                if (last.blockHeight == height - 1) last.runningCount else 0,
-                                last.totalCount,
-                                height
-                            )
-                        }
-                    // Restart running sequence
-                    else -> listOf(0, rec.totalCount, null)
-                }
-            } ?: listOf(0, 0, null)
-
             MissedBlocksTable.insertIgnore {
                 it[this.blockHeight] = height
                 it[this.valConsAddr] = valconsAddr
-                it[this.runningCount] = running!! + 1
-                it[this.totalCount] = total!! + 1
-            }
-
-            // Update following height records
-            if (updateFromHeight != null) {
-                updateRecords(updateFromHeight, valconsAddr, running!! + 1, total!! + 1)
-            }
-        }
-
-        fun updateRecords(height: Int, valconsAddr: String, currRunning: Int, currTotal: Int) = transaction {
-            val records = MissedBlocksRecord
-                .find { (MissedBlocksTable.valConsAddr eq valconsAddr) and (MissedBlocksTable.blockHeight greater height) }
-                .orderBy(Pair(MissedBlocksTable.blockHeight, SortOrder.ASC))
-
-            BatchUpdateStatement(MissedBlocksTable).apply {
-                var lastHeight = height
-                var lastRunning = currRunning
-                var lastTotal = currTotal
-                records.forEach {
-                    addBatch(it.id)
-                    val running = if (lastHeight == it.blockHeight - 1) lastRunning + 1 else 1
-                    this[MissedBlocksTable.runningCount] = running
-                    this[MissedBlocksTable.totalCount] = lastTotal + 1
-                    lastHeight = it.blockHeight
-                    lastRunning = running
-                    lastTotal += 1
-                }
-                execute(TransactionManager.current())
+                // TODO: remove these column from database See: https://github.com/provenance-io/explorer-service/issues/549
+                it[this.runningCount] = -1
+                it[this.totalCount] = -1
             }
         }
     }

@@ -10,7 +10,6 @@ import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
-import io.provenance.explorer.domain.entities.BlockProposerRecord
 import io.provenance.explorer.domain.entities.BlockTxCountsCacheRecord
 import io.provenance.explorer.domain.entities.BlockTxRetryRecord
 import io.provenance.explorer.domain.entities.CacheKeys
@@ -152,7 +151,6 @@ class ScheduledTaskService(
         }
 
         BlockTxCountsCacheRecord.updateTxCounts()
-        BlockProposerRecord.calcLatency()
         if (!cacheService.getCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key)!!.cacheValue.toBoolean()) {
             cacheService.updateCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key, true.toString())
         }
