@@ -75,7 +75,7 @@ class TokenServiceTest {
     }
 
     @Test
-//    @Disabled("Test was used to manually call the endpoint")
+    @Disabled("Test was used to manually call the endpoint")
     fun `test fetchOnChainNavData`() {
         val denom = "nhash"
         val fromDate = DateTime.now().minusDays(7)
@@ -98,12 +98,10 @@ class TokenServiceTest {
     }
 
     fun calculatePricePerHash(priceAmountMillis: Long, volumeNhash: Long): Double {
-        // 1 hash = 1,000,000,000 nhash
         val N_HASH_IN_HASH: Long = 1000000000
         // Convert nhash volume to hash
         val volumeHash = volumeNhash.toDouble() / N_HASH_IN_HASH
 
-        // If volume is zero, avoid division by zero
         require(volumeHash != 0.0) { "Volume cannot be zero." }
 
         // Calculate the price of 1 hash
