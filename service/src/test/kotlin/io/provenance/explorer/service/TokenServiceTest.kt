@@ -91,19 +91,18 @@ class TokenServiceTest {
 
         result.forEach { navEvent ->
             val pricePerHash = calculatePricePerHash(navEvent.priceAmount, navEvent.volume)
-            println("NavEvent: Time=${DateTime(navEvent.blockTime * 1000, DateTimeZone.getDefault())}, PriceDenom=${navEvent.priceDenom}, Hash Price: ${pricePerHash}")
+            println("NavEvent: Time=${DateTime(navEvent.blockTime * 1000, DateTimeZone.getDefault())}, PriceDenom=${navEvent.priceDenom}, Hash Price: $pricePerHash")
         }
 
         assert(result.isNotEmpty()) { "Expected non-empty NavEvent list" }
     }
-
 
     @Test
     fun `test calculatePricePerHash with multiple scenarios`() {
         var result = calculatePricePerHash(12345L, ExplorerProperties.UTILITY_TOKEN_BASE_MULTIPLIER.toLong())
         assertEquals(12.345, result, "price per hash calculation is incorrect")
 
-        result = calculatePricePerHash(12345L,  0L)
+        result = calculatePricePerHash(12345L, 0L)
         assertEquals(0.0, result, "Should return 0.0 when volume is 0")
     }
 }

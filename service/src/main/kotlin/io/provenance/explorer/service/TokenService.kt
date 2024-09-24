@@ -11,7 +11,6 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.VANILLA_MAPPER
-import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
