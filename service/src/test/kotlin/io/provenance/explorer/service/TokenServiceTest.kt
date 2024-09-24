@@ -2,6 +2,7 @@ package io.provenance.explorer.service
 
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
+import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provlabs.flow.api.NavEvent
@@ -91,25 +92,19 @@ class TokenServiceTest {
 
         result.forEach { navEvent ->
             val pricePerHash = calculatePricePerHash(navEvent.priceAmount, navEvent.volume)
-            println("NavEvent: BlockHeight=${navEvent.blockHeight}, PriceDenom=${navEvent.priceDenom}, Hash Price: ${pricePerHash}")
+            println("NavEvent: Time=${DateTime(navEvent.blockTime * 1000, DateTimeZone.getDefault())}, PriceDenom=${navEvent.priceDenom}, Hash Price: ${pricePerHash}")
         }
 
         assert(result.isNotEmpty()) { "Expected non-empty NavEvent list" }
     }
 
-    fun calculatePricePerHash(priceAmountMillis: Long, volumeNhash: Long): Double {
-        val N_HASH_IN_HASH: Long = 1000000000
-        // Convert nhash volume to hash
-        val volumeHash = volumeNhash.toDouble() / N_HASH_IN_HASH
 
-        require(volumeHash != 0.0) { "Volume cannot be zero." }
+    @Test
+    fun `test calculatePricePerHash with multiple scenarios`() {
+        var result = calculatePricePerHash(12345L, ExplorerProperties.UTILITY_TOKEN_BASE_MULTIPLIER.toLong())
+        assertEquals(12.345, result, "price per hash calculation is incorrect")
 
-        // Calculate the price of 1 hash
-        // priceAmountMillis is in millis (e.g., 1234 = $1.234)
-        val pricePerHash = priceAmountMillis.toDouble() / volumeHash
-
-        // Convert the price back to a dollar amount by dividing by 1000
-        return pricePerHash / 1000.0
+        result = calculatePricePerHash(12345L,  0L)
+        assertEquals(0.0, result, "Should return 0.0 when volume is 0")
     }
-
 }

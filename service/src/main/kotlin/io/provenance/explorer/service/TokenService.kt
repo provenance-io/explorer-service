@@ -11,8 +11,10 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.VANILLA_MAPPER
+import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.CacheKeys
@@ -368,6 +370,24 @@ class TokenService(private val accountClient: AccountGrpcClient, private val nav
             volume.toString()
         )
     }
+}
+
+/**
+ * Calculates the price per hash unit based on the total price in USD (expressed as whole numbers
+ * where 12345 equals $12.345 USD) and the volume in nHash (nano Hash).
+ *
+ * @param priceAmount The total price in whole-number USD cents (e.g., 12345 equals $12.345 USD).
+ * @param volumeNhash The volume of the transaction in nHash (nano Hash).
+ *                    1 Hash = 1,000,000,000 nHash.
+ * @return The price per hash unit. Returns 0.0 if the volumeNhash is 0 to avoid division by zero.
+ */
+fun calculatePricePerHash(priceAmountMillis: Long, volumeNhash: Long): Double {
+    if (volumeNhash == 0L) {
+        return 0.0
+    }
+    val volumeHash = BigDecimal(volumeNhash).divide(UTILITY_TOKEN_BASE_MULTIPLIER, 10, RoundingMode.HALF_UP)
+    val pricePerHash = BigDecimal(priceAmountMillis).divide(volumeHash, 10, RoundingMode.HALF_UP)
+    return pricePerHash.divide(BigDecimal(1000), 10, RoundingMode.HALF_UP).toDouble()
 }
 
 fun BigDecimal.asPercentOf(divisor: BigDecimal): BigDecimal = this.divide(divisor, 20, RoundingMode.CEILING)
