@@ -359,23 +359,14 @@ class ScheduledTaskService(
     @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
     fun updateTokenLatest() {
         val today = DateTime.now().withZone(DateTimeZone.UTC)
-        val startDate = today.minusDays(7)
+        val startDate = today.minusDays(1)
         tokenService.fetchHistoricalPriceData(startDate)
             ?.sortedBy { it.time }
             ?.let { list ->
-                val prevRecIdx = list.indexOfLast { DateTime(it.time * 1000).isBefore(today.minusDays(1)) }
-                val prevRecord = list[prevRecIdx]
+                val prevRecord = list.firstOrNull() ?: return
                 val price = list.last().close.toThirdDecimal()
-                val percentChg = if (prevRecIdx == list.lastIndex) {
-                    BigDecimal.ZERO
-                } else {
-                    price.percentChange(prevRecord.close.toThirdDecimal())
-                }
-                val vol24Hr = if (prevRecIdx == list.lastIndex) {
-                    BigDecimal.ZERO
-                } else {
-                    list.subList(prevRecIdx + 1, list.lastIndex + 1).sumOf { it.volume.toThirdDecimal() }.stripTrailingZeros()
-                }
+                val percentChg = price.percentChange(prevRecord.close.toThirdDecimal())
+                val vol24Hr = list.sumOf { it.volume.toThirdDecimal() }.stripTrailingZeros()
                 val marketCap = price.multiply(tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)).toThirdDecimal()
                 val rec = CmcLatestDataAbbrev(
                     today,
