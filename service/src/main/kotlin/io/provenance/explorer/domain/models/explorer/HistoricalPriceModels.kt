@@ -2,6 +2,15 @@ package io.provenance.explorer.domain.models
 
 import java.math.BigDecimal
 
+data class HistoricalPrice(
+    val time: Long,
+    val high: BigDecimal,
+    val low: BigDecimal,
+    val close: BigDecimal,
+    val open: BigDecimal,
+    val volume: BigDecimal
+)
+
 data class OsmosisHistoricalPrice(
     val time: Long,
     val high: BigDecimal,

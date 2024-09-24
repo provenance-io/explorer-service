@@ -34,6 +34,7 @@ import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toPercentage
+import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.domain.models.OsmosisApiResponse
 import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
 import io.provenance.explorer.domain.models.explorer.TokenHistoricalDataRequest
@@ -237,6 +238,36 @@ class TokenService(private val accountClient: AccountGrpcClient, private val nav
 
     fun getTokenLatest() = CacheUpdateRecord.fetchCacheByKey(CacheKeys.UTILITY_TOKEN_LATEST.key)?.cacheValue?.let {
         VANILLA_MAPPER.readValue<CmcLatestDataAbbrev>(it)
+    }
+
+    fun fetchHistoricalPriceData(fromDate: DateTime?): List<HistoricalPrice> = runBlocking {
+        val osmosisHistoricalPrices = fetchOsmosisData(fromDate)
+        val onChainNavEvents = fetchOnChainNavData(UTILITY_TOKEN, fromDate, 17800)
+
+        val osmosisPrices = osmosisHistoricalPrices.map { osmosisPrice ->
+            HistoricalPrice(
+                time = osmosisPrice.time,
+                high = osmosisPrice.high,
+                low = osmosisPrice.low,
+                close = osmosisPrice.close,
+                open = osmosisPrice.open,
+                volume = osmosisPrice.volume
+            )
+        }
+
+        val navPrices = onChainNavEvents.map { navEvent ->
+            val pricePerHash = calculatePricePerHash(navEvent.priceAmount, navEvent.volume)
+            HistoricalPrice(
+                time = navEvent.blockTime,
+                high = BigDecimal(pricePerHash),
+                low = BigDecimal(pricePerHash),
+                close = BigDecimal(pricePerHash),
+                open = BigDecimal(pricePerHash),
+                volume = BigDecimal(navEvent.volume)
+            )
+        }
+
+        return@runBlocking osmosisPrices + navPrices
     }
 
     fun fetchOsmosisData(fromDate: DateTime?): List<OsmosisHistoricalPrice> = runBlocking {

@@ -360,7 +360,7 @@ class ScheduledTaskService(
     fun updateTokenLatest() {
         val today = DateTime.now().withZone(DateTimeZone.UTC)
         val startDate = today.minusDays(7)
-        tokenService.fetchOsmosisData(startDate)
+        tokenService.fetchHistoricalPriceData(startDate)
             ?.sortedBy { it.time }
             ?.let { list ->
                 val prevRecIdx = list.indexOfLast { DateTime(it.time * 1000).isBefore(today.minusDays(1)) }
