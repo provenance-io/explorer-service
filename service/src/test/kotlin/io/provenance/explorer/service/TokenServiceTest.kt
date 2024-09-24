@@ -4,6 +4,7 @@ import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
+import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provlabs.flow.api.NavEvent
 import io.provlabs.flow.api.NavServiceGrpc
@@ -20,18 +21,11 @@ class TokenServiceTest {
 
     private lateinit var accountClient: AccountGrpcClient
     private lateinit var tokenService: TokenService
-    private lateinit var channel: ManagedChannel
-    private lateinit var navServiceStub: NavServiceGrpc.NavServiceBlockingStub
 
     @BeforeEach
     fun setUp() {
         accountClient = AccountGrpcClient(URI("https://www.google.com"))
-        channel = ManagedChannelBuilder.forAddress("localhost", 50051)
-            .usePlaintext()
-            .build()
-
-        navServiceStub = NavServiceGrpc.newBlockingStub(channel)
-        tokenService = TokenService(accountClient, navServiceStub)
+        tokenService = TokenService(accountClient, FlowApiGrpcClient(URI("http://localhost:50051")))
     }
 
     @Test

@@ -37,6 +37,7 @@ import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.domain.models.OsmosisApiResponse
 import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
 import io.provenance.explorer.domain.models.explorer.TokenHistoricalDataRequest
+import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.model.AssetHolder
 import io.provenance.explorer.model.CmcLatestDataAbbrev
@@ -70,7 +71,7 @@ import java.util.zip.ZipOutputStream
 import javax.servlet.ServletOutputStream
 
 @Service
-class TokenService(private val accountClient: AccountGrpcClient, private val navService: NavServiceGrpc.NavServiceBlockingStub) {
+class TokenService(private val accountClient: AccountGrpcClient, private val flowApiGrpcClient: FlowApiGrpcClient) {
 
     protected val logger = logger(TokenService::class)
 
@@ -293,22 +294,8 @@ class TokenService(private val accountClient: AccountGrpcClient, private val nav
     }
 
     fun fetchOnChainNavData(denom: String, fromDate: DateTime?, limit: Int = 100): List<NavEvent> = runBlocking {
-        val fromDateString = fromDate?.toString(DateTimeFormat.forPattern("yyyy-MM-dd")) ?: ""
-        val request = NavEventRequest.newBuilder()
-            .setDenom(denom)
-            .addPriceDenoms("uusd.trading")
-            .addPriceDenoms("uusdc.figure.se")
-            .setFromDate(fromDateString)
-            .setLimit(limit)
-            .build()
-
-        try {
-            val response: NavEventResponse = navService.getNavEvents(request)
-            return@runBlocking response.navEventsList
-        } catch (e: Exception) {
-            logger.error("Error fetching Nav Events: ${e.message}", e)
-            emptyList()
-        }
+        val priceDenoms = listOf("uusd.trading", "uusdc.figure.se")
+        flowApiGrpcClient.getMarkerNavByPriceDenoms(denom, priceDenoms, fromDate, limit)
     }
 
     enum class TimeFrame(val minutes: Int) {

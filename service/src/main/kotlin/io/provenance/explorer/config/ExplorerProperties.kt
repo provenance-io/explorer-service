@@ -13,6 +13,7 @@ import java.math.BigDecimal
 class ExplorerProperties(
     val mainnet: String,
     val pbUrl: String,
+    val flowApiUrl: String,
     val initialHistoricalDayCount: String,
     val spotlightTtlMs: String,
     val genesisVersionUrl: String,
