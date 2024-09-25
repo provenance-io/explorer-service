@@ -291,6 +291,8 @@ class TokenService(private val accountClient: AccountGrpcClient, private val flo
 
     fun fetchOnChainNavData(denom: String, fromDate: DateTime?, limit: Int = 100): List<NavEvent> = runBlocking {
         val priceDenoms = listOf("uusd.trading", "uusdc.figure.se")
+        // TODO: remove or make debug before merge to main
+        logger.info("fetching on chain prices for $denom, $priceDenoms, $fromDate, $limit")
         flowApiGrpcClient.getMarkerNavByPriceDenoms(denom, priceDenoms, fromDate, limit)
     }
 
