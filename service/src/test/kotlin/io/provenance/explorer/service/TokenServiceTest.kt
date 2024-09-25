@@ -1,13 +1,10 @@
 package io.provenance.explorer.service
 
-import io.grpc.ManagedChannel
-import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
 import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provlabs.flow.api.NavEvent
-import io.provlabs.flow.api.NavServiceGrpc
 import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone

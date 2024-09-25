@@ -49,9 +49,6 @@ import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.CountStrTotal
 import io.provenance.explorer.model.base.PagedResults
 import io.provlabs.flow.api.NavEvent
-import io.provlabs.flow.api.NavEventRequest
-import io.provlabs.flow.api.NavEventResponse
-import io.provlabs.flow.api.NavServiceGrpc
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
@@ -61,7 +58,6 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import org.joda.time.Duration
-import org.joda.time.format.DateTimeFormat
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode

@@ -1,7 +1,6 @@
 package io.provenance.explorer.grpc.flow
 
 import io.grpc.ManagedChannelBuilder
-import io.provenance.attribute.v1.QueryGrpcKt
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.core.logger
 import io.provlabs.flow.api.NavEvent
