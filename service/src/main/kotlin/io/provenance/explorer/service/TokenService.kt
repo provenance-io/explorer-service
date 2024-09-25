@@ -237,6 +237,7 @@ class TokenService(private val accountClient: AccountGrpcClient, private val flo
     }
 
     fun fetchHistoricalPriceData(fromDate: DateTime?): List<HistoricalPrice> = runBlocking {
+        logger.info("fetchHistoricalPriceData fromDate: $fromDate")
         val osmosisHistoricalPrices = fetchOsmosisData(fromDate)
         val onChainNavEvents = fetchOnChainNavData(UTILITY_TOKEN, fromDate, 17800)
 

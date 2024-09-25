@@ -48,9 +48,10 @@ class FlowApiGrpcClient(flowApiChannelUri: URI) {
             .setLimit(limit)
 
         priceDenoms.forEach { requestBuilder.addPriceDenoms(it) }
-
+        val request = requestBuilder.build()
         try {
-            val response: NavEventResponse = navService.getNavEvents(requestBuilder.build())
+            logger().info("getMarkerNavByPriceDenoms $request")
+            val response: NavEventResponse = navService.getNavEvents(request)
             return@runBlocking response.navEventsList
         } catch (e: Exception) {
             logger().error("Error fetching Nav Events: ${e.message}", e)
