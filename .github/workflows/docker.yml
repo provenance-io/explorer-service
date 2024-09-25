@@ -32,7 +32,6 @@ jobs:
           echo ::set-output name=branch::${VERSION}
           if [ "${{ github.event.repository.default_branch }}" = "$VERSION" ]; then
             VERSION=latest
-          fi
           else 
             VERSION="${VERSION}-${{github.run_number}}"
           fi 
