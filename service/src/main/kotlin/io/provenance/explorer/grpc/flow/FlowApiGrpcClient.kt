@@ -10,9 +10,11 @@ import io.provlabs.flow.api.NavServiceGrpc
 import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
+import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
 
+@Component
 class FlowApiGrpcClient(flowApiChannelUri: URI) {
 
     private val navService: NavServiceGrpc.NavServiceBlockingStub
