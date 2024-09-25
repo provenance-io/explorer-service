@@ -32,9 +32,11 @@ jobs:
           echo ::set-output name=branch::${VERSION}
           if [ "${{ github.event.repository.default_branch }}" = "$VERSION" ]; then
             VERSION=latest
-          fi
+          else 
+            VERSION="${VERSION}-${{github.run_number}}"
+          fi 
         fi
-        TAGS="${DOCKER_IMAGE}:${VERSION}-${{github.run_number}}"
+        TAGS="${DOCKER_IMAGE}:${VERSION}"
         if [[ $VERSION =~ ^v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
           TAGS="$TAGS,${DOCKER_IMAGE}:${VERSION}"
         fi
