@@ -252,6 +252,7 @@ class TokenService(private val accountClient: AccountGrpcClient, private val flo
         }
 
         val navPrices = onChainNavEvents.map { navEvent ->
+            val volumeHash = calculateVolumeHash(navEvent.volume)
             val pricePerHash = calculatePricePerHash(navEvent.priceAmount, navEvent.volume)
             HistoricalPrice(
                 time = navEvent.blockTime,
@@ -259,7 +260,7 @@ class TokenService(private val accountClient: AccountGrpcClient, private val flo
                 low = BigDecimal(pricePerHash),
                 close = BigDecimal(pricePerHash),
                 open = BigDecimal(pricePerHash),
-                volume = BigDecimal(navEvent.volume)
+                volume = volumeHash
             )
         }
         return@runBlocking osmosisPrices + navPrices
@@ -394,12 +395,19 @@ class TokenService(private val accountClient: AccountGrpcClient, private val flo
  * @return The price per hash unit. Returns 0.0 if the volumeNhash is 0 to avoid division by zero.
  */
 fun calculatePricePerHash(priceAmountMillis: Long, volumeNhash: Long): Double {
-    if (volumeNhash == 0L) {
+    val volumeHash = calculateVolumeHash(volumeNhash)
+    if (volumeHash == BigDecimal.ZERO) {
         return 0.0
     }
-    val volumeHash = BigDecimal(volumeNhash).divide(UTILITY_TOKEN_BASE_MULTIPLIER, 10, RoundingMode.HALF_UP)
     val pricePerHash = BigDecimal(priceAmountMillis).divide(volumeHash, 10, RoundingMode.HALF_UP)
     return pricePerHash.divide(BigDecimal(1000), 10, RoundingMode.HALF_UP).toDouble()
+}
+
+fun calculateVolumeHash(volumeNhash: Long): BigDecimal {
+    if (volumeNhash == 0L) {
+        return BigDecimal.ZERO
+    }
+    return BigDecimal(volumeNhash).divide(UTILITY_TOKEN_BASE_MULTIPLIER, 10, RoundingMode.HALF_UP)
 }
 
 fun BigDecimal.asPercentOf(divisor: BigDecimal): BigDecimal = this.divide(divisor, 20, RoundingMode.CEILING)
