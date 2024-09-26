@@ -263,7 +263,8 @@ class TokenService(private val accountClient: AccountGrpcClient, private val flo
                 volume = BigDecimal(navEvent.volume)
             )
         }
-
+        // TODO: remove log before merge to main
+        logger.info("historical price totals nav: ${navPrices.size} osmosis: ${osmosisPrices.size} ")
         return@runBlocking osmosisPrices + navPrices
     }
 
