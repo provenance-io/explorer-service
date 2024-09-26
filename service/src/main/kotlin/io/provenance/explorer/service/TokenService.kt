@@ -263,6 +263,7 @@ class TokenService(private val accountClient: AccountGrpcClient, private val flo
                 volume = volumeHash
             )
         }
+        logger.info("fetchHistoricalPriceData navs ${navPrices.size} osmosis ${osmosisPrices.size}")
         return@runBlocking osmosisPrices + navPrices
     }
 
