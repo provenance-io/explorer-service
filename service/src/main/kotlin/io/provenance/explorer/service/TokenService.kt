@@ -260,10 +260,10 @@ class TokenService(private val accountClient: AccountGrpcClient, private val flo
                 low = BigDecimal(pricePerHash),
                 close = BigDecimal(pricePerHash),
                 open = BigDecimal(pricePerHash),
-                volume = volumeHash
+                volume = BigDecimal(pricePerHash).multiply(volumeHash)
             )
         }
-        logger.info("fetchHistoricalPriceData navs ${navPrices.size} osmosis ${osmosisPrices.size}")
+        logger.info("fetchHistoricalPriceData navs ${navPrices.size}  ${navPrices.sumOf { it.volume }} osmosis ${osmosisPrices.size} ${osmosisPrices.sumOf { it.volume }}")
         return@runBlocking osmosisPrices + navPrices
     }
 
