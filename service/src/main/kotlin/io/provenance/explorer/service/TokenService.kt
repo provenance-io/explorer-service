@@ -237,7 +237,6 @@ class TokenService(private val accountClient: AccountGrpcClient, private val flo
     }
 
     fun fetchHistoricalPriceData(fromDate: DateTime?): List<HistoricalPrice> = runBlocking {
-        logger.info("fetchHistoricalPriceData fromDate: $fromDate")
         val osmosisHistoricalPrices = fetchOsmosisData(fromDate)
         val onChainNavEvents = fetchOnChainNavData(UTILITY_TOKEN, fromDate, 17800)
 
@@ -263,8 +262,6 @@ class TokenService(private val accountClient: AccountGrpcClient, private val flo
                 volume = BigDecimal(navEvent.volume)
             )
         }
-        // TODO: remove log before merge to main
-        logger.info("historical price totals nav: ${navPrices.size} osmosis: ${osmosisPrices.size} ")
         return@runBlocking osmosisPrices + navPrices
     }
 
@@ -293,8 +290,6 @@ class TokenService(private val accountClient: AccountGrpcClient, private val flo
 
     fun fetchOnChainNavData(denom: String, fromDate: DateTime?, limit: Int = 100): List<NavEvent> = runBlocking {
         val priceDenoms = listOf("uusd.trading", "uusdc.figure.se")
-        // TODO: remove or make debug before merge to main
-        logger.info("fetching on chain prices for $denom, $priceDenoms, $fromDate, $limit")
         flowApiGrpcClient.getMarkerNavByPriceDenoms(denom, priceDenoms, fromDate, limit)
     }
 

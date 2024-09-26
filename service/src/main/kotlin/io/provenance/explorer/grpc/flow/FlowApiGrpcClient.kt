@@ -20,8 +20,6 @@ class FlowApiGrpcClient(flowApiChannelUri: URI) {
     private val navService: NavServiceGrpc.NavServiceBlockingStub
 
     init {
-        // TODO: remove before merging PR
-        logger().info("initializing flow api service: ${flowApiChannelUri.host} : ${flowApiChannelUri.port}")
         val channel =
             ManagedChannelBuilder.forAddress(flowApiChannelUri.host, flowApiChannelUri.port)
                 .also {
