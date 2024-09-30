@@ -69,16 +69,16 @@ import java.util.zip.ZipOutputStream
 import javax.servlet.ServletOutputStream
 
 @Service
-class TokenService(private val accountClient: AccountGrpcClient,
-                   private val flowApiGrpcClient: FlowApiGrpcClient,
-                   private val historicalPriceFetcherFactory: HistoricalPriceFetcherFactory
+class TokenService(
+    private val accountClient: AccountGrpcClient,
+    private val flowApiGrpcClient: FlowApiGrpcClient,
+    private val historicalPriceFetcherFactory: HistoricalPriceFetcherFactory
 ) {
-
     protected val logger = logger(TokenService::class)
-
     private val historicalPriceFetchers: List<HistoricalPriceFetcher> by lazy {
         historicalPriceFetcherFactory.createNhashFetchers()
     }
+
     fun getTokenDistributionStats() = transaction { TokenDistributionAmountsRecord.getStats() }
 
     fun saveResults(records: List<AssetHolder>) = runBlocking {

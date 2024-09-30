@@ -1,11 +1,8 @@
 package io.provenance.explorer.service.pricing.fetchers
 
 import io.provenance.explorer.config.ExplorerProperties
-import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
-import io.provlabs.flow.api.NavEvent
-import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
 import java.math.BigDecimal
 import java.math.RoundingMode

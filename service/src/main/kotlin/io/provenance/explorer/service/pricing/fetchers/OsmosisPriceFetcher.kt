@@ -1,16 +1,17 @@
 package io.provenance.explorer.service.pricing.fetchers
 
-import io.ktor.client.call.*
-import io.ktor.client.plugins.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
+import io.ktor.client.call.body
+import io.ktor.client.plugins.ResponseException
+import io.ktor.client.request.accept
+import io.ktor.client.request.get
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.domain.models.OsmosisApiResponse
 import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
-import io.provenance.explorer.service.TokenService
 import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
