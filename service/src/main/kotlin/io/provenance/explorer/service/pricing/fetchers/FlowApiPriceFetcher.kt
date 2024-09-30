@@ -9,8 +9,8 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 class FlowApiPriceFetcher(
-    private val denom: String,
-    private val pricingDenoms: List<String>,
+    val denom: String,
+    val pricingDenoms: List<String>,
     private val flowApiGrpcClient: FlowApiGrpcClient
 ) : HistoricalPriceFetcher {
 
