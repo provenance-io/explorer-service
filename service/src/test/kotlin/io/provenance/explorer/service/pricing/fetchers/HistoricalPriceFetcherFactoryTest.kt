@@ -2,10 +2,10 @@ package io.provenance.explorer.service.pricing.fetchers
 
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import java.net.URI
 
 class HistoricalPriceFetcherFactoryTest {
