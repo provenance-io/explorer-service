@@ -40,6 +40,7 @@ import io.provenance.explorer.domain.extensions.percentChange
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toThirdDecimal
+import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
 import io.provenance.explorer.grpc.extensions.getMsgSubTypes
 import io.provenance.explorer.grpc.extensions.getMsgType
@@ -312,12 +313,12 @@ class ScheduledTaskService(
         if (latest != null) {
             startDate = latest.timestamp.minusDays(1).startOfDay()
         }
-        val dlobRes = tokenService.fetchOsmosisData(startDate) ?: return
+        val dlobRes = tokenService.fetchLegacyHistoricalPriceData(startDate) ?: return
         logger.info("Updating token historical data starting from $startDate with ${dlobRes.size} buy records for roll-up.")
 
         val baseMap = Interval(startDate, today)
             .let { int -> generateSequence(int.start) { dt -> dt.plusDays(1) }.takeWhile { dt -> dt < int.end } }
-            .map { it to emptyList<OsmosisHistoricalPrice>() }.toMap().toMutableMap()
+            .map { it to emptyList<HistoricalPrice>() }.toMap().toMutableMap()
         var prevPrice = TokenHistoricalDailyRecord.lastKnownPriceForDate(startDate)
 
         baseMap.putAll(

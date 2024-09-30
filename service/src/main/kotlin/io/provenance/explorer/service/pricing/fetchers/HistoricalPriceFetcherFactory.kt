@@ -12,4 +12,10 @@ class HistoricalPriceFetcherFactory(
             FlowApiPriceFetcher(UTILITY_TOKEN, listOf("uusd.trading", "uusdc.figure.se"), flowApiGrpcClient)
         )
     }
+
+    fun createOsmosisPriceFetcher(): List<HistoricalPriceFetcher> {
+        return listOf(
+            OsmosisPriceFetcher()
+        )
+    }
 }

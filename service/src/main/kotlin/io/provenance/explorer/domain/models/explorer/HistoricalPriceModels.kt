@@ -11,6 +11,15 @@ data class HistoricalPrice(
     val volume: BigDecimal
 )
 
+fun HistoricalPrice.toCsv(): List<String> = listOf(
+    "$time",
+    "$open",
+    "$high",
+    "$low",
+    "$close",
+    "$volume"
+)
+
 data class OsmosisHistoricalPrice(
     val time: Long,
     val high: BigDecimal,
