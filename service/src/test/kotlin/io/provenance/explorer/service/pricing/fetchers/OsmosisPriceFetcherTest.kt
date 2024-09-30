@@ -3,11 +3,12 @@ package io.provenance.explorer.service.pricing.fetchers
 import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import kotlinx.coroutines.runBlocking
-import org.junit.jupiter.api.Assertions.assertEquals
+
 
 class OsmosisPriceFetcherTest {
 

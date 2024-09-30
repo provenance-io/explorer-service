@@ -30,7 +30,7 @@ class FlowApiPriceFetcher(
         }
     }
 
-    fun getMarkerNavByPriceDenoms(fromDate: DateTime?,  limit: Int): List<NavEvent>{
+    fun getMarkerNavByPriceDenoms(fromDate: DateTime?, limit: Int): List<NavEvent> {
         return flowApiGrpcClient.getMarkerNavByPriceDenoms(denom, pricingDenoms, fromDate, limit)
     }
 
