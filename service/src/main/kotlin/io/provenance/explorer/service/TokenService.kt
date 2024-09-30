@@ -67,7 +67,7 @@ class TokenService(
         historicalPriceFetcherFactory.createNhashFetchers()
     }
 
-    private val deprecatedHistoricalPricingFetchers : List<HistoricalPriceFetcher> by lazy {
+    private val deprecatedHistoricalPricingFetchers: List<HistoricalPriceFetcher> by lazy {
         historicalPriceFetcherFactory.createOsmosisPriceFetcher()
     }
 
