@@ -48,6 +48,8 @@ import io.provenance.explorer.model.TokenSupply
 import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.CountStrTotal
 import io.provenance.explorer.model.base.PagedResults
+import io.provenance.explorer.service.pricing.fetchers.HistoricalPriceFetcher
+import io.provenance.explorer.service.pricing.fetchers.HistoricalPriceFetcherFactory
 import io.provlabs.flow.api.NavEvent
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collect
@@ -67,10 +69,16 @@ import java.util.zip.ZipOutputStream
 import javax.servlet.ServletOutputStream
 
 @Service
-class TokenService(private val accountClient: AccountGrpcClient, private val flowApiGrpcClient: FlowApiGrpcClient) {
+class TokenService(private val accountClient: AccountGrpcClient,
+                   private val flowApiGrpcClient: FlowApiGrpcClient,
+                   private val historicalPriceFetcherFactory: HistoricalPriceFetcherFactory
+) {
 
     protected val logger = logger(TokenService::class)
 
+    private val historicalPriceFetchers: List<HistoricalPriceFetcher> by lazy {
+        historicalPriceFetcherFactory.createNhashFetchers()
+    }
     fun getTokenDistributionStats() = transaction { TokenDistributionAmountsRecord.getStats() }
 
     fun saveResults(records: List<AssetHolder>) = runBlocking {
@@ -237,34 +245,12 @@ class TokenService(private val accountClient: AccountGrpcClient, private val flo
     }
 
     fun fetchHistoricalPriceData(fromDate: DateTime?): List<HistoricalPrice> = runBlocking {
-        val osmosisHistoricalPrices = fetchOsmosisData(fromDate)
-        val onChainNavEvents = fetchOnChainNavData(UTILITY_TOKEN, fromDate, 17800)
+        val fetchers = historicalPriceFetcherFactory.createNhashFetchers()
 
-        val osmosisPrices = osmosisHistoricalPrices.map { osmosisPrice ->
-            HistoricalPrice(
-                time = osmosisPrice.time,
-                high = osmosisPrice.high,
-                low = osmosisPrice.low,
-                close = osmosisPrice.close,
-                open = osmosisPrice.open,
-                volume = osmosisPrice.volume
-            )
+        val allPrices = fetchers.flatMap { fetcher ->
+            fetcher.fetchHistoricalPrice(fromDate)
         }
-
-        val navPrices = onChainNavEvents.map { navEvent ->
-            val volumeHash = calculateVolumeHash(navEvent.volume)
-            val pricePerHash = calculatePricePerHash(navEvent.priceAmount, navEvent.volume)
-            HistoricalPrice(
-                time = navEvent.blockTime,
-                high = BigDecimal(pricePerHash),
-                low = BigDecimal(pricePerHash),
-                close = BigDecimal(pricePerHash),
-                open = BigDecimal(pricePerHash),
-                volume = BigDecimal(pricePerHash).multiply(volumeHash)
-            )
-        }
-        logger.info("fetchHistoricalPriceData navs ${navPrices.size}  ${navPrices.sumOf { it.volume }} osmosis ${osmosisPrices.size} ${osmosisPrices.sumOf { it.volume }}")
-        return@runBlocking osmosisPrices + navPrices
+        return@runBlocking allPrices
     }
 
     fun fetchOsmosisData(fromDate: DateTime?): List<OsmosisHistoricalPrice> = runBlocking {

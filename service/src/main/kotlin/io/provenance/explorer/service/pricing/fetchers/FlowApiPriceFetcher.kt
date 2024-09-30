@@ -10,12 +10,14 @@ import org.joda.time.DateTime
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-class OnChainNavPriceFetcher(
+class FlowApiPriceFetcher(
+    private val denom: String,
+    private val pricingDenoms: List<String>,
     private val flowApiGrpcClient: FlowApiGrpcClient
 ) : HistoricalPriceFetcher {
 
     override fun fetchHistoricalPrice(fromDate: DateTime?): List<HistoricalPrice> {
-        val onChainNavEvents = fetchOnChainNavData(UTILITY_TOKEN, fromDate, 17800)
+        val onChainNavEvents = flowApiGrpcClient.getMarkerNavByPriceDenoms(denom, pricingDenoms, fromDate, 17800)
         return onChainNavEvents.map { navEvent ->
             val volumeHash = calculateVolumeHash(navEvent.volume)
             val pricePerHash = calculatePricePerHash(navEvent.priceAmount, navEvent.volume)
@@ -28,11 +30,6 @@ class OnChainNavPriceFetcher(
                 volume = BigDecimal(pricePerHash).multiply(volumeHash)
             )
         }
-    }
-
-    fun fetchOnChainNavData(denom: String, fromDate: DateTime?, limit: Int = 100): List<NavEvent> = runBlocking {
-        val priceDenoms = listOf("uusd.trading", "uusdc.figure.se")
-        flowApiGrpcClient.getMarkerNavByPriceDenoms(denom, priceDenoms, fromDate, limit)
     }
 
     fun calculateVolumeHash(volumeNhash: Long): BigDecimal {
