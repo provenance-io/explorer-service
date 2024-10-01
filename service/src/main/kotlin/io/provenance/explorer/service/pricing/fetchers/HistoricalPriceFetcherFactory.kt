@@ -9,7 +9,7 @@ class HistoricalPriceFetcherFactory(
     fun createNhashFetchers(): List<HistoricalPriceFetcher> {
         return listOf(
             OsmosisPriceFetcher(),
-            FlowApiPriceFetcher(UTILITY_TOKEN, listOf("uusd.trading", "uusdc.figure.se"), flowApiGrpcClient)
+            FlowApiPriceFetcher(UTILITY_TOKEN, listOf("uusd.trading", "uusdc.figure.se", "uusdt.figure.se"), flowApiGrpcClient)
         )
     }
 

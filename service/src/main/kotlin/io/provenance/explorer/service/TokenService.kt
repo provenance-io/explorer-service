@@ -62,7 +62,6 @@ import javax.servlet.ServletOutputStream
 @Service
 class TokenService(
     private val accountClient: AccountGrpcClient,
-    private val flowApiGrpcClient: FlowApiGrpcClient,
     private val historicalPriceFetcherFactory: HistoricalPriceFetcherFactory
 ) {
     protected val logger = logger(TokenService::class)
