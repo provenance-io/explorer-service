@@ -76,8 +76,9 @@ class FlowApiPriceFetcherTest {
     @Test
     fun `test calculateVolumeHash`() {
         val volumeNhash = 1000000000000L
-
         val result = flowApiPriceFetcher.calculateVolumeHash(volumeNhash)
-        assertEquals(1.toBigDecimal(), result, "Volume hash calculation is incorrect")
+        val expected = 1000.0.toBigDecimal().setScale(10)
+        assertEquals(expected, result, "Volume hash calculation is incorrect")
     }
+
 }
