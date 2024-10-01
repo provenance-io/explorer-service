@@ -23,7 +23,7 @@ class TokenServiceTest {
         accountClient = AccountGrpcClient(URI("http://localhost:26657"))
         flowApiGrpcClient = FlowApiGrpcClient(URI("http://localhost:50051"))
         historicalPriceFetcherFactory = HistoricalPriceFetcherFactory(flowApiGrpcClient) // Set the factory as needed
-        tokenService = TokenService(accountClient, flowApiGrpcClient, historicalPriceFetcherFactory)
+        tokenService = TokenService(accountClient, historicalPriceFetcherFactory)
     }
 
     @Test

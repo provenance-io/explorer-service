@@ -28,7 +28,7 @@ class HistoricalPriceFetcherFactoryTest {
 
         val flowApiPriceFetcher = fetchers[1] as FlowApiPriceFetcher
         assertEquals(UTILITY_TOKEN, flowApiPriceFetcher.denom)
-        assertEquals(listOf("uusd.trading", "uusdc.figure.se"), flowApiPriceFetcher.pricingDenoms)
+        assertEquals(listOf("uusd.trading", "uusdc.figure.se", "uusdt.figure.se"), flowApiPriceFetcher.pricingDenoms)
     }
 
     @Test
