@@ -1,6 +1,7 @@
 package io.provenance.explorer.service.pricing.fetchers
 
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import io.provlabs.flow.api.NavEvent
 import org.joda.time.DateTime
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import java.math.BigDecimal
 import java.net.URI
 
 class FlowApiPriceFetcherTest {
@@ -25,8 +27,22 @@ class FlowApiPriceFetcherTest {
 
     @Test
     @Disabled("Test was used to manually call the endpoint")
-    fun `test fetchOnChainNavData and print results`() {
-        val fromDate = DateTime.now().minusDays(7)
+    fun `test fetchHistoricalPrice and print results`() {
+        val fromDate = DateTime.now().minusDays(1)
+
+        val result: List<HistoricalPrice> = flowApiPriceFetcher.fetchHistoricalPrice(fromDate)
+        result.forEach {
+            println("Time: ${DateTime(it.time * 1000)}, Open: ${it.open}, High: ${it.high}, Low: ${it.low}, Close: ${it.close}, Volume: ${it.volume}")
+        }
+
+        val totalVolume = result.sumOf { it.volume }
+        println("Total Volume: $totalVolume")
+    }
+
+    @Test
+    @Disabled("Test was used to manually call the endpoint")
+    fun `test getMarkerNavByPriceDenoms and print results`() {
+        val fromDate = DateTime.now().minusDays(1)
         val limit = 100
 
         val result: List<NavEvent> = flowApiPriceFetcher.getMarkerNavByPriceDenoms(fromDate, limit)
@@ -38,7 +54,7 @@ class FlowApiPriceFetcherTest {
         }
 
         result.forEach { navEvent ->
-            val pricePerHash = flowApiPriceFetcher.calculatePricePerHash(navEvent.priceAmount, navEvent.volume)
+            val pricePerHash = flowApiPriceFetcher.getPricePerHashFromMicroUsd(navEvent.priceAmount, navEvent.volume)
             println("NavEvent: Time=${DateTime(navEvent.blockTime * 1000)}, PriceDenom=${navEvent.priceDenom}, Hash Price: $pricePerHash")
         }
 
@@ -46,11 +62,22 @@ class FlowApiPriceFetcherTest {
     }
 
     @Test
-    fun `test calculatePricePerHash with multiple scenarios`() {
-        var result = flowApiPriceFetcher.calculatePricePerHash(12345L, ExplorerProperties.UTILITY_TOKEN_BASE_MULTIPLIER.toLong())
-        assertEquals(12.345, result, "Price per hash calculation is incorrect")
+    fun `test calculatePricePerHashFromMicroUsd`() {
+        var result = flowApiPriceFetcher.getPricePerHashFromMicroUsd(
+            4800000000L,
+            300000000000000
+        )
+        assertEquals(BigDecimal("0.016"), result, "Price per hash calculation is incorrect")
 
-        result = flowApiPriceFetcher.calculatePricePerHash(12345L, 0L)
-        assertEquals(0.0, result, "Should return 0.0 when volume is 0")
+        result = flowApiPriceFetcher.getPricePerHashFromMicroUsd(12345L, 0L)
+        assertEquals(BigDecimal.ZERO, result, "Should return 0.0 when volume is 0")
+    }
+
+    @Test
+    fun `test calculateVolumeHash`() {
+        val volumeNhash = 1000000000000L
+
+        val result = flowApiPriceFetcher.calculateVolumeHash(volumeNhash)
+        assertEquals(1.toBigDecimal(), result, "Volume hash calculation is incorrect")
     }
 }

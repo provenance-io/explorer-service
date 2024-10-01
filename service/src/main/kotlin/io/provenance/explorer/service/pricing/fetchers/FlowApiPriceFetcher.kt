@@ -18,14 +18,14 @@ class FlowApiPriceFetcher(
         val onChainNavEvents = getMarkerNavByPriceDenoms(fromDate, 17800)
         return onChainNavEvents.map { navEvent ->
             val volumeHash = calculateVolumeHash(navEvent.volume)
-            val pricePerHash = calculatePricePerHash(navEvent.priceAmount, navEvent.volume)
+            val pricePerHash = getPricePerHashFromMicroUsd(navEvent.priceAmount, navEvent.volume)
             HistoricalPrice(
                 time = navEvent.blockTime,
-                high = BigDecimal(pricePerHash),
-                low = BigDecimal(pricePerHash),
-                close = BigDecimal(pricePerHash),
-                open = BigDecimal(pricePerHash),
-                volume = BigDecimal(pricePerHash).multiply(volumeHash)
+                high = pricePerHash,
+                low = pricePerHash,
+                close = pricePerHash,
+                open = pricePerHash,
+                volume = pricePerHash.multiply(volumeHash)
             )
         }
     }
@@ -42,20 +42,21 @@ class FlowApiPriceFetcher(
     }
 
     /**
-     * Calculates the price per hash unit based on the total price in USD (expressed as whole numbers
-     * where 12345 equals $12.345 USD) and the volume in nHash (nano Hash).
+     * Calculates the price per hash unit based on the total price in micro-USD and the volume in nHash.
      *
-     * @param priceAmount The total price in whole-number USD cents (e.g., 12345 equals $12.345 USD).
+     * @param priceAmountMicros The total price in micro-USD (e.g., 123456789 equals $123.456789 USD).
      * @param volumeNhash The volume of the transaction in nHash (nano Hash).
      *                    1 Hash = 1,000,000,000 nHash.
-     * @return The price per hash unit. Returns 0.0 if the volumeNhash is 0 to avoid division by zero.
+     * @return The price per hash unit in USD, rounded down to 3 decimal places.
+     *         Returns 0.0 if the volumeNhash is 0 to avoid division by zero.
      */
-    fun calculatePricePerHash(priceAmountMillis: Long, volumeNhash: Long): Double {
-        val volumeHash = io.provenance.explorer.service.calculateVolumeHash(volumeNhash)
-        if (volumeHash == BigDecimal.ZERO) {
-            return 0.0
+    fun getPricePerHashFromMicroUsd(priceAmountMicros: Long, volumeNhash: Long): BigDecimal {
+        if (volumeNhash == 0L) {
+            return BigDecimal.ZERO
         }
-        val pricePerHash = BigDecimal(priceAmountMillis).divide(volumeHash, 10, RoundingMode.HALF_UP)
-        return pricePerHash.divide(BigDecimal(1000), 10, RoundingMode.HALF_UP).toDouble()
+        val volumeHash = calculateVolumeHash(volumeNhash)
+        val priceInUsd = BigDecimal(priceAmountMicros).divide(BigDecimal(1_000_000), 10, RoundingMode.HALF_UP)
+        val pricePerHash = priceInUsd.divide(volumeHash, 10, RoundingMode.HALF_UP)
+        return pricePerHash.setScale(3, RoundingMode.FLOOR)
     }
 }

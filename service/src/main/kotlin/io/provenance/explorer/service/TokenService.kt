@@ -20,11 +20,13 @@ import io.provenance.explorer.domain.entities.vestingAccountTypes
 import io.provenance.explorer.domain.exceptions.validate
 import io.provenance.explorer.domain.extensions.CsvData
 import io.provenance.explorer.domain.extensions.pageCountOfResults
+import io.provenance.explorer.domain.extensions.percentChange
 import io.provenance.explorer.domain.extensions.roundWhole
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toPercentage
+import io.provenance.explorer.domain.extensions.toThirdDecimal
 import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.domain.models.explorer.TokenHistoricalDataRequest
 import io.provenance.explorer.domain.models.toCsv
@@ -32,6 +34,7 @@ import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.model.AssetHolder
 import io.provenance.explorer.model.CmcLatestDataAbbrev
+import io.provenance.explorer.model.CmcLatestQuoteAbbrev
 import io.provenance.explorer.model.RichAccount
 import io.provenance.explorer.model.TokenDistribution
 import io.provenance.explorer.model.TokenDistributionAmount
@@ -39,6 +42,7 @@ import io.provenance.explorer.model.TokenSupply
 import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.CountStrTotal
 import io.provenance.explorer.model.base.PagedResults
+import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.explorer.service.pricing.fetchers.HistoricalPriceFetcher
 import io.provenance.explorer.service.pricing.fetchers.HistoricalPriceFetcherFactory
 import kotlinx.coroutines.flow.asFlow
@@ -250,6 +254,26 @@ class TokenService(
         return@runBlocking allPrices
     }
 
+    fun processLatestTokenData(list: List<HistoricalPrice>, today: DateTime): CmcLatestDataAbbrev? {
+        val prevRecord = list.firstOrNull() ?: return null
+        val price = list.last().close.toThirdDecimal()
+        val percentChg = price.percentChange(prevRecord.close.toThirdDecimal())
+        val vol24Hr = list.sumOf { it.volume.toThirdDecimal() }.stripTrailingZeros()
+        val marketCap = price.multiply(totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)).toThirdDecimal()
+
+        return CmcLatestDataAbbrev(
+            today,
+            mapOf(USD_UPPER to CmcLatestQuoteAbbrev(price, percentChg, vol24Hr, marketCap, today))
+        )
+    }
+
+    fun cacheLatestTokenData(data: CmcLatestDataAbbrev) {
+        CacheUpdateRecord.updateCacheByKey(
+            CacheKeys.UTILITY_TOKEN_LATEST.key,
+            VANILLA_MAPPER.writeValueAsString(data)
+        )
+    }
+
     fun getHashPricingDataDownload(filters: TokenHistoricalDataRequest, resp: ServletOutputStream): ZipOutputStream {
         validate(filters.datesValidation())
         val baseFileName = filters.getFileNameBase()
@@ -277,31 +301,6 @@ class TokenService(
         zos.close()
         return zos
     }
-}
-
-/**
- * Calculates the price per hash unit based on the total price in USD (expressed as whole numbers
- * where 12345 equals $12.345 USD) and the volume in nHash (nano Hash).
- *
- * @param priceAmount The total price in whole-number USD cents (e.g., 12345 equals $12.345 USD).
- * @param volumeNhash The volume of the transaction in nHash (nano Hash).
- *                    1 Hash = 1,000,000,000 nHash.
- * @return The price per hash unit. Returns 0.0 if the volumeNhash is 0 to avoid division by zero.
- */
-fun calculatePricePerHash(priceAmountMillis: Long, volumeNhash: Long): Double {
-    val volumeHash = calculateVolumeHash(volumeNhash)
-    if (volumeHash == BigDecimal.ZERO) {
-        return 0.0
-    }
-    val pricePerHash = BigDecimal(priceAmountMillis).divide(volumeHash, 10, RoundingMode.HALF_UP)
-    return pricePerHash.divide(BigDecimal(1000), 10, RoundingMode.HALF_UP).toDouble()
-}
-
-fun calculateVolumeHash(volumeNhash: Long): BigDecimal {
-    if (volumeNhash == 0L) {
-        return BigDecimal.ZERO
-    }
-    return BigDecimal(volumeNhash).divide(UTILITY_TOKEN_BASE_MULTIPLIER, 10, RoundingMode.HALF_UP)
 }
 
 fun BigDecimal.asPercentOf(divisor: BigDecimal): BigDecimal = this.divide(divisor, 20, RoundingMode.CEILING)

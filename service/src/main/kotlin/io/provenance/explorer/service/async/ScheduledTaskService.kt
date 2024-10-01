@@ -360,23 +360,14 @@ class ScheduledTaskService(
     fun updateTokenLatest() {
         val today = DateTime.now().withZone(DateTimeZone.UTC)
         val startDate = today.minusDays(1)
-        tokenService.fetchHistoricalPriceData(startDate)
-            ?.sortedBy { it.time }
-            ?.let { list ->
-                val prevRecord = list.firstOrNull() ?: return
-                val price = list.last().close.toThirdDecimal()
-                val percentChg = price.percentChange(prevRecord.close.toThirdDecimal())
-                val vol24Hr = list.sumOf { it.volume.toThirdDecimal() }.stripTrailingZeros()
-                val marketCap = price.multiply(tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)).toThirdDecimal()
-                val rec = CmcLatestDataAbbrev(
-                    today,
-                    mapOf(USD_UPPER to CmcLatestQuoteAbbrev(price, percentChg, vol24Hr, marketCap, today))
-                )
-                CacheUpdateRecord.updateCacheByKey(
-                    CacheKeys.UTILITY_TOKEN_LATEST.key,
-                    VANILLA_MAPPER.writeValueAsString(rec)
-                )
+        val list = tokenService.fetchHistoricalPriceData(startDate)?.sortedBy { it.time }
+
+        list?.let {
+            val latestData = tokenService.processLatestTokenData(it, today)
+            latestData?.let { data ->
+                tokenService.cacheLatestTokenData(data)
             }
+        }
     }
 
     // Remove once the ranges have been updated

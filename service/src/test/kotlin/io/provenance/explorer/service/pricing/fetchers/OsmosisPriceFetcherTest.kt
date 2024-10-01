@@ -21,13 +21,14 @@ class OsmosisPriceFetcherTest {
     @Test
     @Disabled("Test was used to manually call the endpoint")
     fun `test fetchOsmosisData and print results`() = runBlocking {
-        val fromDate = DateTime.parse("2024-05-08")
+        val fromDate = DateTime.parse("2024-10-01")
 
         val result: List<OsmosisHistoricalPrice> = osmosisPriceFetcher.fetchOsmosisData(fromDate)
-
         result.forEach {
             println("Time: ${DateTime(it.time * 1000)}, Open: ${it.open}, High: ${it.high}, Low: ${it.low}, Close: ${it.close}, Volume: ${it.volume}")
         }
+        val totalVolume = result.sumOf { it.volume }
+        println("Total Volume: $totalVolume")
     }
 
     @Test

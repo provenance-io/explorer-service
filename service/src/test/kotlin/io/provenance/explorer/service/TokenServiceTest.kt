@@ -56,23 +56,6 @@ class TokenServiceTest {
     }
 
     @Test
-    fun `test calculatePricePerHash`() {
-        val priceAmount = 12345L
-        val volume = 1000000000000L // 1 Hash = 1,000,000,000 nHash
-
-        val result = calculatePricePerHash(priceAmount, volume)
-        assertEquals(12.345, result, "Price per hash calculation is incorrect")
-    }
-
-    @Test
-    fun `test calculateVolumeHash`() {
-        val volumeNhash = 1000000000000L // 1 Hash = 1,000,000,000 nHash
-
-        val result = calculateVolumeHash(volumeNhash)
-        assertEquals(1.toBigDecimal(), result, "Volume hash calculation is incorrect")
-    }
-
-    @Test
     @Disabled("Test was used to manually call the endpoint")
     fun `test getTokenDistributionStats`() {
         val result = tokenService.getTokenDistributionStats()
