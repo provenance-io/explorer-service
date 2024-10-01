@@ -80,5 +80,4 @@ class FlowApiPriceFetcherTest {
         val expected = 1000.0.toBigDecimal().setScale(10)
         assertEquals(expected, result, "Volume hash calculation is incorrect")
     }
-
 }
