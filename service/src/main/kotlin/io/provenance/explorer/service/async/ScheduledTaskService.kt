@@ -3,7 +3,6 @@ package io.provenance.explorer.service.async
 import cosmos.authz.v1beta1.msgExec
 import cosmos.authz.v1beta1.msgGrant
 import cosmos.authz.v1beta1.msgRevoke
-import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_DECIMAL_PLACES
@@ -13,7 +12,6 @@ import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockTxCountsCacheRecord
 import io.provenance.explorer.domain.entities.BlockTxRetryRecord
 import io.provenance.explorer.domain.entities.CacheKeys
-import io.provenance.explorer.domain.entities.CacheUpdateRecord
 import io.provenance.explorer.domain.entities.ChainMarketRateStatsRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.ProcessQueueRecord
@@ -36,7 +34,6 @@ import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.extensions.getType
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.monthToQuarter
-import io.provenance.explorer.domain.extensions.percentChange
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toThirdDecimal
@@ -44,8 +41,6 @@ import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.grpc.extensions.getMsgSubTypes
 import io.provenance.explorer.grpc.extensions.getMsgType
 import io.provenance.explorer.model.CmcHistoricalQuote
-import io.provenance.explorer.model.CmcLatestDataAbbrev
-import io.provenance.explorer.model.CmcLatestQuoteAbbrev
 import io.provenance.explorer.model.CmcQuote
 import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.explorer.service.AccountService

@@ -6,7 +6,6 @@ import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.service.pricing.fetchers.HistoricalPriceFetcherFactory
 import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
