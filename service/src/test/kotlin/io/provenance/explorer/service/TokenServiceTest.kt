@@ -42,6 +42,22 @@ class TokenServiceTest {
 
     @Test
     @Disabled("Test was used to manually call the endpoint")
+    fun `test fetchHistoricalPriceData and process `() = runBlocking {
+        val fromDate = DateTime.now().minusDays(1)
+
+        val result: List<HistoricalPrice> = tokenService.fetchHistoricalPriceData(fromDate)
+
+        tokenService.processLatestTokenData(result, fromDate)
+
+        result.forEach {
+            println("Time: ${DateTime(it.time)}, Open: ${it.open}, High: ${it.high}, Low: ${it.low}, Close: ${it.close}, Volume: ${it.volume}")
+        }
+
+        assert(result.isNotEmpty()) { "Expected non-empty list of HistoricalPrice" }
+    }
+
+    @Test
+    @Disabled("Test was used to manually call the endpoint")
     fun `test fetchLegacyHistoricalPriceData`() = runBlocking {
         val fromDate = DateTime.now().minusDays(7)
 
