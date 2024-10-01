@@ -54,12 +54,6 @@ import io.provenance.explorer.service.PricingService
 import io.provenance.explorer.service.TokenService
 import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.service.getBlock
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.produce
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
