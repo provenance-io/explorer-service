@@ -69,6 +69,7 @@ import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.explorer.model.download.TxHistoryChartData
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.withPermit
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.innerJoin
@@ -405,14 +406,14 @@ class AccountService(
     }
 
     suspend fun updateTokenCounts(addr: String) {
-        try {
-            val nftCount = metadataClient.getScopesByOwnerTotal(addr)
-            val ftCount = getBalances(addr, 0, 1).pagination.total.toInt()
-            AccountTokenCountRecord.upsert(addr, ftCount, nftCount)
-        } catch (e: Exception) {
-            logger.error("Failed to update token counts for $addr : ${e.message}")
+            try {
+                val nftCount = metadataClient.getScopesByOwnerTotal(addr)
+                val ftCount = getBalances(addr, 0, 1).pagination.total.toInt()
+                AccountTokenCountRecord.upsert(addr, ftCount, nftCount)
+            } catch (e: Exception) {
+                logger.error("Failed to update token counts for $addr : ${e.message}")
+            }
         }
-    }
 }
 
 fun String.getAccountType() = this.split(".").last()

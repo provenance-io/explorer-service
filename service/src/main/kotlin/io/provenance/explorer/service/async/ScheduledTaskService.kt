@@ -445,29 +445,22 @@ class ScheduledTaskService(
     }
 
     @Scheduled(initialDelay = 5000L, fixedDelay = 5000L)
-    fun startAccountProcess() = runBlocking {
-        ProcessQueueRecord.reset(ProcessQueueType.ACCOUNT)
-        val producer = startAccountProcess()
-        repeat(5) { accountProcessor(producer) }
+    fun startAccountProcess() {
+        processAccountRecords()
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    fun CoroutineScope.startAccountProcess() = produce {
-        while (true) {
-            ProcessQueueRecord.findByType(ProcessQueueType.ACCOUNT).firstOrNull()?.let {
+    fun processAccountRecords() {
+        ProcessQueueRecord.reset(ProcessQueueType.ACCOUNT)
+        val records = ProcessQueueRecord.findByType(ProcessQueueType.ACCOUNT)
+        runBlocking {
+            for (record in records) {
                 try {
-                    transaction { it.apply { this.processing = true } }
-                    send(it.processValue)
+                    transaction { record.apply { this.processing = true } }
+                    accountService.updateTokenCounts(record.processValue)
+                    ProcessQueueRecord.delete(ProcessQueueType.ACCOUNT, record.processValue)
                 } catch (_: Exception) {
                 }
             }
-        }
-    }
-
-    fun CoroutineScope.accountProcessor(channel: ReceiveChannel<String>) = launch(Dispatchers.IO) {
-        for (msg in channel) {
-            accountService.updateTokenCounts(msg)
-            ProcessQueueRecord.delete(ProcessQueueType.ACCOUNT, msg)
         }
     }
 
