@@ -3,7 +3,6 @@ package io.provenance.explorer.service.async
 import cosmos.authz.v1beta1.msgExec
 import cosmos.authz.v1beta1.msgGrant
 import cosmos.authz.v1beta1.msgRevoke
-import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_DECIMAL_PLACES
@@ -13,7 +12,6 @@ import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockTxCountsCacheRecord
 import io.provenance.explorer.domain.entities.BlockTxRetryRecord
 import io.provenance.explorer.domain.entities.CacheKeys
-import io.provenance.explorer.domain.entities.CacheUpdateRecord
 import io.provenance.explorer.domain.entities.ChainMarketRateStatsRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
 import io.provenance.explorer.domain.entities.ProcessQueueRecord
@@ -36,16 +34,13 @@ import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.extensions.getType
 import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.monthToQuarter
-import io.provenance.explorer.domain.extensions.percentChange
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toThirdDecimal
-import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
+import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.grpc.extensions.getMsgSubTypes
 import io.provenance.explorer.grpc.extensions.getMsgType
 import io.provenance.explorer.model.CmcHistoricalQuote
-import io.provenance.explorer.model.CmcLatestDataAbbrev
-import io.provenance.explorer.model.CmcLatestQuoteAbbrev
 import io.provenance.explorer.model.CmcQuote
 import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.explorer.service.AccountService
@@ -312,12 +307,12 @@ class ScheduledTaskService(
         if (latest != null) {
             startDate = latest.timestamp.minusDays(1).startOfDay()
         }
-        val dlobRes = tokenService.fetchOsmosisData(startDate) ?: return
+        val dlobRes = tokenService.fetchLegacyHistoricalPriceData(startDate) ?: return
         logger.info("Updating token historical data starting from $startDate with ${dlobRes.size} buy records for roll-up.")
 
         val baseMap = Interval(startDate, today)
             .let { int -> generateSequence(int.start) { dt -> dt.plusDays(1) }.takeWhile { dt -> dt < int.end } }
-            .map { it to emptyList<OsmosisHistoricalPrice>() }.toMap().toMutableMap()
+            .map { it to emptyList<HistoricalPrice>() }.toMap().toMutableMap()
         var prevPrice = TokenHistoricalDailyRecord.lastKnownPriceForDate(startDate)
 
         baseMap.putAll(
@@ -359,33 +354,15 @@ class ScheduledTaskService(
     @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
     fun updateTokenLatest() {
         val today = DateTime.now().withZone(DateTimeZone.UTC)
-        val startDate = today.minusDays(7)
-        tokenService.fetchOsmosisData(startDate)
-            ?.sortedBy { it.time }
-            ?.let { list ->
-                val prevRecIdx = list.indexOfLast { DateTime(it.time * 1000).isBefore(today.minusDays(1)) }
-                val prevRecord = list[prevRecIdx]
-                val price = list.last().close.toThirdDecimal()
-                val percentChg = if (prevRecIdx == list.lastIndex) {
-                    BigDecimal.ZERO
-                } else {
-                    price.percentChange(prevRecord.close.toThirdDecimal())
-                }
-                val vol24Hr = if (prevRecIdx == list.lastIndex) {
-                    BigDecimal.ZERO
-                } else {
-                    list.subList(prevRecIdx + 1, list.lastIndex + 1).sumOf { it.volume.toThirdDecimal() }.stripTrailingZeros()
-                }
-                val marketCap = price.multiply(tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)).toThirdDecimal()
-                val rec = CmcLatestDataAbbrev(
-                    today,
-                    mapOf(USD_UPPER to CmcLatestQuoteAbbrev(price, percentChg, vol24Hr, marketCap, today))
-                )
-                CacheUpdateRecord.updateCacheByKey(
-                    CacheKeys.UTILITY_TOKEN_LATEST.key,
-                    VANILLA_MAPPER.writeValueAsString(rec)
-                )
+        val startDate = today.minusDays(1)
+        val list = tokenService.fetchHistoricalPriceData(startDate)?.sortedBy { it.time }
+
+        list?.let {
+            val latestData = tokenService.processLatestTokenData(it, today)
+            latestData?.let { data ->
+                tokenService.cacheLatestTokenData(data)
             }
+        }
     }
 
     // Remove once the ranges have been updated

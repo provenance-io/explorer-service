@@ -33,6 +33,9 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+### Features
+* Add hash price support for nav values from on chain events [#543](https://github.com/provenance-io/explorer-service/pull/543)
+
 ### Improvements
 
 * Add limit of 1 to missing block queries [#544](https://github.com/provenance-io/explorer-service/pull/544)
