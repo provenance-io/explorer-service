@@ -1,7 +1,6 @@
 package io.provenance.explorer.service.pricing.fetchers
 
 import io.provenance.explorer.config.ExplorerProperties
-import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import io.provlabs.flow.api.NavEvent
@@ -15,9 +14,7 @@ class FlowApiPriceFetcher(
     private val flowApiGrpcClient: FlowApiGrpcClient
 ) : HistoricalPriceFetcher {
 
-    val logger = logger(FlowApiPriceFetcher::class)
     override fun fetchHistoricalPrice(fromDate: DateTime?): List<HistoricalPrice> {
-        logger.info("fetching navs from $fromDate")
         val onChainNavEvents = getMarkerNavByPriceDenoms(fromDate, 17800)
         return onChainNavEvents.map { navEvent ->
             val volumeHash = calculateVolumeHash(navEvent.volume)

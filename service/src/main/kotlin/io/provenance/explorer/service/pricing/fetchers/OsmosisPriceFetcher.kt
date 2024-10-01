@@ -22,7 +22,6 @@ class OsmosisPriceFetcher : HistoricalPriceFetcher {
 
     val logger = logger(OsmosisPriceFetcher::class)
     override fun fetchHistoricalPrice(fromDate: DateTime?): List<HistoricalPrice> {
-        logger.info("fetching osmosis prices from $fromDate")
         val osmosisHistoricalPrices = fetchOsmosisData(fromDate)
         return osmosisHistoricalPrices.map { osmosisPrice ->
             HistoricalPrice(
@@ -40,7 +39,7 @@ class OsmosisPriceFetcher : HistoricalPriceFetcher {
         val input = buildInputQuery(fromDate, determineTimeFrame(fromDate))
         try {
             val url = """https://app.osmosis.zone/api/edge-trpc-assets/assets.getAssetHistoricalPrice?input=$input"""
-            logger.info("Calling $url with fromDate $fromDate")
+            logger.debug("Calling $url with fromDate $fromDate")
             val response: HttpResponse = KTOR_CLIENT_JAVA.get(url) {
                 accept(ContentType.Application.Json)
             }
