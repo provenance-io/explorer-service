@@ -30,7 +30,6 @@ import io.provenance.explorer.domain.extensions.toThirdDecimal
 import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.domain.models.explorer.TokenHistoricalDataRequest
 import io.provenance.explorer.domain.models.toCsv
-import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.model.AssetHolder
 import io.provenance.explorer.model.CmcLatestDataAbbrev
