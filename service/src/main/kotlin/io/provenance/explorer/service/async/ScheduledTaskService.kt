@@ -446,14 +446,12 @@ class ScheduledTaskService(
     fun processAccountRecords() {
         ProcessQueueRecord.reset(ProcessQueueType.ACCOUNT)
         val records = ProcessQueueRecord.findByType(ProcessQueueType.ACCOUNT)
-        runBlocking {
-            for (record in records) {
-                try {
-                    transaction { record.apply { this.processing = true } }
-                    accountService.updateTokenCounts(record.processValue)
-                    ProcessQueueRecord.delete(ProcessQueueType.ACCOUNT, record.processValue)
-                } catch (_: Exception) {
-                }
+        for (record in records) {
+            try {
+                transaction { record.apply { this.processing = true } }
+                runBlocking { accountService.updateTokenCounts(record.processValue) }
+                ProcessQueueRecord.delete(ProcessQueueType.ACCOUNT, record.processValue)
+            } catch (_: Exception) {
             }
         }
     }
