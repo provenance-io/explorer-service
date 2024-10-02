@@ -48,7 +48,7 @@ class FlowApiGrpcClient(flowApiChannelUri: URI) {
         priceDenoms.forEach { requestBuilder.addPriceDenoms(it) }
         val request = requestBuilder.build()
         try {
-            logger().info("getMarkerNavByPriceDenoms $request")
+            logger().debug("getMarkerNavByPriceDenoms $request")
             val response: NavEventResponse = navService.getNavEvents(request)
             return@runBlocking response.navEventsList
         } catch (e: Exception) {

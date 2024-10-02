@@ -255,7 +255,7 @@ class TokenService(
         return@runBlocking allPrices
     }
 
-    fun processHistoricalData(startDate: DateTime, today: DateTime, dlobRes: List<HistoricalPrice>): List<CmcHistoricalQuote> {
+    fun processHistoricalData(startDate: DateTime, today: DateTime, historicalPrices: List<HistoricalPrice>): List<CmcHistoricalQuote> {
         val baseMap = Interval(startDate, today)
             .let { int -> generateSequence(int.start) { dt -> dt.plusDays(1) }.takeWhile { dt -> dt < int.end } }
             .map { it to emptyList<HistoricalPrice>() }.toMap().toMutableMap()
@@ -263,7 +263,7 @@ class TokenService(
         var prevPrice = TokenHistoricalDailyRecord.lastKnownPriceForDate(startDate)
 
         baseMap.putAll(
-            dlobRes
+            historicalPrices
                 .filter { DateTime(it.time * 1000).startOfDay() != today }
                 .groupBy { DateTime(it.time * 1000).startOfDay() }
         )

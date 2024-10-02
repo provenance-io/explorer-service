@@ -304,10 +304,10 @@ class ScheduledTaskService(
             startDate = latest.timestamp.minusDays(1).startOfDay()
         }
 
-        val dlobRes = tokenService.fetchLegacyHistoricalPriceData(startDate) ?: return
-        logger.info("Updating token historical data starting from $startDate with ${dlobRes.size} buy records for roll-up.")
+        val historicalPrices = tokenService.fetchLegacyHistoricalPriceData(startDate) ?: return
+        logger.info("Updating token historical data starting from $startDate with ${historicalPrices.size} buy records for roll-up.")
 
-        val processedData = tokenService.processHistoricalData(startDate, today, dlobRes)
+        val processedData = tokenService.processHistoricalData(startDate, today, historicalPrices)
 
         processedData.forEach { record ->
             TokenHistoricalDailyRecord.save(record.time_open.startOfDay(), record, "osmosis")
