@@ -54,12 +54,6 @@ import io.provenance.explorer.service.PricingService
 import io.provenance.explorer.service.TokenService
 import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.service.getBlock
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.produce
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
@@ -445,29 +439,20 @@ class ScheduledTaskService(
     }
 
     @Scheduled(initialDelay = 5000L, fixedDelay = 5000L)
-    fun startAccountProcess() = runBlocking {
+    fun startAccountProcess() {
+        processAccountRecords()
+    }
+
+    fun processAccountRecords() {
         ProcessQueueRecord.reset(ProcessQueueType.ACCOUNT)
-        val producer = startAccountProcess()
-        repeat(5) { accountProcessor(producer) }
-    }
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    fun CoroutineScope.startAccountProcess() = produce {
-        while (true) {
-            ProcessQueueRecord.findByType(ProcessQueueType.ACCOUNT).firstOrNull()?.let {
-                try {
-                    transaction { it.apply { this.processing = true } }
-                    send(it.processValue)
-                } catch (_: Exception) {
-                }
+        val records = ProcessQueueRecord.findByType(ProcessQueueType.ACCOUNT)
+        for (record in records) {
+            try {
+                transaction { record.apply { this.processing = true } }
+                runBlocking { accountService.updateTokenCounts(record.processValue) }
+                ProcessQueueRecord.delete(ProcessQueueType.ACCOUNT, record.processValue)
+            } catch (_: Exception) {
             }
-        }
-    }
-
-    fun CoroutineScope.accountProcessor(channel: ReceiveChannel<String>) = launch(Dispatchers.IO) {
-        for (msg in channel) {
-            accountService.updateTokenCounts(msg)
-            ProcessQueueRecord.delete(ProcessQueueType.ACCOUNT, msg)
         }
     }
 
