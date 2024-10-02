@@ -36,12 +36,8 @@ import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.monthToQuarter
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
-import io.provenance.explorer.domain.extensions.toThirdDecimal
-import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.grpc.extensions.getMsgSubTypes
 import io.provenance.explorer.grpc.extensions.getMsgType
-import io.provenance.explorer.model.CmcHistoricalQuote
-import io.provenance.explorer.model.CmcQuote
 import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.explorer.service.AccountService
 import io.provenance.explorer.service.AssetService
@@ -71,7 +67,6 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
-import org.joda.time.Interval
 import org.joda.time.LocalDate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -304,49 +299,17 @@ class ScheduledTaskService(
         val today = DateTime.now().startOfDay()
         var startDate = today.minusMonths(1)
         val latest = TokenHistoricalDailyRecord.getLatestDateEntry()
+
         if (latest != null) {
             startDate = latest.timestamp.minusDays(1).startOfDay()
         }
+
         val dlobRes = tokenService.fetchLegacyHistoricalPriceData(startDate) ?: return
         logger.info("Updating token historical data starting from $startDate with ${dlobRes.size} buy records for roll-up.")
 
-        val baseMap = Interval(startDate, today)
-            .let { int -> generateSequence(int.start) { dt -> dt.plusDays(1) }.takeWhile { dt -> dt < int.end } }
-            .map { it to emptyList<HistoricalPrice>() }.toMap().toMutableMap()
-        var prevPrice = TokenHistoricalDailyRecord.lastKnownPriceForDate(startDate)
+        val processedData = tokenService.processHistoricalData(startDate, today, dlobRes)
 
-        baseMap.putAll(
-            dlobRes
-                .filter { DateTime(it.time * 1000).startOfDay() != today }
-                .groupBy { DateTime(it.time * 1000).startOfDay() }
-        )
-        baseMap.forEach { (k, v) ->
-            val high = v.maxByOrNull { it.high.toThirdDecimal() }
-            val low = v.minByOrNull { it.low.toThirdDecimal() }
-            val open = v.minByOrNull { DateTime(it.time * 1000) }?.open ?: prevPrice
-            val close = v.maxByOrNull { DateTime(it.time * 1000) }?.close ?: prevPrice
-            val closeDate = k.plusDays(1).minusMillis(1)
-            val usdVolume = v.sumOf { it.volume.toThirdDecimal() }.stripTrailingZeros()
-            val record = CmcHistoricalQuote(
-                time_open = k,
-                time_close = closeDate,
-                time_high = if (high != null) DateTime(high.time * 1000) else k,
-                time_low = if (low != null) DateTime(low.time * 1000) else k,
-                quote = mapOf(
-                    USD_UPPER to
-                        CmcQuote(
-                            open = open,
-                            high = high?.high ?: prevPrice,
-                            low = low?.low ?: prevPrice,
-                            close = close,
-                            volume = usdVolume,
-                            market_cap = close.multiply(
-                                tokenService.totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)
-                            ).toThirdDecimal(),
-                            timestamp = closeDate
-                        )
-                )
-            ).also { prevPrice = close }
+        processedData.forEach { record ->
             TokenHistoricalDailyRecord.save(record.time_open.startOfDay(), record, "osmosis")
         }
     }
