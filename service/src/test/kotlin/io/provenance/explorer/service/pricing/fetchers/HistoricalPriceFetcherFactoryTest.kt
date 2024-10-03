@@ -21,7 +21,7 @@ class HistoricalPriceFetcherFactoryTest {
 
     @Test
     fun `test createNhashFetchers`() {
-        val fetchers = factory.createNhashFetchers()
+        val fetchers = factory.createNhashPricingFetchers()
         assertEquals(2, fetchers.size)
         assertTrue(fetchers[0] is OsmosisPriceFetcher)
         assertTrue(fetchers[1] is FlowApiPriceFetcher)

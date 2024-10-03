@@ -8,7 +8,8 @@ data class HistoricalPrice(
     val low: BigDecimal,
     val close: BigDecimal,
     val open: BigDecimal,
-    val volume: BigDecimal
+    val volume: BigDecimal,
+    val source: String
 )
 
 fun HistoricalPrice.toCsv(): List<String> = listOf(

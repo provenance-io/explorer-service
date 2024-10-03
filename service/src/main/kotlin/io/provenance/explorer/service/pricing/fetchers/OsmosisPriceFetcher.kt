@@ -21,6 +21,11 @@ import java.net.URLEncoder
 class OsmosisPriceFetcher : HistoricalPriceFetcher {
 
     val logger = logger(OsmosisPriceFetcher::class)
+
+    override fun getSource(): String {
+        return "osmosis"
+    }
+
     override fun fetchHistoricalPrice(fromDate: DateTime?): List<HistoricalPrice> {
         val osmosisHistoricalPrices = fetchOsmosisData(fromDate)
         return osmosisHistoricalPrices.map { osmosisPrice ->
@@ -30,7 +35,8 @@ class OsmosisPriceFetcher : HistoricalPriceFetcher {
                 low = osmosisPrice.low,
                 close = osmosisPrice.close,
                 open = osmosisPrice.open,
-                volume = osmosisPrice.volume
+                volume = osmosisPrice.volume,
+                source = getSource()
             )
         }
     }

@@ -11,4 +11,6 @@ class FetcherConfiguration {
     fun historicalPriceFetcherFactory(flowApiGrpcClient: FlowApiGrpcClient): HistoricalPriceFetcherFactory {
         return HistoricalPriceFetcherFactory(flowApiGrpcClient)
     }
+
+
 }

@@ -68,12 +68,8 @@ class TokenService(
 ) {
     protected val logger = logger(TokenService::class)
 
-    private val historicalPriceFetchers: List<HistoricalPriceFetcher> by lazy {
-        historicalPriceFetcherFactory.createNhashFetchers()
-    }
-
-    private val deprecatedHistoricalPricingFetchers: List<HistoricalPriceFetcher> by lazy {
-        historicalPriceFetcherFactory.createOsmosisPriceFetcher()
+    protected val historicalPriceFetchers: List<HistoricalPriceFetcher> by lazy {
+        historicalPriceFetcherFactory.createNhashPricingFetchers()
     }
 
     fun getTokenDistributionStats() = transaction { TokenDistributionAmountsRecord.getStats() }
@@ -241,21 +237,14 @@ class TokenService(
         VANILLA_MAPPER.readValue<CmcLatestDataAbbrev>(it)
     }
 
-    fun fetchHistoricalPriceData(fromDate: DateTime?): List<HistoricalPrice> = runBlocking {
+    protected fun fetchHistoricalPriceData(fromDate: DateTime?): List<HistoricalPrice> = runBlocking {
         val allPrices = historicalPriceFetchers.flatMap { fetcher ->
             fetcher.fetchHistoricalPrice(fromDate)
         }
         return@runBlocking allPrices
     }
 
-    fun fetchLegacyHistoricalPriceData(fromDate: DateTime?): List<HistoricalPrice> = runBlocking {
-        val allPrices = deprecatedHistoricalPricingFetchers.flatMap { fetcher ->
-            fetcher.fetchHistoricalPrice(fromDate)
-        }
-        return@runBlocking allPrices
-    }
-
-    fun processHistoricalData(startDate: DateTime, today: DateTime, historicalPrices: List<HistoricalPrice>): List<CmcHistoricalQuote> {
+    protected fun processHistoricalData(startDate: DateTime, today: DateTime, historicalPrices: List<HistoricalPrice>): List<CmcHistoricalQuote> {
         val baseMap = Interval(startDate, today)
             .let { int -> generateSequence(int.start) { dt -> dt.plusDays(1) }.takeWhile { dt -> dt < int.end } }
             .map { it to emptyList<HistoricalPrice>() }.toMap().toMutableMap()
@@ -275,7 +264,6 @@ class TokenService(
             val close = v.maxByOrNull { DateTime(it.time * 1000) }?.close ?: prevPrice
             val closeDate = k.plusDays(1).minusMillis(1)
             val usdVolume = v.sumOf { it.volume.toThirdDecimal() }.stripTrailingZeros()
-
             CmcHistoricalQuote(
                 time_open = k,
                 time_close = closeDate,
@@ -299,11 +287,28 @@ class TokenService(
         }
     }
 
-    fun saveHistoricalData(record: CmcHistoricalQuote) {
-        TokenHistoricalDailyRecord.save(record.time_open.startOfDay(), record, "osmosis")
+    fun updateAndSaveTokenHistoricalData(startDate: DateTime, endDate: DateTime) {
+        val historicalPrices = fetchHistoricalPriceData(startDate) ?: return
+        val processedData = processHistoricalData(startDate, endDate, historicalPrices)
+        processedData.forEach { record ->
+            val source = historicalPriceFetchers.joinToString(separator = ",") { it.getSource() }
+            TokenHistoricalDailyRecord.save(record.time_open.startOfDay(), record, source)
+        }
     }
 
-    fun processLatestTokenData(list: List<HistoricalPrice>, today: DateTime): CmcLatestDataAbbrev? {
+
+    fun updateAndSaveLatestTokenData(startDate: DateTime, today: DateTime) {
+        val list = fetchHistoricalPriceData(startDate)?.sortedBy { it.time }
+
+        list?.let {
+            val latestData = processLatestTokenData(it, today)
+            latestData?.let { data ->
+                cacheLatestTokenData(data)
+            }
+        }
+    }
+
+    protected fun processLatestTokenData(list: List<HistoricalPrice>, today: DateTime): CmcLatestDataAbbrev? {
         val prevRecord = list.firstOrNull() ?: return null
         val price = list.last().close.toThirdDecimal()
         val percentChg = price.percentChange(prevRecord.close.toThirdDecimal())
@@ -316,7 +321,7 @@ class TokenService(
         )
     }
 
-    fun cacheLatestTokenData(data: CmcLatestDataAbbrev) {
+    protected fun cacheLatestTokenData(data: CmcLatestDataAbbrev) {
         CacheUpdateRecord.updateCacheByKey(
             CacheKeys.UTILITY_TOKEN_LATEST.key,
             VANILLA_MAPPER.writeValueAsString(data)
@@ -328,7 +333,7 @@ class TokenService(
         val baseFileName = filters.getFileNameBase()
 
         val fileList = runBlocking {
-            val data = fetchLegacyHistoricalPriceData(filters.fromDate)
+            val data = fetchHistoricalPriceData(filters.fromDate)
             listOf(
                 CsvData(
                     "TokenHistoricalData",

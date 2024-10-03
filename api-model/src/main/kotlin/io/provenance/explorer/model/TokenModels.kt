@@ -41,7 +41,6 @@ data class CmcHistoricalQuote(
     val time_high: DateTime,
     val time_low: DateTime,
     val quote: Map<String, CmcQuote>,
-    val source: String
 ) {
     fun toCsv(): MutableList<Any> =
         this.quote[USD_UPPER]!!.let {

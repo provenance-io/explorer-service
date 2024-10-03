@@ -297,35 +297,19 @@ class ScheduledTaskService(
     @Scheduled(cron = "0 0 1 * * ?") // Every day at 1 am
     fun updateTokenHistorical() {
         val today = DateTime.now().startOfDay()
-        var startDate = today.minusMonths(1)
-        val latest = TokenHistoricalDailyRecord.getLatestDateEntry()
+        val defaultStartDate = today.minusMonths(1)
 
-        if (latest != null) {
-            startDate = latest.timestamp.minusDays(1).startOfDay()
-        }
+        val latestEntryDate = TokenHistoricalDailyRecord.getLatestDateEntry()?.timestamp?.startOfDay()
+        val startDate = latestEntryDate?.minusDays(1) ?: defaultStartDate
 
-        val historicalPrices = tokenService.fetchLegacyHistoricalPriceData(startDate) ?: return
-        logger.info("Updating token historical data starting from $startDate with ${historicalPrices.size} buy records for roll-up.")
-
-        val processedData = tokenService.processHistoricalData(startDate, today, historicalPrices)
-
-        processedData.forEach { record ->
-            TokenHistoricalDailyRecord.save(record.time_open.startOfDay(), record, "osmosis")
-        }
+        tokenService.updateAndSaveTokenHistoricalData(startDate, today)
     }
 
     @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
     fun updateTokenLatest() {
         val today = DateTime.now().withZone(DateTimeZone.UTC)
         val startDate = today.minusDays(1)
-        val list = tokenService.fetchHistoricalPriceData(startDate)?.sortedBy { it.time }
-
-        list?.let {
-            val latestData = tokenService.processLatestTokenData(it, today)
-            latestData?.let { data ->
-                tokenService.cacheLatestTokenData(data)
-            }
-        }
+        tokenService.updateAndSaveLatestTokenData(startDate, today)
     }
 
     // Remove once the ranges have been updated
