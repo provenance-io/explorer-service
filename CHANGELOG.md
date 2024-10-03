@@ -35,6 +35,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Features
 * Add hash price support for nav values from on chain events [#543](https://github.com/provenance-io/explorer-service/pull/543)
+* Add on chain NAV values for historical hash calculations [#555](https://github.com/provenance-io/explorer-service/pull/555) 
 
 ### Improvements
 
