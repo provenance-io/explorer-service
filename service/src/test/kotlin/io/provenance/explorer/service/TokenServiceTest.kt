@@ -61,7 +61,7 @@ class TokenServiceTest {
     fun `test fetchLegacyHistoricalPriceData`() = runBlocking {
         val fromDate = DateTime.now().minusDays(7)
 
-        val result: List<HistoricalPrice> = tokenService.fetchLegacyHistoricalPriceData(fromDate)
+        val result: List<HistoricalPrice> = tokenService.fetchHistoricalPriceData(fromDate)
 
         result.forEach {
             println("Time: ${DateTime(it.time)}, Open: ${it.open}, High: ${it.high}, Low: ${it.low}, Close: ${it.close}, Volume: ${it.volume}")

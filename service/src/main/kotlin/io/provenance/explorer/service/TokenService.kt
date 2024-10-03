@@ -237,7 +237,7 @@ class TokenService(
         VANILLA_MAPPER.readValue<CmcLatestDataAbbrev>(it)
     }
 
-    protected fun fetchHistoricalPriceData(fromDate: DateTime?): List<HistoricalPrice> = runBlocking {
+    fun fetchHistoricalPriceData(fromDate: DateTime?): List<HistoricalPrice> = runBlocking {
         val allPrices = historicalPriceFetchers.flatMap { fetcher ->
             fetcher.fetchHistoricalPrice(fromDate)
         }
@@ -307,7 +307,7 @@ class TokenService(
         }
     }
 
-    protected fun processLatestTokenData(list: List<HistoricalPrice>, today: DateTime): CmcLatestDataAbbrev? {
+    fun processLatestTokenData(list: List<HistoricalPrice>, today: DateTime): CmcLatestDataAbbrev? {
         val prevRecord = list.firstOrNull() ?: return null
         val price = list.last().close.toThirdDecimal()
         val percentChg = price.percentChange(prevRecord.close.toThirdDecimal())
