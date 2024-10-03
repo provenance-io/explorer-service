@@ -32,8 +32,10 @@ import io.provenance.explorer.domain.models.explorer.TokenHistoricalDataRequest
 import io.provenance.explorer.domain.models.toCsv
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.model.AssetHolder
+import io.provenance.explorer.model.CmcHistoricalQuote
 import io.provenance.explorer.model.CmcLatestDataAbbrev
 import io.provenance.explorer.model.CmcLatestQuoteAbbrev
+import io.provenance.explorer.model.CmcQuote
 import io.provenance.explorer.model.RichAccount
 import io.provenance.explorer.model.TokenDistribution
 import io.provenance.explorer.model.TokenDistributionAmount
@@ -51,6 +53,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
+import org.joda.time.Interval
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -65,12 +68,8 @@ class TokenService(
 ) {
     protected val logger = logger(TokenService::class)
 
-    private val historicalPriceFetchers: List<HistoricalPriceFetcher> by lazy {
-        historicalPriceFetcherFactory.createNhashFetchers()
-    }
-
-    private val deprecatedHistoricalPricingFetchers: List<HistoricalPriceFetcher> by lazy {
-        historicalPriceFetcherFactory.createOsmosisPriceFetcher()
+    protected val historicalPriceFetchers: List<HistoricalPriceFetcher> by lazy {
+        historicalPriceFetcherFactory.createNhashPricingFetchers()
     }
 
     fun getTokenDistributionStats() = transaction { TokenDistributionAmountsRecord.getStats() }
@@ -245,11 +244,67 @@ class TokenService(
         return@runBlocking allPrices
     }
 
-    fun fetchLegacyHistoricalPriceData(fromDate: DateTime?): List<HistoricalPrice> = runBlocking {
-        val allPrices = deprecatedHistoricalPricingFetchers.flatMap { fetcher ->
-            fetcher.fetchHistoricalPrice(fromDate)
+    fun processHistoricalData(startDate: DateTime, today: DateTime, historicalPrices: List<HistoricalPrice>): List<CmcHistoricalQuote> {
+        val baseMap = Interval(startDate, today)
+            .let { int -> generateSequence(int.start) { dt -> dt.plusDays(1) }.takeWhile { dt -> dt < int.end } }
+            .map { it to emptyList<HistoricalPrice>() }.toMap().toMutableMap()
+
+        var prevPrice = TokenHistoricalDailyRecord.lastKnownPriceForDate(startDate)
+
+        baseMap.putAll(
+            historicalPrices
+                .filter { DateTime(it.time * 1000).startOfDay() != today }
+                .groupBy { DateTime(it.time * 1000).startOfDay() }
+        )
+
+        return baseMap.map { (k, v) ->
+            val high = v.maxByOrNull { it.high.toThirdDecimal() }
+            val low = v.minByOrNull { it.low.toThirdDecimal() }
+            val open = v.minByOrNull { DateTime(it.time * 1000) }?.open ?: prevPrice
+            val close = v.maxByOrNull { DateTime(it.time * 1000) }?.close ?: prevPrice
+            val closeDate = k.plusDays(1).minusMillis(1)
+            val usdVolume = v.sumOf { it.volume.toThirdDecimal() }.stripTrailingZeros()
+            CmcHistoricalQuote(
+                time_open = k,
+                time_close = closeDate,
+                time_high = if (high != null) DateTime(high.time * 1000) else k,
+                time_low = if (low != null) DateTime(low.time * 1000) else k,
+                quote = mapOf(
+                    USD_UPPER to
+                        CmcQuote(
+                            open = open,
+                            high = high?.high ?: prevPrice,
+                            low = low?.low ?: prevPrice,
+                            close = close,
+                            volume = usdVolume,
+                            market_cap = close.multiply(
+                                totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+                            ).toThirdDecimal(),
+                            timestamp = closeDate
+                        )
+                )
+            ).also { prevPrice = close }
         }
-        return@runBlocking allPrices
+    }
+
+    fun updateAndSaveTokenHistoricalData(startDate: DateTime, endDate: DateTime) {
+        val historicalPrices = fetchHistoricalPriceData(startDate) ?: return
+        val processedData = processHistoricalData(startDate, endDate, historicalPrices)
+        processedData.forEach { record ->
+            val source = historicalPriceFetchers.joinToString(separator = ",") { it.getSource() }
+            TokenHistoricalDailyRecord.save(record.time_open.startOfDay(), record, source)
+        }
+    }
+
+    fun updateAndSaveLatestTokenData(startDate: DateTime, today: DateTime) {
+        val list = fetchHistoricalPriceData(startDate)?.sortedBy { it.time }
+
+        list?.let {
+            val latestData = processLatestTokenData(it, today)
+            latestData?.let { data ->
+                cacheLatestTokenData(data)
+            }
+        }
     }
 
     fun processLatestTokenData(list: List<HistoricalPrice>, today: DateTime): CmcLatestDataAbbrev? {
@@ -265,7 +320,7 @@ class TokenService(
         )
     }
 
-    fun cacheLatestTokenData(data: CmcLatestDataAbbrev) {
+    protected fun cacheLatestTokenData(data: CmcLatestDataAbbrev) {
         CacheUpdateRecord.updateCacheByKey(
             CacheKeys.UTILITY_TOKEN_LATEST.key,
             VANILLA_MAPPER.writeValueAsString(data)
@@ -277,7 +332,7 @@ class TokenService(
         val baseFileName = filters.getFileNameBase()
 
         val fileList = runBlocking {
-            val data = fetchLegacyHistoricalPriceData(filters.fromDate)
+            val data = fetchHistoricalPriceData(filters.fromDate)
             listOf(
                 CsvData(
                     "TokenHistoricalData",

@@ -14,6 +14,9 @@ class FlowApiPriceFetcher(
     private val flowApiGrpcClient: FlowApiGrpcClient
 ) : HistoricalPriceFetcher {
 
+    override fun getSource(): String {
+        return "flow-api"
+    }
     override fun fetchHistoricalPrice(fromDate: DateTime?): List<HistoricalPrice> {
         val onChainNavEvents = getMarkerNavByPriceDenoms(fromDate, 17800)
         return onChainNavEvents.map { navEvent ->
@@ -25,7 +28,8 @@ class FlowApiPriceFetcher(
                 low = pricePerHash,
                 close = pricePerHash,
                 open = pricePerHash,
-                volume = pricePerHash.multiply(volumeHash)
+                volume = pricePerHash.multiply(volumeHash),
+                source = getSource()
             )
         }
     }

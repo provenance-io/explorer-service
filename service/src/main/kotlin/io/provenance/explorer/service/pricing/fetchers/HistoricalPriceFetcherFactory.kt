@@ -6,16 +6,10 @@ import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 class HistoricalPriceFetcherFactory(
     private val flowApiGrpcClient: FlowApiGrpcClient
 ) {
-    fun createNhashFetchers(): List<HistoricalPriceFetcher> {
+    fun createNhashPricingFetchers(): List<HistoricalPriceFetcher> {
         return listOf(
             OsmosisPriceFetcher(),
             FlowApiPriceFetcher(UTILITY_TOKEN, listOf("uusd.trading", "uusdc.figure.se", "uusdt.figure.se"), flowApiGrpcClient)
-        )
-    }
-
-    fun createOsmosisPriceFetcher(): List<HistoricalPriceFetcher> {
-        return listOf(
-            OsmosisPriceFetcher()
         )
     }
 }
