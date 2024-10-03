@@ -48,8 +48,14 @@ fun Double.toPercentage() = "${this * 100}%"
 
 fun List<Int>.avg() = this.sum() / this.size
 
-fun BigDecimal.percentChange(orig: BigDecimal) =
-    ((this.minus(orig)).divide(orig, orig.scale(), RoundingMode.HALF_EVEN)).multiply(BigDecimal(100))
+fun BigDecimal.percentChange(orig: BigDecimal): BigDecimal {
+    if (orig.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO
+    return this.subtract(orig)
+        .divide(orig, 6, RoundingMode.HALF_EVEN)
+        .multiply(BigDecimal(100))
+        .setScale(1, RoundingMode.HALF_EVEN)
+}
+
 
 fun Int.padToDecString() =
     BigDecimal(this).multiply(BigDecimal("1e${(UTILITY_TOKEN_BASE_DECIMAL_PLACES - 1) * 2}")).toPlainString()
