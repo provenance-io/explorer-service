@@ -20,21 +20,18 @@ class HistoricalPriceFetcherFactoryTest {
     }
 
     @Test
-    fun `test createNhashFetchers`() {
+    fun `test createNhashPricingFetchers`() {
         val fetchers = factory.createNhashPricingFetchers()
         assertEquals(2, fetchers.size)
         assertTrue(fetchers[0] is OsmosisPriceFetcher)
         assertTrue(fetchers[1] is FlowApiPriceFetcher)
+
+        assertEquals("osmosis", fetchers[0].getSource(), "Fetcher source is incorrect")
+        assertEquals("flow-api", fetchers[1].getSource(), "Fetcher source is incorrect")
 
         val flowApiPriceFetcher = fetchers[1] as FlowApiPriceFetcher
         assertEquals(UTILITY_TOKEN, flowApiPriceFetcher.denom)
         assertEquals(listOf("uusd.trading", "uusdc.figure.se", "uusdt.figure.se"), flowApiPriceFetcher.pricingDenoms)
     }
 
-    @Test
-    fun `test createOsmosisPriceFetcher`() {
-        val fetchers = factory.createOsmosisPriceFetcher()
-        assertEquals(1, fetchers.size)
-        assertTrue(fetchers[0] is OsmosisPriceFetcher)
-    }
 }
