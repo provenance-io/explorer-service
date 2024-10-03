@@ -56,7 +56,6 @@ fun BigDecimal.percentChange(orig: BigDecimal): BigDecimal {
         .setScale(1, RoundingMode.HALF_EVEN)
 }
 
-
 fun Int.padToDecString() =
     BigDecimal(this).multiply(BigDecimal("1e${(UTILITY_TOKEN_BASE_DECIMAL_PLACES - 1) * 2}")).toPlainString()
 

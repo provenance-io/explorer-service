@@ -10,7 +10,9 @@ import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.explorer.service.pricing.fetchers.HistoricalPriceFetcherFactory
 import kotlinx.coroutines.runBlocking
 import org.joda.time.DateTime
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test

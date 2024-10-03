@@ -32,5 +32,4 @@ class HistoricalPriceFetcherFactoryTest {
         assertEquals(UTILITY_TOKEN, flowApiPriceFetcher.denom)
         assertEquals(listOf("uusd.trading", "uusdc.figure.se", "uusdt.figure.se"), flowApiPriceFetcher.pricingDenoms)
     }
-
 }
