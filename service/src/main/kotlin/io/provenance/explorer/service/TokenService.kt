@@ -244,7 +244,7 @@ class TokenService(
         return@runBlocking allPrices
     }
 
-    protected fun processHistoricalData(startDate: DateTime, today: DateTime, historicalPrices: List<HistoricalPrice>): List<CmcHistoricalQuote> {
+    fun processHistoricalData(startDate: DateTime, today: DateTime, historicalPrices: List<HistoricalPrice>): List<CmcHistoricalQuote> {
         val baseMap = Interval(startDate, today)
             .let { int -> generateSequence(int.start) { dt -> dt.plusDays(1) }.takeWhile { dt -> dt < int.end } }
             .map { it to emptyList<HistoricalPrice>() }.toMap().toMutableMap()

@@ -269,11 +269,13 @@ class TokenHistoricalDailyRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) 
             TokenHistoricalDailyRecord.wrapRows(query).map { it.data }.toList()
         }
 
-        fun lastKnownPriceForDate(date: DateTime) = transaction {
+        fun lastKnownPriceForDate(date: DateTime): BigDecimal = transaction {
             TokenHistoricalDailyRecord
                 .find { TokenHistoricalDailyTable.timestamp lessEq date }
                 .orderBy(Pair(TokenHistoricalDailyTable.timestamp, SortOrder.DESC))
-                .firstOrNull()?.data?.quote?.get(USD_UPPER)?.close ?: BigDecimal.ZERO
+                .limit(1)
+                .map { it.data.quote[USD_UPPER]?.close ?: BigDecimal.ZERO }
+                .singleOrNull() ?: BigDecimal.ZERO
         }
 
         fun getLatestDateEntry(): TokenHistoricalDailyRecord? = transaction {
