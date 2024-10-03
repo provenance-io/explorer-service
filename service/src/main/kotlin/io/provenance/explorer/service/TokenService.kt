@@ -296,7 +296,6 @@ class TokenService(
         }
     }
 
-
     fun updateAndSaveLatestTokenData(startDate: DateTime, today: DateTime) {
         val list = fetchHistoricalPriceData(startDate)?.sortedBy { it.time }
 

@@ -40,7 +40,7 @@ data class CmcHistoricalQuote(
     val time_close: DateTime,
     val time_high: DateTime,
     val time_low: DateTime,
-    val quote: Map<String, CmcQuote>,
+    val quote: Map<String, CmcQuote>
 ) {
     fun toCsv(): MutableList<Any> =
         this.quote[USD_UPPER]!!.let {
