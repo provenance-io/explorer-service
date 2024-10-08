@@ -6,25 +6,80 @@ import io.ktor.client.request.parameter
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_DECIMAL_PLACES
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AssetPricingRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.MarkerCacheTable
+import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.explorer.AssetPricing
+import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
+import io.provenance.explorer.model.base.USD_LOWER
+import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.marker.v1.MarkerStatus
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 @Service
 class PricingService(
     private val props: ExplorerProperties,
-    private val tokenService: TokenService
+    private val tokenService: TokenService,
+    private val assetService: AssetService,
+    private val flowApiGrpcClient: FlowApiGrpcClient
 ) {
     protected val logger = logger(PricingService::class)
+
+    private var lastRunTime: OffsetDateTime? = null
+
+    fun updateAssetPricingFromLatestNav(now: OffsetDateTime) = runBlocking {
+        val fromDate = lastRunTime
+        logger.info("Updating asset pricing, last run at: $fromDate")
+
+        val latestPrices = flowApiGrpcClient.getLatestNavPrices(
+            priceDenom = USD_LOWER,
+            includeMarkers = true,
+            includeScopes = true,
+            fromDate = fromDate?.toDateTime(),
+            limit = 100000
+        )
+
+        latestPrices.forEach { price ->
+            if (price.denom != UTILITY_TOKEN) {
+                val marker = assetService.getAssetRaw(price.denom)
+                insertAssetPricing(
+                    marker = marker,
+                    markerDenom = price.denom,
+                    pricingDenom = price.priceDenom,
+                    pricingAmount = BigDecimal(price.priceAmount).setScale(3).divide(BigDecimal(1000)),
+                    timestamp = DateTime.now() // Use the appropriate timestamp here
+                )
+            } else {
+//                val cmcPrice = tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price?.let {
+//                    val scale = it.scale()
+//                    it.setScale(scale + UTILITY_TOKEN_BASE_DECIMAL_PLACES)
+//                        .div(UTILITY_TOKEN_BASE_MULTIPLIER)
+//                }
+//                val newPriceObj = price.copy(usdPrice = cmcPrice ?: price.usdPrice)
+//                val marker = assetService.getAssetRaw(price.markerDenom)
+//                insertAssetPricing(
+//                    marker = marker,
+//                    markerDenom = price.markerDenom,
+//                    pricingDenom = price.priceDenom,
+//                    pricingAmount = newPriceObj.usdPrice!!,
+//                    timestamp = DateTime.now()
+//                )
+            }
+        }
+        lastRunTime = now
+    }
 
     fun getTotalAum() = runBlocking {
         val baseMap = transaction {
@@ -55,8 +110,8 @@ class PricingService(
 
     fun getPricingInfoSingle(denom: String) = AssetPricingRecord.findByDenom(denom)?.pricing
 
-    fun insertAssetPricing(marker: Pair<EntityID<Int>, MarkerCacheRecord>, data: AssetPricing) = transaction {
-        marker.first.value.let { AssetPricingRecord.upsert(it, data) }
+    fun insertAssetPricing(marker: Pair<EntityID<Int>, MarkerCacheRecord>, markerDenom:String, pricingDenom: String, pricingAmount:BigDecimal, timestamp : DateTime) = transaction {
+        marker.first.value.let { AssetPricingRecord.upsert(it, markerDenom, pricingDenom, pricingAmount, timestamp) }
     }
 
     fun getPricingAsync(time: String, comingFrom: String) = runBlocking {
