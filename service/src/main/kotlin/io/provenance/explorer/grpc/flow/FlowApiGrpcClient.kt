@@ -3,6 +3,8 @@ package io.provenance.explorer.grpc.flow
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.core.logger
+import io.provlabs.flow.api.LatestNavEventRequest
+import io.provlabs.flow.api.LatestNavEventRequestOrBuilder
 import io.provlabs.flow.api.NavEvent
 import io.provlabs.flow.api.NavEventRequest
 import io.provlabs.flow.api.NavEventResponse
@@ -56,4 +58,23 @@ class FlowApiGrpcClient(flowApiChannelUri: URI) {
             emptyList()
         }
     }
+
+    fun getLatestNavPrices(priceDenom:String, includeMarkers: Boolean = true, includeScopes : Boolean = true,  fromDate: DateTime?, limit: Int = 100): List<NavEvent> = runBlocking {
+        val fromDateString = fromDate?.toString(DateTimeFormat.forPattern("yyyy-MM-dd")) ?: ""
+        val request = LatestNavEventRequest.newBuilder()
+            .setPriceDenom(priceDenom)
+            .setFromDate(fromDateString)
+            .setIncludeMarkers(includeMarkers)
+            .setIncludeScope(includeScopes)
+            .setLimit(limit).build()
+        try {
+            logger().debug("getLatestNavEvents $request")
+            val response: NavEventResponse = navService.getLatestNavEvents(request)
+            return@runBlocking response.navEventsList
+        } catch (e: Exception) {
+            logger().error("Error fetching latest Nav Events: ${e.message}", e)
+            emptyList()
+        }
+    }
+
 }
