@@ -56,7 +56,7 @@ class PricingService(
                     markerDenom = price.denom,
                     pricingDenom = price.priceDenom,
                     pricingAmount = BigDecimal(price.priceAmount).setScale(3).divide(BigDecimal(1000)),
-                    timestamp = DateTime.now() // Use the appropriate timestamp here
+                    timestamp = DateTime(price.blockTime * 1000)
                 )
             } else {
                 // TODO: figure out what this does and finish it in this PR
