@@ -34,17 +34,17 @@ class PricingService(
 ) {
     protected val logger = logger(PricingService::class)
 
-    private var assetPricnglastRun: OffsetDateTime? = null
+    private var assetPricinglastRun: OffsetDateTime? = null
 
     fun updateAssetPricingFromLatestNav() = runBlocking {
         val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC)
-        logger.info("Updating asset pricing, last run at: $assetPricnglastRun")
+        logger.info("Updating asset pricing, last run at: $assetPricinglastRun")
 
         val latestPrices = flowApiGrpcClient.getLatestNavPrices(
             priceDenom = USD_LOWER,
             includeMarkers = true,
             includeScopes = true,
-            fromDate = assetPricnglastRun?.toDateTime(),
+            fromDate = assetPricinglastRun?.toDateTime(),
             limit = 100000
         )
 
@@ -59,6 +59,8 @@ class PricingService(
                     timestamp = DateTime.now() // Use the appropriate timestamp here
                 )
             } else {
+                // TODO: figure out what this does and finish it in this PR
+
 //                val cmcPrice = tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price?.let {
 //                    val scale = it.scale()
 //                    it.setScale(scale + UTILITY_TOKEN_BASE_DECIMAL_PLACES)
@@ -75,7 +77,7 @@ class PricingService(
 //                )
             }
         }
-        assetPricnglastRun = now
+        assetPricinglastRun = now
     }
 
     fun getTotalAum() = runBlocking {

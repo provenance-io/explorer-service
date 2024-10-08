@@ -247,39 +247,8 @@ class ScheduledTaskService(
         }.let { if (it.isNotEmpty()) BlockTxRetryRecord.deleteRecords(it) }
     }
 
-//    @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
-//    fun updateAssetPricing() {
-//        logger.info("Updating asset pricing")
-//        val key = CacheKeys.PRICING_UPDATE.key
-//        val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC).toString()
-//        cacheService.getCacheValue(key)!!.let { cache ->
-//            pricingService.getPricingAsync(cache.cacheValue!!, "async pricing update").forEach { price ->
-//                // don't set price from PE
-//                if (price.markerDenom != UTILITY_TOKEN) {
-//                    assetService.getAssetRaw(price.markerDenom).let { pricingService.insertAssetPricing(it, price) }
-//                } else {
-//                    // Pull price from CMC, calculate to the true base denom price
-//                    val cmcPrice =
-//                        tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price
-//                            ?.let {
-//                                val scale = it.scale()
-//                                it.setScale(scale + UTILITY_TOKEN_BASE_DECIMAL_PLACES)
-//                                    .div(UTILITY_TOKEN_BASE_MULTIPLIER)
-//                            }
-//                    // If CMC data exists, use that, else use the PE value
-//                    val newPriceObj = price.copy(usdPrice = cmcPrice ?: price.usdPrice!!)
-//                    // Save it
-//                    assetService.getAssetRaw(price.markerDenom).let {
-//                        pricingService.insertAssetPricing(it, newPriceObj)
-//                    }
-//                }
-//            }
-//        }.let { cacheService.updateCacheValue(key, now) }
-//    }
-
-    @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
+    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
     fun updateAssetPricing() {
-        logger.info("Updating asset pricing")
         pricingService.updateAssetPricingFromLatestNav()
     }
 
