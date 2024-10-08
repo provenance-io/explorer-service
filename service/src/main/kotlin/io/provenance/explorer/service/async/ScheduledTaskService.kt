@@ -280,8 +280,7 @@ class ScheduledTaskService(
     @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
     fun updateAssetPricing() {
         logger.info("Updating asset pricing")
-        val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC)
-        pricingService.updateAssetPricingFromLatestNav(now)
+        pricingService.updateAssetPricingFromLatestNav()
     }
 
     @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes

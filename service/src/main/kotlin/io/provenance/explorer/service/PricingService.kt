@@ -6,8 +6,6 @@ import io.ktor.client.request.parameter
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
-import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_DECIMAL_PLACES
-import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AssetPricingRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
@@ -16,7 +14,6 @@ import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.explorer.AssetPricing
 import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import io.provenance.explorer.model.base.USD_LOWER
-import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.marker.v1.MarkerStatus
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.dao.id.EntityID
@@ -37,17 +34,17 @@ class PricingService(
 ) {
     protected val logger = logger(PricingService::class)
 
-    private var lastRunTime: OffsetDateTime? = null
+    private var assetPricnglastRun: OffsetDateTime? = null
 
-    fun updateAssetPricingFromLatestNav(now: OffsetDateTime) = runBlocking {
-        val fromDate = lastRunTime
-        logger.info("Updating asset pricing, last run at: $fromDate")
+    fun updateAssetPricingFromLatestNav() = runBlocking {
+        val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC)
+        logger.info("Updating asset pricing, last run at: $assetPricnglastRun")
 
         val latestPrices = flowApiGrpcClient.getLatestNavPrices(
             priceDenom = USD_LOWER,
             includeMarkers = true,
             includeScopes = true,
-            fromDate = fromDate?.toDateTime(),
+            fromDate = assetPricnglastRun?.toDateTime(),
             limit = 100000
         )
 
@@ -78,7 +75,7 @@ class PricingService(
 //                )
             }
         }
-        lastRunTime = now
+        assetPricnglastRun = now
     }
 
     fun getTotalAum() = runBlocking {
