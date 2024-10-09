@@ -6,6 +6,8 @@ import io.ktor.client.request.parameter
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_DECIMAL_PLACES
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AssetPricingRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
@@ -15,6 +17,7 @@ import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.explorer.AssetPricing
 import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import io.provenance.explorer.model.base.USD_LOWER
+import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.marker.v1.MarkerStatus
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.dao.id.EntityID
@@ -59,25 +62,36 @@ class PricingService(
                     pricingAmount = price.calculateUsdPricePerUnit(),
                     timestamp = DateTime(price.blockTime * 1000)
                 )
-            } else {
-                // TODO: figure out what this does and finish it in this PR
-
-//                val cmcPrice = tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price?.let {
-//                    val scale = it.scale()
-//                    it.setScale(scale + UTILITY_TOKEN_BASE_DECIMAL_PLACES)
-//                        .div(UTILITY_TOKEN_BASE_MULTIPLIER)
-//                }
-//                val newPriceObj = price.copy(usdPrice = cmcPrice ?: price.usdPrice)
-//                val marker = assetService.getAssetRaw(price.markerDenom)
-//                insertAssetPricing(
-//                    marker = marker,
-//                    markerDenom = price.markerDenom,
-//                    pricingDenom = price.priceDenom,
-//                    pricingAmount = newPriceObj.usdPrice!!,
-//                    timestamp = DateTime.now()
-//                )
             }
         }
+
+        val tokenLatest = tokenService.getTokenLatest()
+        val quote = tokenLatest?.quote?.get(USD_UPPER)
+        if (quote != null) {
+            val cmcPrice = quote.price?.let {
+                val scale = it.scale()
+                it.setScale(scale + UTILITY_TOKEN_BASE_DECIMAL_PLACES)
+                    .div(UTILITY_TOKEN_BASE_MULTIPLIER)
+            }
+
+            val lastUpdated = quote.last_updated
+
+            if (cmcPrice != null && lastUpdated != null) {
+                val marker = assetService.getAssetRaw(UTILITY_TOKEN)
+                insertAssetPricing(
+                    marker = marker,
+                    markerDenom = UTILITY_TOKEN,
+                    pricingDenom = USD_LOWER,
+                    pricingAmount = cmcPrice,
+                    timestamp = lastUpdated
+                )
+            } else {
+                logger.warn("CMC Price or Last Updated is null for $UTILITY_TOKEN")
+            }
+        } else {
+            logger.warn("No USD_UPPER price found in tokenLatest for $UTILITY_TOKEN")
+        }
+
         assetPricinglastRun = now
     }
 
