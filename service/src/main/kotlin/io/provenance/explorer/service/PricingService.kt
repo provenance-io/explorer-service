@@ -10,6 +10,7 @@ import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AssetPricingRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.MarkerCacheTable
+import io.provenance.explorer.domain.extensions.calculateUsdPricePerUnit
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.explorer.AssetPricing
 import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
@@ -55,7 +56,7 @@ class PricingService(
                     marker = marker,
                     markerDenom = price.denom,
                     pricingDenom = price.priceDenom,
-                    pricingAmount = BigDecimal(price.priceAmount).setScale(3).divide(BigDecimal(1000)),
+                    pricingAmount = price.calculateUsdPricePerUnit(),
                     timestamp = DateTime(price.blockTime * 1000)
                 )
             } else {
