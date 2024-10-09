@@ -62,8 +62,6 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import tendermint.types.BlockOuterClass
 import java.math.BigDecimal
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import javax.annotation.PostConstruct
 
 @Service

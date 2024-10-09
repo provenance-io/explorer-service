@@ -1,11 +1,14 @@
 package io.provenance.explorer.grpc.flow
 
 import io.provlabs.flow.api.NavEvent
-import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.Test
+import org.joda.time.DateTime
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Disabled
-import org.joda.time.DateTime
+import org.junit.jupiter.api.Test
 import java.net.URI
 
 class FlowApiGrpcClientTest {

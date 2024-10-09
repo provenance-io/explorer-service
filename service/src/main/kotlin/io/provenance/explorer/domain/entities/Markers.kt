@@ -7,7 +7,6 @@ import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.nullsLast
 import io.provenance.explorer.domain.core.sql.toDbQueryList
 import io.provenance.explorer.domain.extensions.execAndMap
-import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.explorer.AssetPricing
 import io.provenance.explorer.domain.models.explorer.TokenDistributionPaginatedResults
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
@@ -234,7 +233,7 @@ class AssetPricingRecord(id: EntityID<Int>) : IntEntity(id) {
                 .limit(1)
                 .firstOrNull()
         }
-        fun upsert(markerId: Int, markerDenom:String, pricingDenom: String, pricingAmount:BigDecimal, timestamp :DateTime) = transaction {
+        fun upsert(markerId: Int, markerDenom: String, pricingDenom: String, pricingAmount: BigDecimal, timestamp: DateTime) = transaction {
             findUnique(markerDenom, pricingDenom)?.apply {
                 this.pricing = pricingAmount
                 this.lastUpdated = timestamp

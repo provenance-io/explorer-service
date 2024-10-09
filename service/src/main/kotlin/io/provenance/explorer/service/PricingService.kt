@@ -110,7 +110,7 @@ class PricingService(
 
     fun getPricingInfoSingle(denom: String) = AssetPricingRecord.findByDenom(denom)?.pricing
 
-    fun insertAssetPricing(marker: Pair<EntityID<Int>, MarkerCacheRecord>, markerDenom:String, pricingDenom: String, pricingAmount:BigDecimal, timestamp : DateTime) = transaction {
+    fun insertAssetPricing(marker: Pair<EntityID<Int>, MarkerCacheRecord>, markerDenom: String, pricingDenom: String, pricingAmount: BigDecimal, timestamp: DateTime) = transaction {
         marker.first.value.let { AssetPricingRecord.upsert(it, markerDenom, pricingDenom, pricingAmount, timestamp) }
     }
 
