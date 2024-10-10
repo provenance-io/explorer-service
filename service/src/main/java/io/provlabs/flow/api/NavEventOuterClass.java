@@ -63,22 +63,22 @@ public final class NavEventOuterClass {
       "nt_type\030\006 \001(\t\022\020\n\010scope_id\030\007 \001(\t\022\r\n\005denom" +
       "\030\010 \001(\t\022\024\n\014price_amount\030\t \001(\003\022\023\n\013price_de" +
       "nom\030\n \001(\t\022\016\n\006volume\030\013 \001(\003\022\016\n\006source\030\014 \001(" +
-      "\t\"\247\001\n\017NavEventRequest\022\r\n\005denom\030\001 \001(\t\022\020\n\010" +
+      "\t\"\230\001\n\017NavEventRequest\022\r\n\005denom\030\001 \001(\t\022\020\n\010" +
       "scope_id\030\002 \001(\t\022\024\n\014price_denoms\030\003 \003(\t\022\021\n\t" +
-      "from_date\030\004 \001(\t\022\017\n\007to_date\030\005 \001(\t\022\r\n\005limi" +
-      "t\030\006 \001(\005\022*\n\npagination\030\007 \001(\0132\026.nav.Pagina" +
-      "tionRequest\"\252\001\n\025LatestNavEventRequest\022\023\n" +
-      "\013price_denom\030\001 \001(\t\022\027\n\017include_markers\030\002 " +
-      "\001(\010\022\025\n\rinclude_scope\030\003 \001(\010\022\021\n\tfrom_date\030" +
-      "\004 \001(\t\022\r\n\005limit\030\005 \001(\005\022*\n\npagination\030\006 \001(\013" +
-      "2\026.nav.PaginationRequest\"b\n\020NavEventResp" +
-      "onse\022!\n\nnav_events\030\001 \003(\0132\r.nav.NavEvent\022" +
-      "+\n\npagination\030\002 \001(\0132\027.nav.PaginationResp" +
-      "onse2\222\001\n\nNavService\022;\n\014GetNavEvents\022\024.na" +
-      "v.NavEventRequest\032\025.nav.NavEventResponse" +
-      "\022G\n\022GetLatestNavEvents\022\032.nav.LatestNavEv" +
-      "entRequest\032\025.nav.NavEventResponseB \n\024io." +
-      "provlabs.flow.apiP\001Z\006/typesb\006proto3"
+      "from_date\030\004 \001(\t\022\017\n\007to_date\030\005 \001(\t\022*\n\npagi" +
+      "nation\030\006 \001(\0132\026.nav.PaginationRequest\"\233\001\n" +
+      "\025LatestNavEventRequest\022\023\n\013price_denom\030\001 " +
+      "\001(\t\022\027\n\017include_markers\030\002 \001(\010\022\025\n\rinclude_" +
+      "scope\030\003 \001(\010\022\021\n\tfrom_date\030\004 \001(\t\022*\n\npagina" +
+      "tion\030\005 \001(\0132\026.nav.PaginationRequest\"b\n\020Na" +
+      "vEventResponse\022!\n\nnav_events\030\001 \003(\0132\r.nav" +
+      ".NavEvent\022+\n\npagination\030\002 \001(\0132\027.nav.Pagi" +
+      "nationResponse2\222\001\n\nNavService\022;\n\014GetNavE" +
+      "vents\022\024.nav.NavEventRequest\032\025.nav.NavEve" +
+      "ntResponse\022G\n\022GetLatestNavEvents\022\032.nav.L" +
+      "atestNavEventRequest\032\025.nav.NavEventRespo" +
+      "nseB \n\024io.provlabs.flow.apiP\001Z\006/typesb\006p" +
+      "roto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -107,13 +107,13 @@ public final class NavEventOuterClass {
     internal_static_nav_NavEventRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_nav_NavEventRequest_descriptor,
-        new java.lang.String[] { "Denom", "ScopeId", "PriceDenoms", "FromDate", "ToDate", "Limit", "Pagination", });
+        new java.lang.String[] { "Denom", "ScopeId", "PriceDenoms", "FromDate", "ToDate", "Pagination", });
     internal_static_nav_LatestNavEventRequest_descriptor =
       getDescriptor().getMessageTypes().get(4);
     internal_static_nav_LatestNavEventRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_nav_LatestNavEventRequest_descriptor,
-        new java.lang.String[] { "PriceDenom", "IncludeMarkers", "IncludeScope", "FromDate", "Limit", "Pagination", });
+        new java.lang.String[] { "PriceDenom", "IncludeMarkers", "IncludeScope", "FromDate", "Pagination", });
     internal_static_nav_NavEventResponse_descriptor =
       getDescriptor().getMessageTypes().get(5);
     internal_static_nav_NavEventResponse_fieldAccessorTable = new

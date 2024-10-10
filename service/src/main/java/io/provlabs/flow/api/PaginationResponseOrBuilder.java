@@ -8,18 +8,30 @@ public interface PaginationResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
+   * <pre>
+   * The current page being returned
+   * </pre>
+   *
    * <code>int32 current_page = 1;</code>
    * @return The currentPage.
    */
   int getCurrentPage();
 
   /**
+   * <pre>
+   * The total number of pages available
+   * </pre>
+   *
    * <code>int32 total_pages = 2;</code>
    * @return The totalPages.
    */
   int getTotalPages();
 
   /**
+   * <pre>
+   * The total number of items available across all pages
+   * </pre>
+   *
    * <code>int32 total_items = 3;</code>
    * @return The totalItems.
    */

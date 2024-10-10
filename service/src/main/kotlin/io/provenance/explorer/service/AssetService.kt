@@ -248,8 +248,7 @@ class AssetService(
             priceDenom = USD_LOWER,
             includeMarkers = true,
             includeScopes = true,
-            fromDate = assetPricinglastRun?.toDateTime(),
-            limit = 100000
+            fromDate = assetPricinglastRun?.toDateTime()
         )
 
         latestPrices.forEach { price ->

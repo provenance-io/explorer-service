@@ -1,5 +1,6 @@
 package io.provenance.explorer.grpc.flow
 
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provlabs.flow.api.NavEvent
 import org.joda.time.DateTime
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -41,6 +42,42 @@ class FlowApiGrpcClientTest {
 
         navEvents.forEach { event ->
             assertEquals(priceDenom, event.priceDenom, "Price denomination mismatch")
+        }
+    }
+
+    @Test
+    @Disabled("This test is used for manually executing the grpc endpoint")
+    fun `test getAllLatestNavPrices with valid data`() {
+        val priceDenom = "usd"
+        val includeMarkers = true
+        val includeScopes = true
+        val fromDate = DateTime.now().minusDays(1)
+
+        val navEvents: List<NavEvent> = grpcClient.getAllLatestNavPrices(priceDenom, includeMarkers, includeScopes, fromDate)
+
+        assertNotNull(navEvents)
+        assertFalse(navEvents.isEmpty(), "Expected non-empty list of NAV events")
+
+        navEvents.forEach { event ->
+            assertEquals(priceDenom, event.priceDenom, "Price denomination mismatch")
+        }
+    }
+
+    @Test
+    @Disabled("This test is used for manually executing the grpc endpoint")
+    fun `test getAllMarkerNavByPriceDenoms with valid data`() {
+        val denom = UTILITY_TOKEN
+        val priceDenoms = listOf("uusd.trading", "uusdc.figure.se", "uusdt.figure.se")
+        val fromDate = DateTime.now().minusDays(7)
+
+        val navEvents: List<NavEvent> = grpcClient.getAllMarkerNavByPriceDenoms(denom, priceDenoms, fromDate)
+
+        assertNotNull(navEvents)
+        assertFalse(navEvents.isEmpty(), "Expected non-empty list of NAV events")
+
+        navEvents.forEach { event ->
+            assertEquals(denom, event.denom, "Nav denomination mismatch")
+            assertTrue(priceDenoms.contains(event.priceDenom), "Price denom mismatch")
         }
     }
 }

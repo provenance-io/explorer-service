@@ -102,6 +102,10 @@ private static final long serialVersionUID = 0L;
   public static final int CURRENT_PAGE_FIELD_NUMBER = 1;
   private int currentPage_;
   /**
+   * <pre>
+   * The current page being returned
+   * </pre>
+   *
    * <code>int32 current_page = 1;</code>
    * @return The currentPage.
    */
@@ -113,6 +117,10 @@ private static final long serialVersionUID = 0L;
   public static final int TOTAL_PAGES_FIELD_NUMBER = 2;
   private int totalPages_;
   /**
+   * <pre>
+   * The total number of pages available
+   * </pre>
+   *
    * <code>int32 total_pages = 2;</code>
    * @return The totalPages.
    */
@@ -124,6 +132,10 @@ private static final long serialVersionUID = 0L;
   public static final int TOTAL_ITEMS_FIELD_NUMBER = 3;
   private int totalItems_;
   /**
+   * <pre>
+   * The total number of items available across all pages
+   * </pre>
+   *
    * <code>int32 total_items = 3;</code>
    * @return The totalItems.
    */
@@ -474,6 +486,10 @@ private static final long serialVersionUID = 0L;
 
     private int currentPage_ ;
     /**
+     * <pre>
+     * The current page being returned
+     * </pre>
+     *
      * <code>int32 current_page = 1;</code>
      * @return The currentPage.
      */
@@ -482,6 +498,10 @@ private static final long serialVersionUID = 0L;
       return currentPage_;
     }
     /**
+     * <pre>
+     * The current page being returned
+     * </pre>
+     *
      * <code>int32 current_page = 1;</code>
      * @param value The currentPage to set.
      * @return This builder for chaining.
@@ -493,6 +513,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The current page being returned
+     * </pre>
+     *
      * <code>int32 current_page = 1;</code>
      * @return This builder for chaining.
      */
@@ -505,6 +529,10 @@ private static final long serialVersionUID = 0L;
 
     private int totalPages_ ;
     /**
+     * <pre>
+     * The total number of pages available
+     * </pre>
+     *
      * <code>int32 total_pages = 2;</code>
      * @return The totalPages.
      */
@@ -513,6 +541,10 @@ private static final long serialVersionUID = 0L;
       return totalPages_;
     }
     /**
+     * <pre>
+     * The total number of pages available
+     * </pre>
+     *
      * <code>int32 total_pages = 2;</code>
      * @param value The totalPages to set.
      * @return This builder for chaining.
@@ -524,6 +556,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The total number of pages available
+     * </pre>
+     *
      * <code>int32 total_pages = 2;</code>
      * @return This builder for chaining.
      */
@@ -536,6 +572,10 @@ private static final long serialVersionUID = 0L;
 
     private int totalItems_ ;
     /**
+     * <pre>
+     * The total number of items available across all pages
+     * </pre>
+     *
      * <code>int32 total_items = 3;</code>
      * @return The totalItems.
      */
@@ -544,6 +584,10 @@ private static final long serialVersionUID = 0L;
       return totalItems_;
     }
     /**
+     * <pre>
+     * The total number of items available across all pages
+     * </pre>
+     *
      * <code>int32 total_items = 3;</code>
      * @param value The totalItems to set.
      * @return This builder for chaining.
@@ -555,6 +599,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The total number of items available across all pages
+     * </pre>
+     *
      * <code>int32 total_items = 3;</code>
      * @return This builder for chaining.
      */

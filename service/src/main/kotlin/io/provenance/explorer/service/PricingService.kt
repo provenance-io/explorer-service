@@ -16,7 +16,7 @@ import java.math.BigDecimal
 @Service
 class PricingService(
     private val props: ExplorerProperties,
-    private val tokenService: TokenService,
+    private val tokenService: TokenService
 ) {
     protected val logger = logger(PricingService::class)
 

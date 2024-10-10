@@ -114,6 +114,10 @@ private static final long serialVersionUID = 0L;
   public static final int NAV_EVENTS_FIELD_NUMBER = 1;
   private java.util.List<io.provlabs.flow.api.NavEvent> navEvents_;
   /**
+   * <pre>
+   * The list of NavEvents
+   * </pre>
+   *
    * <code>repeated .nav.NavEvent nav_events = 1;</code>
    */
   @java.lang.Override
@@ -121,6 +125,10 @@ private static final long serialVersionUID = 0L;
     return navEvents_;
   }
   /**
+   * <pre>
+   * The list of NavEvents
+   * </pre>
+   *
    * <code>repeated .nav.NavEvent nav_events = 1;</code>
    */
   @java.lang.Override
@@ -129,6 +137,10 @@ private static final long serialVersionUID = 0L;
     return navEvents_;
   }
   /**
+   * <pre>
+   * The list of NavEvents
+   * </pre>
+   *
    * <code>repeated .nav.NavEvent nav_events = 1;</code>
    */
   @java.lang.Override
@@ -136,6 +148,10 @@ private static final long serialVersionUID = 0L;
     return navEvents_.size();
   }
   /**
+   * <pre>
+   * The list of NavEvents
+   * </pre>
+   *
    * <code>repeated .nav.NavEvent nav_events = 1;</code>
    */
   @java.lang.Override
@@ -143,6 +159,10 @@ private static final long serialVersionUID = 0L;
     return navEvents_.get(index);
   }
   /**
+   * <pre>
+   * The list of NavEvents
+   * </pre>
+   *
    * <code>repeated .nav.NavEvent nav_events = 1;</code>
    */
   @java.lang.Override
@@ -154,6 +174,10 @@ private static final long serialVersionUID = 0L;
   public static final int PAGINATION_FIELD_NUMBER = 2;
   private io.provlabs.flow.api.PaginationResponse pagination_;
   /**
+   * <pre>
+   * Pagination details for the response
+   * </pre>
+   *
    * <code>.nav.PaginationResponse pagination = 2;</code>
    * @return Whether the pagination field is set.
    */
@@ -162,6 +186,10 @@ private static final long serialVersionUID = 0L;
     return pagination_ != null;
   }
   /**
+   * <pre>
+   * Pagination details for the response
+   * </pre>
+   *
    * <code>.nav.PaginationResponse pagination = 2;</code>
    * @return The pagination.
    */
@@ -170,6 +198,10 @@ private static final long serialVersionUID = 0L;
     return pagination_ == null ? io.provlabs.flow.api.PaginationResponse.getDefaultInstance() : pagination_;
   }
   /**
+   * <pre>
+   * Pagination details for the response
+   * </pre>
+   *
    * <code>.nav.PaginationResponse pagination = 2;</code>
    */
   @java.lang.Override
@@ -566,6 +598,10 @@ private static final long serialVersionUID = 0L;
         io.provlabs.flow.api.NavEvent, io.provlabs.flow.api.NavEvent.Builder, io.provlabs.flow.api.NavEventOrBuilder> navEventsBuilder_;
 
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public java.util.List<io.provlabs.flow.api.NavEvent> getNavEventsList() {
@@ -576,6 +612,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public int getNavEventsCount() {
@@ -586,6 +626,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public io.provlabs.flow.api.NavEvent getNavEvents(int index) {
@@ -596,6 +640,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public Builder setNavEvents(
@@ -613,6 +661,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public Builder setNavEvents(
@@ -627,6 +679,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public Builder addNavEvents(io.provlabs.flow.api.NavEvent value) {
@@ -643,6 +699,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public Builder addNavEvents(
@@ -660,6 +720,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public Builder addNavEvents(
@@ -674,6 +738,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public Builder addNavEvents(
@@ -688,6 +756,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public Builder addAllNavEvents(
@@ -703,6 +775,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public Builder clearNavEvents() {
@@ -716,6 +792,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public Builder removeNavEvents(int index) {
@@ -729,6 +809,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public io.provlabs.flow.api.NavEvent.Builder getNavEventsBuilder(
@@ -736,6 +820,10 @@ private static final long serialVersionUID = 0L;
       return getNavEventsFieldBuilder().getBuilder(index);
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public io.provlabs.flow.api.NavEventOrBuilder getNavEventsOrBuilder(
@@ -746,6 +834,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public java.util.List<? extends io.provlabs.flow.api.NavEventOrBuilder> 
@@ -757,6 +849,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public io.provlabs.flow.api.NavEvent.Builder addNavEventsBuilder() {
@@ -764,6 +860,10 @@ private static final long serialVersionUID = 0L;
           io.provlabs.flow.api.NavEvent.getDefaultInstance());
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public io.provlabs.flow.api.NavEvent.Builder addNavEventsBuilder(
@@ -772,6 +872,10 @@ private static final long serialVersionUID = 0L;
           index, io.provlabs.flow.api.NavEvent.getDefaultInstance());
     }
     /**
+     * <pre>
+     * The list of NavEvents
+     * </pre>
+     *
      * <code>repeated .nav.NavEvent nav_events = 1;</code>
      */
     public java.util.List<io.provlabs.flow.api.NavEvent.Builder> 
@@ -797,6 +901,10 @@ private static final long serialVersionUID = 0L;
     private com.google.protobuf.SingleFieldBuilderV3<
         io.provlabs.flow.api.PaginationResponse, io.provlabs.flow.api.PaginationResponse.Builder, io.provlabs.flow.api.PaginationResponseOrBuilder> paginationBuilder_;
     /**
+     * <pre>
+     * Pagination details for the response
+     * </pre>
+     *
      * <code>.nav.PaginationResponse pagination = 2;</code>
      * @return Whether the pagination field is set.
      */
@@ -804,6 +912,10 @@ private static final long serialVersionUID = 0L;
       return paginationBuilder_ != null || pagination_ != null;
     }
     /**
+     * <pre>
+     * Pagination details for the response
+     * </pre>
+     *
      * <code>.nav.PaginationResponse pagination = 2;</code>
      * @return The pagination.
      */
@@ -815,6 +927,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * Pagination details for the response
+     * </pre>
+     *
      * <code>.nav.PaginationResponse pagination = 2;</code>
      */
     public Builder setPagination(io.provlabs.flow.api.PaginationResponse value) {
@@ -831,6 +947,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Pagination details for the response
+     * </pre>
+     *
      * <code>.nav.PaginationResponse pagination = 2;</code>
      */
     public Builder setPagination(
@@ -845,6 +965,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Pagination details for the response
+     * </pre>
+     *
      * <code>.nav.PaginationResponse pagination = 2;</code>
      */
     public Builder mergePagination(io.provlabs.flow.api.PaginationResponse value) {
@@ -863,6 +987,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Pagination details for the response
+     * </pre>
+     *
      * <code>.nav.PaginationResponse pagination = 2;</code>
      */
     public Builder clearPagination() {
@@ -877,6 +1005,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Pagination details for the response
+     * </pre>
+     *
      * <code>.nav.PaginationResponse pagination = 2;</code>
      */
     public io.provlabs.flow.api.PaginationResponse.Builder getPaginationBuilder() {
@@ -885,6 +1017,10 @@ private static final long serialVersionUID = 0L;
       return getPaginationFieldBuilder().getBuilder();
     }
     /**
+     * <pre>
+     * Pagination details for the response
+     * </pre>
+     *
      * <code>.nav.PaginationResponse pagination = 2;</code>
      */
     public io.provlabs.flow.api.PaginationResponseOrBuilder getPaginationOrBuilder() {
@@ -896,6 +1032,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * Pagination details for the response
+     * </pre>
+     *
      * <code>.nav.PaginationResponse pagination = 2;</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<

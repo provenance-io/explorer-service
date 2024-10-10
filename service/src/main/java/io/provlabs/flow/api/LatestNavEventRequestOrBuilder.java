@@ -69,20 +69,10 @@ public interface LatestNavEventRequestOrBuilder extends
 
   /**
    * <pre>
-   * Optional. The maximum number of results to return. If not provided, defaults to 100.
-   * </pre>
-   *
-   * <code>int32 limit = 5;</code>
-   * @return The limit.
-   */
-  int getLimit();
-
-  /**
-   * <pre>
    * Pagination details for the request
    * </pre>
    *
-   * <code>.nav.PaginationRequest pagination = 6;</code>
+   * <code>.nav.PaginationRequest pagination = 5;</code>
    * @return Whether the pagination field is set.
    */
   boolean hasPagination();
@@ -91,7 +81,7 @@ public interface LatestNavEventRequestOrBuilder extends
    * Pagination details for the request
    * </pre>
    *
-   * <code>.nav.PaginationRequest pagination = 6;</code>
+   * <code>.nav.PaginationRequest pagination = 5;</code>
    * @return The pagination.
    */
   io.provlabs.flow.api.PaginationRequest getPagination();
@@ -100,7 +90,7 @@ public interface LatestNavEventRequestOrBuilder extends
    * Pagination details for the request
    * </pre>
    *
-   * <code>.nav.PaginationRequest pagination = 6;</code>
+   * <code>.nav.PaginationRequest pagination = 5;</code>
    */
   io.provlabs.flow.api.PaginationRequestOrBuilder getPaginationOrBuilder();
 }

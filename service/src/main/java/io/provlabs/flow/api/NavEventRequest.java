@@ -92,12 +92,7 @@ private static final long serialVersionUID = 0L;
             toDate_ = s;
             break;
           }
-          case 48: {
-
-            limit_ = input.readInt32();
-            break;
-          }
-          case 58: {
+          case 50: {
             io.provlabs.flow.api.PaginationRequest.Builder subBuilder = null;
             if (pagination_ != null) {
               subBuilder = pagination_.toBuilder();
@@ -380,25 +375,14 @@ private static final long serialVersionUID = 0L;
     }
   }
 
-  public static final int LIMIT_FIELD_NUMBER = 6;
-  private int limit_;
-  /**
-   * <pre>
-   * Optional. The maximum number of results to return. If not provided, defaults to 100.
-   * </pre>
-   *
-   * <code>int32 limit = 6;</code>
-   * @return The limit.
-   */
-  @java.lang.Override
-  public int getLimit() {
-    return limit_;
-  }
-
-  public static final int PAGINATION_FIELD_NUMBER = 7;
+  public static final int PAGINATION_FIELD_NUMBER = 6;
   private io.provlabs.flow.api.PaginationRequest pagination_;
   /**
-   * <code>.nav.PaginationRequest pagination = 7;</code>
+   * <pre>
+   * Pagination details for the request
+   * </pre>
+   *
+   * <code>.nav.PaginationRequest pagination = 6;</code>
    * @return Whether the pagination field is set.
    */
   @java.lang.Override
@@ -406,7 +390,11 @@ private static final long serialVersionUID = 0L;
     return pagination_ != null;
   }
   /**
-   * <code>.nav.PaginationRequest pagination = 7;</code>
+   * <pre>
+   * Pagination details for the request
+   * </pre>
+   *
+   * <code>.nav.PaginationRequest pagination = 6;</code>
    * @return The pagination.
    */
   @java.lang.Override
@@ -414,7 +402,11 @@ private static final long serialVersionUID = 0L;
     return pagination_ == null ? io.provlabs.flow.api.PaginationRequest.getDefaultInstance() : pagination_;
   }
   /**
-   * <code>.nav.PaginationRequest pagination = 7;</code>
+   * <pre>
+   * Pagination details for the request
+   * </pre>
+   *
+   * <code>.nav.PaginationRequest pagination = 6;</code>
    */
   @java.lang.Override
   public io.provlabs.flow.api.PaginationRequestOrBuilder getPaginationOrBuilder() {
@@ -450,11 +442,8 @@ private static final long serialVersionUID = 0L;
     if (!getToDateBytes().isEmpty()) {
       com.google.protobuf.GeneratedMessageV3.writeString(output, 5, toDate_);
     }
-    if (limit_ != 0) {
-      output.writeInt32(6, limit_);
-    }
     if (pagination_ != null) {
-      output.writeMessage(7, getPagination());
+      output.writeMessage(6, getPagination());
     }
     unknownFields.writeTo(output);
   }
@@ -485,13 +474,9 @@ private static final long serialVersionUID = 0L;
     if (!getToDateBytes().isEmpty()) {
       size += com.google.protobuf.GeneratedMessageV3.computeStringSize(5, toDate_);
     }
-    if (limit_ != 0) {
-      size += com.google.protobuf.CodedOutputStream
-        .computeInt32Size(6, limit_);
-    }
     if (pagination_ != null) {
       size += com.google.protobuf.CodedOutputStream
-        .computeMessageSize(7, getPagination());
+        .computeMessageSize(6, getPagination());
     }
     size += unknownFields.getSerializedSize();
     memoizedSize = size;
@@ -518,8 +503,6 @@ private static final long serialVersionUID = 0L;
         .equals(other.getFromDate())) return false;
     if (!getToDate()
         .equals(other.getToDate())) return false;
-    if (getLimit()
-        != other.getLimit()) return false;
     if (hasPagination() != other.hasPagination()) return false;
     if (hasPagination()) {
       if (!getPagination()
@@ -548,8 +531,6 @@ private static final long serialVersionUID = 0L;
     hash = (53 * hash) + getFromDate().hashCode();
     hash = (37 * hash) + TO_DATE_FIELD_NUMBER;
     hash = (53 * hash) + getToDate().hashCode();
-    hash = (37 * hash) + LIMIT_FIELD_NUMBER;
-    hash = (53 * hash) + getLimit();
     if (hasPagination()) {
       hash = (37 * hash) + PAGINATION_FIELD_NUMBER;
       hash = (53 * hash) + getPagination().hashCode();
@@ -702,8 +683,6 @@ private static final long serialVersionUID = 0L;
 
       toDate_ = "";
 
-      limit_ = 0;
-
       if (paginationBuilder_ == null) {
         pagination_ = null;
       } else {
@@ -746,7 +725,6 @@ private static final long serialVersionUID = 0L;
       result.priceDenoms_ = priceDenoms_;
       result.fromDate_ = fromDate_;
       result.toDate_ = toDate_;
-      result.limit_ = limit_;
       if (paginationBuilder_ == null) {
         result.pagination_ = pagination_;
       } else {
@@ -825,9 +803,6 @@ private static final long serialVersionUID = 0L;
       if (!other.getToDate().isEmpty()) {
         toDate_ = other.toDate_;
         onChanged();
-      }
-      if (other.getLimit() != 0) {
-        setLimit(other.getLimit());
       }
       if (other.hasPagination()) {
         mergePagination(other.getPagination());
@@ -1392,61 +1367,26 @@ private static final long serialVersionUID = 0L;
       return this;
     }
 
-    private int limit_ ;
-    /**
-     * <pre>
-     * Optional. The maximum number of results to return. If not provided, defaults to 100.
-     * </pre>
-     *
-     * <code>int32 limit = 6;</code>
-     * @return The limit.
-     */
-    @java.lang.Override
-    public int getLimit() {
-      return limit_;
-    }
-    /**
-     * <pre>
-     * Optional. The maximum number of results to return. If not provided, defaults to 100.
-     * </pre>
-     *
-     * <code>int32 limit = 6;</code>
-     * @param value The limit to set.
-     * @return This builder for chaining.
-     */
-    public Builder setLimit(int value) {
-      
-      limit_ = value;
-      onChanged();
-      return this;
-    }
-    /**
-     * <pre>
-     * Optional. The maximum number of results to return. If not provided, defaults to 100.
-     * </pre>
-     *
-     * <code>int32 limit = 6;</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearLimit() {
-      
-      limit_ = 0;
-      onChanged();
-      return this;
-    }
-
     private io.provlabs.flow.api.PaginationRequest pagination_;
     private com.google.protobuf.SingleFieldBuilderV3<
         io.provlabs.flow.api.PaginationRequest, io.provlabs.flow.api.PaginationRequest.Builder, io.provlabs.flow.api.PaginationRequestOrBuilder> paginationBuilder_;
     /**
-     * <code>.nav.PaginationRequest pagination = 7;</code>
+     * <pre>
+     * Pagination details for the request
+     * </pre>
+     *
+     * <code>.nav.PaginationRequest pagination = 6;</code>
      * @return Whether the pagination field is set.
      */
     public boolean hasPagination() {
       return paginationBuilder_ != null || pagination_ != null;
     }
     /**
-     * <code>.nav.PaginationRequest pagination = 7;</code>
+     * <pre>
+     * Pagination details for the request
+     * </pre>
+     *
+     * <code>.nav.PaginationRequest pagination = 6;</code>
      * @return The pagination.
      */
     public io.provlabs.flow.api.PaginationRequest getPagination() {
@@ -1457,7 +1397,11 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>.nav.PaginationRequest pagination = 7;</code>
+     * <pre>
+     * Pagination details for the request
+     * </pre>
+     *
+     * <code>.nav.PaginationRequest pagination = 6;</code>
      */
     public Builder setPagination(io.provlabs.flow.api.PaginationRequest value) {
       if (paginationBuilder_ == null) {
@@ -1473,7 +1417,11 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.nav.PaginationRequest pagination = 7;</code>
+     * <pre>
+     * Pagination details for the request
+     * </pre>
+     *
+     * <code>.nav.PaginationRequest pagination = 6;</code>
      */
     public Builder setPagination(
         io.provlabs.flow.api.PaginationRequest.Builder builderForValue) {
@@ -1487,7 +1435,11 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.nav.PaginationRequest pagination = 7;</code>
+     * <pre>
+     * Pagination details for the request
+     * </pre>
+     *
+     * <code>.nav.PaginationRequest pagination = 6;</code>
      */
     public Builder mergePagination(io.provlabs.flow.api.PaginationRequest value) {
       if (paginationBuilder_ == null) {
@@ -1505,7 +1457,11 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.nav.PaginationRequest pagination = 7;</code>
+     * <pre>
+     * Pagination details for the request
+     * </pre>
+     *
+     * <code>.nav.PaginationRequest pagination = 6;</code>
      */
     public Builder clearPagination() {
       if (paginationBuilder_ == null) {
@@ -1519,7 +1475,11 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
-     * <code>.nav.PaginationRequest pagination = 7;</code>
+     * <pre>
+     * Pagination details for the request
+     * </pre>
+     *
+     * <code>.nav.PaginationRequest pagination = 6;</code>
      */
     public io.provlabs.flow.api.PaginationRequest.Builder getPaginationBuilder() {
       
@@ -1527,7 +1487,11 @@ private static final long serialVersionUID = 0L;
       return getPaginationFieldBuilder().getBuilder();
     }
     /**
-     * <code>.nav.PaginationRequest pagination = 7;</code>
+     * <pre>
+     * Pagination details for the request
+     * </pre>
+     *
+     * <code>.nav.PaginationRequest pagination = 6;</code>
      */
     public io.provlabs.flow.api.PaginationRequestOrBuilder getPaginationOrBuilder() {
       if (paginationBuilder_ != null) {
@@ -1538,7 +1502,11 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
-     * <code>.nav.PaginationRequest pagination = 7;</code>
+     * <pre>
+     * Pagination details for the request
+     * </pre>
+     *
+     * <code>.nav.PaginationRequest pagination = 6;</code>
      */
     private com.google.protobuf.SingleFieldBuilderV3<
         io.provlabs.flow.api.PaginationRequest, io.provlabs.flow.api.PaginationRequest.Builder, io.provlabs.flow.api.PaginationRequestOrBuilder> 
