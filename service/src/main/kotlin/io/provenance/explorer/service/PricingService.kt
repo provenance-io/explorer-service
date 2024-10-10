@@ -1,34 +1,17 @@
 package io.provenance.explorer.service
 
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import io.ktor.client.request.parameter
-import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
-import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_DECIMAL_PLACES
-import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AssetPricingRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.MarkerCacheTable
-import io.provenance.explorer.domain.extensions.calculateUsdPricePerUnit
-import io.provenance.explorer.domain.extensions.toDateTime
-import io.provenance.explorer.domain.models.explorer.AssetPricing
-import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
-import io.provenance.explorer.model.base.USD_LOWER
-import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.marker.v1.MarkerStatus
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
-import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
 
 @Service
 class PricingService(
