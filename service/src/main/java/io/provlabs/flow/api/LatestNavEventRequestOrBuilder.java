@@ -76,4 +76,31 @@ public interface LatestNavEventRequestOrBuilder extends
    * @return The limit.
    */
   int getLimit();
+
+  /**
+   * <pre>
+   * Pagination details for the request
+   * </pre>
+   *
+   * <code>.nav.PaginationRequest pagination = 6;</code>
+   * @return Whether the pagination field is set.
+   */
+  boolean hasPagination();
+  /**
+   * <pre>
+   * Pagination details for the request
+   * </pre>
+   *
+   * <code>.nav.PaginationRequest pagination = 6;</code>
+   * @return The pagination.
+   */
+  io.provlabs.flow.api.PaginationRequest getPagination();
+  /**
+   * <pre>
+   * Pagination details for the request
+   * </pre>
+   *
+   * <code>.nav.PaginationRequest pagination = 6;</code>
+   */
+  io.provlabs.flow.api.PaginationRequestOrBuilder getPaginationOrBuilder();
 }

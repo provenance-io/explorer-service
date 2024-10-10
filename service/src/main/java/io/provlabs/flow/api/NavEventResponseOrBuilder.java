@@ -30,4 +30,19 @@ public interface NavEventResponseOrBuilder extends
    */
   io.provlabs.flow.api.NavEventOrBuilder getNavEventsOrBuilder(
       int index);
+
+  /**
+   * <code>.nav.PaginationResponse pagination = 2;</code>
+   * @return Whether the pagination field is set.
+   */
+  boolean hasPagination();
+  /**
+   * <code>.nav.PaginationResponse pagination = 2;</code>
+   * @return The pagination.
+   */
+  io.provlabs.flow.api.PaginationResponse getPagination();
+  /**
+   * <code>.nav.PaginationResponse pagination = 2;</code>
+   */
+  io.provlabs.flow.api.PaginationResponseOrBuilder getPaginationOrBuilder();
 }

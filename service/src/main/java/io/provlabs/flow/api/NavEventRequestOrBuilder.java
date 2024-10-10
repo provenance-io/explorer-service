@@ -137,4 +137,19 @@ public interface NavEventRequestOrBuilder extends
    * @return The limit.
    */
   int getLimit();
+
+  /**
+   * <code>.nav.PaginationRequest pagination = 7;</code>
+   * @return Whether the pagination field is set.
+   */
+  boolean hasPagination();
+  /**
+   * <code>.nav.PaginationRequest pagination = 7;</code>
+   * @return The pagination.
+   */
+  io.provlabs.flow.api.PaginationRequest getPagination();
+  /**
+   * <code>.nav.PaginationRequest pagination = 7;</code>
+   */
+  io.provlabs.flow.api.PaginationRequestOrBuilder getPaginationOrBuilder();
 }

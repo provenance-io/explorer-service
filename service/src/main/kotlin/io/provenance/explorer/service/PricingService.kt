@@ -24,6 +24,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
+import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.time.OffsetDateTime
@@ -33,67 +34,8 @@ import java.time.ZoneOffset
 class PricingService(
     private val props: ExplorerProperties,
     private val tokenService: TokenService,
-    private val assetService: AssetService,
-    private val flowApiGrpcClient: FlowApiGrpcClient
 ) {
     protected val logger = logger(PricingService::class)
-
-    private var assetPricinglastRun: OffsetDateTime? = null
-
-    fun updateAssetPricingFromLatestNav() = runBlocking {
-        val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC)
-        logger.info("Updating asset pricing, last run at: $assetPricinglastRun")
-
-        val latestPrices = flowApiGrpcClient.getLatestNavPrices(
-            priceDenom = USD_LOWER,
-            includeMarkers = true,
-            includeScopes = true,
-            fromDate = assetPricinglastRun?.toDateTime(),
-            limit = 100000
-        )
-
-        latestPrices.forEach { price ->
-            if (price.denom != UTILITY_TOKEN) {
-                val marker = assetService.getAssetRaw(price.denom)
-                insertAssetPricing(
-                    marker = marker,
-                    markerDenom = price.denom,
-                    pricingDenom = price.priceDenom,
-                    pricingAmount = price.calculateUsdPricePerUnit(),
-                    timestamp = DateTime(price.blockTime * 1000)
-                )
-            }
-        }
-
-        val tokenLatest = tokenService.getTokenLatest()
-        val quote = tokenLatest?.quote?.get(USD_UPPER)
-        if (quote != null) {
-            val cmcPrice = quote.price?.let {
-                val scale = it.scale()
-                it.setScale(scale + UTILITY_TOKEN_BASE_DECIMAL_PLACES)
-                    .div(UTILITY_TOKEN_BASE_MULTIPLIER)
-            }
-
-            val lastUpdated = quote.last_updated
-
-            if (cmcPrice != null && lastUpdated != null) {
-                val marker = assetService.getAssetRaw(UTILITY_TOKEN)
-                insertAssetPricing(
-                    marker = marker,
-                    markerDenom = UTILITY_TOKEN,
-                    pricingDenom = USD_LOWER,
-                    pricingAmount = cmcPrice,
-                    timestamp = lastUpdated
-                )
-            } else {
-                logger.warn("CMC Price or Last Updated is null for $UTILITY_TOKEN")
-            }
-        } else {
-            logger.warn("No USD_UPPER price found in tokenLatest for $UTILITY_TOKEN")
-        }
-
-        assetPricinglastRun = now
-    }
 
     fun getTotalAum() = runBlocking {
         val baseMap = transaction {
@@ -123,19 +65,4 @@ class PricingService(
     }
 
     fun getPricingInfoSingle(denom: String) = AssetPricingRecord.findByDenom(denom)?.pricing
-
-    fun insertAssetPricing(marker: Pair<EntityID<Int>, MarkerCacheRecord>, markerDenom: String, pricingDenom: String, pricingAmount: BigDecimal, timestamp: DateTime) = transaction {
-        marker.first.value.let { AssetPricingRecord.upsert(it, markerDenom, pricingDenom, pricingAmount, timestamp) }
-    }
-
-    fun getPricingAsync(time: String, comingFrom: String) = runBlocking {
-        try {
-            KTOR_CLIENT_JAVA.get("${props.pricingUrl}/api/v1/pricing/marker/new") {
-                parameter("time", time)
-            }.body()
-        } catch (e: Exception) {
-            return@runBlocking listOf<AssetPricing>()
-                .also { logger.error("Error coming from $comingFrom: ${e.message}") }
-        }
-    }
 }

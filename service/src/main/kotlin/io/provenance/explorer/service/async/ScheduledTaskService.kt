@@ -37,6 +37,7 @@ import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.grpc.extensions.getMsgSubTypes
 import io.provenance.explorer.grpc.extensions.getMsgType
 import io.provenance.explorer.service.AccountService
+import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.CacheService
 import io.provenance.explorer.service.ExplorerService
@@ -73,10 +74,10 @@ class ScheduledTaskService(
     private val explorerService: ExplorerService,
     private val cacheService: CacheService,
     private val tokenService: TokenService,
-    private val pricingService: PricingService,
     private val accountService: AccountService,
     private val valService: ValidatorService,
-    private val metricsService: MetricsService
+    private val metricsService: MetricsService,
+    private val assetService: AssetService
 ) {
 
     protected val logger = logger(ScheduledTaskService::class)
@@ -247,7 +248,7 @@ class ScheduledTaskService(
 
     @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
     fun updateAssetPricing() {
-        pricingService.updateAssetPricingFromLatestNav()
+        assetService.updateAssetPricingFromLatestNav()
     }
 
     @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes

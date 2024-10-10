@@ -97,6 +97,19 @@ private static final long serialVersionUID = 0L;
             limit_ = input.readInt32();
             break;
           }
+          case 58: {
+            io.provlabs.flow.api.PaginationRequest.Builder subBuilder = null;
+            if (pagination_ != null) {
+              subBuilder = pagination_.toBuilder();
+            }
+            pagination_ = input.readMessage(io.provlabs.flow.api.PaginationRequest.parser(), extensionRegistry);
+            if (subBuilder != null) {
+              subBuilder.mergeFrom(pagination_);
+              pagination_ = subBuilder.buildPartial();
+            }
+
+            break;
+          }
           default: {
             if (!parseUnknownField(
                 input, unknownFields, extensionRegistry, tag)) {
@@ -382,6 +395,32 @@ private static final long serialVersionUID = 0L;
     return limit_;
   }
 
+  public static final int PAGINATION_FIELD_NUMBER = 7;
+  private io.provlabs.flow.api.PaginationRequest pagination_;
+  /**
+   * <code>.nav.PaginationRequest pagination = 7;</code>
+   * @return Whether the pagination field is set.
+   */
+  @java.lang.Override
+  public boolean hasPagination() {
+    return pagination_ != null;
+  }
+  /**
+   * <code>.nav.PaginationRequest pagination = 7;</code>
+   * @return The pagination.
+   */
+  @java.lang.Override
+  public io.provlabs.flow.api.PaginationRequest getPagination() {
+    return pagination_ == null ? io.provlabs.flow.api.PaginationRequest.getDefaultInstance() : pagination_;
+  }
+  /**
+   * <code>.nav.PaginationRequest pagination = 7;</code>
+   */
+  @java.lang.Override
+  public io.provlabs.flow.api.PaginationRequestOrBuilder getPaginationOrBuilder() {
+    return getPagination();
+  }
+
   private byte memoizedIsInitialized = -1;
   @java.lang.Override
   public final boolean isInitialized() {
@@ -413,6 +452,9 @@ private static final long serialVersionUID = 0L;
     }
     if (limit_ != 0) {
       output.writeInt32(6, limit_);
+    }
+    if (pagination_ != null) {
+      output.writeMessage(7, getPagination());
     }
     unknownFields.writeTo(output);
   }
@@ -447,6 +489,10 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeInt32Size(6, limit_);
     }
+    if (pagination_ != null) {
+      size += com.google.protobuf.CodedOutputStream
+        .computeMessageSize(7, getPagination());
+    }
     size += unknownFields.getSerializedSize();
     memoizedSize = size;
     return size;
@@ -474,6 +520,11 @@ private static final long serialVersionUID = 0L;
         .equals(other.getToDate())) return false;
     if (getLimit()
         != other.getLimit()) return false;
+    if (hasPagination() != other.hasPagination()) return false;
+    if (hasPagination()) {
+      if (!getPagination()
+          .equals(other.getPagination())) return false;
+    }
     if (!unknownFields.equals(other.unknownFields)) return false;
     return true;
   }
@@ -499,6 +550,10 @@ private static final long serialVersionUID = 0L;
     hash = (53 * hash) + getToDate().hashCode();
     hash = (37 * hash) + LIMIT_FIELD_NUMBER;
     hash = (53 * hash) + getLimit();
+    if (hasPagination()) {
+      hash = (37 * hash) + PAGINATION_FIELD_NUMBER;
+      hash = (53 * hash) + getPagination().hashCode();
+    }
     hash = (29 * hash) + unknownFields.hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -649,6 +704,12 @@ private static final long serialVersionUID = 0L;
 
       limit_ = 0;
 
+      if (paginationBuilder_ == null) {
+        pagination_ = null;
+      } else {
+        pagination_ = null;
+        paginationBuilder_ = null;
+      }
       return this;
     }
 
@@ -686,6 +747,11 @@ private static final long serialVersionUID = 0L;
       result.fromDate_ = fromDate_;
       result.toDate_ = toDate_;
       result.limit_ = limit_;
+      if (paginationBuilder_ == null) {
+        result.pagination_ = pagination_;
+      } else {
+        result.pagination_ = paginationBuilder_.build();
+      }
       onBuilt();
       return result;
     }
@@ -762,6 +828,9 @@ private static final long serialVersionUID = 0L;
       }
       if (other.getLimit() != 0) {
         setLimit(other.getLimit());
+      }
+      if (other.hasPagination()) {
+        mergePagination(other.getPagination());
       }
       this.mergeUnknownFields(other.unknownFields);
       onChanged();
@@ -1364,6 +1433,125 @@ private static final long serialVersionUID = 0L;
       limit_ = 0;
       onChanged();
       return this;
+    }
+
+    private io.provlabs.flow.api.PaginationRequest pagination_;
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.provlabs.flow.api.PaginationRequest, io.provlabs.flow.api.PaginationRequest.Builder, io.provlabs.flow.api.PaginationRequestOrBuilder> paginationBuilder_;
+    /**
+     * <code>.nav.PaginationRequest pagination = 7;</code>
+     * @return Whether the pagination field is set.
+     */
+    public boolean hasPagination() {
+      return paginationBuilder_ != null || pagination_ != null;
+    }
+    /**
+     * <code>.nav.PaginationRequest pagination = 7;</code>
+     * @return The pagination.
+     */
+    public io.provlabs.flow.api.PaginationRequest getPagination() {
+      if (paginationBuilder_ == null) {
+        return pagination_ == null ? io.provlabs.flow.api.PaginationRequest.getDefaultInstance() : pagination_;
+      } else {
+        return paginationBuilder_.getMessage();
+      }
+    }
+    /**
+     * <code>.nav.PaginationRequest pagination = 7;</code>
+     */
+    public Builder setPagination(io.provlabs.flow.api.PaginationRequest value) {
+      if (paginationBuilder_ == null) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        pagination_ = value;
+        onChanged();
+      } else {
+        paginationBuilder_.setMessage(value);
+      }
+
+      return this;
+    }
+    /**
+     * <code>.nav.PaginationRequest pagination = 7;</code>
+     */
+    public Builder setPagination(
+        io.provlabs.flow.api.PaginationRequest.Builder builderForValue) {
+      if (paginationBuilder_ == null) {
+        pagination_ = builderForValue.build();
+        onChanged();
+      } else {
+        paginationBuilder_.setMessage(builderForValue.build());
+      }
+
+      return this;
+    }
+    /**
+     * <code>.nav.PaginationRequest pagination = 7;</code>
+     */
+    public Builder mergePagination(io.provlabs.flow.api.PaginationRequest value) {
+      if (paginationBuilder_ == null) {
+        if (pagination_ != null) {
+          pagination_ =
+            io.provlabs.flow.api.PaginationRequest.newBuilder(pagination_).mergeFrom(value).buildPartial();
+        } else {
+          pagination_ = value;
+        }
+        onChanged();
+      } else {
+        paginationBuilder_.mergeFrom(value);
+      }
+
+      return this;
+    }
+    /**
+     * <code>.nav.PaginationRequest pagination = 7;</code>
+     */
+    public Builder clearPagination() {
+      if (paginationBuilder_ == null) {
+        pagination_ = null;
+        onChanged();
+      } else {
+        pagination_ = null;
+        paginationBuilder_ = null;
+      }
+
+      return this;
+    }
+    /**
+     * <code>.nav.PaginationRequest pagination = 7;</code>
+     */
+    public io.provlabs.flow.api.PaginationRequest.Builder getPaginationBuilder() {
+      
+      onChanged();
+      return getPaginationFieldBuilder().getBuilder();
+    }
+    /**
+     * <code>.nav.PaginationRequest pagination = 7;</code>
+     */
+    public io.provlabs.flow.api.PaginationRequestOrBuilder getPaginationOrBuilder() {
+      if (paginationBuilder_ != null) {
+        return paginationBuilder_.getMessageOrBuilder();
+      } else {
+        return pagination_ == null ?
+            io.provlabs.flow.api.PaginationRequest.getDefaultInstance() : pagination_;
+      }
+    }
+    /**
+     * <code>.nav.PaginationRequest pagination = 7;</code>
+     */
+    private com.google.protobuf.SingleFieldBuilderV3<
+        io.provlabs.flow.api.PaginationRequest, io.provlabs.flow.api.PaginationRequest.Builder, io.provlabs.flow.api.PaginationRequestOrBuilder> 
+        getPaginationFieldBuilder() {
+      if (paginationBuilder_ == null) {
+        paginationBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+            io.provlabs.flow.api.PaginationRequest, io.provlabs.flow.api.PaginationRequest.Builder, io.provlabs.flow.api.PaginationRequestOrBuilder>(
+                getPagination(),
+                getParentForChildren(),
+                isClean());
+        pagination_ = null;
+      }
+      return paginationBuilder_;
     }
     @java.lang.Override
     public final Builder setUnknownFields(
