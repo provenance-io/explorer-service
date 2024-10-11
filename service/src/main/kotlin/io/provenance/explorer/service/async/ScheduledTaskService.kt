@@ -267,7 +267,7 @@ class ScheduledTaskService(
         tokenService.updateAndSaveTokenHistoricalData(startDate, today)
     }
 
-    @Scheduled(initialDelay = 0L, fixedDelay = 300000L) // Every 5 minutes
+     @Scheduled(initialDelay = 0L, fixedDelay = 300000L) // Every 5 minutes
     fun updateTokenLatest() {
         val today = DateTime.now().withZone(DateTimeZone.UTC)
         val startDate = today.minusDays(1)
@@ -275,7 +275,7 @@ class ScheduledTaskService(
     }
 
     // Remove once the ranges have been updated
-    @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
+     @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
     fun feeBugOneElevenReprocess() {
         val done = "DONE"
         // Find existing record
@@ -353,7 +353,7 @@ class ScheduledTaskService(
         }
     }
 
-    @Scheduled(initialDelay = 5000L, fixedDelay = 5000L)
+     @Scheduled(initialDelay = 5000L, fixedDelay = 5000L)
     fun startAccountProcess() {
         processAccountRecords()
     }

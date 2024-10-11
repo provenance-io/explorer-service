@@ -244,10 +244,10 @@ class AssetService(
         val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC)
         logger.info("Updating asset pricing, last run at: $assetPricinglastRun")
 
-        val latestPrices = flowApiGrpcClient.getLatestNavPrices(
+        val latestPrices = flowApiGrpcClient.getAllLatestNavPrices(
             priceDenom = USD_LOWER,
             includeMarkers = true,
-            includeScopes = true,
+            includeScopes = false,
             fromDate = assetPricinglastRun?.toDateTime()
         )
 
@@ -257,6 +257,7 @@ class AssetService(
                 insertAssetPricing(
                     marker = marker,
                     markerDenom = price.denom,
+                    markerAddress = marker.second.markerAddress,
                     pricingDenom = price.priceDenom,
                     pricingAmount = price.calculateUsdPricePerUnit(),
                     timestamp = DateTime(price.blockTime * 1000)
@@ -280,6 +281,7 @@ class AssetService(
                 insertAssetPricing(
                     marker = marker,
                     markerDenom = UTILITY_TOKEN,
+                    markerAddress = marker.second.markerAddress,
                     pricingDenom = USD_LOWER,
                     pricingAmount = cmcPrice,
                     timestamp = lastUpdated
@@ -295,8 +297,8 @@ class AssetService(
     }
 }
 
-fun insertAssetPricing(marker: Pair<EntityID<Int>, MarkerCacheRecord>, markerDenom: String, pricingDenom: String, pricingAmount: BigDecimal, timestamp: DateTime) = transaction {
-    marker.first.value.let { AssetPricingRecord.upsert(it, markerDenom, pricingDenom, pricingAmount, timestamp) }
+fun insertAssetPricing(marker: Pair<EntityID<Int>, MarkerCacheRecord>, markerDenom: String, markerAddress: String?, pricingDenom: String, pricingAmount: BigDecimal, timestamp: DateTime) = transaction {
+    marker.first.value.let { AssetPricingRecord.upsert(it, markerDenom, markerAddress, pricingDenom, pricingAmount, timestamp) }
 }
 fun String.getDenomByAddress() = MarkerCacheRecord.findByAddress(this)?.denom
 
