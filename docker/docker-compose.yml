@@ -7,7 +7,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password1
     ports:
-      - 5430:5432
+      - 5432:5432
 
   explorer-service:
     image: provenanceio/explorer-service:latest
