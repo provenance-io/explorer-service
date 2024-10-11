@@ -245,7 +245,7 @@ class ScheduledTaskService(
         }.let { if (it.isNotEmpty()) BlockTxRetryRecord.deleteRecords(it) }
     }
 
-    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
+    @Scheduled(initialDelay = 0L, fixedDelay = 300000L) // Every 5 minutes
     fun updateAssetPricing() {
         assetService.updateAssetPricingFromLatestNav()
     }
@@ -267,7 +267,7 @@ class ScheduledTaskService(
         tokenService.updateAndSaveTokenHistoricalData(startDate, today)
     }
 
-    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
+    @Scheduled(initialDelay = 0L, fixedDelay = 300000L) // Every 5 minutes
     fun updateTokenLatest() {
         val today = DateTime.now().withZone(DateTimeZone.UTC)
         val startDate = today.minusDays(1)
