@@ -3,15 +3,18 @@ package io.provenance.explorer.service
 import com.google.protobuf.Timestamp
 import com.google.protobuf.util.JsonFormat
 import cosmos.bank.v1beta1.denomUnit
+import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.AssetPricingRecord
 import io.provenance.explorer.domain.entities.BaseDenomType
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.MarkerUnitRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
+import io.provenance.explorer.domain.extensions.calculateUsdPricePerUnit
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toObjectNode
@@ -19,6 +22,7 @@ import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
 import io.provenance.explorer.grpc.extensions.getManagingAccounts
 import io.provenance.explorer.grpc.extensions.isMintable
+import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
@@ -29,14 +33,21 @@ import io.provenance.explorer.model.AssetManagement
 import io.provenance.explorer.model.TokenCounts
 import io.provenance.explorer.model.base.CountStrTotal
 import io.provenance.explorer.model.base.PagedResults
+import io.provenance.explorer.model.base.USD_LOWER
+import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.marker.v1.MarkerStatus
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.joda.time.DateTime
 import org.springframework.stereotype.Service
+import java.math.BigDecimal
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 @Service
 class AssetService(
@@ -45,9 +56,12 @@ class AssetService(
     private val accountClient: AccountGrpcClient,
     private val protoPrinter: JsonFormat.Printer,
     private val pricingService: PricingService,
-    private val tokenService: TokenService
+    private val tokenService: TokenService,
+    private val flowApiGrpcClient: FlowApiGrpcClient
 ) {
     protected val logger = logger(AssetService::class)
+
+    private var assetPricinglastRun: OffsetDateTime? = null
 
     fun validateDenom(denom: String) =
         requireNotNullToMessage(MarkerCacheRecord.findByDenom(denom)) { "Denom $denom does not exist." }
@@ -225,8 +239,67 @@ class AssetService(
             )
         }
     }
+
+    fun updateAssetPricingFromLatestNav() = runBlocking {
+        val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC)
+        logger.info("Updating asset pricing, last run at: $assetPricinglastRun")
+
+        val latestPrices = flowApiGrpcClient.getAllLatestNavPrices(
+            priceDenom = USD_LOWER,
+            includeMarkers = true,
+            includeScopes = false,
+            fromDate = assetPricinglastRun?.toDateTime()
+        )
+
+        latestPrices.forEach { price ->
+            if (price.denom != UTILITY_TOKEN) {
+                val marker = getAssetRaw(price.denom)
+                insertAssetPricing(
+                    marker = marker,
+                    markerDenom = price.denom,
+                    markerAddress = marker.second.markerAddress,
+                    pricingDenom = price.priceDenom,
+                    pricingAmount = price.calculateUsdPricePerUnit(),
+                    timestamp = DateTime(price.blockTime * 1000)
+                )
+            }
+        }
+
+        val tokenLatest = tokenService.getTokenLatest()
+        val quote = tokenLatest?.quote?.get(USD_UPPER)
+        if (quote != null) {
+            val cmcPrice = quote.price?.let {
+                val scale = it.scale()
+                it.setScale(scale + ExplorerProperties.UTILITY_TOKEN_BASE_DECIMAL_PLACES)
+                    .div(ExplorerProperties.UTILITY_TOKEN_BASE_MULTIPLIER)
+            }
+
+            val lastUpdated = quote.last_updated
+
+            if (cmcPrice != null && lastUpdated != null) {
+                val marker = getAssetRaw(UTILITY_TOKEN)
+                insertAssetPricing(
+                    marker = marker,
+                    markerDenom = UTILITY_TOKEN,
+                    markerAddress = marker.second.markerAddress,
+                    pricingDenom = USD_LOWER,
+                    pricingAmount = cmcPrice,
+                    timestamp = lastUpdated
+                )
+            } else {
+                logger.warn("CMC Price or Last Updated is null for $UTILITY_TOKEN")
+            }
+        } else {
+            logger.warn("No USD_UPPER price found in tokenLatest for $UTILITY_TOKEN")
+        }
+
+        assetPricinglastRun = now
+    }
 }
 
+fun insertAssetPricing(marker: Pair<EntityID<Int>, MarkerCacheRecord>, markerDenom: String, markerAddress: String?, pricingDenom: String, pricingAmount: BigDecimal, timestamp: DateTime) = transaction {
+    marker.first.value.let { AssetPricingRecord.upsert(it, markerDenom, markerAddress, pricingDenom, pricingAmount, timestamp) }
+}
 fun String.getDenomByAddress() = MarkerCacheRecord.findByAddress(this)?.denom
 
 fun String.prettyStatus() = this.substringAfter("MARKER_STATUS_")

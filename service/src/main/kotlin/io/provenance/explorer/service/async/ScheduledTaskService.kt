@@ -5,8 +5,6 @@ import cosmos.authz.v1beta1.msgGrant
 import cosmos.authz.v1beta1.msgRevoke
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
-import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_DECIMAL_PLACES
-import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockTxCountsCacheRecord
@@ -38,7 +36,6 @@ import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.grpc.extensions.getMsgSubTypes
 import io.provenance.explorer.grpc.extensions.getMsgType
-import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.explorer.service.AccountService
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.BlockService
@@ -46,7 +43,6 @@ import io.provenance.explorer.service.CacheService
 import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.service.GovService
 import io.provenance.explorer.service.MetricsService
-import io.provenance.explorer.service.PricingService
 import io.provenance.explorer.service.TokenService
 import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.service.getBlock
@@ -66,24 +62,21 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import tendermint.types.BlockOuterClass
 import java.math.BigDecimal
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import javax.annotation.PostConstruct
 
 @Service
 class ScheduledTaskService(
     private val props: ExplorerProperties,
     private val blockService: BlockService,
-    private val assetService: AssetService,
     private val govService: GovService,
     private val blockAndTxProcessor: BlockAndTxProcessor,
     private val explorerService: ExplorerService,
     private val cacheService: CacheService,
     private val tokenService: TokenService,
-    private val pricingService: PricingService,
     private val accountService: AccountService,
     private val valService: ValidatorService,
-    private val metricsService: MetricsService
+    private val metricsService: MetricsService,
+    private val assetService: AssetService
 ) {
 
     protected val logger = logger(ScheduledTaskService::class)
@@ -252,34 +245,9 @@ class ScheduledTaskService(
         }.let { if (it.isNotEmpty()) BlockTxRetryRecord.deleteRecords(it) }
     }
 
-    @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
+    @Scheduled(initialDelay = 0L, fixedDelay = 300000L) // Every 5 minutes
     fun updateAssetPricing() {
-        logger.info("Updating asset pricing")
-        val key = CacheKeys.PRICING_UPDATE.key
-        val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC).toString()
-        cacheService.getCacheValue(key)!!.let { cache ->
-            pricingService.getPricingAsync(cache.cacheValue!!, "async pricing update").forEach { price ->
-                // don't set price from PE
-                if (price.markerDenom != UTILITY_TOKEN) {
-                    assetService.getAssetRaw(price.markerDenom).let { pricingService.insertAssetPricing(it, price) }
-                } else {
-                    // Pull price from CMC, calculate to the true base denom price
-                    val cmcPrice =
-                        tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price
-                            ?.let {
-                                val scale = it.scale()
-                                it.setScale(scale + UTILITY_TOKEN_BASE_DECIMAL_PLACES)
-                                    .div(UTILITY_TOKEN_BASE_MULTIPLIER)
-                            }
-                    // If CMC data exists, use that, else use the PE value
-                    val newPriceObj = price.copy(usdPrice = cmcPrice ?: price.usdPrice!!)
-                    // Save it
-                    assetService.getAssetRaw(price.markerDenom).let {
-                        pricingService.insertAssetPricing(it, newPriceObj)
-                    }
-                }
-            }
-        }.let { cacheService.updateCacheValue(key, now) }
+        assetService.updateAssetPricingFromLatestNav()
     }
 
     @Scheduled(cron = "0 0/15 * * * ?") // Every 15 minutes
@@ -299,7 +267,7 @@ class ScheduledTaskService(
         tokenService.updateAndSaveTokenHistoricalData(startDate, today)
     }
 
-    @Scheduled(cron = "0 0/5 * * * ?") // Every 5 minutes
+    @Scheduled(initialDelay = 0L, fixedDelay = 300000L) // Every 5 minutes
     fun updateTokenLatest() {
         val today = DateTime.now().withZone(DateTimeZone.UTC)
         val startDate = today.minusDays(1)

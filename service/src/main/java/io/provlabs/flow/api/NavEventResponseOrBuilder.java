@@ -8,26 +8,73 @@ public interface NavEventResponseOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
+   * <pre>
+   * The list of NavEvents
+   * </pre>
+   *
    * <code>repeated .nav.NavEvent nav_events = 1;</code>
    */
   java.util.List<io.provlabs.flow.api.NavEvent> 
       getNavEventsList();
   /**
+   * <pre>
+   * The list of NavEvents
+   * </pre>
+   *
    * <code>repeated .nav.NavEvent nav_events = 1;</code>
    */
   io.provlabs.flow.api.NavEvent getNavEvents(int index);
   /**
+   * <pre>
+   * The list of NavEvents
+   * </pre>
+   *
    * <code>repeated .nav.NavEvent nav_events = 1;</code>
    */
   int getNavEventsCount();
   /**
+   * <pre>
+   * The list of NavEvents
+   * </pre>
+   *
    * <code>repeated .nav.NavEvent nav_events = 1;</code>
    */
   java.util.List<? extends io.provlabs.flow.api.NavEventOrBuilder> 
       getNavEventsOrBuilderList();
   /**
+   * <pre>
+   * The list of NavEvents
+   * </pre>
+   *
    * <code>repeated .nav.NavEvent nav_events = 1;</code>
    */
   io.provlabs.flow.api.NavEventOrBuilder getNavEventsOrBuilder(
       int index);
+
+  /**
+   * <pre>
+   * Pagination details for the response
+   * </pre>
+   *
+   * <code>.nav.PaginationResponse pagination = 2;</code>
+   * @return Whether the pagination field is set.
+   */
+  boolean hasPagination();
+  /**
+   * <pre>
+   * Pagination details for the response
+   * </pre>
+   *
+   * <code>.nav.PaginationResponse pagination = 2;</code>
+   * @return The pagination.
+   */
+  io.provlabs.flow.api.PaginationResponse getPagination();
+  /**
+   * <pre>
+   * Pagination details for the response
+   * </pre>
+   *
+   * <code>.nav.PaginationResponse pagination = 2;</code>
+   */
+  io.provlabs.flow.api.PaginationResponseOrBuilder getPaginationOrBuilder();
 }

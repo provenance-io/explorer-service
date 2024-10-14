@@ -61,6 +61,37 @@ public final class NavServiceGrpc {
     return getGetNavEventsMethod;
   }
 
+  private static volatile io.grpc.MethodDescriptor<io.provlabs.flow.api.LatestNavEventRequest,
+      io.provlabs.flow.api.NavEventResponse> getGetLatestNavEventsMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "GetLatestNavEvents",
+      requestType = io.provlabs.flow.api.LatestNavEventRequest.class,
+      responseType = io.provlabs.flow.api.NavEventResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<io.provlabs.flow.api.LatestNavEventRequest,
+      io.provlabs.flow.api.NavEventResponse> getGetLatestNavEventsMethod() {
+    io.grpc.MethodDescriptor<io.provlabs.flow.api.LatestNavEventRequest, io.provlabs.flow.api.NavEventResponse> getGetLatestNavEventsMethod;
+    if ((getGetLatestNavEventsMethod = NavServiceGrpc.getGetLatestNavEventsMethod) == null) {
+      synchronized (NavServiceGrpc.class) {
+        if ((getGetLatestNavEventsMethod = NavServiceGrpc.getGetLatestNavEventsMethod) == null) {
+          NavServiceGrpc.getGetLatestNavEventsMethod = getGetLatestNavEventsMethod =
+              io.grpc.MethodDescriptor.<io.provlabs.flow.api.LatestNavEventRequest, io.provlabs.flow.api.NavEventResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "GetLatestNavEvents"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  io.provlabs.flow.api.LatestNavEventRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  io.provlabs.flow.api.NavEventResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new NavServiceMethodDescriptorSupplier("GetLatestNavEvents"))
+              .build();
+        }
+      }
+    }
+    return getGetLatestNavEventsMethod;
+  }
+
   /**
    * Creates a new async stub that supports all call types for the service
    */
@@ -113,10 +144,23 @@ public final class NavServiceGrpc {
   public static abstract class NavServiceImplBase implements io.grpc.BindableService {
 
     /**
+     * <pre>
+     * Retrieves NavEvents based on denom, scope, and optional filters.
+     * </pre>
      */
     public void getNavEvents(io.provlabs.flow.api.NavEventRequest request,
         io.grpc.stub.StreamObserver<io.provlabs.flow.api.NavEventResponse> responseObserver) {
       asyncUnimplementedUnaryCall(getGetNavEventsMethod(), responseObserver);
+    }
+
+    /**
+     * <pre>
+     * Retrieves the latest NavEvents based on price denomination and marker/scope inclusion.
+     * </pre>
+     */
+    public void getLatestNavEvents(io.provlabs.flow.api.LatestNavEventRequest request,
+        io.grpc.stub.StreamObserver<io.provlabs.flow.api.NavEventResponse> responseObserver) {
+      asyncUnimplementedUnaryCall(getGetLatestNavEventsMethod(), responseObserver);
     }
 
     @java.lang.Override public final io.grpc.ServerServiceDefinition bindService() {
@@ -128,6 +172,13 @@ public final class NavServiceGrpc {
                 io.provlabs.flow.api.NavEventRequest,
                 io.provlabs.flow.api.NavEventResponse>(
                   this, METHODID_GET_NAV_EVENTS)))
+          .addMethod(
+            getGetLatestNavEventsMethod(),
+            asyncUnaryCall(
+              new MethodHandlers<
+                io.provlabs.flow.api.LatestNavEventRequest,
+                io.provlabs.flow.api.NavEventResponse>(
+                  this, METHODID_GET_LATEST_NAV_EVENTS)))
           .build();
     }
   }
@@ -150,11 +201,25 @@ public final class NavServiceGrpc {
     }
 
     /**
+     * <pre>
+     * Retrieves NavEvents based on denom, scope, and optional filters.
+     * </pre>
      */
     public void getNavEvents(io.provlabs.flow.api.NavEventRequest request,
         io.grpc.stub.StreamObserver<io.provlabs.flow.api.NavEventResponse> responseObserver) {
       asyncUnaryCall(
           getChannel().newCall(getGetNavEventsMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
+     * <pre>
+     * Retrieves the latest NavEvents based on price denomination and marker/scope inclusion.
+     * </pre>
+     */
+    public void getLatestNavEvents(io.provlabs.flow.api.LatestNavEventRequest request,
+        io.grpc.stub.StreamObserver<io.provlabs.flow.api.NavEventResponse> responseObserver) {
+      asyncUnaryCall(
+          getChannel().newCall(getGetLatestNavEventsMethod(), getCallOptions()), request, responseObserver);
     }
   }
 
@@ -176,10 +241,23 @@ public final class NavServiceGrpc {
     }
 
     /**
+     * <pre>
+     * Retrieves NavEvents based on denom, scope, and optional filters.
+     * </pre>
      */
     public io.provlabs.flow.api.NavEventResponse getNavEvents(io.provlabs.flow.api.NavEventRequest request) {
       return blockingUnaryCall(
           getChannel(), getGetNavEventsMethod(), getCallOptions(), request);
+    }
+
+    /**
+     * <pre>
+     * Retrieves the latest NavEvents based on price denomination and marker/scope inclusion.
+     * </pre>
+     */
+    public io.provlabs.flow.api.NavEventResponse getLatestNavEvents(io.provlabs.flow.api.LatestNavEventRequest request) {
+      return blockingUnaryCall(
+          getChannel(), getGetLatestNavEventsMethod(), getCallOptions(), request);
     }
   }
 
@@ -201,15 +279,30 @@ public final class NavServiceGrpc {
     }
 
     /**
+     * <pre>
+     * Retrieves NavEvents based on denom, scope, and optional filters.
+     * </pre>
      */
     public com.google.common.util.concurrent.ListenableFuture<io.provlabs.flow.api.NavEventResponse> getNavEvents(
         io.provlabs.flow.api.NavEventRequest request) {
       return futureUnaryCall(
           getChannel().newCall(getGetNavEventsMethod(), getCallOptions()), request);
     }
+
+    /**
+     * <pre>
+     * Retrieves the latest NavEvents based on price denomination and marker/scope inclusion.
+     * </pre>
+     */
+    public com.google.common.util.concurrent.ListenableFuture<io.provlabs.flow.api.NavEventResponse> getLatestNavEvents(
+        io.provlabs.flow.api.LatestNavEventRequest request) {
+      return futureUnaryCall(
+          getChannel().newCall(getGetLatestNavEventsMethod(), getCallOptions()), request);
+    }
   }
 
   private static final int METHODID_GET_NAV_EVENTS = 0;
+  private static final int METHODID_GET_LATEST_NAV_EVENTS = 1;
 
   private static final class MethodHandlers<Req, Resp> implements
       io.grpc.stub.ServerCalls.UnaryMethod<Req, Resp>,
@@ -230,6 +323,10 @@ public final class NavServiceGrpc {
       switch (methodId) {
         case METHODID_GET_NAV_EVENTS:
           serviceImpl.getNavEvents((io.provlabs.flow.api.NavEventRequest) request,
+              (io.grpc.stub.StreamObserver<io.provlabs.flow.api.NavEventResponse>) responseObserver);
+          break;
+        case METHODID_GET_LATEST_NAV_EVENTS:
+          serviceImpl.getLatestNavEvents((io.provlabs.flow.api.LatestNavEventRequest) request,
               (io.grpc.stub.StreamObserver<io.provlabs.flow.api.NavEventResponse>) responseObserver);
           break;
         default:
@@ -294,6 +391,7 @@ public final class NavServiceGrpc {
           serviceDescriptor = result = io.grpc.ServiceDescriptor.newBuilder(SERVICE_NAME)
               .setSchemaDescriptor(new NavServiceFileDescriptorSupplier())
               .addMethod(getGetNavEventsMethod())
+              .addMethod(getGetLatestNavEventsMethod())
               .build();
         }
       }

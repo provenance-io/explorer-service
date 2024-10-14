@@ -7,7 +7,6 @@ import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.nullsLast
 import io.provenance.explorer.domain.core.sql.toDbQueryList
 import io.provenance.explorer.domain.extensions.execAndMap
-import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.explorer.AssetPricing
 import io.provenance.explorer.domain.models.explorer.TokenDistributionPaginatedResults
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
@@ -226,27 +225,25 @@ object AssetPricingTable : IdTable<Int>(name = "asset_pricing") {
 class AssetPricingRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<AssetPricingRecord>(AssetPricingTable) {
 
-        private fun findUnique(data: AssetPricing) = transaction {
+        private fun findUnique(markerDenom: String, pricingDenom: String): AssetPricingRecord? = transaction {
             AssetPricingRecord.find {
-                (AssetPricingTable.denom eq data.markerDenom) and
-                    (AssetPricingTable.pricingDenom eq data.priceDenomination)
+                (AssetPricingTable.denom eq markerDenom) and
+                    (AssetPricingTable.pricingDenom eq pricingDenom)
             }
+                .limit(1)
                 .firstOrNull()
         }
-
-        fun upsert(markerId: Int, data: AssetPricing) = transaction {
-            findUnique(data)?.apply {
-                this.pricing = data.usdPrice ?: data.price!!
-                this.lastUpdated = data.priceTimestamp.toDateTime()
-                this.data = data
+        fun upsert(markerId: Int, markerDenom: String, markerAddress: String?, pricingDenom: String, pricingAmount: BigDecimal, timestamp: DateTime) = transaction {
+            findUnique(markerDenom, pricingDenom)?.apply {
+                this.pricing = pricingAmount
+                this.lastUpdated = timestamp
             } ?: AssetPricingTable.insert {
                 it[this.markerId] = markerId
-                it[this.markerAddress] = data.markerAddress
-                it[this.denom] = data.markerDenom
-                it[this.pricing] = data.usdPrice ?: data.price!!
-                it[this.pricingDenom] = data.priceDenomination
-                it[this.lastUpdated] = data.priceTimestamp.toDateTime()
-                it[this.data] = data
+                it[this.markerAddress] = markerAddress ?: ""
+                it[this.denom] = markerDenom
+                it[this.pricing] = pricingAmount
+                it[this.pricingDenom] = pricingDenom
+                it[this.lastUpdated] = timestamp
             }
         }
 

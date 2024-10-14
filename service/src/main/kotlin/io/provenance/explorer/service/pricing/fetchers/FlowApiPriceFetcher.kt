@@ -18,7 +18,7 @@ class FlowApiPriceFetcher(
         return "flow-api"
     }
     override fun fetchHistoricalPrice(fromDate: DateTime?): List<HistoricalPrice> {
-        val onChainNavEvents = getMarkerNavByPriceDenoms(fromDate, 17800)
+        val onChainNavEvents = getMarkerNavByPriceDenoms(fromDate)
         return onChainNavEvents.map { navEvent ->
             val volumeHash = calculateVolumeHash(navEvent.volume)
             val pricePerHash = getPricePerHashFromMicroUsd(navEvent.priceAmount, navEvent.volume)
@@ -34,8 +34,8 @@ class FlowApiPriceFetcher(
         }
     }
 
-    fun getMarkerNavByPriceDenoms(fromDate: DateTime?, limit: Int): List<NavEvent> {
-        return flowApiGrpcClient.getMarkerNavByPriceDenoms(denom, pricingDenoms, fromDate, limit)
+    fun getMarkerNavByPriceDenoms(fromDate: DateTime?): List<NavEvent> {
+        return flowApiGrpcClient.getAllMarkerNavByPriceDenoms(denom, pricingDenoms, fromDate, 10000)
     }
 
     fun calculateVolumeHash(volumeNhash: Long): BigDecimal {

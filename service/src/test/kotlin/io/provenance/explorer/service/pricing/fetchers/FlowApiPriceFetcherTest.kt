@@ -43,9 +43,8 @@ class FlowApiPriceFetcherTest {
     @Disabled("Test was used to manually call the endpoint")
     fun `test getMarkerNavByPriceDenoms and print results`() {
         val fromDate = DateTime.now().minusDays(1)
-        val limit = 100
 
-        val result: List<NavEvent> = flowApiPriceFetcher.getMarkerNavByPriceDenoms(fromDate, limit)
+        val result: List<NavEvent> = flowApiPriceFetcher.getMarkerNavByPriceDenoms(fromDate)
 
         val groupedByPriceDenom = result.groupBy { it.priceDenom }
 

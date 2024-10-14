@@ -1,19 +1,13 @@
 package io.provenance.explorer.service
 
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import io.ktor.client.request.parameter
-import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AssetPricingRecord
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.MarkerCacheTable
-import io.provenance.explorer.domain.models.explorer.AssetPricing
 import io.provenance.marker.v1.MarkerStatus
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
@@ -54,19 +48,4 @@ class PricingService(
     }
 
     fun getPricingInfoSingle(denom: String) = AssetPricingRecord.findByDenom(denom)?.pricing
-
-    fun insertAssetPricing(marker: Pair<EntityID<Int>, MarkerCacheRecord>, data: AssetPricing) = transaction {
-        marker.first.value.let { AssetPricingRecord.upsert(it, data) }
-    }
-
-    fun getPricingAsync(time: String, comingFrom: String) = runBlocking {
-        try {
-            KTOR_CLIENT_JAVA.get("${props.pricingUrl}/api/v1/pricing/marker/new") {
-                parameter("time", time)
-            }.body()
-        } catch (e: Exception) {
-            return@runBlocking listOf<AssetPricing>()
-                .also { logger.error("Error coming from $comingFrom: ${e.message}") }
-        }
-    }
 }
