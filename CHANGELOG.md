@@ -45,6 +45,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Remove update block latency procedure call [#550](https://github.com/provenance-io/explorer-service/pull/550)
 * Docker images at tag `latest` for main branch merges [#551](https://github.com/provenance-io/explorer-service/pull/551)
 * Refactor account processing implementation to be more efficient [#552](https://github.com/provenance-io/explorer-service/issues/552)
+* Update keep alive times for flow api grpc calls [#558](https://github.com/provenance-io/explorer-service/pull/558)
 
 ## [v5.11.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.11.0) - 2024-08-27
 
