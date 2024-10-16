@@ -140,15 +140,6 @@
 //    }
 //
 //    @Test
-// //    @Ignore("TODO turn into integration tests")
-//    fun `should return spotlight object with current block and average block creation time`() {
-//        Thread.sleep(5000)
-//        val result = explorerService.getSpotlightStatistics()
-//        Assert.assertNotNull(result)
-//        Assert.assertTrue(result.avgBlockTime > BigDecimal("0.0"))
-//    }
-//
-//    @Test
 // //    @Ignore
 //    fun `test get transaction history`() {
 // //        https://test.provenance.io/explorer/secured/api/v1/txs/history?toDate=2020-11-24&fromDate=2020-11-11&granulatiry=day

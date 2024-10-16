@@ -14,7 +14,6 @@ import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AddressImageRecord
 import io.provenance.explorer.domain.entities.MissedBlocksRecord
-import io.provenance.explorer.domain.entities.SpotlightCacheRecord
 import io.provenance.explorer.domain.entities.StakingValidatorCacheRecord
 import io.provenance.explorer.domain.entities.ValidatorMarketRateRecord
 import io.provenance.explorer.domain.entities.ValidatorMarketRateStatsRecord
@@ -542,7 +541,7 @@ class ValidatorService(
         }
     }
 
-    private fun getLatestHeight() = SpotlightCacheRecord.getSpotlight()?.latestBlock?.height ?: blockService.getMaxBlockCacheHeight()
+    private fun getLatestHeight() = cacheService.getSpotlight()?.latestBlock?.height ?: blockService.getMaxBlockCacheHeight()
 
     fun getDistinctValidatorsWithMissedBlocksInTimeframe(timeframe: Timeframe) = transaction {
         val currentHeight = getLatestHeight()

@@ -166,20 +166,15 @@ class ExplorerService(
 
     fun getSpotlightStatistics() = cacheService.getSpotlight()
 
-    fun createSpotlight() =
-        when {
-            cacheService.getCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key)?.cacheValue.toBoolean() ->
-                getBondedTokenRatio().let {
-                    Spotlight(
-                        latestBlock = getBlockAtHeight(blockService.getMaxBlockCacheHeight() - 1),
-                        avgBlockTime = BlockProposerRecord.findAvgBlockCreation(100),
-                        bondedTokens = CountStrTotal(it.first.toString(), it.second, UTILITY_TOKEN),
-                        totalTxCount = BlockCacheHourlyTxCountsRecord.getTotalTxCount().toBigInteger(),
-                        totalAum = pricingService.getTotalAum().toCoinStr(USD_UPPER)
-                    )
-                }.let { cacheService.addSpotlightToCache(it) }
-            else -> null
-        }
+    fun createSpotlight() = getBondedTokenRatio().let {
+        Spotlight(
+            latestBlock = getBlockAtHeight(blockService.getMaxBlockCacheHeight() - 1),
+            avgBlockTime = BlockProposerRecord.findAvgBlockCreation(100),
+            bondedTokens = CountStrTotal(it.first.toString(), it.second, UTILITY_TOKEN),
+            totalTxCount = BlockCacheHourlyTxCountsRecord.getTotalTxCount().toBigInteger(),
+            totalAum = pricingService.getTotalAum().toCoinStr(USD_UPPER)
+        )
+    }.let { cacheService.updateSpotlight(it) }
 
     fun getBondedTokenRatio() = let {
         val totalBlockChainTokens = assetService.getCurrentSupply(UTILITY_TOKEN)
