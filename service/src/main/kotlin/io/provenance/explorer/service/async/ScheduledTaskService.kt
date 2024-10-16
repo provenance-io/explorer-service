@@ -128,9 +128,6 @@ class ScheduledTaskService(
         }
 
         BlockTxCountsCacheRecord.updateTxCounts()
-        if (!cacheService.getCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key)!!.cacheValue.toBoolean()) {
-            cacheService.updateCacheValue(CacheKeys.SPOTLIGHT_PROCESSING.key, true.toString())
-        }
     }
 
     fun getBlockIndex() = blockService.getBlockIndexFromCache()?.let {

@@ -3,19 +3,24 @@ package io.provenance.explorer.service
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.CacheKeys
 import io.provenance.explorer.domain.entities.CacheUpdateRecord
-import io.provenance.explorer.domain.entities.SpotlightCacheRecord
 import io.provenance.explorer.model.Spotlight
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 
 @Service
 class CacheService {
 
+    @Volatile
+    private var cachedSpotlight: Spotlight? = null
+
     protected val logger = logger(CacheService::class)
 
-    fun addSpotlightToCache(spotlightResponse: Spotlight) = SpotlightCacheRecord.insertIgnore(spotlightResponse)
+    fun updateSpotlight(spotlightResponse: Spotlight) {
+        cachedSpotlight = spotlightResponse
+    }
 
-    fun getSpotlight() = transaction { SpotlightCacheRecord.getSpotlight() }
+    fun getSpotlight(): Spotlight? {
+        return cachedSpotlight
+    }
 
     fun getCacheValue(key: String) = CacheUpdateRecord.fetchCacheByKey(key)
 
