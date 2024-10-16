@@ -32,8 +32,8 @@ class FlowApiGrpcClient(flowApiChannelUri: URI) {
                     }
                 }
                 .idleTimeout(60, TimeUnit.SECONDS)
-                .keepAliveTime(300, TimeUnit.SECONDS)
-                .keepAliveTimeout(300, TimeUnit.SECONDS)
+                .keepAliveTime(15, TimeUnit.SECONDS)
+                .keepAliveTimeout(15, TimeUnit.SECONDS)
                 .intercept(GrpcLoggingInterceptor())
                 .build()
 
