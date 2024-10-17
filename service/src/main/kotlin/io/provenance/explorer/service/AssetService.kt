@@ -250,7 +250,7 @@ class AssetService(
             includeScopes = false,
             fromDate = assetPricinglastRun?.toDateTime()
         )
-
+        logger.info("updating latest prices size ${latestPrices.size}")
         latestPrices.forEach { price ->
             if (price.denom != UTILITY_TOKEN) {
                 val marker = getAssetRaw(price.denom)
