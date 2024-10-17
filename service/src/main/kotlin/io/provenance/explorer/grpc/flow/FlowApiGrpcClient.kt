@@ -117,12 +117,12 @@ class FlowApiGrpcClient(flowApiChannelUri: URI) {
 
     fun getAllLatestNavPrices(priceDenom: String, includeMarkers: Boolean = true, includeScopes: Boolean = true, fromDate: DateTime?, requestSize: Int = 10000): List<NavEvent> = runBlocking {
         val fromDateString = fromDate?.toString(DateTimeFormat.forPattern("yyyy-MM-dd")) ?: ""
-        var currentPage = 1
+        var currentPage = 0
         var totalPages = 1
         val allNavEvents = mutableListOf<NavEvent>()
 
         try {
-            while (currentPage <= totalPages) {
+            while (currentPage < totalPages) {
                 val pagination = PaginationRequest.newBuilder().setPage(currentPage).setPageSize(requestSize).build()
                 val request = LatestNavEventRequest.newBuilder()
                     .setPriceDenom(priceDenom)
