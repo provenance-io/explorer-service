@@ -50,8 +50,8 @@ class FlowApiGrpcClientTest {
     fun `test getAllLatestNavPrices with valid data`() {
         val priceDenom = "usd"
         val includeMarkers = true
-        val includeScopes = true
-        val fromDate = DateTime.now().minusDays(1)
+        val includeScopes = false
+        val fromDate = null
 
         val navEvents: List<NavEvent> = grpcClient.getAllLatestNavPrices(priceDenom, includeMarkers, includeScopes, fromDate)
 
