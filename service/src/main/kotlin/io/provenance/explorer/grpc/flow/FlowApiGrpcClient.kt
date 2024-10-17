@@ -143,7 +143,6 @@ class FlowApiGrpcClient(flowApiChannelUri: URI) {
                     currentPage++
                 }
             }
-            logger().debug("getLatestNavEvents finished total pages requested: ${currentPage + 1}, total navs: ${allNavEvents.size}")
             return@runBlocking allNavEvents
         } catch (e: Exception) {
             logger().error("Error fetching latest Nav Events: ${e.message}", e)
