@@ -7,6 +7,8 @@ import io.provenance.marker.v1.MarkerStatus
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import io.swagger.annotations.ApiParam
+import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.net.URI
 import javax.validation.constraints.Max
 import javax.validation.constraints.Min
 
@@ -55,6 +58,17 @@ class AssetControllerV2(
     fun getMarkerDetail(
         @ApiParam(value = "Use any of the denom units to search, ie `nhash` or `hash`") @PathVariable denom: String
     ) = ResponseEntity.ok(assetService.getAssetDetail(denom))
+
+    @Deprecated("Temporary fix for redirecting NFT scope. Will be updated soon.")
+    @ApiOperation("Redirects to the NFT scope page")
+    @GetMapping("/detail/nft/{scope}")
+    fun redirectToNftScopePage(
+        @ApiParam(value = "The scope ID to search for the NFT") @PathVariable scope: String
+    ): ResponseEntity<Void> {
+        val redirectUrl = "/nft/$scope"
+        val headers = HttpHeaders().apply { location = URI(redirectUrl) }
+        return ResponseEntity.status(HttpStatus.FOUND).headers(headers).build()
+    }
 
     @ApiOperation("Returns asset detail for an ibc denom")
     @GetMapping("/detail/ibc/{hash}")
