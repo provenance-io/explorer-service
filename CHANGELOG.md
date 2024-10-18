@@ -46,6 +46,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Docker images at tag `latest` for main branch merges [#551](https://github.com/provenance-io/explorer-service/pull/551)
 * Refactor account processing implementation to be more efficient [#552](https://github.com/provenance-io/explorer-service/issues/552)
 * Update keep alive times for flow api grpc calls [#558](https://github.com/provenance-io/explorer-service/pull/558)
+* Updates to asset pricing table will set data column to null [#562](https://github.com/provenance-io/explorer-service/pull/562)
 
 ### Bug Fixes
 

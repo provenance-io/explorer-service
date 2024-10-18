@@ -219,7 +219,7 @@ object AssetPricingTable : IdTable<Int>(name = "asset_pricing") {
     val pricing = decimal("pricing", 100, 50)
     val pricingDenom = varchar("pricing_denom", 256)
     val lastUpdated = datetime("last_updated")
-    val data = jsonb<AssetPricingTable, AssetPricing>("data", OBJECT_MAPPER)
+    val data = jsonb<AssetPricingTable, AssetPricing>("data", OBJECT_MAPPER).nullable()
 }
 
 class AssetPricingRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -237,6 +237,7 @@ class AssetPricingRecord(id: EntityID<Int>) : IntEntity(id) {
             findUnique(markerDenom, pricingDenom)?.apply {
                 this.pricing = pricingAmount
                 this.lastUpdated = timestamp
+                this.data = null
             } ?: AssetPricingTable.insert {
                 it[this.markerId] = markerId
                 it[this.markerAddress] = markerAddress ?: ""
