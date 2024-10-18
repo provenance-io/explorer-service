@@ -245,7 +245,6 @@ class AssetPricingRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.pricing] = pricingAmount
                 it[this.pricingDenom] = pricingDenom
                 it[this.lastUpdated] = timestamp
-                it[this.data] = null
             }
         }
 
