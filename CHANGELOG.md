@@ -46,6 +46,11 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Docker images at tag `latest` for main branch merges [#551](https://github.com/provenance-io/explorer-service/pull/551)
 * Refactor account processing implementation to be more efficient [#552](https://github.com/provenance-io/explorer-service/issues/552)
 * Remove spotlight from caching to the database [#532](https://github.com/provenance-io/explorer-service/issues/532)
+* Update keep alive times for flow api grpc calls [#558](https://github.com/provenance-io/explorer-service/pull/558)
+
+### Bug Fixes
+
+* Fix pagination off by one calls to flow grpc [#561](https://github.com/provenance-io/explorer-service/pull/561) 
 
 ## [v5.11.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.11.0) - 2024-08-27
 
