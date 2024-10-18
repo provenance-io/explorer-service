@@ -47,6 +47,10 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Refactor account processing implementation to be more efficient [#552](https://github.com/provenance-io/explorer-service/issues/552)
 * Update keep alive times for flow api grpc calls [#558](https://github.com/provenance-io/explorer-service/pull/558)
 
+### Bug Fixes
+
+* Fix pagination off by one calls to flow grpc [#561](https://github.com/provenance-io/explorer-service/pull/561) 
+
 ## [v5.11.0](https://github.com/provenance-io/explorer-service/releases/tag/v5.11.0) - 2024-08-27
 
 ### Improvements

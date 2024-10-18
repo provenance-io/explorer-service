@@ -65,7 +65,6 @@ class FlowApiGrpcClient(flowApiChannelUri: URI) {
         val allNavEvents = mutableListOf<NavEvent>()
         var currentPage = 0
         var hasMorePages = true
-
         while (hasMorePages) {
             val pagination = PaginationRequest.newBuilder().setPage(currentPage).setPageSize(requestSize).build()
             val requestBuilder = NavEventRequest.newBuilder()
@@ -80,8 +79,7 @@ class FlowApiGrpcClient(flowApiChannelUri: URI) {
                 logger().debug("getAllMarkerNavByPriceDenoms $request")
                 val response: NavEventResponse = navService.getNavEvents(request)
                 allNavEvents.addAll(response.navEventsList)
-
-                if (response.pagination.currentPage >= response.pagination.totalPages) {
+                if (response.pagination.currentPage >= response.pagination.totalPages - 1) {
                     hasMorePages = false
                 } else {
                     currentPage++
@@ -91,7 +89,6 @@ class FlowApiGrpcClient(flowApiChannelUri: URI) {
                 hasMorePages = false
             }
         }
-
         return@runBlocking allNavEvents
     }
 
@@ -115,15 +112,22 @@ class FlowApiGrpcClient(flowApiChannelUri: URI) {
         }
     }
 
-    fun getAllLatestNavPrices(priceDenom: String, includeMarkers: Boolean = true, includeScopes: Boolean = true, fromDate: DateTime?, requestSize: Int = 10000): List<NavEvent> = runBlocking {
+    fun getAllLatestNavPrices(
+        priceDenom: String,
+        includeMarkers: Boolean = true,
+        includeScopes: Boolean = true,
+        fromDate: DateTime?,
+        requestSize: Int = 10000
+    ): List<NavEvent> = runBlocking {
         val fromDateString = fromDate?.toString(DateTimeFormat.forPattern("yyyy-MM-dd")) ?: ""
-        var currentPage = 1
-        var totalPages = 1
+        var currentPage = 0
+        var hasMorePages = true
         val allNavEvents = mutableListOf<NavEvent>()
 
-        try {
-            while (currentPage <= totalPages) {
-                val pagination = PaginationRequest.newBuilder().setPage(currentPage).setPageSize(requestSize).build()
+        while (hasMorePages) {
+            try {
+                val pagination =
+                    PaginationRequest.newBuilder().setPage(currentPage).setPageSize(requestSize).build()
                 val request = LatestNavEventRequest.newBuilder()
                     .setPriceDenom(priceDenom)
                     .setFromDate(fromDateString)
@@ -135,17 +139,17 @@ class FlowApiGrpcClient(flowApiChannelUri: URI) {
                 logger().debug("getLatestNavEvents $request")
 
                 val response: NavEventResponse = navService.getLatestNavEvents(request)
-
                 allNavEvents.addAll(response.navEventsList)
 
-                currentPage++
-                totalPages = response.pagination.totalPages
+                if (response.pagination.currentPage >= response.pagination.totalPages - 1) {
+                    hasMorePages = false
+                } else {
+                    currentPage++
+                }
+            } catch (e: Exception) {
+                logger().error("Error fetching latest Nav Events: ${e.message}", e)
             }
-            logger().debug("getLatestNavEvents finished total pages requested: $currentPage total navs: ${allNavEvents.size}")
-            return@runBlocking allNavEvents
-        } catch (e: Exception) {
-            logger().error("Error fetching latest Nav Events: ${e.message}", e)
-            emptyList()
         }
+        return@runBlocking allNavEvents
     }
 }

@@ -250,7 +250,6 @@ class AssetService(
             includeScopes = false,
             fromDate = assetPricinglastRun?.toDateTime()
         )
-
         latestPrices.forEach { price ->
             if (price.denom != UTILITY_TOKEN) {
                 val marker = getAssetRaw(price.denom)
