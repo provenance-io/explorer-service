@@ -5,7 +5,6 @@ import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.model.ChainAum
 import io.provenance.explorer.model.ChainMarketRate
 import io.provenance.explorer.model.CmcHistoricalQuote
-import io.provenance.explorer.model.Spotlight
 import io.provenance.explorer.model.ValidatorMarketRate
 import io.provenance.explorer.model.base.USD_UPPER
 import org.jetbrains.exposed.dao.Entity
@@ -29,33 +28,6 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import org.joda.time.DateTime
 import java.math.BigDecimal
-
-object SpotlightCacheTable : IntIdTable(name = "spotlight_cache") {
-    val spotlight = jsonb<SpotlightCacheTable, Spotlight>("spotlight", OBJECT_MAPPER)
-    val lastHit = datetime("last_hit")
-}
-
-class SpotlightCacheRecord(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<SpotlightCacheRecord>(SpotlightCacheTable) {
-        fun getSpotlight() = transaction {
-            SpotlightCacheRecord.all()
-                .orderBy(Pair(SpotlightCacheTable.id, SortOrder.DESC))
-                .limit(1)
-                .firstOrNull()
-                ?.spotlight
-        }
-
-        fun insertIgnore(json: Spotlight) = transaction {
-            SpotlightCacheTable.insertIgnore {
-                it[this.spotlight] = json
-                it[this.lastHit] = DateTime.now()
-            }
-        }
-    }
-
-    var spotlight by SpotlightCacheTable.spotlight
-    var lastHit by SpotlightCacheTable.lastHit
-}
 
 object ValidatorMarketRateStatsTable : IntIdTable(name = "validator_market_rate_stats") {
     val date = date("date")
@@ -177,7 +149,6 @@ object CacheUpdateTable : IntIdTable(name = "cache_update") {
 enum class CacheKeys(val key: String) {
     PRICING_UPDATE("pricing_update"),
     CHAIN_RELEASES("chain_releases"),
-    SPOTLIGHT_PROCESSING("spotlight_processing"),
     STANDARD_BLOCK_TIME("standard_block_time"),
     UTILITY_TOKEN_LATEST("utility_token_latest"),
     FEE_BUG_ONE_ELEVEN_START_BLOCK("fee_bug_one_eleven_start_block"),
