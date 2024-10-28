@@ -48,6 +48,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Remove spotlight from caching to the database [#532](https://github.com/provenance-io/explorer-service/issues/532)
 * Update keep alive times for flow api grpc calls [#558](https://github.com/provenance-io/explorer-service/pull/558)
 * Updates to asset pricing table will set data column to null [#562](https://github.com/provenance-io/explorer-service/pull/562)
+* Remove `running_count` and `total_count` columns from the `missed_blocks` table [#549](https://github.com/provenance-io/explorer-service/issues/549)
 
 ### Bug Fixes
 
