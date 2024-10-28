@@ -15,7 +15,6 @@ class ExplorerProperties(
     val pbUrl: String,
     val flowApiUrl: String,
     val initialHistoricalDayCount: String,
-    val spotlightTtlMs: String,
     val genesisVersionUrl: String,
     val upgradeVersionRegex: String,
     val upgradeGithubRepo: String,
@@ -27,8 +26,6 @@ class ExplorerProperties(
 ) {
 
     fun initialHistoricalDays() = initialHistoricalDayCount.toInt()
-
-    fun spotlightTtlMs() = spotlightTtlMs.toLong()
 
     fun hiddenApis() = hiddenApis.toBoolean()
 
