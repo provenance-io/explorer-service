@@ -233,8 +233,6 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
 object MissedBlocksTable : IntIdTable(name = "missed_blocks") {
     val blockHeight = integer("block_height")
     val valConsAddr = varchar("val_cons_address", 128)
-    val runningCount = integer("running_count")
-    val totalCount = integer("total_count")
 }
 
 class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -271,17 +269,12 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
             MissedBlocksTable.insertIgnore {
                 it[this.blockHeight] = height
                 it[this.valConsAddr] = valconsAddr
-                // TODO: remove these column from database See: https://github.com/provenance-io/explorer-service/issues/549
-                it[this.runningCount] = -1
-                it[this.totalCount] = -1
             }
         }
     }
 
     var blockHeight by MissedBlocksTable.blockHeight
     var valConsAddr by MissedBlocksTable.valConsAddr
-    var runningCount by MissedBlocksTable.runningCount
-    var totalCount by MissedBlocksTable.totalCount
 }
 
 object BlockCacheHourlyTxCountsTable : IdTable<DateTime>(name = "block_cache_hourly_tx_counts") {
