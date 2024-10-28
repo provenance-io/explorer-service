@@ -205,24 +205,6 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
                 it.getBigDecimal("avg_block_creation_time")
             }.firstOrNull() ?: BigDecimal.ZERO
         }
-
-        fun findMissingRecords(min: Int, max: Int, limit: Int) = transaction {
-            BlockCacheTable
-                .leftJoin(BlockProposerTable, { BlockCacheTable.height }, { BlockProposerTable.blockHeight })
-                .slice(BlockCacheTable.columns)
-                .select { (BlockProposerTable.blockHeight.isNull()) and (BlockCacheTable.height.between(min, max)) }
-                .orderBy(BlockCacheTable.height, SortOrder.ASC)
-                .limit(limit)
-                .let { BlockCacheRecord.wrapRows(it).toSet() }
-        }
-
-        fun getRecordsForProposer(address: String, limit: Int) = transaction {
-            BlockProposerRecord.find {
-                (BlockProposerTable.proposerOperatorAddress eq address)
-            }.orderBy(Pair(BlockProposerTable.blockHeight, SortOrder.DESC))
-                .limit(limit)
-                .toList()
-        }
     }
 
     var blockHeight by BlockProposerTable.blockHeight
