@@ -53,7 +53,6 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.jodatime.DateColumnType
 import org.jetbrains.exposed.sql.jodatime.datetime
-import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.sum
@@ -205,24 +204,6 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
                 it.getBigDecimal("avg_block_creation_time")
             }.firstOrNull() ?: BigDecimal.ZERO
         }
-
-        fun findMissingRecords(min: Int, max: Int, limit: Int) = transaction {
-            BlockCacheTable
-                .leftJoin(BlockProposerTable, { BlockCacheTable.height }, { BlockProposerTable.blockHeight })
-                .slice(BlockCacheTable.columns)
-                .select { (BlockProposerTable.blockHeight.isNull()) and (BlockCacheTable.height.between(min, max)) }
-                .orderBy(BlockCacheTable.height, SortOrder.ASC)
-                .limit(limit)
-                .let { BlockCacheRecord.wrapRows(it).toSet() }
-        }
-
-        fun getRecordsForProposer(address: String, limit: Int) = transaction {
-            BlockProposerRecord.find {
-                (BlockProposerTable.proposerOperatorAddress eq address)
-            }.orderBy(Pair(BlockProposerTable.blockHeight, SortOrder.DESC))
-                .limit(limit)
-                .toList()
-        }
     }
 
     var blockHeight by BlockProposerTable.blockHeight
@@ -233,8 +214,6 @@ class BlockProposerRecord(id: EntityID<Int>) : IntEntity(id) {
 object MissedBlocksTable : IntIdTable(name = "missed_blocks") {
     val blockHeight = integer("block_height")
     val valConsAddr = varchar("val_cons_address", 128)
-    val runningCount = integer("running_count")
-    val totalCount = integer("total_count")
 }
 
 class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -271,17 +250,12 @@ class MissedBlocksRecord(id: EntityID<Int>) : IntEntity(id) {
             MissedBlocksTable.insertIgnore {
                 it[this.blockHeight] = height
                 it[this.valConsAddr] = valconsAddr
-                // TODO: remove these column from database See: https://github.com/provenance-io/explorer-service/issues/549
-                it[this.runningCount] = -1
-                it[this.totalCount] = -1
             }
         }
     }
 
     var blockHeight by MissedBlocksTable.blockHeight
     var valConsAddr by MissedBlocksTable.valConsAddr
-    var runningCount by MissedBlocksTable.runningCount
-    var totalCount by MissedBlocksTable.totalCount
 }
 
 object BlockCacheHourlyTxCountsTable : IdTable<DateTime>(name = "block_cache_hourly_tx_counts") {
