@@ -5,9 +5,3 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
-registries:
-  docker_hub:
-    type: "docker-registry"
-    url: "https://index.docker.io/v1/"
-    username: "${{ secrets.DOCKERHUB_USERNAME }}"
-    password: "${{ secrets.DOCKERHUB_TOKEN }}"

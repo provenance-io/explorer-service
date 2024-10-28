@@ -14,6 +14,7 @@ on:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    if: "!startsWith(github.ref_name, 'dependabot/')"
     steps:
     - uses: actions/checkout@v2
     - name: Set up JDK 11
