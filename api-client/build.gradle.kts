@@ -15,7 +15,7 @@ repositories {
 dependencies {
     api(project(":api-model"))
     implementation("io.github.openfeign:feign-jackson:12.1")
-    implementation("joda-time:joda-time:2.12.2")
+    implementation("joda-time:joda-time:2.13.0")
     implementation(Libraries.ProvenanceProto)
 }
 
