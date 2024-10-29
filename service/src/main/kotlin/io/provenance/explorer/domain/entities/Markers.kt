@@ -7,7 +7,6 @@ import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.nullsLast
 import io.provenance.explorer.domain.core.sql.toDbQueryList
 import io.provenance.explorer.domain.extensions.execAndMap
-import io.provenance.explorer.domain.models.explorer.AssetPricing
 import io.provenance.explorer.domain.models.explorer.TokenDistributionPaginatedResults
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
 import io.provenance.explorer.model.AssetHolder
@@ -219,7 +218,6 @@ object AssetPricingTable : IdTable<Int>(name = "asset_pricing") {
     val pricing = decimal("pricing", 100, 50)
     val pricingDenom = varchar("pricing_denom", 256)
     val lastUpdated = datetime("last_updated")
-    val data = jsonb<AssetPricingTable, AssetPricing>("data", OBJECT_MAPPER).nullable()
 }
 
 class AssetPricingRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -237,7 +235,6 @@ class AssetPricingRecord(id: EntityID<Int>) : IntEntity(id) {
             findUnique(markerDenom, pricingDenom)?.apply {
                 this.pricing = pricingAmount
                 this.lastUpdated = timestamp
-                this.data = null
             } ?: AssetPricingTable.insert {
                 it[this.markerId] = markerId
                 it[this.markerAddress] = markerAddress ?: ""
@@ -263,7 +260,6 @@ class AssetPricingRecord(id: EntityID<Int>) : IntEntity(id) {
     var pricing by AssetPricingTable.pricing
     var pricingDenom by AssetPricingTable.pricingDenom
     var lastUpdated by AssetPricingTable.lastUpdated
-    var data by AssetPricingTable.data
 }
 
 object MarkerUnitTable : IntIdTable(name = "marker_unit") {
