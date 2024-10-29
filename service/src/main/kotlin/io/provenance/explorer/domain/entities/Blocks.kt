@@ -99,20 +99,9 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
                 .first()[dateTrunc].toInt()
         }
 
-        fun getMaxBlockHeightOrNull() = transaction {
-            val maxHeight = Max(BlockCacheTable.height, IntegerColumnType())
-            BlockCacheTable.slice(maxHeight).selectAll().firstOrNull()?.let { it[maxHeight] }
-        }
-
         fun getMaxBlockHeight() = transaction {
             val maxHeight = Max(BlockCacheTable.height, IntegerColumnType())
-            BlockCacheTable.slice(maxHeight).selectAll().first().let { it[maxHeight]!! }
-        }
-
-        fun getFirstBlockAfterTime(time: DateTime) = transaction {
-            BlockCacheRecord.find { BlockCacheTable.blockTimestamp.greaterEq(time) }
-                .orderBy(BlockCacheTable.height to SortOrder.ASC)
-                .first()
+            BlockCacheTable.slice(maxHeight).selectAll().limit(1).first().let { it[maxHeight]!! }
         }
 
         fun getLastBlockBeforeTime(time: DateTime?) = transaction {
