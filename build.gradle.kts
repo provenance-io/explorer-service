@@ -6,7 +6,7 @@ plugins {
     id(PluginIds.Idea)
     id(PluginIds.TaskTree) version PluginVersions.TaskTree
     id(PluginIds.DependencyAnalysis) version PluginVersions.DependencyAnalysis
-    id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
+    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
 }
 
 group = "io.provenance.explorer"
