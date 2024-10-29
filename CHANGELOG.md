@@ -50,6 +50,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 * Updates to asset pricing table will set data column to null [#562](https://github.com/provenance-io/explorer-service/pull/562)
 * Remove `running_count` and `total_count` columns from the `missed_blocks` table [#549](https://github.com/provenance-io/explorer-service/issues/549)
 * Remove `spotlight_cache` table [#559](https://github.com/provenance-io/explorer-service/pull/559)
+* Remove the `data` column from the `asset_pricing` table [#563](https://github.com/provenance-io/explorer-service/issues/563)
 
 ### Bug Fixes
 
