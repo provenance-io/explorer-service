@@ -7,7 +7,10 @@ import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
+import org.jetbrains.exposed.sql.ColumnType
+import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.insertIgnore
+import org.jetbrains.exposed.sql.jodatime.DateColumnType
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -65,6 +68,117 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.dataSource] = source
             }
         }
+    }
+
+    fun getNavEvents(
+        denom: String? = null,
+        scopeId: String? = null,
+        fromDate: DateTime? = null,
+        toDate: DateTime? = null,
+        priceDenoms: List<String>? = null
+    ) = transaction {
+        var query = """
+            SELECT block_height, block_time, chain_id, tx_hash, event_order, 
+            event_type, scope_id, denom, price_amount, price_denom, volume, source
+            FROM nav_events
+            WHERE 1=1
+        """.trimIndent()
+
+        val args = mutableListOf<Pair<ColumnType, *>>()
+
+        denom?.let {
+            query += " AND denom = ?"
+            args.add(Pair(VarCharColumnType(), it))
+        } ?: scopeId?.let {
+            query += " AND scope_id = ?"
+            args.add(Pair(VarCharColumnType(), it))
+        }
+
+        fromDate?.let {
+            query += " AND block_time >= ?"
+            args.add(Pair(DateColumnType(true), it))
+        }
+
+        toDate?.let {
+            query += " AND block_time <= ?"
+            args.add(Pair(DateColumnType(true), it))
+        }
+
+        priceDenoms?.let {
+            if (it.isNotEmpty()) {
+                val placeholders = it.joinToString(", ") { "?" }
+                query += " AND price_denom IN ($placeholders)"
+                it.forEach { denom ->
+                    args.add(Pair(VarCharColumnType(), denom))
+                }
+            }
+        }
+
+        query += " ORDER BY block_height DESC, event_order DESC"
+
+        query.execAndMap(args) { NavEvent(
+            it.getInt("block_height"),
+            it.getTimestamp("block_time").toDateTime(),
+            it.getInt("chain_id"),
+            it.getString("tx_hash"),
+            it.getInt("event_order"),
+            it.getString("event_type"),
+            it.getString("scope_id"),
+            it.getString("denom"),
+            it.getLong("price_amount"),
+            it.getString("price_denom"),
+            it.getLong("volume"),
+            it.getString("source")
+        ) }
+    }
+
+    fun getLatestNavEvents(
+        priceDenom: String,
+        includeMarkers: Boolean,
+        includeScope: Boolean,
+        optionalFromDate: DateTime? = null
+    ) = transaction {
+        require(includeMarkers || includeScope) { "Either includeMarkers or includeScope must be true" }
+
+        var query = """
+            SELECT DISTINCT ON (denom, scope_id)
+                block_height, block_time, chain_id, tx_hash, event_order, event_type, 
+                scope_id, denom, price_amount, price_denom, volume, source
+            FROM nav_events
+            WHERE price_denom = ?
+        """.trimIndent()
+
+        val args = mutableListOf<Pair<ColumnType, *>>(
+            Pair(VarCharColumnType(), priceDenom)
+        )
+
+        optionalFromDate?.let {
+            query += " AND block_time >= ?"
+            args.add(Pair(DateColumnType(true), it))
+        }
+
+        when {
+            includeMarkers && includeScope -> query += " AND (denom IS NOT NULL OR scope_id IS NOT NULL)"
+            includeMarkers -> query += " AND denom IS NOT NULL"
+            includeScope -> query += " AND scope_id IS NOT NULL"
+        }
+
+        query += " ORDER BY denom, scope_id, block_height DESC, event_order DESC"
+
+        query.execAndMap(args) { NavEvent(
+            it.getInt("block_height"),
+            it.getTimestamp("block_time").toDateTime(),
+            it.getInt("chain_id"),
+            it.getString("tx_hash"),
+            it.getInt("event_order"),
+            it.getString("event_type"),
+            it.getString("scope_id"),
+            it.getString("denom"),
+            it.getLong("price_amount"),
+            it.getString("price_denom"),
+            it.getLong("volume"),
+            it.getString("source")
+        ) }
     }
 
     var blockHeight by NavEventsTable.blockHeight
