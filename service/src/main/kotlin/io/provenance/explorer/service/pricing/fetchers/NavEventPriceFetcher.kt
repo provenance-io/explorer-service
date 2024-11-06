@@ -1,7 +1,6 @@
 package io.provenance.explorer.service.pricing.fetchers
 
 import io.provenance.explorer.config.ExplorerProperties
-import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import io.provlabs.flow.api.NavEvent
@@ -9,22 +8,22 @@ import org.joda.time.DateTime
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-class FlowApiPriceFetcher(
+class NavEventPriceFetcher(
     val denom: String,
     val pricingDenoms: List<String>,
     private val flowApiGrpcClient: FlowApiGrpcClient
 ) : HistoricalPriceFetcher {
 
     override fun getSource(): String {
-        return "flow-api"
+        return "navevent-table"
     }
     override fun fetchHistoricalPrice(fromDate: DateTime?): List<HistoricalPrice> {
         val onChainNavEvents = getMarkerNavByPriceDenoms(fromDate)
         return onChainNavEvents.map { navEvent ->
             val volumeHash = calculateVolumeHash(navEvent.volume)
-            val pricePerHash = getPricePerHashFromMicroUsd(navEvent.priceAmount!!, navEvent.volume)
+            val pricePerHash = getPricePerHashFromMicroUsd(navEvent.priceAmount, navEvent.volume)
             HistoricalPrice(
-                time = navEvent.blockTime.millis,
+                time = navEvent.blockTime,
                 high = pricePerHash,
                 low = pricePerHash,
                 close = pricePerHash,
@@ -35,8 +34,8 @@ class FlowApiPriceFetcher(
         }
     }
 
-    fun getMarkerNavByPriceDenoms(fromDate: DateTime?): List<io.provenance.explorer.domain.entities.NavEvent> {
-        return NavEventsRecord.getNavEvents(denom = denom, priceDenoms = pricingDenoms, fromDate = fromDate)
+    fun getMarkerNavByPriceDenoms(fromDate: DateTime?): List<NavEvent> {
+        return flowApiGrpcClient.getAllMarkerNavByPriceDenoms(denom, pricingDenoms, fromDate, 10000)
     }
 
     fun calculateVolumeHash(volumeNhash: Long): BigDecimal {
