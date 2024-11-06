@@ -1,6 +1,5 @@
 package io.provenance.explorer.domain.entities
 
-import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.extensions.toDateTime
 import org.jetbrains.exposed.dao.IntEntity
@@ -19,7 +18,6 @@ import java.sql.ResultSet
 object NavEventsTable : IdTable<Int>(name = "nav_events") {
     val blockHeight = integer("block_height")
     val blockTime = datetime("block_time")
-    val chainId = integer("chain_id")
     val txHash = text("tx_hash")
     val eventOrder = integer("event_order")
     val eventType = text("event_type")
@@ -33,7 +31,7 @@ object NavEventsTable : IdTable<Int>(name = "nav_events") {
     override val id = blockHeight.entityId()
 
     init {
-        uniqueIndex("nav_events_unique_idx", blockHeight, chainId, txHash, eventOrder)
+        uniqueIndex("nav_events_unique_idx", blockHeight, txHash, eventOrder)
     }
 }
 
@@ -56,7 +54,6 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             NavEventsTable.insertIgnore {
                 it[this.blockHeight] = blockHeight
                 it[this.blockTime] = blockTime
-                it[this.chainId] = chainId
                 it[this.txHash] = txHash
                 it[this.eventOrder] = eventOrder
                 it[this.eventType] = eventType
@@ -68,122 +65,123 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.dataSource] = source
             }
         }
-    }
 
-    fun getNavEvents(
-        denom: String? = null,
-        scopeId: String? = null,
-        fromDate: DateTime? = null,
-        toDate: DateTime? = null,
-        priceDenoms: List<String>? = null
-    ) = transaction {
-        var query = """
-            SELECT block_height, block_time, chain_id, tx_hash, event_order, 
+        fun getNavEvents(
+            denom: String? = null,
+            scopeId: String? = null,
+            fromDate: DateTime? = null,
+            toDate: DateTime? = null,
+            priceDenoms: List<String>? = null
+        ) = transaction {
+            var query = """
+            SELECT block_height, block_time, tx_hash, event_order, 
             event_type, scope_id, denom, price_amount, price_denom, volume, source
             FROM nav_events
             WHERE 1=1
-        """.trimIndent()
+            """.trimIndent()
 
-        val args = mutableListOf<Pair<ColumnType, *>>()
+            val args = mutableListOf<Pair<ColumnType, *>>()
 
-        denom?.let {
-            query += " AND denom = ?"
-            args.add(Pair(VarCharColumnType(), it))
-        } ?: scopeId?.let {
-            query += " AND scope_id = ?"
-            args.add(Pair(VarCharColumnType(), it))
-        }
+            denom?.let {
+                query += " AND denom = ?"
+                args.add(Pair(VarCharColumnType(), it))
+            } ?: scopeId?.let {
+                query += " AND scope_id = ?"
+                args.add(Pair(VarCharColumnType(), it))
+            }
 
-        fromDate?.let {
-            query += " AND block_time >= ?"
-            args.add(Pair(DateColumnType(true), it))
-        }
+            fromDate?.let {
+                query += " AND block_time >= ?"
+                args.add(Pair(DateColumnType(true), it))
+            }
 
-        toDate?.let {
-            query += " AND block_time <= ?"
-            args.add(Pair(DateColumnType(true), it))
-        }
+            toDate?.let {
+                query += " AND block_time <= ?"
+                args.add(Pair(DateColumnType(true), it))
+            }
 
-        priceDenoms?.let {
-            if (it.isNotEmpty()) {
-                val placeholders = it.joinToString(", ") { "?" }
-                query += " AND price_denom IN ($placeholders)"
-                it.forEach { denom ->
-                    args.add(Pair(VarCharColumnType(), denom))
+            priceDenoms?.let {
+                if (it.isNotEmpty()) {
+                    val placeholders = it.joinToString(", ") { "?" }
+                    query += " AND price_denom IN ($placeholders)"
+                    it.forEach { denom ->
+                        args.add(Pair(VarCharColumnType(), denom))
+                    }
                 }
+            }
+
+            query += " ORDER BY block_height DESC, event_order DESC"
+
+            query.execAndMap(args) {
+                NavEvent(
+                    it.getInt("block_height"),
+                    it.getTimestamp("block_time").toDateTime(),
+                    it.getString("tx_hash"),
+                    it.getInt("event_order"),
+                    it.getString("event_type"),
+                    it.getString("scope_id"),
+                    it.getString("denom"),
+                    it.getLong("price_amount"),
+                    it.getString("price_denom"),
+                    it.getLong("volume"),
+                    it.getString("source")
+                )
             }
         }
 
-        query += " ORDER BY block_height DESC, event_order DESC"
+        fun getLatestNavEvents(
+            priceDenom: String,
+            includeMarkers: Boolean,
+            includeScope: Boolean,
+            optionalFromDate: DateTime? = null
+        ) = transaction {
+            require(includeMarkers || includeScope) { "Either includeMarkers or includeScope must be true" }
 
-        query.execAndMap(args) { NavEvent(
-            it.getInt("block_height"),
-            it.getTimestamp("block_time").toDateTime(),
-            it.getInt("chain_id"),
-            it.getString("tx_hash"),
-            it.getInt("event_order"),
-            it.getString("event_type"),
-            it.getString("scope_id"),
-            it.getString("denom"),
-            it.getLong("price_amount"),
-            it.getString("price_denom"),
-            it.getLong("volume"),
-            it.getString("source")
-        ) }
-    }
-
-    fun getLatestNavEvents(
-        priceDenom: String,
-        includeMarkers: Boolean,
-        includeScope: Boolean,
-        optionalFromDate: DateTime? = null
-    ) = transaction {
-        require(includeMarkers || includeScope) { "Either includeMarkers or includeScope must be true" }
-
-        var query = """
+            var query = """
             SELECT DISTINCT ON (denom, scope_id)
-                block_height, block_time, chain_id, tx_hash, event_order, event_type, 
+                block_height, block_time, tx_hash, event_order, event_type, 
                 scope_id, denom, price_amount, price_denom, volume, source
             FROM nav_events
             WHERE price_denom = ?
-        """.trimIndent()
+            """.trimIndent()
 
-        val args = mutableListOf<Pair<ColumnType, *>>(
-            Pair(VarCharColumnType(), priceDenom)
-        )
+            val args = mutableListOf<Pair<ColumnType, *>>(
+                Pair(VarCharColumnType(), priceDenom)
+            )
 
-        optionalFromDate?.let {
-            query += " AND block_time >= ?"
-            args.add(Pair(DateColumnType(true), it))
+            optionalFromDate?.let {
+                query += " AND block_time >= ?"
+                args.add(Pair(DateColumnType(true), it))
+            }
+
+            when {
+                includeMarkers && includeScope -> query += " AND (denom IS NOT NULL OR scope_id IS NOT NULL)"
+                includeMarkers -> query += " AND denom IS NOT NULL"
+                includeScope -> query += " AND scope_id IS NOT NULL"
+            }
+
+            query += " ORDER BY denom, scope_id, block_height DESC, event_order DESC"
+
+            query.execAndMap(args) {
+                NavEvent(
+                    it.getInt("block_height"),
+                    it.getTimestamp("block_time").toDateTime(),
+                    it.getString("tx_hash"),
+                    it.getInt("event_order"),
+                    it.getString("event_type"),
+                    it.getString("scope_id"),
+                    it.getString("denom"),
+                    it.getLong("price_amount"),
+                    it.getString("price_denom"),
+                    it.getLong("volume"),
+                    it.getString("source")
+                )
+            }
         }
-
-        when {
-            includeMarkers && includeScope -> query += " AND (denom IS NOT NULL OR scope_id IS NOT NULL)"
-            includeMarkers -> query += " AND denom IS NOT NULL"
-            includeScope -> query += " AND scope_id IS NOT NULL"
-        }
-
-        query += " ORDER BY denom, scope_id, block_height DESC, event_order DESC"
-
-        query.execAndMap(args) { NavEvent(
-            it.getInt("block_height"),
-            it.getTimestamp("block_time").toDateTime(),
-            it.getInt("chain_id"),
-            it.getString("tx_hash"),
-            it.getInt("event_order"),
-            it.getString("event_type"),
-            it.getString("scope_id"),
-            it.getString("denom"),
-            it.getLong("price_amount"),
-            it.getString("price_denom"),
-            it.getLong("volume"),
-            it.getString("source")
-        ) }
     }
 
     var blockHeight by NavEventsTable.blockHeight
     var blockTime by NavEventsTable.blockTime
-    var chainId by NavEventsTable.chainId
     var txHash by NavEventsTable.txHash
     var eventOrder by NavEventsTable.eventOrder
     var eventType by NavEventsTable.eventType
@@ -198,7 +196,6 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
 data class NavPrice(
     val blockHeight: Int,
     val blockTime: DateTime,
-    val chainId: Int,
     val txHash: String,
     val eventOrder: Int,
     val eventType: String,
@@ -212,7 +209,6 @@ data class NavPrice(
     constructor(rs: ResultSet) : this(
         rs.getInt("block_height"),
         rs.getTimestamp("block_time").toDateTime(),
-        rs.getInt("chain_id"),
         rs.getString("tx_hash"),
         rs.getInt("event_order"),
         rs.getString("event_type"),
@@ -227,7 +223,6 @@ data class NavPrice(
     constructor(record: NavEventsRecord) : this(
         record.blockHeight,
         record.blockTime,
-        record.chainId,
         record.txHash,
         record.eventOrder,
         record.eventType,
@@ -243,7 +238,6 @@ data class NavPrice(
 data class NavEvent(
     val blockHeight: Int,
     val blockTime: DateTime,
-    val chainId: Int,
     val txHash: String,
     val eventOrder: Int,
     val eventType: String,
@@ -257,7 +251,6 @@ data class NavEvent(
     constructor(record: NavEventsRecord) : this(
         record.blockHeight,
         record.blockTime,
-        record.chainId,
         record.txHash,
         record.eventOrder,
         record.eventType,
