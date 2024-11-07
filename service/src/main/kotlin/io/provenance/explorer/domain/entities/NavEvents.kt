@@ -6,6 +6,7 @@ import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
+import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.insertIgnore
@@ -15,7 +16,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import java.sql.ResultSet
 
-object NavEventsTable : IdTable<Int>(name = "nav_events") {
+object NavEventsTable : IntIdTable(name = "nav_events") {
     val blockHeight = integer("block_height")
     val blockTime = datetime("block_time")
     val txHash = text("tx_hash")
@@ -27,8 +28,6 @@ object NavEventsTable : IdTable<Int>(name = "nav_events") {
     val priceDenom = text("price_denom").nullable()
     val volume = long("volume")
     val dataSource = text("source")
-
-    override val id = blockHeight.entityId()
 
     init {
         uniqueIndex("nav_events_unique_idx", blockHeight, txHash, eventOrder)

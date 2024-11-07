@@ -1,7 +1,8 @@
 SELECT 'Add nav events table' AS comment;
 
 CREATE TABLE nav_events (
-    block_height INT,
+    id SERIAL PRIMARY KEY,
+    block_height INT NOT NULL,
     block_time TIMESTAMP NOT NULL,
     tx_hash TEXT,
     event_order INT,
@@ -12,7 +13,7 @@ CREATE TABLE nav_events (
     price_denom TEXT,
     volume BIGINT,
     source TEXT,
-    PRIMARY KEY (block_height, tx_hash, event_order)
+    UNIQUE (block_height, tx_hash, event_order)
 );
 
 CREATE INDEX idx_nav_events_block_time ON nav_events(block_time);
