@@ -40,7 +40,6 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
         fun insert(
             blockHeight: Int,
             blockTime: DateTime,
-            chainId: Int,
             txHash: String,
             eventOrder: Int,
             eventType: String,

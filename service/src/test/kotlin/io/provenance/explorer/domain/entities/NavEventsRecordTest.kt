@@ -19,13 +19,13 @@ class NavEventsRecordTest : BaseDbTest() {
         transaction {
             // Insert test data
             NavEventsRecord.insert(
-                1, DateTime.now(), 1, "hash1", 0, "marker_nav", null, "nhash", 100L, "usd", 1000L, "market"
+                1, DateTime.now(), "hash1", 0, "marker_nav", null, "nhash", 100L, "usd", 1000L, "market"
             )
             NavEventsRecord.insert(
-                2, DateTime.now(), 1, "hash2", 0, "scope_nav", "scope1", null, 200L, "usd", 2000L, "market"
+                2, DateTime.now(), "hash2", 0, "scope_nav", "scope1", null, 200L, "usd", 2000L, "market"
             )
             NavEventsRecord.insert(
-                3, DateTime.now(), 1, "hash3", 0, "marker_nav", null, "hash", 300L, "usdt", 3000L, "market"
+                3, DateTime.now(), "hash3", 0, "marker_nav", null, "hash", 300L, "usdt", 3000L, "market"
             )
         }
     }
