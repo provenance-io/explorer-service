@@ -5,44 +5,43 @@ import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxUpdate
 import io.provenance.explorer.grpc.extensions.denomAmountToPair
-import io.provenance.marker.v1.EventSetNetAssetValue
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
-
 
 @Service
 class NavService {
 
     fun saveNavs(tx: ServiceOuterClass.GetTxResponse, txInfo: TxData, txUpdate: TxUpdate) = transaction {
-        tx.txResponse.eventsList.forEachIndexed{eventOrder, event ->
-            if (event.type.equals(EventSetNetAssetValue.getDescriptor().fullName)) {
-                val attributes = event.attributesList.associate {
-                    it.key to it.value.trim('"')
-                }
+        tx.txResponse.eventsList.forEachIndexed { eventOrder, event ->
+            if (event.type.equals(io.provenance.marker.v1.EventSetNetAssetValue.getDescriptor().fullName) ||
+                event.type.equals(io.provenance.metadata.v1.EventSetNetAssetValue.getDescriptor().fullName)
+            ) {
+                val attributes = event.attributesList.associate { it.key to it.value.trim('"') }
 
                 val denom = attributes["denom"]
+                val scopeId = attributes["scope_id"]
                 val priceStr = attributes["price"]
-                val volume = attributes["volume"]?.toLongOrNull()
+                val volume = attributes["volume"]?.toLongOrNull() ?: 1L
                 val source = attributes["source"]
 
                 val (priceAmount, priceDenom) = priceStr?.denomAmountToPair() ?: Pair("", "")
 
-                if (denom != null && volume != null) {
+                if ((denom != null || scopeId != null) && priceAmount.isNotEmpty()) {
                     NavEventsRecord.insert(
                         blockHeight = txInfo.blockHeight,
                         blockTime = txInfo.txTimestamp,
                         txHash = txInfo.txHash,
                         eventOrder = eventOrder,
                         eventType = event.type,
-                        scopeId = null,
+                        scopeId = scopeId,
                         denom = denom,
                         priceAmount = priceAmount.toLongOrNull(),
                         priceDenom = priceDenom,
                         volume = volume,
-                        source = source  ?: ""
+                        source = source ?: ""
                     )
                 }
             }
-            }
         }
     }
+}

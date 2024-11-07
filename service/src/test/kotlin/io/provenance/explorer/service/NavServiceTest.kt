@@ -51,7 +51,7 @@ class NavServiceTest {
 
     @Test
     fun `test tx response with set nav for markers`() {
-        val jsonFilePath = Paths.get("src/test/resources/navs/nav-mainnet-C4EF515FCA62F01569E6E8E4DEB4E24A717EBEBEB240BEA7CE346356394ECC2D.json")
+        val jsonFilePath = Paths.get("src/test/resources/navs/nav-mainnet-marker-C4EF515FCA62F01569E6E8E4DEB4E24A717EBEBEB240BEA7CE346356394ECC2D.json")
         val jsonResponse = String(Files.readAllBytes(jsonFilePath))
         val txResponseBuilder = ServiceOuterClass.GetTxResponse.newBuilder()
         restConfig.protoParser()!!.merge(jsonResponse, txResponseBuilder)
@@ -91,6 +91,52 @@ class NavServiceTest {
                 assertEquals("x/exchange market 1", it.source, "BTC event source should be exchange market 1")
                 assertEquals(txResponse.txResponse.height.toInt(), it.blockHeight, "BTC event block height should match transaction")
                 assertEquals(txResponse.txResponse.txhash, it.txHash, "BTC event transaction hash should match")
+            }
+        }
+    }
+
+    @Test
+    fun `test tx response with set nav for scopes`() {
+        val jsonFilePath = Paths.get("src/test/resources/navs/nav-mainnet-scope-8B13B35A4780884E3AA91C015B1574AA59BE9237D51D0D1ADABF0AE5DEC7B666.json")
+        val jsonResponse = String(Files.readAllBytes(jsonFilePath))
+        val txResponseBuilder = ServiceOuterClass.GetTxResponse.newBuilder()
+        restConfig.protoParser()!!.merge(jsonResponse, txResponseBuilder)
+        val txResponse = txResponseBuilder.build()
+
+        val txData = TxData(
+            txResponse.txResponse.height.toInt(),
+            0,
+            txResponse.txResponse.txhash,
+            DateTime()
+        )
+        val txUpdate = TxUpdate(txResponse.txResponse.txhash)
+
+        navService.saveNavs(txResponse, txData, txUpdate)
+
+        transaction {
+            val allEvents = NavEventsRecord.all().toList()
+            assertEquals(2, allEvents.size, "Should have saved exactly 2 NAV events from the transaction")
+
+            val firstScope = allEvents.find { it.scopeId == "scope1qr0d9zmyj4ty295hkkwyq8glyneqdhwf2q" }
+            assertNotNull(firstScope, "First scope NAV event should be present in saved records")
+            firstScope?.let {
+                assertEquals("55497490", it.priceAmount.toString(), "First scope price amount should match transaction value")
+                assertEquals("usd", it.priceDenom, "First scope price denomination should be usd")
+                assertEquals("1", it.volume.toString(), "First scope volume should be 1")
+                assertEquals("metadata", it.source, "First scope event source should be metadata")
+                assertEquals(txResponse.txResponse.height.toInt(), it.blockHeight, "First scope event block height should match transaction")
+                assertEquals(txResponse.txResponse.txhash, it.txHash, "First scope event transaction hash should match")
+            }
+
+            val secondScope = allEvents.find { it.scopeId == "scope1qzsj2jjl4cdyq2ugpgaj2d0grjks26j5ys" }
+            assertNotNull(secondScope, "Second scope NAV event should be present in saved records")
+            secondScope?.let {
+                assertEquals("80545130", it.priceAmount.toString(), "Second scope price amount should match transaction value")
+                assertEquals("usd", it.priceDenom, "Second scope price denomination should be usd")
+                assertEquals("1", it.volume.toString(), "Second scope volume should be 1")
+                assertEquals("metadata", it.source, "Second scope event source should be metadata")
+                assertEquals(txResponse.txResponse.height.toInt(), it.blockHeight, "Second scope event block height should match transaction")
+                assertEquals(txResponse.txResponse.txhash, it.txHash, "Second scope event transaction hash should match")
             }
         }
     }
