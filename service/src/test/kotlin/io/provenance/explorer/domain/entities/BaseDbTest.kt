@@ -2,7 +2,6 @@ package io.provenance.explorer.domain.entities
 
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.junit.jupiter.api.BeforeAll
 import java.nio.file.Files
 import java.nio.file.Paths
 
