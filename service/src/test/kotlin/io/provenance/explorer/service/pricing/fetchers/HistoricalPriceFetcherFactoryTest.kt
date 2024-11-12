@@ -25,11 +25,11 @@ class HistoricalPriceFetcherFactoryTest {
         assertEquals(2, fetchers.size)
         assertTrue(fetchers[0] is OsmosisPriceFetcher)
         assertEquals("osmosis", fetchers[0].getSource(), "Fetcher source is incorrect")
-        assertTrue(fetchers[1] is FlowApiPriceFetcher)
-        assertEquals("flow-api", fetchers[1].getSource(), "Fetcher source is incorrect")
+        assertTrue(fetchers[1] is NavEventPriceFetcher)
+        assertEquals("navevent-table", fetchers[1].getSource(), "Fetcher source is incorrect")
 
-        val flowApiPriceFetcher = fetchers[1] as FlowApiPriceFetcher
-        assertEquals(UTILITY_TOKEN, flowApiPriceFetcher.denom)
-        assertEquals(listOf("uusd.trading", "uusdc.figure.se", "uusdt.figure.se"), flowApiPriceFetcher.pricingDenoms)
+        val navEventPriceFetcher = fetchers[1] as NavEventPriceFetcher
+        assertEquals(UTILITY_TOKEN, navEventPriceFetcher.denom)
+        assertEquals(listOf("uusd.trading", "uusdc.figure.se", "uusdt.figure.se"), navEventPriceFetcher.pricingDenoms)
     }
 }
