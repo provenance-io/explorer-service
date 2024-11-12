@@ -1,11 +1,11 @@
 package io.provenance.explorer.domain.extensions
 
 import org.joda.time.DateTime
-import io.provlabs.flow.api.NavEvent as FlowNavEvent
-import io.provenance.explorer.domain.entities.NavEvent as ExplorerNavEvent
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
+import io.provenance.explorer.domain.entities.NavEvent as ExplorerNavEvent
+import io.provlabs.flow.api.NavEvent as FlowNavEvent
 
 class NavEventExtensionsKtTest {
 
