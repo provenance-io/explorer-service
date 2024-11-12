@@ -24,9 +24,7 @@ class NavServiceTest {
     private lateinit var navService: NavService
 
     companion object {
-        @BeforeAll
-        @JvmStatic
-        fun setupDatabase() {
+        init {
             Database.connect("jdbc:h2:mem:test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;", driver = "org.h2.Driver")
             transaction {
                 var sql = this::class.java.getResource("/db/migration/V1_96__Add_nav_event_table.sql")!!.readText()

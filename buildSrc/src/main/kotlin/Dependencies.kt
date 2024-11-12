@@ -60,7 +60,7 @@ object Versions {
     const val Jupiter = "5.9.1"
     const val SpringMockk = "3.1.1"
     const val Kotest = "5.5.4"
-    const val H2Database = "1.4.200"
+    const val H2Database = "2.1.214"
 }
 
 object Libraries {
