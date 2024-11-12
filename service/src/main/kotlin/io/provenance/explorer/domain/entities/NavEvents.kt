@@ -235,7 +235,7 @@ data class NavPrice(
 data class NavEvent(
     val blockHeight: Int,
     val blockTime: DateTime,
-    val txHash: String,
+    val txHash: String?,
     val eventOrder: Int,
     val eventType: String,
     val scopeId: String?,
