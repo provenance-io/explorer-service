@@ -129,10 +129,10 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
         fun getLatestNavEvents(
             priceDenom: String,
             includeMarkers: Boolean,
-            includeScope: Boolean,
-            optionalFromDate: DateTime? = null
+            includeScopes: Boolean,
+            fromDate: DateTime? = null
         ) = transaction {
-            require(includeMarkers || includeScope) { "Either includeMarkers or includeScope must be true" }
+            require(includeMarkers || includeScopes) { "Either includeMarkers or includeScope must be true" }
 
             var query = """
             SELECT DISTINCT ON (denom, scope_id)
@@ -146,15 +146,15 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
                 Pair(VarCharColumnType(), priceDenom)
             )
 
-            optionalFromDate?.let {
+            fromDate?.let {
                 query += " AND block_time >= ?"
                 args.add(Pair(DateColumnType(true), it))
             }
 
             when {
-                includeMarkers && includeScope -> query += " AND (denom IS NOT NULL OR scope_id IS NOT NULL)"
+                includeMarkers && includeScopes -> query += " AND (denom IS NOT NULL OR scope_id IS NOT NULL)"
                 includeMarkers -> query += " AND denom IS NOT NULL"
-                includeScope -> query += " AND scope_id IS NOT NULL"
+                includeScopes -> query += " AND scope_id IS NOT NULL"
             }
 
             query += " ORDER BY denom, scope_id, block_height DESC, event_order DESC"

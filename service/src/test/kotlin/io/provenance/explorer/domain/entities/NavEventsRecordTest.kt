@@ -81,7 +81,7 @@ class NavEventsRecordTest : BaseDbTest() {
         val events = NavEventsRecord.getLatestNavEvents(
             priceDenom = "usd",
             includeMarkers = true,
-            includeScope = false
+            includeScopes = false
         )
         assertEquals(1, events.size)
         assertNotNull(events.first().denom)
@@ -93,7 +93,7 @@ class NavEventsRecordTest : BaseDbTest() {
         val events = NavEventsRecord.getLatestNavEvents(
             priceDenom = "usd",
             includeMarkers = false,
-            includeScope = true
+            includeScopes = true
         )
         assertEquals(1, events.size)
         assertNull(events.first().denom)
@@ -105,7 +105,7 @@ class NavEventsRecordTest : BaseDbTest() {
         val events = NavEventsRecord.getLatestNavEvents(
             priceDenom = "usd",
             includeMarkers = true,
-            includeScope = true
+            includeScopes = true
         )
         assertEquals(2, events.size)
     }
@@ -116,8 +116,8 @@ class NavEventsRecordTest : BaseDbTest() {
         val events = NavEventsRecord.getLatestNavEvents(
             priceDenom = "usd",
             includeMarkers = true,
-            includeScope = true,
-            optionalFromDate = fromDate
+            includeScopes = true,
+            fromDate = fromDate
         )
         assertEquals(2, events.size)
         events.forEach {
@@ -131,7 +131,7 @@ class NavEventsRecordTest : BaseDbTest() {
             NavEventsRecord.getLatestNavEvents(
                 priceDenom = "usd",
                 includeMarkers = false,
-                includeScope = false
+                includeScopes = false
             )
         }
     }
@@ -141,8 +141,13 @@ class NavEventsRecordTest : BaseDbTest() {
         val events = NavEventsRecord.getLatestNavEvents(
             priceDenom = "nonexistent",
             includeMarkers = true,
-            includeScope = true
+            includeScopes = true
         )
         assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun `TODO test`() = transaction {
+        executeSqlFile("src/test/resources/navs/marker-nav-inserts.sql")
     }
 }

@@ -3,6 +3,8 @@ package io.provenance.explorer.domain.entities
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.BeforeAll
+import java.nio.file.Files
+import java.nio.file.Paths
 
 abstract class BaseDbTest {
 
@@ -19,6 +21,17 @@ abstract class BaseDbTest {
                     .replace("TEXT", "VARCHAR(255)")
                 exec(sql)
             }
+        }
+    }
+
+    fun executeSqlFile(filePath: String) {
+        val path = Paths.get(filePath)
+        if (!Files.exists(path)) {
+            throw IllegalArgumentException("SQL file not found: $filePath")
+        }
+        val sqlStatements = Files.readString(path)
+        transaction {
+            exec(sqlStatements)
         }
     }
 }

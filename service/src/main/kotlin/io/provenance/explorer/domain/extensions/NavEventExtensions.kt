@@ -1,9 +1,16 @@
 package io.provenance.explorer.domain.extensions
 
 import io.provenance.explorer.model.base.USD_LOWER
-import io.provlabs.flow.api.NavEvent
 import java.math.BigDecimal
 import java.math.RoundingMode
+
+fun io.provlabs.flow.api.NavEvent.calculateUsdPricePerUnit(): BigDecimal {
+    return calculateUsdPrice(this.priceDenom, this.priceAmount, this.volume)
+}
+
+fun io.provenance.explorer.domain.entities.NavEvent.calculateUsdPricePerUnit(): BigDecimal {
+    return calculateUsdPrice(this.priceDenom, this.priceAmount, this.volume)
+}
 
 /**
  * Calculates the USD price per unit for a NAV event.
@@ -13,17 +20,17 @@ import java.math.RoundingMode
  *
  * @return The USD price per unit or `BigDecimal.ZERO` if not a USD event or volume is 0.
  */
-fun NavEvent.calculateUsdPricePerUnit(): BigDecimal {
-    if (this.priceDenom != USD_LOWER) {
+private fun calculateUsdPrice(priceDenom: String?, priceAmount: Long?, volume: Long): BigDecimal {
+    if (priceDenom != USD_LOWER) {
         return BigDecimal.ZERO
     }
 
-    if (this.volume == 0L) {
+    if (volume == 0L) {
         return BigDecimal.ZERO
     }
 
-    return BigDecimal(this.priceAmount)
+    return BigDecimal(priceAmount ?: 0)
         .setScale(3, RoundingMode.DOWN)
         .divide(BigDecimal(1000), RoundingMode.DOWN)
-        .divide(BigDecimal(this.volume), 3, RoundingMode.DOWN)
+        .divide(BigDecimal(volume), 3, RoundingMode.DOWN)
 }
