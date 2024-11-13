@@ -21,7 +21,7 @@ class NavEventPriceFetcher(
             val volumeHash = HashCalculationUtils.calculateVolumeHash(navEvent.volume)
             val pricePerHash = HashCalculationUtils.getPricePerHashFromMicroUsd(navEvent.priceAmount!!, navEvent.volume)
             HistoricalPrice(
-                time = navEvent.blockTime.millis,
+                time = navEvent.blockTime.millis / 1000,
                 high = pricePerHash,
                 low = pricePerHash,
                 close = pricePerHash,
