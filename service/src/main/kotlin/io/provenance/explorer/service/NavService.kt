@@ -1,6 +1,7 @@
 package io.provenance.explorer.service
 
 import cosmos.tx.v1beta1.ServiceOuterClass
+import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxUpdate
@@ -27,6 +28,7 @@ class NavService {
                 val (priceAmount, priceDenom) = priceStr?.denomAmountToPair() ?: Pair("", "")
 
                 if ((denom != null || scopeId != null) && priceAmount.isNotEmpty()) {
+                    logger().info("NavEvent - $event")
                     NavEventsRecord.insert(
                         blockHeight = txInfo.blockHeight,
                         blockTime = txInfo.txTimestamp,
