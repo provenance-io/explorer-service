@@ -28,7 +28,6 @@ class NavService {
                 val (priceAmount, priceDenom) = priceStr?.denomAmountToPair() ?: Pair("", "")
 
                 if ((denom != null || scopeId != null) && priceAmount.isNotEmpty()) {
-                    logger().info("NavEvent - ${txInfo.blockHeight} ${txInfo.txHash} ${event.type} ${scopeId ?: ""}${denom ?: ""} $priceDenom ${priceAmount.toLongOrNull()} $volume $source")
                     NavEventsRecord.insert(
                         blockHeight = txInfo.blockHeight,
                         blockTime = txInfo.txTimestamp,
