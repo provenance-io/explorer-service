@@ -112,6 +112,7 @@ import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.GovService
 import io.provenance.explorer.service.GroupService
 import io.provenance.explorer.service.IbcService
+import io.provenance.explorer.service.NavService
 import io.provenance.explorer.service.NftService
 import io.provenance.explorer.service.SmartContractService
 import io.provenance.explorer.service.ValidatorService
@@ -137,7 +138,9 @@ class BlockAndTxProcessor(
     private val smContractService: SmartContractService,
     private val props: ExplorerProperties,
     private val msgFeeClient: MsgFeeGrpcClient,
-    private val groupService: GroupService
+    private val groupService: GroupService,
+    private val navService: NavService
+
 ) {
 
     protected val logger = logger(BlockAndTxProcessor::class)
@@ -298,6 +301,7 @@ class BlockAndTxProcessor(
         saveSmartContractData(res, txInfo, txUpdate)
         saveNameData(res, txInfo)
         groupService.saveGroups(res, txInfo, txUpdate)
+        navService.saveNavs(res, txInfo, txUpdate)
         saveSignaturesTx(res, txInfo, txUpdate)
 
         return TxUpdatedItems(addrs, markers, txUpdate)
