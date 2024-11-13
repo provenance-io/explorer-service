@@ -1,7 +1,6 @@
 package io.provenance.explorer.service
 
 import cosmos.tx.v1beta1.ServiceOuterClass
-import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxUpdate
