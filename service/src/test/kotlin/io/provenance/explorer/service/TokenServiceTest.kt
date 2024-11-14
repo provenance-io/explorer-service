@@ -26,15 +26,13 @@ import java.net.URI
 class TokenServiceTest {
 
     private lateinit var accountClient: AccountGrpcClient
-    private lateinit var flowApiGrpcClient: FlowApiGrpcClient
     private lateinit var historicalPriceFetcherFactory: HistoricalPriceFetcherFactory
     private lateinit var tokenService: TokenService
 
     @BeforeEach
     fun setUp() {
         accountClient = AccountGrpcClient(URI("http://localhost:26657"))
-        flowApiGrpcClient = FlowApiGrpcClient(URI("http://localhost:50051"))
-        historicalPriceFetcherFactory = HistoricalPriceFetcherFactory(flowApiGrpcClient) // Set the factory as needed
+        historicalPriceFetcherFactory = HistoricalPriceFetcherFactory() // Set the factory as needed
         tokenService = TokenService(accountClient, historicalPriceFetcherFactory)
     }
 

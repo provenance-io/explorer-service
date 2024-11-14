@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration
 class FetcherConfiguration {
 
     @Bean
-    fun historicalPriceFetcherFactory(flowApiGrpcClient: FlowApiGrpcClient): HistoricalPriceFetcherFactory {
-        return HistoricalPriceFetcherFactory(flowApiGrpcClient)
+    fun historicalPriceFetcherFactory(): HistoricalPriceFetcherFactory {
+        return HistoricalPriceFetcherFactory()
     }
 }

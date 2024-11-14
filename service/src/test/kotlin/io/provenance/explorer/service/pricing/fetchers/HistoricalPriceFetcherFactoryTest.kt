@@ -10,13 +10,11 @@ import java.net.URI
 
 class HistoricalPriceFetcherFactoryTest {
 
-    private lateinit var flowApiGrpcClient: FlowApiGrpcClient
     private lateinit var factory: HistoricalPriceFetcherFactory
 
     @BeforeEach
     fun setUp() {
-        flowApiGrpcClient = FlowApiGrpcClient(URI("http://localhost:50051"))
-        factory = HistoricalPriceFetcherFactory(flowApiGrpcClient)
+        factory = HistoricalPriceFetcherFactory()
     }
 
     @Test
