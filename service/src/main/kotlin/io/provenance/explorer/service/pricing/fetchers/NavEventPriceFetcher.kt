@@ -2,14 +2,12 @@ package io.provenance.explorer.service.pricing.fetchers
 
 import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.models.HistoricalPrice
-import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import io.provenance.explorer.service.pricing.utils.HashCalculationUtils
 import org.joda.time.DateTime
 
 class NavEventPriceFetcher(
     val denom: String,
-    val pricingDenoms: List<String>,
-    private val flowApiGrpcClient: FlowApiGrpcClient
+    val pricingDenoms: List<String>
 ) : HistoricalPriceFetcher {
 
     override fun getSource(): String {
