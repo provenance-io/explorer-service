@@ -260,7 +260,6 @@ class ScheduledTaskService(
 
         val latestEntryDate = TokenHistoricalDailyRecord.getLatestDateEntry()?.timestamp?.startOfDay()
         val startDate = latestEntryDate?.minusDays(1) ?: defaultStartDate
-
         tokenService.updateAndSaveTokenHistoricalData(startDate, today)
     }
 

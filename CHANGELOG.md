@@ -34,6 +34,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 ## Unreleased
 
 ### Features
+* Remove flow dependency and collect on-chain navs in local database [#574](https://github.com/provenance-io/explorer-service/pull/574) 
 * Add hash price support for nav values from on chain events [#543](https://github.com/provenance-io/explorer-service/pull/543)
 * Integrate on-chain NAV data into historical hash price calculations [#555](https://github.com/provenance-io/explorer-service/pull/555) 
 * Use on-chain NAV data for latest asset pricing on markers [#556](https://github.com/provenance-io/explorer-service/pull/556)

@@ -1,22 +1,18 @@
 package io.provenance.explorer.service.pricing.fetchers
 
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
-import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.net.URI
 
 class HistoricalPriceFetcherFactoryTest {
 
-    private lateinit var flowApiGrpcClient: FlowApiGrpcClient
     private lateinit var factory: HistoricalPriceFetcherFactory
 
     @BeforeEach
     fun setUp() {
-        flowApiGrpcClient = FlowApiGrpcClient(URI("http://localhost:50051"))
-        factory = HistoricalPriceFetcherFactory(flowApiGrpcClient)
+        factory = HistoricalPriceFetcherFactory()
     }
 
     @Test
@@ -25,11 +21,11 @@ class HistoricalPriceFetcherFactoryTest {
         assertEquals(2, fetchers.size)
         assertTrue(fetchers[0] is OsmosisPriceFetcher)
         assertEquals("osmosis", fetchers[0].getSource(), "Fetcher source is incorrect")
-        assertTrue(fetchers[1] is FlowApiPriceFetcher)
-        assertEquals("flow-api", fetchers[1].getSource(), "Fetcher source is incorrect")
+        assertTrue(fetchers[1] is NavEventPriceFetcher)
+        assertEquals("navevent-table", fetchers[1].getSource(), "Fetcher source is incorrect")
 
-        val flowApiPriceFetcher = fetchers[1] as FlowApiPriceFetcher
-        assertEquals(UTILITY_TOKEN, flowApiPriceFetcher.denom)
-        assertEquals(listOf("uusd.trading", "uusdc.figure.se", "uusdt.figure.se"), flowApiPriceFetcher.pricingDenoms)
+        val navEventPriceFetcher = fetchers[1] as NavEventPriceFetcher
+        assertEquals(UTILITY_TOKEN, navEventPriceFetcher.denom)
+        assertEquals(listOf("uusd.trading", "uusdc.figure.se", "uusdt.figure.se"), navEventPriceFetcher.pricingDenoms)
     }
 }

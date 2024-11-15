@@ -5,7 +5,6 @@ import io.mockk.spyk
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.HistoricalPrice
-import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.explorer.service.pricing.fetchers.HistoricalPriceFetcherFactory
@@ -26,15 +25,13 @@ import java.net.URI
 class TokenServiceTest {
 
     private lateinit var accountClient: AccountGrpcClient
-    private lateinit var flowApiGrpcClient: FlowApiGrpcClient
     private lateinit var historicalPriceFetcherFactory: HistoricalPriceFetcherFactory
     private lateinit var tokenService: TokenService
 
     @BeforeEach
     fun setUp() {
         accountClient = AccountGrpcClient(URI("http://localhost:26657"))
-        flowApiGrpcClient = FlowApiGrpcClient(URI("http://localhost:50051"))
-        historicalPriceFetcherFactory = HistoricalPriceFetcherFactory(flowApiGrpcClient) // Set the factory as needed
+        historicalPriceFetcherFactory = HistoricalPriceFetcherFactory() // Set the factory as needed
         tokenService = TokenService(accountClient, historicalPriceFetcherFactory)
     }
 

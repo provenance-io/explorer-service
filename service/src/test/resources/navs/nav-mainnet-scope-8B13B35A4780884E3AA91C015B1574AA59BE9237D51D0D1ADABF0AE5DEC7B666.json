@@ -1,0 +1,413 @@
+{
+  "tx": {
+    "body": {
+      "messages": [
+        {
+          "@type": "/provenance.metadata.v1.MsgAddNetAssetValuesRequest",
+          "netAssetValues": [
+            {
+              "price": {
+                "denom": "usd",
+                "amount": "55497490"
+              }
+            }
+          ],
+          "scopeId": "scope1qr0d9zmyj4ty295hkkwyq8glyneqdhwf2q",
+          "signers": [
+            "pb1xzl9wgh0ry2dma43f58vmuteqd3996j6mhqhgz"
+          ]
+        },
+        {
+          "@type": "/provenance.metadata.v1.MsgAddNetAssetValuesRequest",
+          "netAssetValues": [
+            {
+              "price": {
+                "denom": "usd",
+                "amount": "80545130"
+              }
+            }
+          ],
+          "scopeId": "scope1qzsj2jjl4cdyq2ugpgaj2d0grjks26j5ys",
+          "signers": [
+            "pb1xzl9wgh0ry2dma43f58vmuteqd3996j6mhqhgz"
+          ]
+        }
+      ],
+      "timeoutHeight": "18093971"
+    },
+    "authInfo": {
+      "signerInfos": [
+        {
+          "publicKey": {
+            "@type": "/cosmos.crypto.secp256k1.PubKey",
+            "key": "AqABeT8d7oIl9HoyEImjfNmOJoi6s71tUz/kzNCeJ0Lv"
+          },
+          "modeInfo": {
+            "single": {
+              "mode": "SIGN_MODE_DIRECT"
+            }
+          },
+          "sequence": "341827"
+        }
+      ],
+      "fee": {
+        "amount": [
+          {
+            "denom": "nhash",
+            "amount": "789336750"
+          }
+        ],
+        "gasLimit": "82870"
+      }
+    },
+    "signatures": [
+      "jL0sg6IdTVqtgtNqwM9cvz8x6n+LiND6fZuRfd10v50ryi08rptr8+Elo3T///guGfqKCYFr3DtUf7gbZ4vjVw=="
+    ]
+  },
+  "txResponse": {
+    "height": "18093955",
+    "txhash": "8B13B35A4780884E3AA91C015B1574AA59BE9237D51D0D1ADABF0AE5DEC7B666",
+    "data": "12360A342F70726F76656E616E63652E6D657461646174612E76312E4D73674164644E6574417373657456616C756573526573706F6E736512360A342F70726F76656E616E63652E6D657461646174612E76312E4D73674164644E6574417373657456616C756573526573706F6E7365",
+    "gasWanted": "82870",
+    "gasUsed": "74776",
+    "tx": {
+      "@type": "/cosmos.tx.v1beta1.Tx",
+      "authInfo": {
+        "signerInfos": [
+          {
+            "publicKey": {
+              "@type": "/cosmos.crypto.secp256k1.PubKey",
+              "key": "AqABeT8d7oIl9HoyEImjfNmOJoi6s71tUz/kzNCeJ0Lv"
+            },
+            "modeInfo": {
+              "single": {
+                "mode": "SIGN_MODE_DIRECT"
+              }
+            },
+            "sequence": "341827"
+          }
+        ],
+        "fee": {
+          "amount": [
+            {
+              "denom": "nhash",
+              "amount": "789336750"
+            }
+          ],
+          "gasLimit": "82870"
+        }
+      },
+      "body": {
+        "messages": [
+          {
+            "@type": "/provenance.metadata.v1.MsgAddNetAssetValuesRequest",
+            "netAssetValues": [
+              {
+                "price": {
+                  "denom": "usd",
+                  "amount": "55497490"
+                }
+              }
+            ],
+            "scopeId": "scope1qr0d9zmyj4ty295hkkwyq8glyneqdhwf2q",
+            "signers": [
+              "pb1xzl9wgh0ry2dma43f58vmuteqd3996j6mhqhgz"
+            ]
+          },
+          {
+            "@type": "/provenance.metadata.v1.MsgAddNetAssetValuesRequest",
+            "netAssetValues": [
+              {
+                "price": {
+                  "denom": "usd",
+                  "amount": "80545130"
+                }
+              }
+            ],
+            "scopeId": "scope1qzsj2jjl4cdyq2ugpgaj2d0grjks26j5ys",
+            "signers": [
+              "pb1xzl9wgh0ry2dma43f58vmuteqd3996j6mhqhgz"
+            ]
+          }
+        ],
+        "timeoutHeight": "18093971"
+      },
+      "signatures": [
+        "jL0sg6IdTVqtgtNqwM9cvz8x6n+LiND6fZuRfd10v50ryi08rptr8+Elo3T///guGfqKCYFr3DtUf7gbZ4vjVw=="
+      ]
+    },
+    "timestamp": "2024-08-02T01:36:19Z",
+    "events": [
+      {
+        "type": "coin_spent",
+        "attributes": [
+          {
+            "key": "spender",
+            "value": "pb1xzl9wgh0ry2dma43f58vmuteqd3996j6mhqhgz",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "157867350nhash",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "coin_received",
+        "attributes": [
+          {
+            "key": "receiver",
+            "value": "pb17xpfvakm2amg962yls6f84z3kell8c5lehg9xp",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "157867350nhash",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "transfer",
+        "attributes": [
+          {
+            "key": "recipient",
+            "value": "pb17xpfvakm2amg962yls6f84z3kell8c5lehg9xp",
+            "index": true
+          },
+          {
+            "key": "sender",
+            "value": "pb1xzl9wgh0ry2dma43f58vmuteqd3996j6mhqhgz",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "157867350nhash",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "attributes": [
+          {
+            "key": "sender",
+            "value": "pb1xzl9wgh0ry2dma43f58vmuteqd3996j6mhqhgz",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "fee",
+            "value": "789336750nhash",
+            "index": true
+          },
+          {
+            "key": "fee_payer",
+            "value": "pb1xzl9wgh0ry2dma43f58vmuteqd3996j6mhqhgz",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "min_fee_charged",
+            "value": "157867350nhash",
+            "index": true
+          },
+          {
+            "key": "fee_payer",
+            "value": "pb1xzl9wgh0ry2dma43f58vmuteqd3996j6mhqhgz",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "acc_seq",
+            "value": "pb1xzl9wgh0ry2dma43f58vmuteqd3996j6mhqhgz/341827",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "signature",
+            "value": "jL0sg6IdTVqtgtNqwM9cvz8x6n+LiND6fZuRfd10v50ryi08rptr8+Elo3T///guGfqKCYFr3DtUf7gbZ4vjVw==",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "attributes": [
+          {
+            "key": "action",
+            "value": "/provenance.metadata.v1.MsgAddNetAssetValuesRequest",
+            "index": true
+          },
+          {
+            "key": "sender",
+            "value": "pb1xzl9wgh0ry2dma43f58vmuteqd3996j6mhqhgz",
+            "index": true
+          },
+          {
+            "key": "module",
+            "value": "metadata",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.metadata.v1.EventSetNetAssetValue",
+        "attributes": [
+          {
+            "key": "price",
+            "value": "\"55497490usd\"",
+            "index": true
+          },
+          {
+            "key": "scope_id",
+            "value": "\"scope1qr0d9zmyj4ty295hkkwyq8glyneqdhwf2q\"",
+            "index": true
+          },
+          {
+            "key": "source",
+            "value": "\"metadata\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "attributes": [
+          {
+            "key": "action",
+            "value": "/provenance.metadata.v1.MsgAddNetAssetValuesRequest",
+            "index": true
+          },
+          {
+            "key": "sender",
+            "value": "pb1xzl9wgh0ry2dma43f58vmuteqd3996j6mhqhgz",
+            "index": true
+          },
+          {
+            "key": "module",
+            "value": "metadata",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "1",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.metadata.v1.EventSetNetAssetValue",
+        "attributes": [
+          {
+            "key": "price",
+            "value": "\"80545130usd\"",
+            "index": true
+          },
+          {
+            "key": "scope_id",
+            "value": "\"scope1qzsj2jjl4cdyq2ugpgaj2d0grjks26j5ys\"",
+            "index": true
+          },
+          {
+            "key": "source",
+            "value": "\"metadata\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "1",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "coin_spent",
+        "attributes": [
+          {
+            "key": "spender",
+            "value": "pb1xzl9wgh0ry2dma43f58vmuteqd3996j6mhqhgz",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "631469400nhash",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "coin_received",
+        "attributes": [
+          {
+            "key": "receiver",
+            "value": "pb17xpfvakm2amg962yls6f84z3kell8c5lehg9xp",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "631469400nhash",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "transfer",
+        "attributes": [
+          {
+            "key": "recipient",
+            "value": "pb17xpfvakm2amg962yls6f84z3kell8c5lehg9xp",
+            "index": true
+          },
+          {
+            "key": "sender",
+            "value": "pb1xzl9wgh0ry2dma43f58vmuteqd3996j6mhqhgz",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "631469400nhash",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "attributes": [
+          {
+            "key": "sender",
+            "value": "pb1xzl9wgh0ry2dma43f58vmuteqd3996j6mhqhgz",
+            "index": true
+          }
+        ]
+      }
+    ]
+  }
+}

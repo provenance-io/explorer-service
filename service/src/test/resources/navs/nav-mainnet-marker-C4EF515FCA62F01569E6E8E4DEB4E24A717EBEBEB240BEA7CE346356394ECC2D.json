@@ -1,0 +1,798 @@
+{
+  "tx": {
+    "body": {
+      "messages": [
+        {
+          "@type": "/provenance.exchange.v1.MsgMarketCommitmentSettleRequest",
+          "admin": "pb1la8gttx2lpr6aharfgd2dx78ptzwpenhup8qx8",
+          "inputs": [
+            {
+              "account": "pb1edvqpnz3e894aeav8cveuhrwzmtj0dqpqckkg0dhl8t0ck6k489suhc0ue",
+              "amount": [
+                {
+                  "denom": "nbtc.figure.se",
+                  "amount": "25400000"
+                },
+                {
+                  "denom": "neth.figure.se",
+                  "amount": "1000000000"
+                }
+              ]
+            },
+            {
+              "account": "pb1zhf0lh23n49h760mu7w0hwuprr33r7epx7g7twfvtjas98xs02usq0cwlt",
+              "amount": [
+                {
+                  "denom": "uusd.trading",
+                  "amount": "4201227490"
+                }
+              ]
+            }
+          ],
+          "marketId": 1,
+          "navs": [
+            {
+              "assets": {
+                "denom": "neth.figure.se",
+                "amount": "1000000000"
+              },
+              "price": {
+                "denom": "uusd.trading",
+                "amount": "2513160000"
+              }
+            },
+            {
+              "assets": {
+                "denom": "nbtc.figure.se",
+                "amount": "25400000"
+              },
+              "price": {
+                "denom": "uusd.trading",
+                "amount": "1688067490"
+              }
+            }
+          ],
+          "outputs": [
+            {
+              "account": "pb1edvqpnz3e894aeav8cveuhrwzmtj0dqpqckkg0dhl8t0ck6k489suhc0ue",
+              "amount": [
+                {
+                  "denom": "uusd.trading",
+                  "amount": "4201227490"
+                }
+              ]
+            },
+            {
+              "account": "pb1zhf0lh23n49h760mu7w0hwuprr33r7epx7g7twfvtjas98xs02usq0cwlt",
+              "amount": [
+                {
+                  "denom": "nbtc.figure.se",
+                  "amount": "25400000"
+                },
+                {
+                  "denom": "neth.figure.se",
+                  "amount": "1000000000"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "timeoutHeight": "19798353"
+    },
+    "authInfo": {
+      "signerInfos": [
+        {
+          "publicKey": {
+            "@type": "/cosmos.crypto.secp256k1.PubKey",
+            "key": "ArLMMkHdkp0dngHhCl1YKSGbaFwF1B754MOHL7fyW6vX"
+          },
+          "modeInfo": {
+            "single": {
+              "mode": "SIGN_MODE_DIRECT"
+            }
+          },
+          "sequence": "113404"
+        }
+      ],
+      "fee": {
+        "amount": [
+          {
+            "denom": "nhash",
+            "amount": "521608050"
+          }
+        ],
+        "gasLimit": "273810"
+      }
+    },
+    "signatures": [
+      "7/+xEIS9QzTgX0BFzjRtT3KYt0FTBNp1QhH5QWV9rYBQOJkghJLde1hbu5HWJsuV9p9qvglw4vW3ewqYdKP7og=="
+    ]
+  },
+  "txResponse": {
+    "height": "19798342",
+    "txhash": "C4EF515FCA62F01569E6E8E4DEB4E24A717EBEBEB240BEA7CE346356394ECC2D",
+    "data": "123B0A392F70726F76656E616E63652E65786368616E67652E76312E4D73674D61726B6574436F6D6D69746D656E74536574746C65526573706F6E7365",
+    "gasWanted": "273810",
+    "gasUsed": "239628",
+    "tx": {
+      "@type": "/cosmos.tx.v1beta1.Tx",
+      "authInfo": {
+        "signerInfos": [
+          {
+            "publicKey": {
+              "@type": "/cosmos.crypto.secp256k1.PubKey",
+              "key": "ArLMMkHdkp0dngHhCl1YKSGbaFwF1B754MOHL7fyW6vX"
+            },
+            "modeInfo": {
+              "single": {
+                "mode": "SIGN_MODE_DIRECT"
+              }
+            },
+            "sequence": "113404"
+          }
+        ],
+        "fee": {
+          "amount": [
+            {
+              "denom": "nhash",
+              "amount": "521608050"
+            }
+          ],
+          "gasLimit": "273810"
+        }
+      },
+      "body": {
+        "messages": [
+          {
+            "@type": "/provenance.exchange.v1.MsgMarketCommitmentSettleRequest",
+            "admin": "pb1la8gttx2lpr6aharfgd2dx78ptzwpenhup8qx8",
+            "inputs": [
+              {
+                "account": "pb1edvqpnz3e894aeav8cveuhrwzmtj0dqpqckkg0dhl8t0ck6k489suhc0ue",
+                "amount": [
+                  {
+                    "denom": "nbtc.figure.se",
+                    "amount": "25400000"
+                  },
+                  {
+                    "denom": "neth.figure.se",
+                    "amount": "1000000000"
+                  }
+                ]
+              },
+              {
+                "account": "pb1zhf0lh23n49h760mu7w0hwuprr33r7epx7g7twfvtjas98xs02usq0cwlt",
+                "amount": [
+                  {
+                    "denom": "uusd.trading",
+                    "amount": "4201227490"
+                  }
+                ]
+              }
+            ],
+            "marketId": 1,
+            "navs": [
+              {
+                "assets": {
+                  "denom": "neth.figure.se",
+                  "amount": "1000000000"
+                },
+                "price": {
+                  "denom": "uusd.trading",
+                  "amount": "2513160000"
+                }
+              },
+              {
+                "assets": {
+                  "denom": "nbtc.figure.se",
+                  "amount": "25400000"
+                },
+                "price": {
+                  "denom": "uusd.trading",
+                  "amount": "1688067490"
+                }
+              }
+            ],
+            "outputs": [
+              {
+                "account": "pb1edvqpnz3e894aeav8cveuhrwzmtj0dqpqckkg0dhl8t0ck6k489suhc0ue",
+                "amount": [
+                  {
+                    "denom": "uusd.trading",
+                    "amount": "4201227490"
+                  }
+                ]
+              },
+              {
+                "account": "pb1zhf0lh23n49h760mu7w0hwuprr33r7epx7g7twfvtjas98xs02usq0cwlt",
+                "amount": [
+                  {
+                    "denom": "nbtc.figure.se",
+                    "amount": "25400000"
+                  },
+                  {
+                    "denom": "neth.figure.se",
+                    "amount": "1000000000"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "timeoutHeight": "19798353"
+      },
+      "signatures": [
+        "7/+xEIS9QzTgX0BFzjRtT3KYt0FTBNp1QhH5QWV9rYBQOJkghJLde1hbu5HWJsuV9p9qvglw4vW3ewqYdKP7og=="
+      ]
+    },
+    "timestamp": "2024-10-23T20:36:03Z",
+    "events": [
+      {
+        "type": "coin_spent",
+        "attributes": [
+          {
+            "key": "spender",
+            "value": "pb1la8gttx2lpr6aharfgd2dx78ptzwpenhup8qx8",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "521608050nhash",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "coin_received",
+        "attributes": [
+          {
+            "key": "receiver",
+            "value": "pb17xpfvakm2amg962yls6f84z3kell8c5lehg9xp",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "521608050nhash",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "transfer",
+        "attributes": [
+          {
+            "key": "recipient",
+            "value": "pb17xpfvakm2amg962yls6f84z3kell8c5lehg9xp",
+            "index": true
+          },
+          {
+            "key": "sender",
+            "value": "pb1la8gttx2lpr6aharfgd2dx78ptzwpenhup8qx8",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "521608050nhash",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "attributes": [
+          {
+            "key": "sender",
+            "value": "pb1la8gttx2lpr6aharfgd2dx78ptzwpenhup8qx8",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "fee",
+            "value": "521608050nhash",
+            "index": true
+          },
+          {
+            "key": "fee_payer",
+            "value": "pb1la8gttx2lpr6aharfgd2dx78ptzwpenhup8qx8",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "min_fee_charged",
+            "value": "521608050nhash",
+            "index": true
+          },
+          {
+            "key": "fee_payer",
+            "value": "pb1la8gttx2lpr6aharfgd2dx78ptzwpenhup8qx8",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "acc_seq",
+            "value": "pb1la8gttx2lpr6aharfgd2dx78ptzwpenhup8qx8/113404",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "tx",
+        "attributes": [
+          {
+            "key": "signature",
+            "value": "7/+xEIS9QzTgX0BFzjRtT3KYt0FTBNp1QhH5QWV9rYBQOJkghJLde1hbu5HWJsuV9p9qvglw4vW3ewqYdKP7og==",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "attributes": [
+          {
+            "key": "action",
+            "value": "/provenance.exchange.v1.MsgMarketCommitmentSettleRequest",
+            "index": true
+          },
+          {
+            "key": "sender",
+            "value": "pb1la8gttx2lpr6aharfgd2dx78ptzwpenhup8qx8",
+            "index": true
+          },
+          {
+            "key": "module",
+            "value": "exchange",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.marker.v1.EventSetNetAssetValue",
+        "attributes": [
+          {
+            "key": "denom",
+            "value": "\"neth.figure.se\"",
+            "index": true
+          },
+          {
+            "key": "price",
+            "value": "\"2513160000uusd.trading\"",
+            "index": true
+          },
+          {
+            "key": "source",
+            "value": "\"x/exchange market 1\"",
+            "index": true
+          },
+          {
+            "key": "volume",
+            "value": "\"1000000000\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.marker.v1.EventSetNetAssetValue",
+        "attributes": [
+          {
+            "key": "denom",
+            "value": "\"nbtc.figure.se\"",
+            "index": true
+          },
+          {
+            "key": "price",
+            "value": "\"1688067490uusd.trading\"",
+            "index": true
+          },
+          {
+            "key": "source",
+            "value": "\"x/exchange market 1\"",
+            "index": true
+          },
+          {
+            "key": "volume",
+            "value": "\"25400000\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.hold.v1.EventHoldReleased",
+        "attributes": [
+          {
+            "key": "address",
+            "value": "\"pb1edvqpnz3e894aeav8cveuhrwzmtj0dqpqckkg0dhl8t0ck6k489suhc0ue\"",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "\"25400000nbtc.figure.se,1000000000neth.figure.se\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.exchange.v1.EventCommitmentReleased",
+        "attributes": [
+          {
+            "key": "account",
+            "value": "\"pb1edvqpnz3e894aeav8cveuhrwzmtj0dqpqckkg0dhl8t0ck6k489suhc0ue\"",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "\"25400000nbtc.figure.se,1000000000neth.figure.se\"",
+            "index": true
+          },
+          {
+            "key": "market_id",
+            "value": "1",
+            "index": true
+          },
+          {
+            "key": "tag",
+            "value": "\"\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.hold.v1.EventHoldReleased",
+        "attributes": [
+          {
+            "key": "address",
+            "value": "\"pb1zhf0lh23n49h760mu7w0hwuprr33r7epx7g7twfvtjas98xs02usq0cwlt\"",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "\"4201227490uusd.trading\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.exchange.v1.EventCommitmentReleased",
+        "attributes": [
+          {
+            "key": "account",
+            "value": "\"pb1zhf0lh23n49h760mu7w0hwuprr33r7epx7g7twfvtjas98xs02usq0cwlt\"",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "\"4201227490uusd.trading\"",
+            "index": true
+          },
+          {
+            "key": "market_id",
+            "value": "1",
+            "index": true
+          },
+          {
+            "key": "tag",
+            "value": "\"\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "coin_spent",
+        "attributes": [
+          {
+            "key": "spender",
+            "value": "pb1edvqpnz3e894aeav8cveuhrwzmtj0dqpqckkg0dhl8t0ck6k489suhc0ue",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "25400000nbtc.figure.se,1000000000neth.figure.se",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "coin_received",
+        "attributes": [
+          {
+            "key": "receiver",
+            "value": "pb1zhf0lh23n49h760mu7w0hwuprr33r7epx7g7twfvtjas98xs02usq0cwlt",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "25400000nbtc.figure.se,1000000000neth.figure.se",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "transfer",
+        "attributes": [
+          {
+            "key": "recipient",
+            "value": "pb1zhf0lh23n49h760mu7w0hwuprr33r7epx7g7twfvtjas98xs02usq0cwlt",
+            "index": true
+          },
+          {
+            "key": "sender",
+            "value": "pb1edvqpnz3e894aeav8cveuhrwzmtj0dqpqckkg0dhl8t0ck6k489suhc0ue",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "25400000nbtc.figure.se,1000000000neth.figure.se",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "attributes": [
+          {
+            "key": "sender",
+            "value": "pb1edvqpnz3e894aeav8cveuhrwzmtj0dqpqckkg0dhl8t0ck6k489suhc0ue",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "coin_spent",
+        "attributes": [
+          {
+            "key": "spender",
+            "value": "pb1zhf0lh23n49h760mu7w0hwuprr33r7epx7g7twfvtjas98xs02usq0cwlt",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "4201227490uusd.trading",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "coin_received",
+        "attributes": [
+          {
+            "key": "receiver",
+            "value": "pb1edvqpnz3e894aeav8cveuhrwzmtj0dqpqckkg0dhl8t0ck6k489suhc0ue",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "4201227490uusd.trading",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "transfer",
+        "attributes": [
+          {
+            "key": "recipient",
+            "value": "pb1edvqpnz3e894aeav8cveuhrwzmtj0dqpqckkg0dhl8t0ck6k489suhc0ue",
+            "index": true
+          },
+          {
+            "key": "sender",
+            "value": "pb1zhf0lh23n49h760mu7w0hwuprr33r7epx7g7twfvtjas98xs02usq0cwlt",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "4201227490uusd.trading",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "attributes": [
+          {
+            "key": "sender",
+            "value": "pb1zhf0lh23n49h760mu7w0hwuprr33r7epx7g7twfvtjas98xs02usq0cwlt",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.hold.v1.EventHoldAdded",
+        "attributes": [
+          {
+            "key": "address",
+            "value": "\"pb1edvqpnz3e894aeav8cveuhrwzmtj0dqpqckkg0dhl8t0ck6k489suhc0ue\"",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "\"4201227490uusd.trading\"",
+            "index": true
+          },
+          {
+            "key": "reason",
+            "value": "\"x/exchange: commitment to 1\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.exchange.v1.EventFundsCommitted",
+        "attributes": [
+          {
+            "key": "account",
+            "value": "\"pb1edvqpnz3e894aeav8cveuhrwzmtj0dqpqckkg0dhl8t0ck6k489suhc0ue\"",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "\"4201227490uusd.trading\"",
+            "index": true
+          },
+          {
+            "key": "market_id",
+            "value": "1",
+            "index": true
+          },
+          {
+            "key": "tag",
+            "value": "\"\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.hold.v1.EventHoldAdded",
+        "attributes": [
+          {
+            "key": "address",
+            "value": "\"pb1zhf0lh23n49h760mu7w0hwuprr33r7epx7g7twfvtjas98xs02usq0cwlt\"",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "\"25400000nbtc.figure.se,1000000000neth.figure.se\"",
+            "index": true
+          },
+          {
+            "key": "reason",
+            "value": "\"x/exchange: commitment to 1\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      },
+      {
+        "type": "provenance.exchange.v1.EventFundsCommitted",
+        "attributes": [
+          {
+            "key": "account",
+            "value": "\"pb1zhf0lh23n49h760mu7w0hwuprr33r7epx7g7twfvtjas98xs02usq0cwlt\"",
+            "index": true
+          },
+          {
+            "key": "amount",
+            "value": "\"25400000nbtc.figure.se,1000000000neth.figure.se\"",
+            "index": true
+          },
+          {
+            "key": "market_id",
+            "value": "1",
+            "index": true
+          },
+          {
+            "key": "tag",
+            "value": "\"\"",
+            "index": true
+          },
+          {
+            "key": "msg_index",
+            "value": "0",
+            "index": true
+          }
+        ]
+      }
+    ]
+  }
+}

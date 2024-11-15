@@ -12,6 +12,7 @@ import io.provenance.explorer.domain.entities.AssetPricingRecord
 import io.provenance.explorer.domain.entities.BaseDenomType
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.MarkerUnitRecord
+import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
 import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
 import io.provenance.explorer.domain.extensions.calculateUsdPricePerUnit
@@ -244,7 +245,7 @@ class AssetService(
         val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC)
         logger.info("Updating asset pricing, last run at: $assetPricinglastRun")
 
-        val latestPrices = flowApiGrpcClient.getAllLatestNavPrices(
+        val latestPrices = NavEventsRecord.getLatestNavEvents(
             priceDenom = USD_LOWER,
             includeMarkers = true,
             includeScopes = false,
@@ -252,14 +253,14 @@ class AssetService(
         )
         latestPrices.forEach { price ->
             if (price.denom != UTILITY_TOKEN) {
-                val marker = getAssetRaw(price.denom)
+                val marker = getAssetRaw(price.denom!!)
                 insertAssetPricing(
                     marker = marker,
                     markerDenom = price.denom,
                     markerAddress = marker.second.markerAddress,
-                    pricingDenom = price.priceDenom,
+                    pricingDenom = price.priceDenom!!,
                     pricingAmount = price.calculateUsdPricePerUnit(),
-                    timestamp = DateTime(price.blockTime * 1000)
+                    timestamp = price.blockTime
                 )
             }
         }
