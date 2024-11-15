@@ -5,7 +5,6 @@ import io.mockk.spyk
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.HistoricalPrice
-import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.explorer.service.pricing.fetchers.HistoricalPriceFetcherFactory
