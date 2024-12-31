@@ -211,7 +211,7 @@ class ScheduledTaskService(
     @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateSpotlight() = explorerService.createSpotlight()
 
-    @Scheduled(initialDelay = 0L, fixedDelay = 300000L) // Every 5 minutes
+    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun retryBlockTxs() {
         logger.info("Retrying block/tx records")
         BlockTxRetryRecord.getRecordsToRetry().map { height ->
