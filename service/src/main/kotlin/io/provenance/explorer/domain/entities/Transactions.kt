@@ -395,7 +395,7 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
             val query = findByQueryParams(txQueryParams, listOf(distId) + tableColSet)
-                .alias("subQuery") //create a subquery to delay sorting until after the distinct
+                .alias("tx_message") //create a subquery (aliased as tx_message) to delay sorting until after the distinct
                 .selectAll()
                 .orderBy(Pair(TxMessageTable.blockHeight, SortOrder.DESC))
                 .limit(txQueryParams.count, txQueryParams.offset.toLong())
