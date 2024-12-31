@@ -6,6 +6,7 @@ import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.Distinct
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
@@ -405,6 +406,8 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         private fun findByQueryParams(tqp: TxQueryParams, distinctQuery: List<Expression<*>>?) = transaction {
+            logger().info("Query Params: $tqp");
+
             var join: ColumnSet = TxMessageTable
 
             if (tqp.msgTypes.isNotEmpty())
