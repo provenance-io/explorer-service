@@ -344,8 +344,7 @@ class TransactionControllerV2(private val transactionService: TransactionService
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         toDate: DateTime?
-    ) = PagedResults<TxGov>(0, emptyList(), 0)
-//        transactionService.getGovernanceTxs(address, msgType, txStatus, page, count, fromDate, toDate)
+    ) = transactionService.getGovernanceTxs(address, msgType, txStatus, page, count, fromDate, toDate)
 
     @ApiOperation("Returns transactions for smart contract module with unique response type")
     @GetMapping("/module/smart_contract")
