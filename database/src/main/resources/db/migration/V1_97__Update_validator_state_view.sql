@@ -1,7 +1,7 @@
 SELECT 'Modify `current_validator_state` view' AS comment;
 DROP MATERIALIZED VIEW IF EXISTS current_validator_state;
 
-CREATE VIEW IF NOT EXISTS current_validator_state AS
+CREATE VIEW current_validator_state AS
 SELECT DISTINCT ON (vs.operator_addr_id) vs.operator_addr_id,
     vs.operator_address,
     vs.block_height,
