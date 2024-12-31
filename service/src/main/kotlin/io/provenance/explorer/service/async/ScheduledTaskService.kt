@@ -94,7 +94,7 @@ class ScheduledTaskService(
         }.start()
     }
 
-    @Scheduled(initialDelay = 0L, fixedDelay = 300000L) // Every 5 minutes
+    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateLatestBlockHeightJob() {
         val index = getBlockIndex()
         val startHeight = blockService.getLatestBlockHeight()
@@ -263,7 +263,7 @@ class ScheduledTaskService(
         tokenService.updateAndSaveTokenHistoricalData(startDate, today)
     }
 
-    @Scheduled(initialDelay = 0L, fixedDelay = 600000L) // Every 5 minutes
+    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateTokenLatest() {
         val today = DateTime.now().withZone(DateTimeZone.UTC)
         val startDate = today.minusDays(1)
@@ -349,7 +349,7 @@ class ScheduledTaskService(
         }
     }
 
-    @Scheduled(initialDelay = 5000L, fixedDelay = 300000L) // Every 5 minutes
+    @Scheduled(initialDelay = 5000L, fixedDelay = 5000L)
     fun startAccountProcess() {
         processAccountRecords()
     }
