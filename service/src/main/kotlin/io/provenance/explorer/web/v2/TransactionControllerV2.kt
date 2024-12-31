@@ -1,7 +1,9 @@
 package io.provenance.explorer.web.v2
 
 import io.provenance.explorer.model.MsgTypeSet
+import io.provenance.explorer.model.TxGov
 import io.provenance.explorer.model.TxStatus
+import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.service.TransactionService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -342,7 +344,8 @@ class TransactionControllerV2(private val transactionService: TransactionService
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         toDate: DateTime?
-    ) = transactionService.getGovernanceTxs(address, msgType, txStatus, page, count, fromDate, toDate)
+    ) = PagedResults<TxGov>(0, emptyList(), 0)
+//        transactionService.getGovernanceTxs(address, msgType, txStatus, page, count, fromDate, toDate)
 
     @ApiOperation("Returns transactions for smart contract module with unique response type")
     @GetMapping("/module/smart_contract")
