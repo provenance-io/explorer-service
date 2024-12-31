@@ -28,11 +28,13 @@ dependencies {
     implementation(Libraries.ProtobufKotlin)
     implementation(Libraries.ProvenanceProto)
     implementation(Libraries.Reflections)
+    implementation(Libraries.Caffeine)
 
     implementation(Libraries.SpringBootStarterWeb)
     implementation(Libraries.SpringBootStarterJdbc)
     implementation(Libraries.SpringBootStarterActuator)
     implementation(Libraries.SpringBootStarterValidation)
+    implementation(Libraries.SpringBootStarterCache)
     kapt(Libraries.SpringBootConfigProcessor)
 
     implementation(Libraries.BouncyCastle)
