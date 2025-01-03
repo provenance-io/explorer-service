@@ -1,9 +1,7 @@
 package io.provenance.explorer.web.v2
 
 import io.provenance.explorer.model.MsgTypeSet
-import io.provenance.explorer.model.TxGov
 import io.provenance.explorer.model.TxStatus
-import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.service.TransactionService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -68,12 +66,12 @@ class TransactionControllerV2(private val transactionService: TransactionService
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         toDate: DateTime?
     ) = transactionService.getTxsByQuery(
-            msgType = msgType,
-            txStatus = txStatus,
-            count = count,
-            page = page,
-            fromDate = fromDate,
-            toDate = toDate
+        msgType = msgType,
+        txStatus = txStatus,
+        count = count,
+        page = page,
+        fromDate = fromDate,
+        toDate = toDate
     )
 
     @ApiOperation("Return transaction detail by hash value")

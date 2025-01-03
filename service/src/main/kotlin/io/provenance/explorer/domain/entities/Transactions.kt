@@ -395,7 +395,7 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
             val query = findByQueryParams(txQueryParams, listOf(distId) + tableColSet)
-                .alias("tx_message") //create a subquery (aliased as tx_message) to delay sorting until after the distinct
+                .alias("tx_message") // create a subquery (aliased as tx_message) to delay sorting until after the distinct
                 .selectAll()
                 .orderBy(Pair(TxMessageTable.blockHeight, SortOrder.DESC))
                 .limit(txQueryParams.count, txQueryParams.offset.toLong())
@@ -408,7 +408,7 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         private fun findByQueryParams(tqp: TxQueryParams, distinctQuery: List<Expression<*>>?) = transaction {
-            logger().info("Query Params: $tqp");
+            logger().info("Query Params: $tqp")
 
             var join: ColumnSet = TxMessageTable
 
@@ -452,7 +452,6 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
 
             query
         }
-
 
         fun buildInsert(txInfo: TxData, message: Any, msgIdx: Int) = transaction {
             listOf(
