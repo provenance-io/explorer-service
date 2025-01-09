@@ -7,7 +7,6 @@ import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
-import io.provenance.explorer.domain.core.sql.DistinctOn
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_OVERAGE
@@ -55,15 +54,10 @@ import org.jetbrains.exposed.sql.ColumnSet
 import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.IntegerColumnType
-import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SqlLogger
 import org.jetbrains.exposed.sql.TextColumnType
-import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.VarCharColumnType
-import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.countDistinct
@@ -73,7 +67,6 @@ import org.jetbrains.exposed.sql.jodatime.DateColumnType
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.statements.StatementContext
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
