@@ -127,8 +127,6 @@ class UtilityService(
             "( '$proto', '$module', '$type', '$category' )"
         }
     }
-
-    fun refreshCurrentValidatorState() = ValidatorStateRecord.refreshCurrentStateView()
 }
 
 data class ProtoBreakout(
