@@ -7,7 +7,7 @@ import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
-import io.provenance.explorer.domain.core.sql.Distinct
+import io.provenance.explorer.domain.core.sql.DistinctOn
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
 import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_OVERAGE
@@ -55,10 +55,14 @@ import org.jetbrains.exposed.sql.ColumnSet
 import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.Expression
 import org.jetbrains.exposed.sql.IntegerColumnType
+import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlLogger
 import org.jetbrains.exposed.sql.TextColumnType
+import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.VarCharColumnType
+import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
@@ -69,6 +73,7 @@ import org.jetbrains.exposed.sql.jodatime.DateColumnType
 import org.jetbrains.exposed.sql.jodatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.statements.StatementContext
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
@@ -348,8 +353,6 @@ object TxMessageTable : IntIdTable(name = "tx_message") {
 
 class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxMessageRecord>(TxMessageTable) {
-
-        val distId = Distinct(TxMessageTable.id, IntegerColumnType()).alias("dist")
         val tableColSet = TxMessageTable.columns.toMutableList()
 
         fun findByHash(hash: String) = transaction {
@@ -370,7 +373,7 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findByHashIdPaginated(hashId: Int, msgTypes: List<Int>, limit: Int, offset: Int) = transaction {
             val query = TxMessageTable
                 .innerJoin(TxMsgTypeSubtypeTable, { TxMessageTable.id }, { TxMsgTypeSubtypeTable.txMsgId })
-                .slice(listOf(distId) + tableColSet)
+                .slice(tableColSet)
                 .select { TxMessageTable.txHashId eq hashId }
             if (msgTypes.isNotEmpty()) {
                 query.andWhere { TxMsgTypeQueryTable.typeId inList msgTypes }
@@ -394,12 +397,19 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
-            val query = findByQueryParams(txQueryParams, listOf(distId) + tableColSet)
-                .alias("tx_message") // create a subquery (aliased as tx_message) to delay sorting until after the distinct
-                .selectAll()
-                .orderBy(Pair(TxMessageTable.blockHeight, SortOrder.DESC))
-                .limit(txQueryParams.count, txQueryParams.offset.toLong())
-            TxMessageRecord.wrapRows(query).toSet()
+            findByQueryParams(txQueryParams, tableColSet).let {
+                // Because of the way the db takes hints on when to materialize data for sorting, it is in our best interest
+                // to sort by the deepest level of the inner joins that have been executed. In this case this will yield a
+                // query that takes less than a second whereas ordering by the same field in the tx message table takes 18 minutes.
+                if ((txQueryParams.addressId != null && txQueryParams.addressType != null) || txQueryParams.address != null)
+                    it.orderBy(Pair(TxAddressJoinTable.blockHeight, SortOrder.DESC))
+                else
+                    it.orderBy(Pair(TxMessageTable.blockHeight, SortOrder.DESC))
+            }.let {
+                it.limit(txQueryParams.count, txQueryParams.offset.toLong())
+            }.let {
+                TxMessageRecord.wrapRows(it).toSet()
+            }
         }
 
         fun findByQueryParamsForCount(txQueryParams: TxQueryParams) = transaction {
