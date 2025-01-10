@@ -57,7 +57,8 @@ data class BasicAllowance(
 
 data class PeriodicAllowance(
     val basicAllowance: BasicAllowance,
-    val period: String, // duration in seconds
+    // duration in seconds
+    val period: String,
     val spendLimit: List<CoinStr>,
     val spendRemaining: List<CoinStr>,
     val periodReset: DateTime

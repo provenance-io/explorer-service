@@ -15,7 +15,7 @@ repositories {
 dependencies {
     api(project(":api-model"))
 
-    listOf (
+    listOf(
         libs.bundles.feign,
         libs.joda.time,
         libs.provenance.proto

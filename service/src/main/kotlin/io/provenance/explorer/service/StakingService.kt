@@ -94,7 +94,9 @@ class StakingService(
             validatorService.validateValidator(request.validator),
             assetService.validateDenom(request.amount.denom),
             requireToMessage(request.amount.amount.toLong() > 0L) { "Undelegation amount must be greater than zero" },
-            requireToMessage(request.unbondingCreateHeight < blockService.getLatestBlockHeight()) { "Unbonding Creation height must be less than the current height" }
+            requireToMessage(request.unbondingCreateHeight < blockService.getLatestBlockHeight()) {
+                "Unbonding Creation height must be less than the current height"
+            }
         )
         return msgCancelUnbondingDelegation {
             delegatorAddress = request.delegator

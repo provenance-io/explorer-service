@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    listOf (
+    listOf(
         libs.jackson.jodadatatype,
         libs.provenance.proto
     ).forEach(::implementation)

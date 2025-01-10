@@ -18,7 +18,7 @@ allprojects {
     version = artifactVersion(this)
 
     apply {
-//        plugin("org.jlleitschuh.gradle.ktlint")
+        plugin("org.jlleitschuh.gradle.ktlint")
     }
 
     repositories {

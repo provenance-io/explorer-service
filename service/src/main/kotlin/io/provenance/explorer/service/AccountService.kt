@@ -140,7 +140,8 @@ class AccountService(
                     .toCoinStr(USD_UPPER),
                 it.data?.isVesting() ?: false,
                 AccountFlags(it.isContract, it.data?.isVesting() ?: false, it.data?.isIca() ?: false),
-                it.owner // /// do not link to anything, this is a third party chain address
+                // do not link to anything, this is a third party chain address
+                it.owner
             )
         }
     }
@@ -325,7 +326,11 @@ class AccountService(
             requireToMessage(request.to.isStandardAddress()) { "to must be a standard address format" },
             requireToMessage(request.to != request.from) { "The to address must be different that the from address" },
             *request.funds.map { assetService.validateDenom(it.denom) }.toTypedArray(),
-            requireToMessage(request.funds.none { it.amount.toBigDecimal() == BigDecimal.ZERO }) { "At least one deposit must have an amount greater than zero." }
+            requireToMessage(
+                request.funds.none {
+                it.amount.toBigDecimal() == BigDecimal.ZERO
+            }
+            ) { "At least one deposit must have an amount greater than zero." }
         )
         return msgSend {
             fromAddress = request.from

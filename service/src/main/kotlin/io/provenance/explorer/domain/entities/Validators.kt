@@ -405,7 +405,9 @@ class ValidatorMetricsRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<ValidatorMetricsRecord>(ValidatorMetricsTable) {
 
         fun findByOperAddrForPeriod(operAddrId: Int, year: Int, quarter: Int) = transaction {
-            ValidatorMetricsRecord.find { (ValidatorMetricsTable.operAddrId eq operAddrId) and (ValidatorMetricsTable.year eq year) and (ValidatorMetricsTable.quarter eq quarter) }
+            ValidatorMetricsRecord.find {
+                (ValidatorMetricsTable.operAddrId eq operAddrId) and (ValidatorMetricsTable.year eq year) and (ValidatorMetricsTable.quarter eq quarter)
+            }
                 .firstOrNull()
         }
 

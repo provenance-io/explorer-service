@@ -116,7 +116,6 @@ import io.provenance.explorer.model.VotingDetails
 import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.stringfy
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction

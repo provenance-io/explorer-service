@@ -15,8 +15,9 @@ data class AccountDetail(
     val tokens: TokenCounts,
     @Deprecated("Use this.flags.isContract instead") val isContract: Boolean,
     val accountAum: CoinStr,
+    // added to eventually remove the standalone vals in this object
     @Deprecated("Use this.flags.isVesting instead") val isVesting: Boolean,
-    val flags: AccountFlags, // added to eventually remove the standalone vals in this object
+    val flags: AccountFlags,
     val accountOwner: String?
 )
 
@@ -72,7 +73,8 @@ data class AccountVestingInfo(
 )
 
 data class PeriodicVestingInfo(
-    val length: Long, // in seconds
+    // in seconds
+    val length: Long,
     val coins: List<CoinStr>,
     val vestingDate: DateTime,
     val isVested: Boolean

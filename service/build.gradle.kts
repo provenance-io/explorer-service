@@ -78,12 +78,12 @@ tasks.getByName<BootRun>("bootRun") {
     args = mutableListOf("--spring.profiles.active=$profiles")
 }
 
-//println("\nExclude Spring Boot Dev tools? " + version.toString().contains("main"))
-//tasks.getByName<BootJar>("bootJar") {
+// println("\nExclude Spring Boot Dev tools? " + version.toString().contains("main"))
+// tasks.getByName<BootJar>("bootJar") {
 //    if (!project.version.toString().contains("main"))
 //        classpath += configurations.developmentOnly
 //    enabled = true
-//}
+// }
 
 plugins.withType<com.adarshr.gradle.testlogger.TestLoggerPlugin> {
     configure<com.adarshr.gradle.testlogger.TestLoggerExtension> {
