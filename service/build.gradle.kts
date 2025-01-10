@@ -1,10 +1,8 @@
-import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
-import org.springframework.boot.gradle.tasks.bundling.BootJar
 import org.springframework.boot.gradle.tasks.run.BootRun
 
 plugins {
-    kotlin(PluginIds.KotlinSpring) version PluginVersions.Kotlin
-    kotlin(PluginIds.Kapt)
+    kotlin(PluginIds.KotlinSpring) version libs.versions.kotlin
+//    id("org.jetbrains.kotlin.kapt")
     id(PluginIds.GoryLenkoGitProps) version PluginVersions.GoryLenkoGitProps
     id(PluginIds.SpringDependency) version PluginVersions.SpringDependency
     id(PluginIds.SpringBoot) version PluginVersions.SpringBoot
@@ -12,32 +10,41 @@ plugins {
 }
 
 sourceSets {
-    test {
-        withConvention(KotlinSourceSet::class) {
-            kotlin.srcDirs("src/test/kotlin")
-            resources.srcDirs("src/test/resources")
-        }
+    val test by getting {
+
+        kotlin.srcDirs("src/test/kotlin")
     }
 }
 
 dependencies {
     implementation(project(":database"))
     implementation(project(":api-model"))
-    implementation(Libraries.KotlinReflect)
+
+    listOf(
+        libs.bouncycastle,
+        libs.caffeine,
+        libs.exposed,
+        libs.kotlin.reflect,
+        libs.protobuf.kotlin,
+        libs.provenance.proto,
+        libs.reflections,
+    ).forEach(::implementation)
+
+//    implementation(Libraries.KotlinReflect)
     implementation(Libraries.KotlinStdlib)
-    implementation(Libraries.ProtobufKotlin)
-    implementation(Libraries.ProvenanceProto)
-    implementation(Libraries.Reflections)
-    implementation(Libraries.Caffeine)
+//    implementation(Libraries.ProtobufKotlin)
+//    implementation(Libraries.ProvenanceProto)
+//    implementation(Libraries.Reflections)
+//    implementation(Libraries.Caffeine)
 
     implementation(Libraries.SpringBootStarterWeb)
     implementation(Libraries.SpringBootStarterJdbc)
     implementation(Libraries.SpringBootStarterActuator)
     implementation(Libraries.SpringBootStarterValidation)
     implementation(Libraries.SpringBootStarterCache)
-    kapt(Libraries.SpringBootConfigProcessor)
+//    kapt(Libraries.SpringBootConfigProcessor)
 
-    implementation(Libraries.BouncyCastle)
+//    implementation(Libraries.BouncyCastle)
     implementation(Libraries.KotlinXCoRoutinesCoreJvm) {
         exclude(module = "kotlinx-coroutines-bom")
     }
@@ -61,7 +68,7 @@ dependencies {
     implementation(Libraries.Postgres)
 
     implementation(Libraries.Swagger)
-    implementation(Libraries.Exposed)
+//    implementation(Libraries.Exposed)
     implementation(Libraries.ExposedJavaTime)
     implementation(Libraries.ExposedDao)
     implementation(Libraries.ExposedJdbc)

@@ -4,7 +4,7 @@ group = "io.provenance.explorer"
 version = project.property("version")?.takeIf { it != "unspecified" } ?: "1.0-SNAPSHOT"
 
 plugins {
-    kotlin("jvm") version PluginVersions.Kotlin
+    kotlin("jvm")
     java
     id(PluginIds.Idea)
     id(PluginIds.TaskTree) version PluginVersions.TaskTree

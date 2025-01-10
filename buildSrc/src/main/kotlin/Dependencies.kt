@@ -19,7 +19,7 @@ object PluginIds { // please keep this sorted in sections
 
 object PluginVersions { // please keep this sorted in sections
     // Kotlin
-    const val Kotlin = "1.6.21"
+    const val Kotlin = "1.9.25"
 
     // 3rd Party
     const val Flyway = "7.15.0"
