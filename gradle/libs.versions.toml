@@ -10,13 +10,17 @@ flyway = "7.15.0"
 google-proto = "2.49.0"
 grpc = "1.68.2"
 grpc-kotlin = "1.4.1"
+h2 = "2.1.214"
 hikari = "5.0.1"
 jackson = "2.14.0"
 jacksonProtobuf = "0.9.15"
 javax-annotations = "1.3.2"
+junit-jupiter = "5.9.1"
+joda-time = "2.13.0"
 json = "20211205"
 kafka = "3.4.0"
 kase-change = "1.3.0"
+kotest = "5.5.4"
 kotlin = "1.9.25"
 kotlinLogging = "3.0.5"
 kotlinx-coroutines = "1.6.4"
@@ -31,6 +35,7 @@ provenance-proto = "1.20.1"
 reflections = "0.10.2"
 spring = "2.6.6"
 spring-integration = "6.4.0"
+spring-mock = "3.1.1"
 swagger = "3.0.0"
 testcontainers = "1.20.4"
 
@@ -55,6 +60,7 @@ grpc-kotlin = { group = "io.grpc", name = "grpc-kotlin-stub", version.ref = "grp
 grpc-netty = { group = "io.grpc", name = "grpc-netty", version.ref = "grpc" }
 grpc-protobuf = { group = "io.grpc", name = "grpc-protobuf", version.ref = "grpc" }
 grpc-services = { group = "io.grpc", name = "grpc-services", version.ref = "grpc" }
+h2 = { group = "com.h2database", name = "h2", version.ref = "h2" }
 hikari = { group = "com.zaxxer", name = "HikariCP", version.ref = "hikari" }
 jackson-dataformats-toml = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-toml", version.ref = "jackson" }
 jackson-dataformats-yaml = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-yaml", version.ref = "jackson" }
@@ -63,10 +69,14 @@ jackson-kotlin = { group = "com.fasterxml.jackson.module", name = "jackson-modul
 jackson-module-protobuf = { group = "com.hubspot.jackson", name = "jackson-datatype-protobuf", version.ref = "jacksonProtobuf" }
 jackson-jodadatatype = { group = "com.fasterxml.jackson.datatype", name = "jackson-datatype-joda", version.ref = "jackson" }
 javax-annotations = { group = "javax.annotation", name = "javax.annotation-api", version.ref = "javax-annotations" }
+joda-time = { group = "joda-time", name = "joda-time", version.ref = "joda-time" }
+junit-jupiter-api = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.ref = "junit-jupiter" }
+junit-jupiter-engine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit.jupiter"}
 json = { group = "org.json", name = "json", version.ref = "json" }
 kafka-clients = { group = "org.apache.kafka", name = "kafka-clients", version.ref = "kafka" }
 kafka-core = { group = "org.apache.kafka", name = "kafka_2.13", version.ref = "kafka" }
 kase-change = { group = "net.pearx.kasechange", name = "kasechange", version.ref = "kase-change" }
+kotest-assert = { group = "io.kotest", name = "kotest-assertions-core", version.ref = "kotest" }
 kotlin-logging = { group = "io.github.microutils", name = "kotlin-logging-jvm", version.ref = "kotlinLogging" }
 kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
@@ -89,7 +99,9 @@ protobuf-java-util = { group = "com.google.protobuf", name = "protobuf-java-util
 protobuf-kotlin = { group = "com.google.protobuf", name = "protobuf-kotlin", version.ref = "protobuf" }
 provenance-proto = { group = "io.provenance", name = "proto-kotlin", version.ref = "provenance-proto" }
 reflections = { group = "org.reflections", name = "reflections", version.ref = "reflections" }
+spring-dev-tools = { group = "org.springframework.boot", name ="spring-boot-devtools", version.ref = "spring" }
 spring-integration-jdbc = { group = "org.springframework.integration", name = "spring-integration-jdbc", version.ref = "spring-integration" }
+spring-mock = { group = "com.ninja-squad", name = "springmockk", version.ref = "spring-mock" }
 spring-starter-actuator = { group = "org.springframework.boot", name = "spring-boot-starter-actuator", version.ref = "spring" }
 spring-starter-cache = { group = "org.springframework.boot", name = "spring-boot-starter-cache", version.ref = "spring" }
 spring-starter-jdbc = { group = "org.springframework.boot", name = "spring-boot-starter-jdbc", version.ref = "spring" }
@@ -103,6 +115,8 @@ testcontainers = { group = "org.testcontainers", name = "testcontainers", versio
 testcontainers-junit = { group = "org.testcontainers", name = "junit-jupiter", version.ref = "testcontainers" }
 testcontainers-kafka = { group = "org.testcontainers", name = "kafka", version.ref = "testcontainers" }
 testcontainers-postgresql = { group = "org.testcontainers", name = "postgresql", version.ref = "testcontainers" }
+
+
 
 [bundles]
 exposed = ["postgresql", "exposed", "exposed-dao", "exposed-jdbc", "exposed-json", "hikari"]

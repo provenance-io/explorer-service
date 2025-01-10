@@ -3,7 +3,9 @@ plugins {
 }
 
 dependencies {
-    implementation(Libraries.FlywayCore)
+    listOf(
+        libs.flyway
+    ).forEach(::implementation)
 }
 
 flyway {

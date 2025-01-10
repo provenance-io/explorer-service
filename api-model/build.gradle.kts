@@ -13,8 +13,10 @@ repositories {
 }
 
 dependencies {
-    implementation(Libraries.JacksonJoda)
-    implementation(Libraries.ProvenanceProto)
+    listOf (
+        libs.jackson.jodadatatype,
+        libs.provenance.proto
+    ).forEach(::implementation)
 }
 
 tasks.jar {

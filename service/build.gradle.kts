@@ -20,9 +20,7 @@ dependencies {
 
     listOf(
         libs.bundles.jackson,
-
         libs.bundles.ktor,
-
         libs.apache.commons.csv,
         libs.apache.commons.text,
         libs.bouncycastle,
@@ -56,17 +54,21 @@ dependencies {
         exclude(module = "kotlinx-coroutines-bom")
     }
 
-    developmentOnly(Libraries.SpringBootDevTools)
+    developmentOnly(libs.spring.dev.tools)
 
-    testImplementation(Libraries.SpringBootStarterTest) {
+    testImplementation(libs.spring.starter.test) {
         exclude(module = "junit")
         exclude(module = "assertj-core")
     }
-    testImplementation(Libraries.JunitJupiterApi)
-    testImplementation(Libraries.H2Database)
-    testRuntimeOnly(Libraries.JunitJupiterEngine)
-    testImplementation(Libraries.SpringMockk)
-    testImplementation(Libraries.KotestAssert)
+
+    listOf(
+        libs.junit.jupiter.api,
+        libs.h2,
+        libs.spring.mock,
+        libs.kotest.assert
+    ).forEach(::testImplementation)
+
+    testRuntimeOnly(libs.junit.jupiter.engine)
 }
 
 // Configure the bootRun task to default to dev mode rather than having to type the
