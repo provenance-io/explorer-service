@@ -2,7 +2,6 @@ import org.springframework.boot.gradle.tasks.run.BootRun
 
 plugins {
     kotlin(PluginIds.KotlinSpring) version libs.versions.kotlin
-//    id("org.jetbrains.kotlin.kapt")
     id(PluginIds.GoryLenkoGitProps) version PluginVersions.GoryLenkoGitProps
     id(PluginIds.SpringDependency) version PluginVersions.SpringDependency
     id(PluginIds.SpringBoot) version PluginVersions.SpringBoot
@@ -11,7 +10,6 @@ plugins {
 
 sourceSets {
     val test by getting {
-
         kotlin.srcDirs("src/test/kotlin")
     }
 }
@@ -21,58 +19,42 @@ dependencies {
     implementation(project(":api-model"))
 
     listOf(
+        libs.bundles.jackson,
+
+        libs.bundles.ktor,
+
+        libs.apache.commons.csv,
+        libs.apache.commons.text,
         libs.bouncycastle,
         libs.caffeine,
         libs.exposed,
+        libs.exposed.dao,
+        libs.exposed.java.datetime,
+        libs.exposed.jdbc,
+        libs.flyway,
+        libs.grpc.netty,
+        libs.json,
+        libs.kase.change,
         libs.kotlin.reflect,
+        libs.kotlinx.coroutines.core,
+        libs.postgresql,
         libs.protobuf.kotlin,
         libs.provenance.proto,
         libs.reflections,
+        libs.spring.starter.actuator,
+        libs.spring.starter.cache,
+        libs.spring.starter.jdbc,
+        libs.spring.starter.validation,
+        libs.spring.starter.web,
+        libs.swagger,
     ).forEach(::implementation)
 
-//    implementation(Libraries.KotlinReflect)
-    implementation(Libraries.KotlinStdlib)
-//    implementation(Libraries.ProtobufKotlin)
-//    implementation(Libraries.ProvenanceProto)
-//    implementation(Libraries.Reflections)
-//    implementation(Libraries.Caffeine)
-
-    implementation(Libraries.SpringBootStarterWeb)
-    implementation(Libraries.SpringBootStarterJdbc)
-    implementation(Libraries.SpringBootStarterActuator)
-    implementation(Libraries.SpringBootStarterValidation)
-    implementation(Libraries.SpringBootStarterCache)
-//    kapt(Libraries.SpringBootConfigProcessor)
-
-//    implementation(Libraries.BouncyCastle)
-    implementation(Libraries.KotlinXCoRoutinesCoreJvm) {
+    // We're excluding this due to some weirdness going on in GovService with usage of coroutine code
+    // that can't be executed outside of a coroutine. The runBlocking call in there is a bit scary, but we're
+    // leaving it for now...
+    implementation(libs.kotlinx.coroutines.core.jvm) {
         exclude(module = "kotlinx-coroutines-bom")
     }
-    implementation(Libraries.KotlinXCoRoutinesCore)
-    implementation(Libraries.ApacheCommonsText)
-    implementation(Libraries.ApacheCommonsCsv)
-    implementation(Libraries.KaseChange)
-    implementation(Libraries.ApacheHttpClient)
-    implementation(Libraries.KtorClientCore)
-    implementation(Libraries.KtorClientEngineJava)
-    implementation(Libraries.KtorClientSerialization)
-    implementation(Libraries.KtorClientContentNeg)
-    implementation(Libraries.Json)
-
-    implementation(Libraries.GrpcNetty)
-
-    implementation(Libraries.JacksonModuleKotlin)
-    implementation(Libraries.JacksonDatatype)
-    implementation(Libraries.JacksonJoda)
-    implementation(Libraries.JacksonProtobuf)
-    implementation(Libraries.Postgres)
-
-    implementation(Libraries.Swagger)
-//    implementation(Libraries.Exposed)
-    implementation(Libraries.ExposedJavaTime)
-    implementation(Libraries.ExposedDao)
-    implementation(Libraries.ExposedJdbc)
-    implementation(Libraries.FlywayCore)
 
     developmentOnly(Libraries.SpringBootDevTools)
 

@@ -116,6 +116,7 @@ import io.provenance.explorer.model.VotingDetails
 import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.stringfy
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -420,6 +421,7 @@ class GovService(
     fun getProposalsList(page: Int, count: Int) =
         GovProposalRecord.getAllPaginated(page.toOffset(count), count)
             .let { list ->
+                // TODO - find a better way to do this...
                 runBlocking {
                     val filtered = list.filter { it.dataV1 == null }
                     if (filtered.isNotEmpty()) {
