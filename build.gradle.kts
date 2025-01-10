@@ -1,5 +1,18 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
+group = "io.provenance.explorer"
+version = project.property("version")?.takeIf { it != "unspecified" } ?: "1.0-SNAPSHOT"
+
+plugins {
+    kotlin("jvm") version PluginVersions.Kotlin
+    java
+    id(PluginIds.Idea)
+    id(PluginIds.TaskTree) version PluginVersions.TaskTree
+    id(PluginIds.DependencyAnalysis) version PluginVersions.DependencyAnalysis
+    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
+    id("org.jlleitschuh.gradle.ktlint")
+}
+
 allprojects {
     group = "io.provenance.explorer"
     version = artifactVersion(this)
@@ -13,23 +26,9 @@ allprojects {
     }
 }
 
-plugins {
-    kotlin("jvm") version PluginVersions.Kotlin
-    java
-    id(PluginIds.Idea)
-    id(PluginIds.TaskTree) version PluginVersions.TaskTree
-    id(PluginIds.DependencyAnalysis) version PluginVersions.DependencyAnalysis
-    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
-    id("org.jlleitschuh.gradle.ktlint")
-}
-
-group = "io.provenance.explorer"
-version = project.property("version")?.takeIf { it != "unspecified" } ?: "1.0-SNAPSHOT"
-
 subprojects {
     apply {
         plugin(PluginIds.Kotlin)
-        plugin(PluginIds.Idea)
     }
 
     tasks.withType<Javadoc> { enabled = false }
