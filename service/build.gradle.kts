@@ -80,12 +80,6 @@ dependencies {
     testImplementation(Libraries.KotestAssert)
 }
 
-dependencyManagement {
-    resolutionStrategy {
-        cacheChangingModulesFor(0, "seconds")
-    }
-}
-
 // Configure the bootRun task to default to dev mode rather than having to type the
 // config option in each time the service is started.
 val profiles = System.getenv("SPRING_PROFILES_ACTIVE") ?: "development"

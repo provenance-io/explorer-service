@@ -7,26 +7,19 @@ plugins {
     id(PluginIds.TaskTree) version PluginVersions.TaskTree
     id(PluginIds.DependencyAnalysis) version PluginVersions.DependencyAnalysis
     id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
-    id("org.jlleitschuh.gradle.ktlint") version "12.1.2"
-}
-
-repositories {
-    mavenCentral()
+    id("org.jlleitschuh.gradle.ktlint")
 }
 
 group = "io.provenance.explorer"
 version = project.property("version")?.takeIf { it != "unspecified" } ?: "1.0-SNAPSHOT"
 
-configurations.all {
-    resolutionStrategy {
-        cacheDynamicVersionsFor(0, "seconds")
-        cacheChangingModulesFor(0, "seconds")
-    }
-}
-
 allprojects {
     group = "io.provenance.explorer"
     version = artifactVersion(this)
+
+    apply {
+//        plugin("org.jlleitschuh.gradle.ktlint")
+    }
 
     repositories {
         mavenCentral()
@@ -40,11 +33,7 @@ subprojects {
     }
 
     repositories {
-        mavenLocal()
         mavenCentral()
-        maven { url = project.uri("https://maven.java.net/content/groups/public") }
-        maven { url = project.uri("https://oss.sonatype.org/content/repositories/snapshots") }
-        maven { url = project.uri("https://dl.bintray.com/kotlin/exposed") }
     }
 
     tasks.withType<Javadoc> { enabled = false }
