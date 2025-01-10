@@ -86,20 +86,19 @@ dependencyManagement {
     }
 }
 
-var profiles = System.getenv("SPRING_PROFILES_ACTIVE") ?: "development"
-
+// Configure the bootRun task to default to dev mode rather than having to type the
+// config option in each time the service is started.
+val profiles = System.getenv("SPRING_PROFILES_ACTIVE") ?: "development"
 tasks.getByName<BootRun>("bootRun") {
     args = mutableListOf("--spring.profiles.active=$profiles")
 }
 
-springBoot.mainClass.set("io.provenance.explorer.ApplicationKt")
-
-println("\nExclude Spring Boot Dev tools? " + version.toString().contains("main"))
-tasks.getByName<BootJar>("bootJar") {
-    if (!project.version.toString().contains("main"))
-        classpath += configurations.developmentOnly
-    enabled = true
-}
+//println("\nExclude Spring Boot Dev tools? " + version.toString().contains("main"))
+//tasks.getByName<BootJar>("bootJar") {
+//    if (!project.version.toString().contains("main"))
+//        classpath += configurations.developmentOnly
+//    enabled = true
+//}
 
 plugins.withType<com.adarshr.gradle.testlogger.TestLoggerPlugin> {
     configure<com.adarshr.gradle.testlogger.TestLoggerExtension> {
@@ -117,3 +116,5 @@ tasks.withType<Test> {
 
     failFast = true
 }
+
+springBoot.mainClass.set("io.provenance.explorer.ApplicationKt")

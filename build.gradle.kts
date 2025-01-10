@@ -7,21 +7,20 @@ plugins {
     id(PluginIds.TaskTree) version PluginVersions.TaskTree
     id(PluginIds.DependencyAnalysis) version PluginVersions.DependencyAnalysis
     id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
+    id("org.jlleitschuh.gradle.ktlint") version "12.1.2"
+}
+
+repositories {
+    mavenCentral()
 }
 
 group = "io.provenance.explorer"
 version = project.property("version")?.takeIf { it != "unspecified" } ?: "1.0-SNAPSHOT"
 
-// Publishing
-nexusPublishing {
-    repositories {
-        sonatype {
-            nexusUrl.set(uri(project.property("nexus.url") as String))
-            snapshotRepositoryUrl.set(uri(project.property("nexus.snapshot.repository.url") as String))
-            username.set(findProject(project.property("nexus.username") as String)?.toString() ?: System.getenv("OSSRH_USERNAME"))
-            password.set(findProject(project.property("nexus.password") as String)?.toString() ?: System.getenv("OSSRH_PASSWORD"))
-            stagingProfileId.set(project.property("nexus.staging.profile.id") as String) // prevents querying for the staging profile id, performance optimization
-        }
+configurations.all {
+    resolutionStrategy {
+        cacheDynamicVersionsFor(0, "seconds")
+        cacheChangingModulesFor(0, "seconds")
     }
 }
 
@@ -31,13 +30,6 @@ allprojects {
 
     repositories {
         mavenCentral()
-    }
-}
-
-configurations.all {
-    resolutionStrategy {
-        cacheDynamicVersionsFor(0, "seconds")
-        cacheChangingModulesFor(0, "seconds")
     }
 }
 
@@ -63,14 +55,30 @@ subprojects {
     }
     tasks.withType<KotlinCompile> {
         kotlinOptions {
-            freeCompilerArgs = listOf(
-                "-Xjsr305=strict",
-                "-Xopt-in=kotlin.RequiresOptIn",
-                "-Xopt-in=kotlin.contracts.ExperimentalContracts"
-            )
+            freeCompilerArgs =
+                listOf(
+                    "-Xjsr305=strict",
+                    "-Xopt-in=kotlin.RequiresOptIn",
+                    "-Xopt-in=kotlin.contracts.ExperimentalContracts",
+                )
             jvmTarget = "11"
             languageVersion = "1.6"
             apiVersion = "1.6"
+        }
+    }
+}
+
+// Publishing
+nexusPublishing {
+    repositories {
+        sonatype {
+            nexusUrl.set(uri(project.property("nexus.url") as String))
+            snapshotRepositoryUrl.set(uri(project.property("nexus.snapshot.repository.url") as String))
+            username.set(findProject(project.property("nexus.username") as String)?.toString() ?: System.getenv("OSSRH_USERNAME"))
+            password.set(findProject(project.property("nexus.password") as String)?.toString() ?: System.getenv("OSSRH_PASSWORD"))
+            stagingProfileId.set(
+                project.property("nexus.staging.profile.id") as String,
+            ) // prevents querying for the staging profile id, performance optimization
         }
     }
 }
