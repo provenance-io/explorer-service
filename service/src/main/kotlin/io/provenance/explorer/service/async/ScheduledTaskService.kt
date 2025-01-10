@@ -211,7 +211,7 @@ class ScheduledTaskService(
     @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateSpotlight() = explorerService.createSpotlight()
 
-    @Scheduled(initialDelay = 0L, fixedDelay = 30000L)
+    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun retryBlockTxs() {
         logger.info("Retrying block/tx records")
         BlockTxRetryRecord.getRecordsToRetry().map { height ->
@@ -263,7 +263,7 @@ class ScheduledTaskService(
         tokenService.updateAndSaveTokenHistoricalData(startDate, today)
     }
 
-    @Scheduled(initialDelay = 0L, fixedDelay = 300000L) // Every 5 minutes
+    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateTokenLatest() {
         val today = DateTime.now().withZone(DateTimeZone.UTC)
         val startDate = today.minusDays(1)

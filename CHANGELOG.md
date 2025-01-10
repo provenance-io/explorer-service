@@ -33,6 +33,14 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+## Improvements
+* Removed materialized view that is unnecessary and causes misdirection when debugging performance issues
+* Add a caching interface for block and transaction queries that tend to be used often
+* Optimize governance transaction fetching to return results in a timely fashion
+
+### Bug Fixes
+* Resolve explorer service restarts due to database connection starvation caused by long running governance transaction queries
+
 ## [v6.0.0](https://github.com/provenance-io/explorer-service/releases/tag/v6.0.0) - 2024-11-15
 
 ### Features

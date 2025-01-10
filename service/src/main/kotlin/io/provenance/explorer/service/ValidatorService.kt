@@ -132,8 +132,7 @@ class ValidatorService(
                     getImgUrl(it.description.identity)
                         ?.let { img -> AddressImageRecord.upsert(it.operatorAddress, img) }
                 }
-            }.also { ValidatorStateRecord.refreshCurrentStateView() }
-            .let { ValidatorStateRecord.findByOperator(getActiveSet(), address)!! }
+            }.let { ValidatorStateRecord.findByOperator(getActiveSet(), address)!! }
     }
 
     fun validateValidator(validator: String) =
@@ -149,7 +148,6 @@ class ValidatorService(
             val votingPowerTotal = validatorSet.sumOf { it.votingPower.toBigInteger() }
             val slashingParams = getSlashingParams()
             validateStatus(addr, latestValidator, addr.operatorAddrId)
-                .also { if (it) ValidatorStateRecord.refreshCurrentStateView() }
             val stakingValidator = getStakingValidator(addr.operatorAddress)
             ValidatorDetails(
                 if (latestValidator != null) {
@@ -245,7 +243,7 @@ class ValidatorService(
                 } else {
                     false
                 }
-            }.also { map -> if (map.contains(true)) ValidatorStateRecord.refreshCurrentStateView() }
+            }
     }
 
     // Updates the staking validator cache
@@ -294,7 +292,7 @@ class ValidatorService(
         ).validatorsList
         getStakingValidators(status).map { v ->
             validateStatus(v, validatorSet.firstOrNull { it.address == v.consensusAddr }, v.operatorAddrId)
-        }.also { map -> if (map.contains(true)) ValidatorStateRecord.refreshCurrentStateView() }
+        }
         val stakingValidators = getStakingValidators(status, null, page.toOffset(count), count)
         val results = hydrateValidators(validatorSet, hr24ChangeSet, stakingValidators, height)
         val totalCount = getStakingValidatorsCount(status, null)

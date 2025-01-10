@@ -7,6 +7,7 @@ import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import io.swagger.annotations.ApiParam
 import org.joda.time.DateTime
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.validation.annotation.Validated
@@ -31,6 +32,7 @@ class TransactionControllerV2(private val transactionService: TransactionService
 
     @ApiOperation("Return the latest transactions with query params")
     @GetMapping("/recent")
+    @Cacheable(value = ["responses"], key = "{#root.methodName, #count, #page, #msgType, #txStatus, #fromDate, #toDate}")
     fun txsRecent(
         @ApiParam(defaultValue = "1", required = false)
         @RequestParam(defaultValue = "1")

@@ -1,3 +1,4 @@
+
 object PluginIds { // please keep this sorted in sections
     // Kotlin
     const val Kotlin = "kotlin"
@@ -55,6 +56,7 @@ object Versions {
     const val Postgres = "42.2.23"
     const val Protobuf = "3.21.9"
     const val Reflections = "0.9.12"
+    const val Caffeine = "2.9.2"
 
     // Testing
     const val Jupiter = "5.9.1"
@@ -92,6 +94,7 @@ object Libraries {
     const val KaseChange = "net.pearx.kasechange:kasechange:${Versions.KaseChange}"
     const val Json = "org.json:json:${Versions.Json}"
     const val Reflections = "org.reflections:reflections:${Versions.Reflections}"
+    const val Caffeine = "com.github.ben-manes.caffeine:caffeine:${Versions.Caffeine}"
 
     // Protobuf
     const val GrpcNetty = "io.grpc:grpc-netty:${Versions.Grpc}"
@@ -105,6 +108,7 @@ object Libraries {
     const val SpringBootConfigProcessor = "org.springframework.boot:spring-boot-configuration-processor:${Versions.SpringBoot}"
     const val SpringBootStarterValidation = "org.springframework.boot:spring-boot-starter-validation:${Versions.SpringBoot}"
     const val SpringBootStarterWeb = "org.springframework.boot:spring-boot-starter-web:${Versions.SpringBoot}"
+    const val SpringBootStarterCache = "org.springframework.boot:spring-boot-starter-cache:${Versions.SpringBoot}"
     const val SpringBootStarterTest = "org.springframework.boot:spring-boot-starter-test:${Versions.SpringBoot}"
 
     const val Swagger = "io.springfox:springfox-boot-starter:${Versions.Swagger}"

@@ -150,11 +150,6 @@ class ValidatorStateRecord(id: EntityID<Int>) : IntEntity(id) {
                 .toList()
         }
 
-        fun refreshCurrentStateView() = transaction {
-            val query = "REFRESH MATERIALIZED VIEW current_validator_state"
-            this.exec(query)
-        }
-
         fun findAll(activeSet: Int) = transaction {
             val query = "SELECT * FROM get_all_validator_state(?, ?, NULL)".trimIndent()
             val arguments = mutableListOf<Pair<ColumnType, *>>(

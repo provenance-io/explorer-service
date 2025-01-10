@@ -4,6 +4,7 @@ import io.provenance.explorer.service.ExplorerService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import io.swagger.annotations.ApiParam
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.http.MediaType
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
@@ -34,6 +35,7 @@ class BlockController(private val explorerService: ExplorerService) {
     fun blockHeight(@PathVariable height: Int) = explorerService.getBlockAtHeight(height)
 
     @ApiOperation("Returns X most recent blocks")
+    @Cacheable(value = ["responses"], key = "{#root.methodName, #count, #page}")
     @GetMapping("/recent")
     fun recentBlocks(
         @ApiParam(value = "Record count between 1 and 200", defaultValue = "10", required = false)

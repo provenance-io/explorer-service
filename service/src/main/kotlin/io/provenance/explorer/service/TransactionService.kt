@@ -111,6 +111,7 @@ class TransactionService(
         ibcSrcPort: String? = null,
         ibcSrcChannel: String? = null
     ): PagedResults<TxSummary> {
+        logger.info("Fetching transactions with address: $address, denom: $denom, module: $module, msgType: $msgType, txHeight: $txHeight, txStatus: $txStatus, count: $count, page: $page, fromDate: $fromDate, toDate: $toDate, nftAddr: $nftAddr, ibcChain: $ibcChain, ibcSrcPort: $ibcSrcPort, ibcSrcChannel: $ibcSrcChannel")
         val msgTypes = if (msgType != null) listOf(msgType) else (module?.getValuesPlusAddtnl() ?: listOf())
         val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()
         val addr = transaction { address?.getAddressType(valService.getActiveSet()) }

@@ -224,7 +224,7 @@ class BlockAndTxProcessor(
                         TxAddressJoinType.OPERATOR.name -> validatorService.updateStakingValidators(
                             ent.value,
                             blockRes.block.height()
-                        ).also { updated -> if (updated) ValidatorStateRecord.refreshCurrentStateView() }
+                        )
                     }
                 }
             }
