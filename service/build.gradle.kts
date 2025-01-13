@@ -9,6 +9,8 @@ plugins {
     id(PluginIds.TestLogger) version PluginVersions.TestLogger apply false
 }
 
+// There is some generated but committed java code that has linting issues. We'll just
+// exclude that here for now.
 configure<KtlintExtension> {
     filter {
         exclude("**/src/java/**")
