@@ -22,7 +22,8 @@ class ExplorerProperties(
     val swaggerUrl: String,
     val swaggerProtocol: String,
     val pricingUrl: String,
-    val feeBugRangeOneEleven: List<Int> // [0] is the beginning of the range, [1] is the end of the range, inclusive
+    // [0] is the beginning of the range, [1] is the end of the range, inclusive
+    val feeBugRangeOneEleven: List<Int>
 ) {
 
     fun initialHistoricalDays() = initialHistoricalDayCount.toInt()

@@ -134,10 +134,14 @@ fun Any.toVestingData(initialDate: DateTime?, continuousPeriod: PeriodInSeconds)
                         val newCoin = acc.baseVestingAccount.originalVestingList.map { it.toPercentage(elapsedTime, totalTime) }
 
                         PeriodicVestingInfo(
-                            list.size.toLong(), // How long the period is in seconds
-                            prevCoins.diff(newCoin), // diffs the old percentages with the new percentages to get the period's values
-                            runningTime.toDateTime(), // vestingTime for the period
-                            runningTime <= now // compared to NOW, is it vested
+                            // How long the period is in seconds
+                            list.size.toLong(),
+                            // diffs the old percentages with the new percentages to get the period's values
+                            prevCoins.diff(newCoin),
+                            // vestingTime for the period
+                            runningTime.toDateTime(),
+                            // compared to NOW, is it vested
+                            runningTime <= now
                         ).also { prevCoins = newCoin }
                     }
                 return AccountVestingInfo(
@@ -212,7 +216,7 @@ fun Any.isIca() = this.typeUrl.getTypeShortName() == InterchainAccount::class.ja
 //endregion
 
 //region To DTOs
-
+@Suppress("DEPRECATION")
 fun Distribution.Params.toDto() = DistParams(
     this.communityTax.toPercentageOld(),
     this.baseProposerReward.toPercentageOld(),
@@ -220,6 +224,7 @@ fun Distribution.Params.toDto() = DistParams(
     this.withdrawAddrEnabled
 )
 
+@Suppress("DEPRECATION")
 fun Gov.TallyParams.toDto() = TallyingParams(
     this.quorum.toPercentage(),
     this.threshold.toPercentage(),

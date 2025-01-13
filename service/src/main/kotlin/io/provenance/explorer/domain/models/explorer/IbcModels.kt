@@ -20,7 +20,8 @@ data class LedgerInfo(
     var ack: Boolean = false,
     var sequence: Int = -1,
     var ackType: IbcAckType? = null,
-    var movementIn: Boolean = false, // recv == true, else false
+    // recv == true, else false
+    var movementIn: Boolean = false,
     var changesEffected: Boolean = false,
     var ackSuccess: Boolean = false
 )

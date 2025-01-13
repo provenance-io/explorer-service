@@ -160,7 +160,8 @@ class BlockAndTxProcessor(
 
     fun saveBlockEtc(
         blockRes: Query.GetBlockByHeightResponse?,
-        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false) // rerun txs, pull from db
+        // rerun txs, pull from db
+        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false)
     ): Query.GetBlockByHeightResponse? {
         if (blockRes == null) return null
         logger.info("saving block ${blockRes.block.height()}")
@@ -204,7 +205,8 @@ class BlockAndTxProcessor(
     fun saveTxs(
         blockRes: Query.GetBlockByHeightResponse,
         proposerRec: BlockProposer,
-        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false) // rerun txs, pull from db
+        // rerun txs, pull from db
+        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false)
     ): List<TxUpdate> {
         val toBeUpdated =
             addTxsToCache(
@@ -238,7 +240,8 @@ class BlockAndTxProcessor(
         expectedNumTxs: Int,
         blockTime: Timestamp,
         proposerRec: BlockProposer,
-        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false) // rerun txs, pull from db
+        // rerun txs, pull from db
+        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false)
     ) =
         if (txCountForHeight(blockHeight).toInt() == expectedNumTxs && !rerunTxs.first) {
             logger.info("Cache hit for transaction at height $blockHeight with $expectedNumTxs transactions")

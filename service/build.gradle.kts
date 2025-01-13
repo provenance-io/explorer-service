@@ -1,3 +1,4 @@
+import org.jlleitschuh.gradle.ktlint.KtlintExtension
 import org.springframework.boot.gradle.tasks.run.BootRun
 
 plugins {
@@ -6,6 +7,12 @@ plugins {
     id(PluginIds.SpringDependency) version PluginVersions.SpringDependency
     id(PluginIds.SpringBoot) version PluginVersions.SpringBoot
     id(PluginIds.TestLogger) version PluginVersions.TestLogger apply false
+}
+
+configure<KtlintExtension> {
+    filter {
+        exclude("**/src/java/**")
+    }
 }
 
 sourceSets {
