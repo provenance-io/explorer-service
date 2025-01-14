@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController
 
 @Validated
 @RestController
-@RequestMapping(path = ["/api/v2/blocks"], produces = [MediaType.APPLICATION_JSON_VALUE],  consumes = [MediaType.APPLICATION_JSON_VALUE])
+@RequestMapping(path = ["/api/v2/blocks"], produces = [MediaType.APPLICATION_JSON_VALUE], consumes = [MediaType.APPLICATION_JSON_VALUE])
 @Tag(
     name = "Blocks",
     description = "Block-related endpoints"
@@ -37,8 +37,13 @@ class BlockController(private val explorerService: ExplorerService) {
     @Cacheable(value = ["responses"], key = "{#root.methodName, #count, #page}")
     @GetMapping("/recent")
     fun recentBlocks(
-        @Parameter(description = "Record count between 1 and 200", schema = Schema(defaultValue = "10"
-        ), required = false)
+        @Parameter(
+            description = "Record count between 1 and 200",
+            schema = Schema(
+                defaultValue = "10"
+        ),
+            required = false
+        )
         @RequestParam(defaultValue = "10")
         @Min(1)
         @Max(200)

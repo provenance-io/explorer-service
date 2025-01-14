@@ -72,7 +72,8 @@ class ValidatorControllerV3(
     @GetMapping("/metrics/periods")
     fun allMetricPeriods() = metricsService.getAllQuarters()
 
-    @Operation(summary = 
+    @Operation(
+        summary =
         "Downloads validators' metrics for the given quarter that correlate with the Validator Delegation Program"
     )
     @GetMapping("/metrics/download")
