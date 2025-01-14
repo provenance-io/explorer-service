@@ -41,26 +41,7 @@ spring-doc = "2.8.3"
 spring-doc-core = "1.1.49"
 spring-integration = "6.4.1"
 spring-mock = "3.1.1"
-swagger = "3.0.0"
 testcontainers = "1.20.4"
-
-[plugins]
-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
-kotlin-lint = { id = "org.jlleitschuh.gradle.ktlint", version = "12.1.2" }
-kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
-flyway = { id = "org.flywaydb.flyway", version.ref = "flyway" }
-nexus-publish = { id = "io.github.gradle-nexus.publish-plugin", version = "2.0.0" }
-dependency-analysis = { id = "com.autonomousapps.dependency-analysis", version = "1.14.1" }
-tasktree = { id = "com.dorongold.task-tree", version = "2.1.0" }
-idea = { id = "idea" }
-maven-publish = { id = "maven-publish" }
-signing = { id = "signing" }
-java = { id = "java" }
-java-lib = { id = "java-library" }
-gradle-gitprops = { id = "com.gorylenko.gradle-git-properties", version = "2.4.1" }
-spring-boot = { id = "org.springframework.boot", version.ref = "spring" }
-spring-dependency-management = { id = "io.spring.dependency-management", version = "1.1.0" }
-testlogger = { id = "com.adarshr.test-logger", version = "3.2.0" }
 
 [libraries]
 apache-commons-text = { group = "org.apache.commons", name = "commons-text", version.ref = "apache-commons-text" }
@@ -146,8 +127,6 @@ testcontainers-junit = { group = "org.testcontainers", name = "junit-jupiter", v
 testcontainers-kafka = { group = "org.testcontainers", name = "kafka", version.ref = "testcontainers" }
 testcontainers-postgresql = { group = "org.testcontainers", name = "postgresql", version.ref = "testcontainers" }
 
-
-
 [bundles]
 exposed = ["postgresql", "exposed", "exposed-dao", "exposed-jdbc", "exposed-json", "hikari"]
 feign = ["feign-jackson", "feign-okhttp", "feign-slf4j"]
@@ -158,3 +137,21 @@ ktor = ["ktor-client-core", "ktor-client-java", "ktor-client-content-negotiation
 logging = ["kotlin-logging", "logback-classic"]
 protobuf = ["protobuf-java", "protobuf-java-util", "protobuf-kotlin"]
 testcontainers = ["testcontainers", "testcontainers-junit", "testcontainers-postgresql"]
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-lint = { id = "org.jlleitschuh.gradle.ktlint", version = "12.1.2" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+flyway = { id = "org.flywaydb.flyway", version.ref = "flyway" }
+nexus-publish = { id = "io.github.gradle-nexus.publish-plugin", version = "2.0.0" }
+dependency-analysis = { id = "com.autonomousapps.dependency-analysis", version = "1.14.1" }
+tasktree = { id = "com.dorongold.task-tree", version = "2.1.0" }
+idea = { id = "idea" }
+maven-publish = { id = "maven-publish" }
+signing = { id = "signing" }
+java = { id = "java" }
+java-lib = { id = "java-library" }
+gradle-gitprops = { id = "com.gorylenko.gradle-git-properties", version = "2.4.1" }
+spring-boot = { id = "org.springframework.boot", version.ref = "spring" }
+spring-dependency-management = { id = "io.spring.dependency-management", version = "1.1.0" }
+testlogger = { id = "com.adarshr.test-logger", version = "3.2.0" }

@@ -15,10 +15,8 @@ repositories {
 }
 
 dependencies {
-    listOf(
-        libs.jackson.jodadatatype,
-        libs.provenance.proto
-    ).forEach(::implementation)
+    implementation(libs.jackson.jodadatatype)
+    implementation(libs.provenance.proto)
 }
 
 tasks.withType<JavaCompile> {

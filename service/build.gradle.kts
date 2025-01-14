@@ -42,40 +42,33 @@ dependencies {
     implementation(project(":database"))
     implementation(project(":api-model"))
 
-    listOf(
-        libs.bundles.jackson,
-        libs.bundles.ktor,
-        libs.apache.commons.csv,
-        libs.apache.commons.text,
-        libs.bouncycastle,
-        libs.caffeine,
-        libs.exposed,
-        libs.exposed.dao,
-        libs.exposed.java.datetime,
-        libs.exposed.jdbc,
-        libs.flyway,
-        libs.grpc.netty,
-        libs.json,
-        libs.kase.change,
-        libs.kotlin.reflect,
-        libs.kotlinx.coroutines.core,
-        libs.postgresql,
-        libs.protobuf.kotlin,
-        libs.provenance.proto,
-        libs.reflections,
-        libs.spring.starter.actuator,
-        libs.spring.starter.cache,
-        libs.spring.starter.jdbc,
-        libs.spring.starter.validation,
-        libs.spring.starter.web,
-        libs.springdoc.openapi.starter.webmvc.api,
-        libs.springdoc.openapi.starter.webmvc.ui,
-//        libs.springdoc.core,
-    ).forEach(::implementation)
-
-//    implementation("jakarta.annotation:jakarta.annotation-api:2.1.1")
-//    implementation("jakarta.transaction:jakarta.transaction-api:2.0.1")
-//    implementation("jakarta.persistence:jakarta.persistence-api:3.1.0")
+    implementation(libs.bundles.jackson)
+    implementation(libs.bundles.ktor)
+    implementation(libs.apache.commons.csv)
+    implementation(libs.apache.commons.text)
+    implementation(libs.bouncycastle)
+    implementation(libs.caffeine)
+    implementation(libs.exposed)
+    implementation(libs.exposed.dao)
+    implementation(libs.exposed.java.datetime)
+    implementation(libs.exposed.jdbc)
+    implementation(libs.flyway)
+    implementation(libs.grpc.netty)
+    implementation(libs.json)
+    implementation(libs.kase.change)
+    implementation(libs.kotlin.reflect)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.postgresql)
+    implementation(libs.protobuf.kotlin)
+    implementation(libs.provenance.proto)
+    implementation(libs.reflections)
+    implementation(libs.spring.starter.actuator)
+    implementation(libs.spring.starter.cache)
+    implementation(libs.spring.starter.jdbc)
+    implementation(libs.spring.starter.validation)
+    implementation(libs.spring.starter.web)
+    implementation(libs.springdoc.openapi.starter.webmvc.api)
+    implementation(libs.springdoc.openapi.starter.webmvc.ui)
 
     // We're excluding this due to some weirdness going on in GovService with usage of coroutine code
     // that can't be executed outside of a coroutine. The runBlocking call in there is a bit scary, but we're
@@ -91,12 +84,10 @@ dependencies {
         exclude(module = "assertj-core")
     }
 
-    listOf(
-        libs.junit.jupiter.api,
-        libs.h2,
-        libs.spring.mock,
-        libs.kotest.assert
-    ).forEach(::testImplementation)
+    testImplementation(libs.junit.jupiter.api)
+    testImplementation(libs.h2)
+    testImplementation(libs.spring.mock)
+    testImplementation(libs.kotest.assert)
 
     testRuntimeOnly(libs.junit.jupiter.engine)
 }

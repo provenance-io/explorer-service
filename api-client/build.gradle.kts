@@ -16,12 +16,9 @@ repositories {
 
 dependencies {
     api(project(":api-model"))
-
-    listOf(
-        libs.bundles.feign,
-        libs.joda.time,
-        libs.provenance.proto
-    ).forEach(::implementation)
+    implementation(libs.bundles.feign)
+    implementation(libs.provenance.proto)
+    implementation(libs.joda.time)
 }
 
 tasks.withType<JavaCompile> {
