@@ -38,6 +38,7 @@ provenance-proto = "1.20.1"
 reflections = "0.10.2"
 spring = "3.4.1"
 spring-doc = "2.7.0"
+spring-doc-core = "1.1.49"
 spring-integration = "6.4.1"
 spring-mock = "3.1.1"
 swagger = "3.0.0"
@@ -137,6 +138,7 @@ spring-starter-validation = { group = "org.springframework.boot", name = "spring
 spring-starter-web = { group = "org.springframework.boot", name = "spring-boot-starter-web", version.ref = "spring" }
 springdoc-openapi-starter-webmvc-api = { module = "org.springdoc:springdoc-openapi-starter-webmvc-api", version.ref = "spring-doc" }
 springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "spring-doc" }
+springdoc-core = { group = "org.springdoc", name = "springdoc-openapi-core", version.ref = "spring-doc-core" }
 swagger = {group = "io.springfox", name = "springfox-boot-starter", version.ref = "swagger" }
 testcontainers = { group = "org.testcontainers", name = "testcontainers", version.ref = "testcontainers" }
 testcontainers-junit = { group = "org.testcontainers", name = "junit-jupiter", version.ref = "testcontainers" }

@@ -8,6 +8,6 @@
         <appender-ref ref="${logging.appender:-stdout}"/>
     </root>
 
-    <logger name="org.springframework.beans.factory" level="DEBUG" />
-    <logger name="org.springframework.context" level="DEBUG" />
+    <logger name="org.springframework.beans.factory" level="INFO" />
+    <logger name="org.springframework.context" level="INFO" />
 </configuration>

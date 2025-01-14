@@ -1,48 +1,63 @@
-// package io.provenance.explorer.config
-//
-// import io.provenance.explorer.domain.annotation.HiddenApi
-// import org.springframework.beans.BeansException
-// import org.springframework.beans.factory.config.BeanPostProcessor
-// import org.springframework.boot.context.properties.EnableConfigurationProperties
-// import org.springframework.context.annotation.Bean
-// import org.springframework.context.annotation.Configuration
-// import org.springframework.http.HttpHeaders.AUTHORIZATION
-// import org.springframework.http.MediaType
-// import org.springframework.util.ReflectionUtils
-// import org.springframework.web.servlet.mvc.method.RequestMappingInfoHandlerMapping
-// import springfox.documentation.builders.RequestHandlerSelectors
-// import springfox.documentation.service.ApiInfo
-// import springfox.documentation.service.ApiKey
-// import springfox.documentation.service.Contact
-// import springfox.documentation.service.SecurityReference
-// import springfox.documentation.spi.DocumentationType
-// import springfox.documentation.spi.service.contexts.SecurityContext
-// import springfox.documentation.spring.web.plugins.Docket
-// import springfox.documentation.spring.web.plugins.WebFluxRequestHandlerProvider
-// import springfox.documentation.spring.web.plugins.WebMvcRequestHandlerProvider
-// import java.util.function.Predicate
-//
-// @EnableConfigurationProperties(
-//    value = [ExplorerProperties::class]
-// )
-// @Configuration
-// class SwaggerConfig(val props: ExplorerProperties) {
-//
-//    @Bean
-//    fun api(): Docket {
-//        val contact = Contact("Provenance Blockchain Foundation", "provenance.io", "info@provenance.io")
-//
-//        val apiInfo = ApiInfo(
-//            "Provenance Explorer",
-//            "Provenance Explorer",
-//            "3",
-//            "",
-//            contact,
-//            "",
-//            "",
-//            listOf()
-//        )
-//
+ package io.provenance.explorer.config
+
+ import io.swagger.v3.oas.models.Components
+ import io.swagger.v3.oas.models.OpenAPI
+ import io.swagger.v3.oas.models.info.Info
+ import io.swagger.v3.oas.models.info.Contact
+ import io.swagger.v3.oas.models.security.SecurityRequirement
+ import io.swagger.v3.oas.models.security.SecurityScheme
+ import org.springdoc.api.OpenApiCustomiser
+ import org.springframework.boot.context.properties.EnableConfigurationProperties
+ import org.springframework.context.annotation.Bean
+ import org.springframework.context.annotation.Configuration
+
+ @EnableConfigurationProperties(
+    value = [ExplorerProperties::class]
+ )
+ @Configuration
+ class SwaggerConfig(val props: ExplorerProperties) {
+
+    @Bean
+    fun api(): OpenAPI {
+        val contact = Contact()
+            .name("Provenance Blockchain Foundation")
+            .url("provenance.io")
+            .email("info@provenance.io")
+
+        val apiInfo = Info().title("Provenance Explorer")
+            .description("Provenance Explorer")
+            .version("3")
+            .contact(contact)
+
+        val securitySchemeName = "Authorization"
+
+        return OpenAPI()
+            .info(apiInfo)
+            .addSecurityItem(SecurityRequirement().addList(securitySchemeName))
+            .components(
+                Components().addSecuritySchemes(
+                    securitySchemeName,
+                    SecurityScheme()
+                        .type(SecurityScheme.Type.APIKEY)
+                        .`in`(SecurityScheme.In.HEADER))
+//                        .name(securitySchemeName)
+                )
+    }
+
+//     @Bean
+//     fun hiddenApiCustomizer(): OpenApiCustomiser {
+//         return OpenApiCustomiser { openApi ->
+//             val hiddenAnnotations = listOf(
+//                 HiddenApi::class.java.simpleName
+//             )
+//             openApi.paths?.entries?.removeIf { entry ->
+//                 entry.value.readOperations().any { operation ->
+//                     operation.tags.any { hiddenAnnotations.contains(it) }
+//                 }
+//             }
+//         }
+//     }
+
 //        val docket = Docket(DocumentationType.OAS_30)
 //            .apiInfo(apiInfo)
 //            .host(props.swaggerUrl)
@@ -68,7 +83,7 @@
 //
 //        return docket.build()
 //    }
-//
+
 //    @Suppress("UNCHECKED_CAST")
 //    @Bean
 //    fun springfoxHandlerProviderBeanPostProcessor(): BeanPostProcessor? {
@@ -96,4 +111,4 @@
 //            }
 //        }
 //    }
-// }
+ }
