@@ -20,7 +20,7 @@ import static io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall;
  * NavService is the gRPC service for retrieving NavEvents.
  * </pre>
  */
-@javax.annotation.Generated(
+@jakarta.annotation.Generated(
     value = "by gRPC proto compiler",
     comments = "Source: nav_event.proto")
 public final class NavServiceGrpc {

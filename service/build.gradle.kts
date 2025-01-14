@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.java)
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.gradle.gitprops)
-    alias(libs.plugins.spring.dependency.management)
+//    alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.testlogger).apply(false)
 }
@@ -55,8 +55,7 @@ dependencies {
         libs.exposed.jdbc,
         libs.flyway,
         libs.grpc.netty,
-        libs.jakarta.servlet,
-        libs.javax.validation,
+//        libs.jakarta.servlet,
         libs.json,
         libs.kase.change,
         libs.kotlin.reflect,
@@ -70,8 +69,14 @@ dependencies {
         libs.spring.starter.jdbc,
         libs.spring.starter.validation,
         libs.spring.starter.web,
-        libs.swagger,
+        libs.springdoc.openapi.starter.webmvc.api,
+        libs.springdoc.openapi.starter.webmvc.ui,
+//        libs.swagger,
     ).forEach(::implementation)
+
+//    implementation("jakarta.annotation:jakarta.annotation-api:2.1.1")
+//    implementation("jakarta.transaction:jakarta.transaction-api:2.0.1")
+//    implementation("jakarta.persistence:jakarta.persistence-api:3.1.0")
 
     // We're excluding this due to some weirdness going on in GovService with usage of coroutine code
     // that can't be executed outside of a coroutine. The runBlocking call in there is a bit scary, but we're

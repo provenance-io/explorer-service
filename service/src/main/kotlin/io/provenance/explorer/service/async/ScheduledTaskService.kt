@@ -46,6 +46,7 @@ import io.provenance.explorer.service.MetricsService
 import io.provenance.explorer.service.TokenService
 import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.service.getBlock
+import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
@@ -62,7 +63,6 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import tendermint.types.BlockOuterClass
 import java.math.BigDecimal
-import javax.annotation.PostConstruct
 
 @Service
 class ScheduledTaskService(

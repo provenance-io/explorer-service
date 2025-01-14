@@ -1,6 +1,6 @@
 [versions]
-apache-commons-text = "1.10.0"
-apache-commons-csv = "1.9.0"
+apache-commons-text = "1.13.0"
+apache-commons-csv = "1.13.0"
 bouncycastle = "1.78.1"
 caffeine = "2.9.2"
 dateTime = "0.6.1"
@@ -37,7 +37,8 @@ protobuf = "3.25.4"
 provenance-proto = "1.20.1"
 reflections = "0.10.2"
 spring = "3.4.1"
-spring-integration = "6.4.0"
+spring-doc = "2.7.0"
+spring-integration = "6.4.1"
 spring-mock = "3.1.1"
 swagger = "3.0.0"
 testcontainers = "1.20.4"
@@ -134,6 +135,8 @@ spring-starter-security = { group = "org.springframework.boot", name = "spring-b
 spring-starter-test = { group = "org.springframework.boot", name = "spring-boot-starter-test", version.ref = "spring" }
 spring-starter-validation = { group = "org.springframework.boot", name = "spring-boot-starter-validation", version.ref = "spring" }
 spring-starter-web = { group = "org.springframework.boot", name = "spring-boot-starter-web", version.ref = "spring" }
+springdoc-openapi-starter-webmvc-api = { module = "org.springdoc:springdoc-openapi-starter-webmvc-api", version.ref = "spring-doc" }
+springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "spring-doc" }
 swagger = {group = "io.springfox", name = "springfox-boot-starter", version.ref = "swagger" }
 testcontainers = { group = "org.testcontainers", name = "testcontainers", version.ref = "testcontainers" }
 testcontainers-junit = { group = "org.testcontainers", name = "junit-jupiter", version.ref = "testcontainers" }
