@@ -3,13 +3,11 @@ package io.provenance.explorer.config
 import io.provenance.explorer.model.base.Bech32
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.validation.annotation.Validated
 import java.math.BigDecimal
 
 @ConfigurationProperties(prefix = "explorer")
 @Validated
-@ConstructorBinding
 class ExplorerProperties(
     val mainnet: String,
     val pbUrl: String,

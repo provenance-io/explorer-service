@@ -3,10 +3,10 @@ package io.provenance.explorer.config.interceptor
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.exceptions.InvalidJwtException
 import io.provenance.explorer.domain.extensions.fromBase64
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import org.springframework.http.HttpHeaders
 import org.springframework.web.servlet.HandlerInterceptor
-import javax.servlet.http.HttpServletRequest
-import javax.servlet.http.HttpServletResponse
 
 class JwtInterceptor : HandlerInterceptor {
 

@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jlleitschuh.gradle.ktlint.KtlintExtension
 import org.springframework.boot.gradle.tasks.run.BootRun
 
@@ -17,6 +18,17 @@ plugins {
 configure<KtlintExtension> {
     filter {
         exclude("**/src/java/**")
+    }
+}
+
+tasks.withType<KotlinCompile> {
+    kotlinOptions {
+        freeCompilerArgs =
+            listOf(
+                "-Xjsr305=strict",
+                "-Xopt-in=kotlin.RequiresOptIn",
+                "-Xopt-in=kotlin.contracts.ExperimentalContracts",
+            )
     }
 }
 
@@ -43,6 +55,8 @@ dependencies {
         libs.exposed.jdbc,
         libs.flyway,
         libs.grpc.netty,
+        libs.jakarta.servlet,
+        libs.javax.validation,
         libs.json,
         libs.kase.change,
         libs.kotlin.reflect,

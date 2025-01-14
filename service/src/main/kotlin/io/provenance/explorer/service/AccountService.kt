@@ -67,6 +67,7 @@ import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.PeriodInSeconds
 import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.explorer.model.download.TxHistoryChartData
+import jakarta.servlet.ServletOutputStream
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.SortOrder
@@ -79,7 +80,6 @@ import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import javax.servlet.ServletOutputStream
 
 @Service
 class AccountService(

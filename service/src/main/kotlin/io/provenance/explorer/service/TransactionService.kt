@@ -56,6 +56,7 @@ import io.provenance.explorer.model.base.toMAddressScope
 import io.provenance.explorer.model.download.TxHistoryChartData
 import io.provenance.explorer.service.async.BlockAndTxProcessor
 import io.provenance.explorer.service.async.getAddressType
+import jakarta.servlet.ServletOutputStream
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -63,7 +64,6 @@ import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import javax.servlet.ServletOutputStream
 
 @Service
 class TransactionService(

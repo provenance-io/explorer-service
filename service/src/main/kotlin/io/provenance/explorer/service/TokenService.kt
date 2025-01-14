@@ -46,6 +46,7 @@ import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.explorer.service.pricing.fetchers.HistoricalPriceFetcher
 import io.provenance.explorer.service.pricing.fetchers.HistoricalPriceFetcherFactory
+import jakarta.servlet.ServletOutputStream
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
@@ -59,7 +60,6 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import javax.servlet.ServletOutputStream
 
 @Service
 class TokenService(
