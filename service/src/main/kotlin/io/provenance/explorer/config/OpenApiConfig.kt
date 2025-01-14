@@ -25,7 +25,7 @@ import org.springframework.context.annotation.Configuration
          ),
      ],
  )
- class SwaggerConfig(val props: ExplorerProperties) {
+ class OpenApiConfig(val props: ExplorerProperties) {
      @Bean
      fun v2Api() = GroupedOpenApi.builder()
          .group("v2")
