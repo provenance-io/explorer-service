@@ -1,8 +1,10 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
-    id("kotlin")
-    id("maven-publish")
-    id("signing")
-    id("java-library")
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.maven.publish)
+    alias(libs.plugins.signing)
+    alias(libs.plugins.java.lib)
 }
 
 group = project.property("group.id") as String
@@ -20,6 +22,25 @@ dependencies {
         libs.joda.time,
         libs.provenance.proto
     ).forEach(::implementation)
+}
+
+tasks.withType<JavaCompile> {
+    sourceCompatibility = JavaVersion.VERSION_11.toString()
+    targetCompatibility = sourceCompatibility
+}
+
+tasks.withType<KotlinCompile> {
+    kotlinOptions {
+        freeCompilerArgs =
+            listOf(
+                "-Xjsr305=strict",
+                "-Xopt-in=kotlin.RequiresOptIn",
+                "-Xopt-in=kotlin.contracts.ExperimentalContracts",
+            )
+        jvmTarget = "11"
+        languageVersion = "1.6"
+        apiVersion = "1.6"
+    }
 }
 
 tasks.jar {

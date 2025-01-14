@@ -39,6 +39,24 @@ spring-mock = "3.1.1"
 swagger = "3.0.0"
 testcontainers = "1.20.4"
 
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-lint = { id = "org.jlleitschuh.gradle.ktlint", version = "12.1.2" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+flyway = { id = "org.flywaydb.flyway", version.ref = "flyway" }
+nexus-publish = { id = "io.github.gradle-nexus.publish-plugin", version = "2.0.0" }
+dependency-analysis = { id = "com.autonomousapps.dependency-analysis", version = "1.14.1" }
+tasktree = { id = "com.dorongold.task-tree", version = "2.1.0" }
+idea = { id = "idea" }
+maven-publish = { id = "maven-publish" }
+signing = { id = "signing" }
+java = { id = "java" }
+java-lib = { id = "java-library" }
+gradle-gitprops = { id = "com.gorylenko.gradle-git-properties", version = "2.4.1" }
+spring-boot = { id = "org.springframework.boot", version.ref = "spring" }
+spring-dependency-management = { id = "io.spring.dependency-management", version = "1.1.0" }
+testlogger = { id = "com.adarshr.test-logger", version = "3.2.0" }
+
 [libraries]
 apache-commons-text = { group = "org.apache.commons", name = "commons-text", version.ref = "apache-commons-text" }
 apache-commons-csv = { group = "org.apache.commons", name = "commons-csv", version.ref = "apache-commons-csv" }

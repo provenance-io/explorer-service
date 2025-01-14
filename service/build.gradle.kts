@@ -2,11 +2,14 @@ import org.jlleitschuh.gradle.ktlint.KtlintExtension
 import org.springframework.boot.gradle.tasks.run.BootRun
 
 plugins {
-    kotlin(PluginIds.KotlinSpring) version libs.versions.kotlin
-    id(PluginIds.GoryLenkoGitProps) version PluginVersions.GoryLenkoGitProps
-    id(PluginIds.SpringDependency) version PluginVersions.SpringDependency
-    id(PluginIds.SpringBoot) version PluginVersions.SpringBoot
-    id(PluginIds.TestLogger) version PluginVersions.TestLogger apply false
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.lint)
+    alias(libs.plugins.java)
+    alias(libs.plugins.kotlin.spring)
+    alias(libs.plugins.gradle.gitprops)
+    alias(libs.plugins.spring.dependency.management)
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.testlogger).apply(false)
 }
 
 // There is some generated but committed java code that has linting issues. We'll just

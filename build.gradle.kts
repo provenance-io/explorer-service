@@ -1,25 +1,17 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 group = "io.provenance.explorer"
 version = project.property("version")?.takeIf { it != "unspecified" } ?: "1.0-SNAPSHOT"
 
 plugins {
-    kotlin("jvm")
-    java
-    id(PluginIds.Idea)
-    id(PluginIds.TaskTree) version PluginVersions.TaskTree
-    id(PluginIds.DependencyAnalysis) version PluginVersions.DependencyAnalysis
-    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
-    id("org.jlleitschuh.gradle.ktlint")
+    alias(libs.plugins.idea)
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.tasktree)
+    alias(libs.plugins.dependency.analysis)
+    alias(libs.plugins.nexus.publish)
 }
 
 allprojects {
     group = "io.provenance.explorer"
     version = artifactVersion(this)
-
-    apply {
-        plugin("org.jlleitschuh.gradle.ktlint")
-    }
 
     repositories {
         mavenCentral()
@@ -27,29 +19,7 @@ allprojects {
 }
 
 subprojects {
-    apply {
-        plugin(PluginIds.Kotlin)
-    }
-
     tasks.withType<Javadoc> { enabled = false }
-
-    tasks.withType<JavaCompile> {
-        sourceCompatibility = JavaVersion.VERSION_11.toString()
-        targetCompatibility = sourceCompatibility
-    }
-    tasks.withType<KotlinCompile> {
-        kotlinOptions {
-            freeCompilerArgs =
-                listOf(
-                    "-Xjsr305=strict",
-                    "-Xopt-in=kotlin.RequiresOptIn",
-                    "-Xopt-in=kotlin.contracts.ExperimentalContracts",
-                )
-            jvmTarget = "11"
-            languageVersion = "1.6"
-            apiVersion = "1.6"
-        }
-    }
 }
 
 // Publishing

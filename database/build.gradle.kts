@@ -1,11 +1,6 @@
 plugins {
-    id(PluginIds.Flyway) version PluginVersions.Flyway
-}
-
-dependencies {
-    listOf(
-        libs.flyway
-    ).forEach(::implementation)
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.flyway)
 }
 
 flyway {
