@@ -2,9 +2,10 @@ package io.provenance.explorer.web.v3
 
 import io.provenance.explorer.service.AssetService
 import io.provenance.explorer.service.IbcService
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import org.springframework.http.MediaType
@@ -17,49 +18,47 @@ import org.springframework.web.bind.annotation.RestController
 
 @Validated
 @RestController
-@RequestMapping(path = ["/api/v3/assets"], produces = [MediaType.APPLICATION_JSON_VALUE])
-@Api(
-    description = "Asset-related endpoints - data for markers and basic denoms on chain",
-    produces = MediaType.APPLICATION_JSON_VALUE,
-    consumes = MediaType.APPLICATION_JSON_VALUE,
-    tags = ["Assets"]
+@RequestMapping(path = ["/api/v3/assets"], produces = [MediaType.APPLICATION_JSON_VALUE], consumes = [org.springframework.http.MediaType.APPLICATION_JSON_VALUE])
+@Tag(
+    name = "Assets",
+    description = "Asset-related endpoints - data for markers and basic denoms on chain"
 )
 class AssetControllerV3(private val assetService: AssetService, private val ibcService: IbcService) {
 
-    @ApiOperation("Returns asset detail for the denom")
+    @Operation(summary = "Returns asset detail for the denom")
     @GetMapping("/{denom}")
     fun getMarkerDetail(
-        @ApiParam(value = "Use any of the denom units to search, ie `nhash` or `hash`") @PathVariable denom: String
+        @Parameter(description = "Use any of the denom units to search, ie `nhash` or `hash`") @PathVariable denom: String
     ) = assetService.getAssetDetail(denom)
 
-    @ApiOperation("Returns asset detail for an ibc denom")
+    @Operation(summary = "Returns asset detail for an ibc denom")
     @GetMapping("/ibc/{hash}")
     fun getIbcDetail(
-        @ApiParam(
-            value = "For an IBC denom, the standard format is `ibc/{hash}`. This parameter is solely the {hash}" +
+        @Parameter(
+            description = "For an IBC denom, the standard format is `ibc/{hash}`. This parameter is solely the {hash}" +
                 " portion of the denom."
         ) @PathVariable hash: String
     ) = ibcService.getIbcDenomDetail(hash)
 
-    @ApiOperation("Returns asset holders for the denom")
+    @Operation(summary = "Returns asset holders for the denom")
     @GetMapping("/{denom}/holders")
     fun getMarkerHolders(
-        @ApiParam(value = "Use any of the denom units to search, ie `nhash` or `hash`") @PathVariable denom: String,
-        @ApiParam(defaultValue = "1", required = false)
+        @Parameter(description = "Use any of the denom units to search, ie `nhash` or `hash`") @PathVariable denom: String,
+        @Parameter(schema = Schema(defaultValue = "1"), required = false)
         @RequestParam(defaultValue = "1")
         @Min(1)
         page: Int,
-        @ApiParam(value = "Record count between 1 and 200", defaultValue = "10", required = false)
+        @Parameter(description = "Record count between 1 and 200", schema = Schema(defaultValue = "10"), required = false)
         @RequestParam(defaultValue = "10")
         @Min(1)
         @Max(200)
         count: Int
     ) = assetService.getAssetHolders(denom, page, count)
 
-    @ApiOperation("Returns denom metadata for all or the specified asset")
+    @Operation(summary = "Returns denom metadata for all or the specified asset")
     @GetMapping("/metadata")
     fun getMarkerMetadata(
-        @ApiParam(value = "Use any of the denom units to search, ie `nhash` or `hash`", required = false)
+        @Parameter(description = "Use any of the denom units to search, ie `nhash` or `hash`", required = false)
         @RequestParam(required = false)
         denom: String?
     ) = assetService.getMetadata(denom)

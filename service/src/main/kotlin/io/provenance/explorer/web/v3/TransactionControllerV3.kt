@@ -4,9 +4,10 @@ import io.provenance.explorer.domain.models.explorer.download.TxHistoryDataReque
 import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.Timeframe
 import io.provenance.explorer.service.TransactionService
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletResponse
 import org.joda.time.DateTime
 import org.springframework.format.annotation.DateTimeFormat
@@ -20,74 +21,65 @@ import org.springframework.web.bind.annotation.RestController
 
 @Validated
 @RestController
-@RequestMapping(path = ["/api/v3/txs"], produces = [MediaType.APPLICATION_JSON_VALUE])
-@Api(
+@RequestMapping(path = ["/api/v3/txs"], produces = [MediaType.APPLICATION_JSON_VALUE], consumes = [MediaType.APPLICATION_JSON_VALUE])
+@Tag(
+    name = "Transactions",
     description = "Transaction endpoints",
-    produces = MediaType.APPLICATION_JSON_VALUE,
-    consumes = MediaType.APPLICATION_JSON_VALUE,
-    tags = ["Transactions"]
 )
 class TransactionControllerV3(private val transactionService: TransactionService) {
 
-    @ApiOperation("Get Tx History chart data")
+    @Operation(summary = "Get Tx History chart data")
     @GetMapping("/history")
     fun txHistory(
-        @ApiParam(
-            type = "DateTime",
-            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+        @Parameter(
+            description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         fromDate: DateTime?,
-        @ApiParam(
-            type = "DateTime",
-            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+        @Parameter(
+            description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         toDate: DateTime?,
-        @ApiParam(
-            value = "The granularity of data, either MONTH, DAY or HOUR",
-            defaultValue = "DAY",
-            required = false,
-            allowableValues = "MONTH,DAY,HOUR"
+        @Parameter(
+            description = "The granularity of data, either MONTH, DAY or HOUR",
+            schema = Schema(defaultValue = "DAY", allowableValues = arrayOf("MONTH", "DAY", "HOUR")),
+            required = false
         )
         @RequestParam(defaultValue = "DAY")
         granularity: DateTruncGranularity
     ) = transactionService.getTxHistoryChartData(TxHistoryDataRequest(fromDate, toDate, granularity))
 
-    @ApiOperation("Get Tx History chart data as a ZIP download, containing CSVs")
+    @Operation(summary = "Get Tx History chart data as a ZIP download, containing CSVs")
     @GetMapping("/history/download", produces = ["application/zip"])
     fun txHistoryDownload(
-        @ApiParam(
-            type = "DateTime",
-            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+        @Parameter(
+            description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         fromDate: DateTime?,
-        @ApiParam(
-            type = "DateTime",
-            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+        @Parameter(
+            description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         toDate: DateTime?,
-        @ApiParam(
-            value = "The granularity of data, either MONTH, DAY or HOUR",
-            defaultValue = "DAY",
-            required = false,
-            allowableValues = "MONTH,DAY,HOUR"
+        @Parameter(
+            description = "The granularity of data, either MONTH, DAY or HOUR",
+            schema = Schema(defaultValue = "DAY", allowableValues = arrayOf("MONTH", "DAY", "HOUR")),
+            required = false
         )
         @RequestParam(defaultValue = "DAY", required = false)
         granularity: DateTruncGranularity,
-        @ApiParam(
-            type = "Boolean",
-            value = "Toggle to return advanced metrics; will return Tx Type and Fee Type metrics; defaulted to FALSE",
+        @Parameter(
+            description = "Toggle to return advanced metrics; will return Tx Type and Fee Type metrics; defaulted to FALSE",
             required = false
         )
         @RequestParam(defaultValue = "false", required = false)
@@ -100,39 +92,36 @@ class TransactionControllerV3(private val transactionService: TransactionService
         transactionService.getTxHistoryChartDataDownload(filters, response.outputStream)
     }
 
-    @ApiOperation("Return list of transaction types by tx hash")
+    @Operation(summary = "Return list of transaction types by tx hash")
     @GetMapping("/{hash}/types")
     fun txTypesByTxHash(
         @PathVariable hash: String,
-        @ApiParam(required = false)
+        @Parameter(required = false)
         @RequestParam(required = false)
         blockHeight: Int? = null
     ) = transactionService.getTxTypesByTxHash(hash)
 
-    @ApiOperation("Returns a heatmap of transaction activity on chain")
+    @Operation(summary = "Returns a heatmap of transaction activity on chain")
     @GetMapping("/heatmap")
     fun txHeatmap(
-        @ApiParam(
-            type = "DateTime",
-            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+        @Parameter(
+            description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         fromDate: DateTime?,
-        @ApiParam(
-            type = "DateTime",
-            value = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
+        @Parameter(
+            description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         toDate: DateTime?,
-        @ApiParam(
-            value = "The timeframe of data, either QUARTER, MONTH, WEEK, or FOREVER",
-            defaultValue = "FOREVER",
-            required = false,
-            allowableValues = "FOREVER,QUARTER,MONTH,WEEK"
+        @Parameter(
+            description = "The timeframe of data, either QUARTER, MONTH, WEEK, or FOREVER",
+            schema = Schema(defaultValue = "FOREVER", allowableValues = arrayOf("FOREVER", "QUARTER", "MONTH", "WEEK")),
+            required = false
         )
         @RequestParam(defaultValue = "FOREVER", required = false)
         timeframe: Timeframe
