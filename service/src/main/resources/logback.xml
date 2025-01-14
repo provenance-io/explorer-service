@@ -10,4 +10,5 @@
 
     <logger name="org.springframework.beans.factory" level="INFO" />
     <logger name="org.springframework.context" level="INFO" />
+    <logger name="io.swagger" level="DEBUG" />
 </configuration>

@@ -13,7 +13,7 @@ grpc-kotlin = "1.4.1"
 h2 = "2.1.214"
 hikari = "5.0.1"
 jakarta-servlet = "5.0.0"
-jackson = "2.14.0"
+jackson = "2.18.2"
 jacksonProtobuf = "0.9.15"
 javax-annotations = "1.3.2"
 javax-servlet = "4.0.1"
@@ -27,7 +27,7 @@ kotest = "5.5.4"
 kotlin = "1.9.25"
 kotlinLogging = "3.0.5"
 kotlinx-coroutines = "1.6.4"
-ktor = "2.1.3"
+ktor = "2.3.12"
 logback = "1.4.14"
 mockk = "1.13.10"
 moshi = "1.15.1"
@@ -37,7 +37,7 @@ protobuf = "3.25.4"
 provenance-proto = "1.20.1"
 reflections = "0.10.2"
 spring = "3.4.1"
-spring-doc = "2.7.0"
+spring-doc = "2.8.3"
 spring-doc-core = "1.1.49"
 spring-integration = "6.4.1"
 spring-mock = "3.1.1"
@@ -85,6 +85,8 @@ grpc-protobuf = { group = "io.grpc", name = "grpc-protobuf", version.ref = "grpc
 grpc-services = { group = "io.grpc", name = "grpc-services", version.ref = "grpc" }
 h2 = { group = "com.h2database", name = "h2", version.ref = "h2" }
 hikari = { group = "com.zaxxer", name = "HikariCP", version.ref = "hikari" }
+jackson-core = { group = "com.fasterxml.jackson.core", name = "jackson-core", version.ref = "jackson" }
+jackson-databind = { group = "com.fasterxml.jackson.core", name = "jackson-databind", version.ref = "jackson" }
 jackson-dataformats-toml = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-toml", version.ref = "jackson" }
 jackson-dataformats-yaml = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-yaml", version.ref = "jackson" }
 jackson-javadatatype = { group = "com.fasterxml.jackson.datatype", name = "jackson-datatype-jsr310", version.ref = "jackson" }
@@ -139,7 +141,6 @@ spring-starter-web = { group = "org.springframework.boot", name = "spring-boot-s
 springdoc-openapi-starter-webmvc-api = { module = "org.springdoc:springdoc-openapi-starter-webmvc-api", version.ref = "spring-doc" }
 springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "spring-doc" }
 springdoc-core = { group = "org.springdoc", name = "springdoc-openapi-core", version.ref = "spring-doc-core" }
-swagger = {group = "io.springfox", name = "springfox-boot-starter", version.ref = "swagger" }
 testcontainers = { group = "org.testcontainers", name = "testcontainers", version.ref = "testcontainers" }
 testcontainers-junit = { group = "org.testcontainers", name = "junit-jupiter", version.ref = "testcontainers" }
 testcontainers-kafka = { group = "org.testcontainers", name = "kafka", version.ref = "testcontainers" }
@@ -151,7 +152,7 @@ testcontainers-postgresql = { group = "org.testcontainers", name = "postgresql",
 exposed = ["postgresql", "exposed", "exposed-dao", "exposed-jdbc", "exposed-json", "hikari"]
 feign = ["feign-jackson", "feign-okhttp", "feign-slf4j"]
 grpc = ["grpc", "grpc-protobuf", "grpc-kotlin"]
-jackson = ["jackson-kotlin", "jackson-module-protobuf", "jackson-javadatatype", "jackson-jodadatatype"]
+jackson = ["jackson-core", "jackson-kotlin", "jackson-module-protobuf", "jackson-databind", "jackson-javadatatype", "jackson-jodadatatype"]
 kotlinx-coroutines = ["kotlinx-coroutines-core", "kotlinx-coroutines-jdk8", "kotlinx-coroutines-reactor"]
 ktor = ["ktor-client-core", "ktor-client-java", "ktor-client-content-negotiation", "ktor-serialization-jackson"]
 logging = ["kotlin-logging", "logback-classic"]

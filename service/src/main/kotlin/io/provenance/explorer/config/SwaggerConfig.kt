@@ -1,47 +1,50 @@
  package io.provenance.explorer.config
 
- import io.swagger.v3.oas.models.Components
+ import com.fasterxml.jackson.databind.BeanDescription
  import io.swagger.v3.oas.models.OpenAPI
- import io.swagger.v3.oas.models.info.Info
  import io.swagger.v3.oas.models.info.Contact
- import io.swagger.v3.oas.models.security.SecurityRequirement
- import io.swagger.v3.oas.models.security.SecurityScheme
- import org.springdoc.api.OpenApiCustomiser
- import org.springframework.boot.context.properties.EnableConfigurationProperties
+ import io.swagger.v3.oas.models.info.Info
+ import org.springdoc.core.models.GroupedOpenApi
  import org.springframework.context.annotation.Bean
  import org.springframework.context.annotation.Configuration
 
- @EnableConfigurationProperties(
-    value = [ExplorerProperties::class]
- )
+ // @EnableConfigurationProperties(
+//    value = [ExplorerProperties::class]
+// )
  @Configuration
  class SwaggerConfig(val props: ExplorerProperties) {
+
+     @Bean
+     fun v2Api() = GroupedOpenApi.builder()
+         .group("public")
+         .displayName("Public")
+         .packagesToScan("io.provenance.explorer.web")
+         .build()
 
     @Bean
     fun api(): OpenAPI {
         val contact = Contact()
             .name("Provenance Blockchain Foundation")
-            .url("provenance.io")
+            .url("https://www.provenance.io")
             .email("info@provenance.io")
 
         val apiInfo = Info().title("Provenance Explorer")
-            .description("Provenance Explorer")
-            .version("3")
-            .contact(contact)
+//            .description("Provenance Explorer")
+            .version("v3")
+//            .contact(contact)
 
-        val securitySchemeName = "Authorization"
+//        val securitySchemeName = "Authorization"
 
         return OpenAPI()
             .info(apiInfo)
-            .addSecurityItem(SecurityRequirement().addList(securitySchemeName))
-            .components(
-                Components().addSecuritySchemes(
-                    securitySchemeName,
-                    SecurityScheme()
-                        .type(SecurityScheme.Type.APIKEY)
-                        .`in`(SecurityScheme.In.HEADER))
-//                        .name(securitySchemeName)
-                )
+//            .addSecurityItem(SecurityRequirement().addList(securitySchemeName))
+//            .components(
+//                Components().addSecuritySchemes(
+//                    securitySchemeName,
+//                    SecurityScheme()
+//                        .type(SecurityScheme.Type.APIKEY)
+//                        .`in`(SecurityScheme.In.HEADER))
+//                )
     }
 
 //     @Bean

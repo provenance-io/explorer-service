@@ -70,7 +70,7 @@ dependencies {
         libs.spring.starter.web,
         libs.springdoc.openapi.starter.webmvc.api,
         libs.springdoc.openapi.starter.webmvc.ui,
-        libs.springdoc.core,
+//        libs.springdoc.core,
     ).forEach(::implementation)
 
 //    implementation("jakarta.annotation:jakarta.annotation-api:2.1.1")
