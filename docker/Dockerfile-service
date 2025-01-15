@@ -1,4 +1,4 @@
-FROM gradle:8-jdk21-graal AS build
+FROM gradle:8-jdk21 AS build
 RUN gradle --version && java -version
 RUN ls -l
 WORKDIR /app
@@ -11,6 +11,7 @@ COPY build.gradle.kts gradle.properties settings.gradle.kts buildSrc/build.gradl
 RUN gradle clean build --no-daemon > /dev/null 2>&1 || true
 
 # Copy all files
+COPY .editorconfig /app/
 COPY buildSrc /app/buildSrc/
 COPY build.gradle.kts gradle.properties settings.gradle.kts /app/
 COPY api-model /app/api-model/
