@@ -27,17 +27,10 @@ import org.springframework.context.annotation.Configuration
  )
  class OpenApiConfig(val props: ExplorerProperties) {
      @Bean
-     fun v2Api() = GroupedOpenApi.builder()
-         .group("v2")
-         .displayName("version 2")
-         .packagesToScan("io.provenance.explorer.web.v2")
-         .build()
-
-     @Bean
-     fun v3Api() = GroupedOpenApi.builder()
-         .group("v3")
-         .displayName("version 3")
-         .packagesToScan("io.provenance.explorer.web.v3")
+     fun explorerApi() = GroupedOpenApi.builder()
+         .group("explorer")
+         .displayName("Explorer Public API")
+         .packagesToScan("io.provenance.explorer.web")
          .build()
 
     @Bean

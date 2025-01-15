@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping(path = ["/api/v2/accounts"], produces = [MediaType.APPLICATION_JSON_VALUE], consumes = [MediaType.APPLICATION_JSON_VALUE])
 @Tag(
-    name = "AccountV2",
+    name = "Account",
     description = "Account-related endpoints - data for standard addresses",
 )
 class AccountControllerV2(private val accountService: AccountService) {
