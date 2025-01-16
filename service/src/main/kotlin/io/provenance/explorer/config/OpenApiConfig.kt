@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration
  @OpenAPIDefinition(
      servers = [
          io.swagger.v3.oas.annotations.servers.Server(
-             url = "http://localhost:8612/service-explorer",
+             url = "http://localhost:8612",
              description = "Local environment",
          ),
          io.swagger.v3.oas.annotations.servers.Server(
