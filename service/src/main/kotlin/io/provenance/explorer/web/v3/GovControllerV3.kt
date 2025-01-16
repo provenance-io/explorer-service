@@ -31,7 +31,7 @@ import org.springframework.web.multipart.MultipartFile
 
 @Validated
 @RestController
-@RequestMapping(path = ["/api/v3/gov"], produces = [MediaType.APPLICATION_JSON_VALUE], consumes = [org.springframework.http.MediaType.APPLICATION_JSON_VALUE])
+@RequestMapping(path = ["/api/v3/gov"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Tag(
     name = "Governance",
     description = "Governance-related endpoints"

@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController
 
 @Validated
 @RestController
-@RequestMapping(path = ["/api/v3/grants"], produces = [MediaType.APPLICATION_JSON_VALUE], consumes = [org.springframework.http.MediaType.APPLICATION_JSON_VALUE])
+@RequestMapping(path = ["/api/v3/grants"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Tag(
     name = "Grant",
     description = "Authz grant and Feegrant endpoints"

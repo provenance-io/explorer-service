@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController
 
 @Validated
 @RestController
-@RequestMapping(path = ["/api/v3/smart_contract"], produces = [MediaType.APPLICATION_JSON_VALUE], consumes = [org.springframework.http.MediaType.APPLICATION_JSON_VALUE])
+@RequestMapping(path = ["/api/v3/smart_contract"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Tag(
     name = "Smart Contract",
     description = "Smart Contract-related endpoints"

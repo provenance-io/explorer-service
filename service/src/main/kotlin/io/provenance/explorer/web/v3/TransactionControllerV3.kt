@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController
 
 @Validated
 @RestController
-@RequestMapping(path = ["/api/v3/txs"], produces = [MediaType.APPLICATION_JSON_VALUE], consumes = [MediaType.APPLICATION_JSON_VALUE])
+@RequestMapping(path = ["/api/v3/txs"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Tag(
     name = "Transactions",
     description = "Transaction endpoints",

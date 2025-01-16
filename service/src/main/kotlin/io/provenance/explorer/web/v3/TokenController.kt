@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController
 
 @Validated
 @RestController
-@RequestMapping(path = ["/api/v3/utility_token"], produces = [MediaType.APPLICATION_JSON_VALUE], consumes = [org.springframework.http.MediaType.APPLICATION_JSON_VALUE])
+@RequestMapping(path = ["/api/v3/utility_token"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Tag(
     name = "Utility Token",
     description = "Utility Token-related data - statistics surrounding the utility token (nhash)"
