@@ -7,7 +7,6 @@ import io.provenance.explorer.domain.models.explorer.TxUpdate
 import io.provenance.explorer.grpc.v1.GroupGrpcClient
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -15,6 +14,7 @@ import org.mockito.Mockito.mock
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.time.LocalDateTime
 
 class GroupServiceTest {
     private lateinit var restConfig: RestConfig
@@ -67,7 +67,7 @@ class GroupServiceTest {
         restConfig.protoParser()!!.merge(jsonResponse, txResponseBuilder)
         val txResponse = txResponseBuilder.build()
 
-        val txData = TxData(txResponse.txResponse.height.toInt(), 0, txResponse.txResponse.txhash, DateTime())
+        val txData = TxData(txResponse.txResponse.height.toInt(), 0, txResponse.txResponse.txhash, LocalDateTime.now())
         val txUpdate = TxUpdate(txResponse.txResponse.txhash)
 
         groupService.saveGroups(txResponse, txData, txUpdate)

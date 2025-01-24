@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
-import org.joda.time.DateTime
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.validation.annotation.Validated
@@ -19,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDateTime
 
 @Validated
 @RestController
@@ -148,14 +148,14 @@ class ValidatorControllerV2(
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: DateTime?,
+        fromDate: LocalDateTime?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: DateTime?,
+        toDate: LocalDateTime?,
         @Parameter(description = "The number of days of data returned", schema = Schema(defaultValue = "14"), required = false)
         @RequestParam(defaultValue = "14")
         @Min(1)

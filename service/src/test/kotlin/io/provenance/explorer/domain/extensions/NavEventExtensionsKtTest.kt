@@ -1,9 +1,9 @@
 package io.provenance.explorer.domain.extensions
 
-import org.joda.time.DateTime
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
+import java.time.LocalDateTime
 import io.provenance.explorer.domain.entities.NavEvent as ExplorerNavEvent
 import io.provlabs.flow.api.NavEvent as FlowNavEvent
 
@@ -65,7 +65,7 @@ class NavEventExtensionsKtTest {
 
         val navEventUsdVolume1Price1 = ExplorerNavEvent(
             blockHeight = 1,
-            blockTime = DateTime.now(),
+            blockTime = LocalDateTime.now(),
             txHash = "hash1",
             eventOrder = 1,
             eventType = "type",

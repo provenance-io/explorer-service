@@ -22,7 +22,7 @@ import io.provenance.explorer.model.ValidatorSummary
 import io.provenance.explorer.model.ValidatorSummaryAbbrev
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.Timeframe
-import org.joda.time.DateTime
+import java.time.LocalDateTime
 
 object ValidatorRoutes {
     const val VALIDATOR_V2 = "${BaseRoutes.V2_BASE}/validators"
@@ -94,8 +94,8 @@ interface ValidatorClient : BaseClient {
     @RequestLine("GET ${ValidatorRoutes.VALIDATOR_MARKET_RATE_PERIOD}?fromDate={fromDate}&toDate={toDate}&dayCount={dayCount}")
     fun validatorMarketRateOverTime(
         @Param("address") address: String,
-        @Param("fromDate") fromDate: DateTime? = null,
-        @Param("toDate") toDate: DateTime? = null,
+        @Param("fromDate") fromDate: LocalDateTime? = null,
+        @Param("toDate") toDate: LocalDateTime? = null,
         @Param("dayCount") dayCount: Int = 14
     ): List<ValidatorMarketRate>
 

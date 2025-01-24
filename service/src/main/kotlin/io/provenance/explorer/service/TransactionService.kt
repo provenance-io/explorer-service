@@ -60,8 +60,8 @@ import jakarta.servlet.ServletOutputStream
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
 import org.springframework.stereotype.Service
+import java.time.LocalDateTime
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -104,8 +104,8 @@ class TransactionService(
         txStatus: TxStatus? = null,
         count: Int,
         page: Int,
-        fromDate: DateTime? = null,
-        toDate: DateTime? = null,
+        fromDate: LocalDateTime? = null,
+        toDate: LocalDateTime? = null,
         nftAddr: String? = null,
         ibcChain: String? = null,
         ibcSrcPort: String? = null,
@@ -239,7 +239,7 @@ class TransactionService(
                 }
         }
 
-    fun getTxHeatmap(fromDate: DateTime? = null, toDate: DateTime? = null, timeframe: Timeframe = Timeframe.FOREVER): TxHeatmapRes {
+    fun getTxHeatmap(fromDate: LocalDateTime? = null, toDate: LocalDateTime? = null, timeframe: Timeframe = Timeframe.FOREVER): TxHeatmapRes {
         if (fromDate != null && toDate != null)
             return BlockCacheHourlyTxCountsRecord.getTxHeatmap(fromDate, toDate)
 
@@ -248,15 +248,15 @@ class TransactionService(
             Timeframe.QUARTER ->
                 if (fromDate != null) fromDate to fromDate.plusMonths(3)
                 else if (toDate != null) toDate.minusMonths(3) to toDate
-                else DateTime.now().startOfDay().let { it.minusMonths(3) to it }
+                else LocalDateTime.now().startOfDay().let { it.minusMonths(3) to it }
             Timeframe.MONTH ->
                 if (fromDate != null) fromDate to fromDate.plusMonths(1)
                 else if (toDate != null) toDate.minusMonths(1) to toDate
-                else DateTime.now().startOfDay().let { it.minusMonths(1) to it }
+                else LocalDateTime.now().startOfDay().let { it.minusMonths(1) to it }
             Timeframe.WEEK ->
                 if (fromDate != null) fromDate to fromDate.plusWeeks(1)
                 else if (toDate != null) toDate.minusWeeks(1) to toDate
-                else DateTime.now().startOfDay().let { it.minusWeeks(1) to it }
+                else LocalDateTime.now().startOfDay().let { it.minusWeeks(1) to it }
             Timeframe.DAY, Timeframe.HOUR ->
                 throw InvalidArgumentException("Timeframe ${timeframe.name} is not supported for heatmap data")
         }
@@ -281,8 +281,8 @@ class TransactionService(
         txStatus: TxStatus?,
         page: Int,
         count: Int,
-        fromDate: DateTime?,
-        toDate: DateTime?
+        fromDate: LocalDateTime?,
+        toDate: LocalDateTime?
     ): PagedResults<TxGov> =
         transaction {
             val msgTypes = if (msgType != null) listOf(msgType) else MsgTypeSet.GOVERNANCE.types
@@ -331,8 +331,8 @@ class TransactionService(
         txStatus: TxStatus?,
         page: Int,
         count: Int,
-        fromDate: DateTime?,
-        toDate: DateTime?
+        fromDate: LocalDateTime?,
+        toDate: LocalDateTime?
     ) = transaction {
         val msgTypes = if (msgType != null) listOf(msgType) else MsgTypeSet.SMART_CONTRACT.types
         val msgTypeIds = transaction { TxMessageTypeRecord.findByType(msgTypes).map { it.id.value } }.toList()

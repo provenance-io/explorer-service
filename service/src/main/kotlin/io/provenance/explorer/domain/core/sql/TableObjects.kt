@@ -5,14 +5,17 @@ import com.google.protobuf.GeneratedMessageV3
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.extensions.execAndMap
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
 import java.math.BigDecimal
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-val DEFAULT_DATE_TIME_STRING_FORMATTER = DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss.SSS").withLocale(Locale.ROOT)
+val DEFAULT_DATE_TIME_STRING_FORMATTER = DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss.SSS")
+    .withLocale(Locale.ROOT)
 
-fun DateTime.toProcedureObject() = java.sql.Timestamp(this.millis).toString()
+// TODO - the timezone of the application should be global.
+fun LocalDateTime.toProcedureObject() = java.sql.Timestamp(this.toInstant(ZoneOffset.UTC).toEpochMilli()).toString()
 
 fun GeneratedMessageV3.toProcedureObject() = OBJECT_MAPPER.writeValueAsString(this).replaceSingleQuotes()
 
@@ -23,7 +26,7 @@ fun List<Any?>.toProcedureObject() =
             "null"
         } else {
             when (value) {
-                is DateTime -> "'${value.toProcedureObject()}'"
+                is LocalDateTime -> "'${value.toProcedureObject()}'"
                 is GeneratedMessageV3 -> "'${value.toProcedureObject()}'"
                 is Int, is Double, is BigDecimal, is Long -> value.toString()
                 is String -> "'${value.replaceSingleQuotes()}'"

@@ -25,8 +25,10 @@ import java.util.TimeZone
 @EnableWebMvc
 class Application
 
+const val TIMEZONE = "UTC"
+
 fun main(args: Array<String>) {
-    TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+    TimeZone.setDefault(TimeZone.getTimeZone(TIMEZONE))
     SpringApplicationBuilder(Application::class.java).properties(
         "spring.config.location:classpath:/"
     ).build().run(*args)

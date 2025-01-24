@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
-import org.joda.time.DateTime
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.validation.annotation.Validated
@@ -18,6 +17,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDateTime
 
 @Validated
 @RestController
@@ -71,14 +71,14 @@ class TokenController(private val tokenService: TokenService) {
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: DateTime?,
+        fromDate: LocalDateTime?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: DateTime?
+        toDate: LocalDateTime?
     ) = tokenService.getTokenHistorical(fromDate, toDate)
 
     @Operation(summary = "Returns CoinMarketCap latest token pricing")
@@ -94,14 +94,14 @@ class TokenController(private val tokenService: TokenService) {
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: DateTime?,
+        fromDate: LocalDateTime?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: DateTime?,
+        toDate: LocalDateTime?,
         response: HttpServletResponse
     ) {
         val filters = TokenHistoricalDataRequest(fromDate, toDate)

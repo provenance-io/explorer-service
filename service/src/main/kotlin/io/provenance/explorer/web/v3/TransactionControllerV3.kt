@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletResponse
-import org.joda.time.DateTime
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.validation.annotation.Validated
@@ -18,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDateTime
 
 @Validated
 @RestController
@@ -37,14 +37,14 @@ class TransactionControllerV3(private val transactionService: TransactionService
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: DateTime?,
+        fromDate: LocalDateTime?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: DateTime?,
+        toDate: LocalDateTime?,
         @Parameter(
             description = "The granularity of data, either MONTH, DAY or HOUR",
             schema = Schema(defaultValue = "DAY", allowableValues = arrayOf("MONTH", "DAY", "HOUR")),
@@ -63,14 +63,14 @@ class TransactionControllerV3(private val transactionService: TransactionService
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: DateTime?,
+        fromDate: LocalDateTime?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: DateTime?,
+        toDate: LocalDateTime?,
         @Parameter(
             description = "The granularity of data, either MONTH, DAY or HOUR",
             schema = Schema(defaultValue = "DAY", allowableValues = arrayOf("MONTH", "DAY", "HOUR")),
@@ -110,14 +110,14 @@ class TransactionControllerV3(private val transactionService: TransactionService
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: DateTime?,
+        fromDate: LocalDateTime?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: DateTime?,
+        toDate: LocalDateTime?,
         @Parameter(
             description = "The timeframe of data, either QUARTER, MONTH, WEEK, or FOREVER",
             schema = Schema(defaultValue = "FOREVER", allowableValues = arrayOf("FOREVER", "QUARTER", "MONTH", "WEEK")),

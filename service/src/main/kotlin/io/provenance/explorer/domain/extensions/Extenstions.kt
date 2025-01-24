@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.databind.node.ObjectNode
-import com.fasterxml.jackson.datatype.joda.JodaModule
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.google.common.hash.Hashing
@@ -25,14 +24,15 @@ import io.provenance.explorer.model.base.Bech32
 import io.provenance.explorer.model.base.toBech32Data
 import io.provenance.explorer.model.base.toMAddress
 import net.pearx.kasechange.splitToWords
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
 import tendermint.types.BlockOuterClass
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.RoundingMode
 import java.time.Instant
+import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Base64
 import kotlin.math.ceil
@@ -95,7 +95,7 @@ fun String.validatorMissedBlocksSpecific(fromHeight: Int, toHeight: Int) =
         .findValidatorsWithMissedBlocksForPeriod(fromHeight, toHeight, this)
         .sumOf { it.blocks.count() }
 
-fun Long.isPastDue(currentMillis: Long) = DateTime.now().millis - this > currentMillis
+fun Long.isPastDue(currentMillis: Long) = Instant.now().toEpochMilli() - this > currentMillis
 
 // translates page (this) to offset
 fun Int.toOffset(count: Int) = (this - 1) * count
@@ -149,25 +149,38 @@ fun ByteString.translateByteArray() = this.toByteArray().toBech32Data().let {
     )
 }
 
-fun Timestamp.toDateTime() = DateTime(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()).toEpochMilli())
+fun Timestamp.toDateTime() = LocalDateTime.ofInstant(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()), ZoneOffset.UTC)
+
 fun Timestamp.formattedString() =
     DateTimeFormatter.ISO_INSTANT.format(Instant.ofEpochSecond(this.seconds, this.nanos.toLong()))
 
 // Uses seconds as the base vs millis
-fun Long.toDateTime() = DateTime(Instant.ofEpochSecond(this).toEpochMilli())
+fun Long.toDateTime() = LocalDateTime.ofInstant(Instant.ofEpochSecond(this), ZoneOffset.UTC)
 
-fun DateTime.startOfDay() = this.withZone(DateTimeZone.UTC).withTimeAtStartOfDay()
-fun String.toDateTime() = DateTime.parse(this)
-fun String.toDateTimeWithFormat(formatter: org.joda.time.format.DateTimeFormatter) = DateTime.parse(this, formatter)
-fun OffsetDateTime.toDateTime() = DateTime(this.toInstant().toEpochMilli(), DateTimeZone.UTC)
-fun Int.monthToQuarter() =
+fun LocalDateTime.startOfDay() = this.with(LocalTime.MIN)
+
+fun String.toDateTime() = LocalDateTime.parse(this, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"))
+fun String.toDateTimeWithFormat(formatter: DateTimeFormatter) = LocalDateTime.parse(this, formatter)
+fun OffsetDateTime.toDateTime() = this.toInstant().toEpochMilli().toDateTime()
+
+fun LocalDateTime.monthToQuarter() = this.monthValue.let {
     when {
-        (1..3).contains(this) -> 1
-        (4..6).contains(this) -> 2
-        (7..9).contains(this) -> 3
-        (10..12).contains(this) -> 4
-        else -> throw InvalidArgumentException("Not a valid month: $this")
+        (1..3).contains(it) -> 1
+        (4..6).contains(it) -> 2
+        (7..9).contains(it) -> 3
+        (10..12).contains(it) -> 4
+        else -> throw InvalidArgumentException("Not a valid month: $it")
     }
+}
+
+// fun Int.monthToQuarter() =
+//    when {
+//        (1..3).contains(this) -> 1
+//        (4..6).contains(this) -> 2
+//        (7..9).contains(this) -> 3
+//        (10..12).contains(this) -> 4
+//        else -> throw InvalidArgumentException("Not a valid month: $this")
+//    }
 
 fun ServiceOuterClass.GetTxResponse.success() = this.txResponse.code == 0
 fun BlockOuterClass.Block.height() = this.header.height.toInt()
@@ -195,7 +208,6 @@ fun String.toNormalCase() = this.splitToWords().joinToString(" ")
 fun ObjectMapper.configureProvenance(): ObjectMapper = this.registerKotlinModule()
     .registerModule(JavaTimeModule())
     .registerModule(ProtobufModule())
-    .registerModule(JodaModule())
     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     .setSerializationInclusion(JsonInclude.Include.NON_NULL)
     .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)

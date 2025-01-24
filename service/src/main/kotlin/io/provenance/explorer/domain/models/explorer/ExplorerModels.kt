@@ -1,12 +1,12 @@
 package io.provenance.explorer.domain.models.explorer
 
-import org.joda.time.DateTime
 import java.math.BigDecimal
+import java.time.LocalDateTime
 
 data class BlockProposer(
     var blockHeight: Int,
     var proposerOperatorAddress: String,
-    var blockTimestamp: DateTime,
+    var blockTimestamp: LocalDateTime,
     var blockLatency: BigDecimal? = null
 )
 
@@ -21,7 +21,7 @@ data class BlockTimeSpread(
     val quarter: Int,
     val minHeight: Int,
     val maxHeight: Int,
-    val minTimestamp: DateTime,
-    val maxTimestamp: DateTime,
+    val minTimestamp: LocalDateTime,
+    val maxTimestamp: LocalDateTime,
     val totalBlocks: Int
 )

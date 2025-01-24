@@ -2,7 +2,7 @@ package io.provenance.explorer.model
 
 import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.CoinStrWithPrice
-import org.joda.time.DateTime
+import java.time.LocalDateTime
 
 data class AccountDetail(
     val accountType: String,
@@ -65,10 +65,10 @@ data class DenomBalanceBreakdown(
 )
 
 data class AccountVestingInfo(
-    val dataAsOfDate: DateTime,
-    val endTime: DateTime,
+    val dataAsOfDate: LocalDateTime,
+    val endTime: LocalDateTime,
     val originalVestingList: List<CoinStr>,
-    val startTime: DateTime? = null,
+    val startTime: LocalDateTime? = null,
     val periodicVestingList: List<PeriodicVestingInfo> = emptyList()
 )
 
@@ -76,6 +76,6 @@ data class PeriodicVestingInfo(
     // in seconds
     val length: Long,
     val coins: List<CoinStr>,
-    val vestingDate: DateTime,
+    val vestingDate: LocalDateTime,
     val isVested: Boolean
 )

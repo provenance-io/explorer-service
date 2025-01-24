@@ -119,10 +119,11 @@ import io.provenance.explorer.model.base.stringfy
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
 import java.math.BigDecimal
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 @Service
 class GovService(
@@ -191,12 +192,16 @@ class GovService(
     }
 
     private fun calcProposedCompletionHeight(
-        votingEndTime: DateTime,
-        submitTimestamp: DateTime,
+        votingEndTime: LocalDateTime,
+        submitTimestamp: LocalDateTime,
         submitHeight: Int
     ): Int {
         val avgBlockTime = cacheService.getAvgBlockTime().multiply(BigDecimal(1000)).toLong()
-        val blocksUntilCompletion = (votingEndTime.millis - submitTimestamp.millis).floorDiv(avgBlockTime).toInt()
+        val blocksUntilCompletion = (
+            votingEndTime.toInstant(ZoneOffset.UTC).toEpochMilli() - submitTimestamp.toInstant(
+            ZoneOffset.UTC
+            ).toEpochMilli()
+        ).floorDiv(avgBlockTime).toInt()
         return submitHeight + blocksUntilCompletion
     }
 
@@ -699,7 +704,7 @@ class GovService(
             }
         }
 
-    fun getVotesPerProposalsMetrics(addrId: Int, startDate: DateTime, endDate: DateTime) = transaction {
+    fun getVotesPerProposalsMetrics(addrId: Int, startDate: LocalDateTime, endDate: LocalDateTime) = transaction {
         val props = GovProposalRecord.getCompletedProposalsForPeriod(startDate, endDate).map { it.proposalId }
         val votes = GovVoteRecord.getAddressVotesForProposalList(addrId, props)
         votes.size to props.size

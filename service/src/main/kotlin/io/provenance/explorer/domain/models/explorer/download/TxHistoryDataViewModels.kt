@@ -7,16 +7,16 @@ import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.download.FeeTypeData
 import io.provenance.explorer.model.download.TxHistoryChartData
 import io.provenance.explorer.model.download.TxTypeData
-import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
 import java.io.ByteArrayOutputStream
 import java.io.PrintWriter
 import java.sql.ResultSet
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 //region TxHistoryChart
 
 fun ResultSet.toTxHistoryChartData(byFeepayer: Boolean) = TxHistoryChartData(
-    DateTime(this.getTimestamp("date").time),
+    this.getTimestamp("date").toLocalDateTime(),
     if (byFeepayer) this.getString("feepayer") else null,
     this.getBigDecimal("tx_count"),
     this.getBigDecimal("fee_amount_in_base_token"),
@@ -42,7 +42,7 @@ fun txHistoryDataCsvBaseHeaders(advancedMetrics: Boolean, hasFeepayer: Boolean):
 //region TxTypeData
 
 fun ResultSet.toTxTypeData(byFeepayer: Boolean) = TxTypeData(
-    DateTime(this.getTimestamp("date").time),
+    this.getTimestamp("date").toLocalDateTime(),
     if (byFeepayer) this.getString("feepayer") else null,
     this.getString("tx_type"),
     this.getBigDecimal("tx_type_count")
@@ -60,7 +60,7 @@ fun txTypeDataCsvBaseHeaders(hasFeepayer: Boolean): MutableList<String> {
 //region FeeTypeData
 
 fun ResultSet.toFeeTypeData(byFeepayer: Boolean) = FeeTypeData(
-    DateTime(this.getTimestamp("date").time),
+    this.getTimestamp("date").toLocalDateTime(),
     if (byFeepayer) this.getString("feepayer") else null,
     this.getString("fee_type"),
     this.getString("msg_type"),
@@ -84,8 +84,8 @@ fun feeTypeDataCsvBaseHeaders(hasFeepayer: Boolean): MutableList<String> {
 //region TxHistory API Request Bodies
 
 data class TxHistoryDataRequest(
-    val fromDate: DateTime? = null,
-    val toDate: DateTime? = null,
+    val fromDate: LocalDateTime? = null,
+    val toDate: LocalDateTime? = null,
     val granularity: DateTruncGranularity = DateTruncGranularity.DAY,
     val advancedMetrics: Boolean = false
 ) {
@@ -132,11 +132,11 @@ data class TxHistoryDataRequest(
         return fileList
     }
 
-    private val dateFormat = DateTimeFormat.forPattern("yyyy-MM-dd")
+    private val dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
     fun getFileNameBase(feepayer: String?): String {
-        val to = if (toDate != null) dateFormat.print(toDate) else "CURRENT"
-        val full = if (fromDate != null) "${dateFormat.print(fromDate)} thru $to" else "ALL"
+        val to = if (toDate != null) dateFormat.format(toDate) else "CURRENT"
+        val full = if (fromDate != null) "${dateFormat.format(fromDate)} thru $to" else "ALL"
         val metrics = if (advancedMetrics) " WITH Advanced Metrics" else ""
         val payer = if (feepayer != null) " FOR $feepayer" else ""
         return "$full BY ${granularity.name}$payer$metrics - Tx History Data"
@@ -146,8 +146,8 @@ data class TxHistoryDataRequest(
         val baos = ByteArrayOutputStream()
         PrintWriter(baos).use { writer ->
             writer.println("Filters used --")
-            writer.println("fromDate: ${if (fromDate != null) dateFormat.print(fromDate) else "NULL"}")
-            writer.println("toDate: ${if (toDate != null) dateFormat.print(toDate) else "NULL"}")
+            writer.println("fromDate: ${if (fromDate != null) dateFormat.format(fromDate) else "NULL"}")
+            writer.println("toDate: ${if (toDate != null) dateFormat.format(toDate) else "NULL"}")
             writer.println("granularity: ${granularity.name}")
             writer.println("advancedMetrics: $advancedMetrics")
             if (feepayer != null) {

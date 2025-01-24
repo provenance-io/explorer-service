@@ -13,10 +13,9 @@ import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.domain.models.OsmosisApiResponse
 import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
 import kotlinx.coroutines.runBlocking
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
-import org.joda.time.Duration
 import java.net.URLEncoder
+import java.time.Duration
+import java.time.LocalDateTime
 
 class OsmosisPriceFetcher : HistoricalPriceFetcher {
 
@@ -26,7 +25,7 @@ class OsmosisPriceFetcher : HistoricalPriceFetcher {
         return "osmosis"
     }
 
-    override fun fetchHistoricalPrice(fromDate: DateTime?): List<HistoricalPrice> {
+    override fun fetchHistoricalPrice(fromDate: LocalDateTime?): List<HistoricalPrice> {
         val osmosisHistoricalPrices = fetchOsmosisData(fromDate)
         return osmosisHistoricalPrices.map { osmosisPrice ->
             HistoricalPrice(
@@ -41,7 +40,7 @@ class OsmosisPriceFetcher : HistoricalPriceFetcher {
         }
     }
 
-    fun fetchOsmosisData(fromDate: DateTime?): List<OsmosisHistoricalPrice> = runBlocking {
+    fun fetchOsmosisData(fromDate: LocalDateTime?): List<OsmosisHistoricalPrice> = runBlocking {
         val input = buildInputQuery(fromDate, determineTimeFrame(fromDate))
         try {
             val url = """https://app.osmosis.zone/api/edge-trpc-assets/assets.getAssetHistoricalPrice?input=$input"""
@@ -76,12 +75,13 @@ class OsmosisPriceFetcher : HistoricalPriceFetcher {
      * @param fromDate The starting date to determine the time frame.
      * @return The appropriate TimeFrame enum value.
      */
-    fun determineTimeFrame(fromDate: DateTime?): TimeFrame {
-        val now = DateTime.now(DateTimeZone.UTC)
-        val duration = Duration(fromDate, now)
+    fun determineTimeFrame(fromDate: LocalDateTime?): TimeFrame {
+        val now = LocalDateTime.now()
+        val days = Duration.between(fromDate, now).toDays()
+
         return when {
-            duration.standardDays <= 14 -> TimeFrame.FIVE_MINUTES
-            duration.standardDays <= 60 -> TimeFrame.TWO_HOURS
+            days <= 14 -> TimeFrame.FIVE_MINUTES
+            days <= 60 -> TimeFrame.TWO_HOURS
             else -> TimeFrame.ONE_DAY
         }
     }
@@ -103,12 +103,12 @@ class OsmosisPriceFetcher : HistoricalPriceFetcher {
      * @param timeFrame The time interval between updates, specified as a `TimeFrame` enum value.
      * @return A URL-encoded JSON string to be used as a query parameter for fetching historical data.
      */
-    fun buildInputQuery(fromDate: DateTime?, timeFrame: TimeFrame): String {
+    fun buildInputQuery(fromDate: LocalDateTime?, timeFrame: TimeFrame): String {
         val coinDenom = "ibc/CE5BFF1D9BADA03BB5CCA5F56939392A761B53A10FBD03B37506669C3218D3B2"
         val coinMinimalDenom = "ibc/CE5BFF1D9BADA03BB5CCA5F56939392A761B53A10FBD03B37506669C3218D3B2"
-        val now = DateTime.now(DateTimeZone.UTC)
-        val duration = Duration(fromDate, now)
-        val numRecentFrames = (duration.standardMinutes / timeFrame.minutes).toInt()
+        val now = LocalDateTime.now()
+        val minutesBetween = Duration.between(fromDate, now).toMinutes()
+        val numRecentFrames = (minutesBetween / timeFrame.minutes).toInt()
         return URLEncoder.encode(
             """{"json":{"coinDenom":"$coinDenom","coinMinimalDenom":"$coinMinimalDenom","timeFrame":{"custom":{"timeFrame":${timeFrame.minutes},"numRecentFrames":$numRecentFrames}}}}""",
             "UTF-8"

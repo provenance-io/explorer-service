@@ -122,8 +122,8 @@ import io.provenance.explorer.service.toWeightedVoteList
 import io.provenance.explorer.service.unchainDenom
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
 import org.springframework.stereotype.Service
+import java.time.LocalDateTime
 
 @Service
 class BlockAndTxProcessor(
@@ -275,7 +275,7 @@ class BlockAndTxProcessor(
 
     fun processAndSaveTransactionData(
         res: ServiceOuterClass.GetTxResponse,
-        blockTime: DateTime,
+        blockTime: LocalDateTime,
         proposerRec: BlockProposer
     ): TxUpdatedItems {
         val tx = TxCacheRecord.buildInsert(res, blockTime)

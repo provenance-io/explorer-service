@@ -42,16 +42,13 @@ dependencies {
     implementation(project(":database"))
     implementation(project(":api-model"))
 
+    implementation(libs.bundles.exposed)
     implementation(libs.bundles.jackson)
     implementation(libs.bundles.ktor)
     implementation(libs.apache.commons.csv)
     implementation(libs.apache.commons.text)
     implementation(libs.bouncycastle)
     implementation(libs.caffeine)
-    implementation(libs.exposed)
-    implementation(libs.exposed.dao)
-    implementation(libs.exposed.java.datetime)
-    implementation(libs.exposed.jdbc)
     implementation(libs.flyway)
     implementation(libs.grpc.netty)
     implementation(libs.json)
@@ -115,12 +112,19 @@ plugins.withType<com.adarshr.gradle.testlogger.TestLoggerPlugin> {
     }
 }
 
-tasks.withType<Test> {
-    useJUnitPlatform {
-        excludeTags("intTest")
+tasks.named<Test>("test") {
+    useJUnitPlatform()
+    testLogging {
+        events("STANDARD_OUT")
     }
-
-    failFast = true
 }
+
+// tasks.withType<Test> {
+//    useJUnitPlatform {
+//        excludeTags("intTest")
+//    }
+//
+//    failFast = true
+// }
 
 springBoot.mainClass.set("io.provenance.explorer.ApplicationKt")

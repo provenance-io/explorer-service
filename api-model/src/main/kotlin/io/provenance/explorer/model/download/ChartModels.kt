@@ -2,26 +2,26 @@ package io.provenance.explorer.model.download
 
 import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.stringfy
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
-import org.joda.time.format.DateTimeFormat
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.math.BigDecimal
 import java.text.NumberFormat
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 val currFormat = NumberFormat.getCurrencyInstance(Locale.US).apply { maximumFractionDigits = 4 }
 fun BigDecimal.currFormat() = currFormat.format(this)
 
-fun DateTime.customFormat(granularity: DateTruncGranularity) =
+fun LocalDateTime.customFormat(granularity: DateTruncGranularity) =
     when (granularity) {
         DateTruncGranularity.HOUR,
-        DateTruncGranularity.MINUTE -> DateTimeFormat.forPattern("yyyy-MM-dd hh:mm:ss").print(this)
-        DateTruncGranularity.DAY -> DateTimeFormat.forPattern("yyyy-MM-dd").print(this)
-        DateTruncGranularity.MONTH -> DateTimeFormat.forPattern("yyyy-MM").print(this)
+        DateTruncGranularity.MINUTE -> DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss").format(this)
+        DateTruncGranularity.DAY -> DateTimeFormatter.ofPattern("yyyy-MM-dd").format(this)
+        DateTruncGranularity.MONTH -> DateTimeFormatter.ofPattern("yyyy-MM").format(this)
     }
 
 data class TxHistoryChartData(
-    val date: DateTime,
+    val date: LocalDateTime,
     val feepayer: String? = null,
     val txCount: BigDecimal,
     val feeAmountInBaseToken: BigDecimal,
@@ -38,7 +38,7 @@ data class TxHistoryChartData(
         hasFeepayer: Boolean,
         granularity: DateTruncGranularity
     ): MutableList<Any> {
-        val base = mutableListOf<Any>(this.date.withZone(DateTimeZone.UTC).customFormat(granularity))
+        val base = mutableListOf<Any>(this.date.customFormat(granularity))
         if (hasFeepayer) base.add(this.feepayer!!)
         base.addAll(
             listOf(
@@ -56,13 +56,13 @@ data class TxHistoryChartData(
 }
 
 data class TxTypeData(
-    val date: DateTime,
+    val date: LocalDateTime,
     val feepayer: String? = null,
     val txType: String,
     val txTypeCount: BigDecimal
 ) {
     fun toCsv(hasFeepayer: Boolean, granularity: DateTruncGranularity): MutableList<Any> {
-        val base = mutableListOf<Any>(this.date.withZone(DateTimeZone.UTC).customFormat(granularity))
+        val base = mutableListOf<Any>(this.date.customFormat(granularity))
         if (hasFeepayer) base.add(this.feepayer!!)
         base.addAll(listOf(this.txType, this.txTypeCount))
         return base
@@ -70,7 +70,7 @@ data class TxTypeData(
 }
 
 data class FeeTypeData(
-    val date: DateTime,
+    val date: LocalDateTime,
     val feepayer: String? = null,
     val feeType: String,
     val msgType: String?,
@@ -82,7 +82,7 @@ data class FeeTypeData(
     val avgTokenPriceUsd: BigDecimal?
 ) {
     fun toCsv(hasFeepayer: Boolean, granularity: DateTruncGranularity): MutableList<Any> {
-        val base = mutableListOf<Any>(this.date.withZone(DateTimeZone.UTC).customFormat(granularity))
+        val base = mutableListOf<Any>(this.date.customFormat(granularity))
         if (hasFeepayer) base.add(this.feepayer!!)
         base.addAll(
             listOf(

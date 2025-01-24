@@ -18,7 +18,6 @@ dependencies {
     api(project(":api-model"))
     implementation(libs.bundles.feign)
     implementation(libs.provenance.proto)
-    implementation(libs.joda.time)
 }
 
 tasks.withType<JavaCompile> {

@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
-import org.joda.time.DateTime
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -22,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDateTime
 
 @Validated
 @RestController
@@ -67,7 +67,7 @@ class NotificationController(private val notifService: NotificationService) {
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: DateTime?
+        fromDate: LocalDateTime?
     ) = ResponseEntity.ok(notifService.getAnnouncements(page, count, fromDate))
 
     @Operation(summary = "Returns a single announcement by ID")

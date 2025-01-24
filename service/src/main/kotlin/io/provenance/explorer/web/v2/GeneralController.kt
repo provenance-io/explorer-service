@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
-import org.joda.time.DateTime
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.validation.annotation.Validated
@@ -17,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDateTime
 
 @Validated
 @RestController
@@ -45,14 +45,14 @@ class GeneralController(private val explorerService: ExplorerService) {
         )
         @RequestParam(required = true)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: DateTime,
+        fromDate: LocalDateTime,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = true
         )
         @RequestParam(required = true)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: DateTime,
+        toDate: LocalDateTime,
         @Parameter(description = "The granularity of data, either DAY or HOUR", schema = Schema(defaultValue = "DAY", allowableValues = arrayOf("DAY", "HOUR")), required = false)
         @RequestParam(required = false)
         granularity: DateTruncGranularity?,
@@ -70,14 +70,14 @@ class GeneralController(private val explorerService: ExplorerService) {
         )
         @RequestParam(required = true)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: DateTime,
+        fromDate: LocalDateTime,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = true
         )
         @RequestParam(required = true)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: DateTime,
+        toDate: LocalDateTime,
         @Parameter(
             description = "The granularity of data, either MONTH, DAY or HOUR",
             schema = Schema(defaultValue = "DAY", allowableValues = arrayOf("MONTH", "DAY", "HOUR")),
@@ -100,14 +100,14 @@ class GeneralController(private val explorerService: ExplorerService) {
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: DateTime?,
+        fromDate: LocalDateTime?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: DateTime?,
+        toDate: LocalDateTime?,
         @Parameter(description = "The number of days of data returned", schema = Schema(defaultValue = "14"), required = false)
         @RequestParam(defaultValue = "14")
         @Min(1)
@@ -145,14 +145,14 @@ class GeneralController(private val explorerService: ExplorerService) {
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: DateTime?,
+        fromDate: LocalDateTime?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: DateTime?,
+        toDate: LocalDateTime?,
         @Parameter(description = "The number of days of data returned", schema = Schema(defaultValue = "14"), required = false)
         @RequestParam(defaultValue = "14")
         @Min(1)

@@ -6,7 +6,7 @@
 // import io.provenance.explorer.domain.models.clients.tendermint.JsonRpc
 // import io.provenance.explorer.domain.models.clients.tendermint.TendermintBlockchainResponse
 // import io.provenance.explorer.service.async.AsyncHistoricalTxService
-// import org.joda.time.DateTime
+// import java.time.LocalDateTime
 // import org.joda.time.LocalDate
 // import org.junit.Test
 // import org.junit.runner.RunWith
@@ -42,7 +42,7 @@
 //         val explorerProperties = ExplorerProperties()
 //         explorerProperties.initialHistoricalDayCount = "2"
 //         val historicalService = object : AsyncHistoricalTxService(explorerProperties, cacheService, blockService, transactionService) {
-//             override fun getEndDate(): DateTime {
+//             override fun getEndDate(): LocalDateTime {
 //                 return LocalDate.parse("2020-05-10").toDateTimeAtStartOfDay()
 //             }
 //         }
@@ -67,7 +67,7 @@
 //                 return Pair<Int, Int>(80, 61)
 //             }
 //
-//             override fun getEndDate(): DateTime {
+//             override fun getEndDate(): LocalDateTime {
 //                 return LocalDate.parse("2020-05-10").toDateTimeAtStartOfDay()
 //             }
 //         }

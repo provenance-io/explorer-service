@@ -1,13 +1,13 @@
 package io.provenance.explorer.model
 
 import io.provenance.explorer.model.base.CoinStr
-import org.joda.time.DateTime
+import java.time.LocalDateTime
 
 //region Authz Grant
 data class GrantData(
     val granter: String,
     val grantee: String,
-    val expiration: DateTime,
+    val expiration: LocalDateTime,
     val type: String,
     val authorization: AuthzGrant?
 )
@@ -52,7 +52,7 @@ open class Allowance
 
 data class BasicAllowance(
     val spendLimits: List<CoinStr>,
-    val expiration: DateTime? = null
+    val expiration: LocalDateTime? = null
 ) : Allowance()
 
 data class PeriodicAllowance(
@@ -61,7 +61,7 @@ data class PeriodicAllowance(
     val period: String,
     val spendLimit: List<CoinStr>,
     val spendRemaining: List<CoinStr>,
-    val periodReset: DateTime
+    val periodReset: LocalDateTime
 ) : Allowance()
 
 data class AllowedMsgAllowance(

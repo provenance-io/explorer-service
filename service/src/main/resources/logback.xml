@@ -10,5 +10,6 @@
 
     <logger name="org.springframework.beans.factory" level="INFO" />
     <logger name="org.springframework.context" level="INFO" />
-    <logger name="io.swagger" level="DEBUG" />
+    <logger name ="com.fasterxml.jackson" level="DEBUG" />
+    <logger name="io.swagger" level="INFO" />
 </configuration>

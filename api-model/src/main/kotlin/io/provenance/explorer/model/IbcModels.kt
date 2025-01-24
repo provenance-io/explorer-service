@@ -2,7 +2,7 @@ package io.provenance.explorer.model
 
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.provenance.explorer.model.base.CoinStr
-import org.joda.time.DateTime
+import java.time.LocalDateTime
 import java.math.BigInteger
 
 data class IbcDenomDetail(
@@ -66,5 +66,5 @@ data class BalanceByChannel(
 data class IbcRelayer(
     val address: String,
     val txCount: Long,
-    val lastTimestamp: DateTime
+    val lastTimestamp: LocalDateTime
 )

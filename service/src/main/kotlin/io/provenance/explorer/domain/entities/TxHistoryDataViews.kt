@@ -9,9 +9,9 @@ import io.provenance.explorer.model.base.DateTruncGranularity
 import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.VarCharColumnType
-import org.jetbrains.exposed.sql.jodatime.DateColumnType
+import org.jetbrains.exposed.sql.javatime.JavaLocalDateTimeColumnType
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
+import java.time.LocalDateTime
 
 class TxHistoryDataViews {
     companion object {
@@ -27,8 +27,8 @@ class TxHistoryDataViews {
 
         fun getTxHistoryChartData(
             granularity: DateTruncGranularity,
-            fromDate: DateTime? = null,
-            toDate: DateTime? = null,
+            fromDate: LocalDateTime? = null,
+            toDate: LocalDateTime? = null,
             feepayer: String? = null
         ) =
             transaction {
@@ -64,9 +64,9 @@ class TxHistoryDataViews {
                     Pair(IntegerColumnType(), UTILITY_TOKEN_BASE_MULTIPLIER)
                 )
                 if (fromDate != null) {
-                    arguments.add(Pair(DateColumnType(true), fromDate))
+                    arguments.add(Pair(JavaLocalDateTimeColumnType(), fromDate))
                     if (toDate != null) {
-                        arguments.add(Pair(DateColumnType(true), toDate.plusDays(1).minusMinutes(1)))
+                        arguments.add(Pair(JavaLocalDateTimeColumnType(), toDate.plusDays(1).minusMinutes(1)))
                     }
                 }
                 if (feepayer != null) {
@@ -77,8 +77,8 @@ class TxHistoryDataViews {
 
         fun getTxTypeData(
             granularity: DateTruncGranularity,
-            fromDate: DateTime? = null,
-            toDate: DateTime? = null,
+            fromDate: LocalDateTime? = null,
+            toDate: LocalDateTime? = null,
             feepayer: String? = null
         ) = transaction {
             val dateWhere =
@@ -102,9 +102,9 @@ class TxHistoryDataViews {
                     .trimIndent()
             val arguments = mutableListOf<Pair<ColumnType, *>>(Pair(VarCharColumnType(64), granularity.name))
             if (fromDate != null) {
-                arguments.add(Pair(DateColumnType(true), fromDate))
+                arguments.add(Pair(JavaLocalDateTimeColumnType(), fromDate))
                 if (toDate != null) {
-                    arguments.add(Pair(DateColumnType(true), toDate.plusDays(1).minusMinutes(1)))
+                    arguments.add(Pair(JavaLocalDateTimeColumnType(), toDate.plusDays(1).minusMinutes(1)))
                 }
             }
             if (feepayer != null) {
@@ -115,8 +115,8 @@ class TxHistoryDataViews {
 
         fun getFeeTypeData(
             granularity: DateTruncGranularity,
-            fromDate: DateTime? = null,
-            toDate: DateTime? = null,
+            fromDate: LocalDateTime? = null,
+            toDate: LocalDateTime? = null,
             feepayer: String? = null
         ) = transaction {
             val dateWhere =
@@ -150,9 +150,9 @@ class TxHistoryDataViews {
                 Pair(IntegerColumnType(), UTILITY_TOKEN_BASE_MULTIPLIER)
             )
             if (fromDate != null) {
-                arguments.add(Pair(DateColumnType(true), fromDate))
+                arguments.add(Pair(JavaLocalDateTimeColumnType(), fromDate))
                 if (toDate != null) {
-                    arguments.add(Pair(DateColumnType(true), toDate.plusDays(1).minusMinutes(1)))
+                    arguments.add(Pair(JavaLocalDateTimeColumnType(), toDate.plusDays(1).minusMinutes(1)))
                 }
             }
             if (feepayer != null) {

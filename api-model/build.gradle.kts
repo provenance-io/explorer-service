@@ -15,8 +15,8 @@ repositories {
 }
 
 dependencies {
-    implementation(libs.jackson.jodadatatype)
     implementation(libs.provenance.proto)
+    implementation(libs.bundles.jackson)
 }
 
 tasks.withType<JavaCompile> {

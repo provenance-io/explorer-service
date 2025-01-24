@@ -27,11 +27,11 @@ import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
-import org.jetbrains.exposed.sql.jodatime.datetime
+import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
 import java.math.BigDecimal
+import java.time.LocalDateTime
 
 object MarkerCacheTable : IntIdTable(name = "marker_cache") {
     val markerAddress = varchar("marker_address", 128).nullable()
@@ -55,7 +55,7 @@ class MarkerCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             status: String,
             marker: MarkerAccount?,
             supply: BigDecimal,
-            txTimestamp: DateTime?
+            txTimestamp: LocalDateTime?
         ) =
             transaction {
                 MarkerCacheTable.insertIgnoreAndGetId {
@@ -231,7 +231,7 @@ class AssetPricingRecord(id: EntityID<Int>) : IntEntity(id) {
                 .limit(1)
                 .firstOrNull()
         }
-        fun upsert(markerId: Int, markerDenom: String, markerAddress: String?, pricingDenom: String, pricingAmount: BigDecimal, timestamp: DateTime) = transaction {
+        fun upsert(markerId: Int, markerDenom: String, markerAddress: String?, pricingDenom: String, pricingAmount: BigDecimal, timestamp: LocalDateTime) = transaction {
             findUnique(markerDenom, pricingDenom)?.apply {
                 this.pricing = pricingAmount
                 this.lastUpdated = timestamp

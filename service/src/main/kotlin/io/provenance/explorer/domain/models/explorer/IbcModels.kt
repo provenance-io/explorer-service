@@ -4,8 +4,8 @@ import cosmos.base.abci.v1beta1.Abci
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.IbcAckType
 import io.provenance.explorer.domain.entities.IbcChannelRecord
-import org.joda.time.DateTime
 import java.math.BigDecimal
+import java.time.LocalDateTime
 
 data class LedgerInfo(
     var channel: IbcChannelRecord? = null,
@@ -37,7 +37,7 @@ data class LedgerBySliceRes(
     val denomTrace: String,
     val balanceIn: BigDecimal?,
     val balanceOut: BigDecimal?,
-    val lastTx: DateTime
+    val lastTx: LocalDateTime
 )
 
 data class TxIbcData(

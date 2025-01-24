@@ -33,10 +33,10 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.castTo
 import org.jetbrains.exposed.sql.innerJoin
-import org.jetbrains.exposed.sql.jodatime.datetime
+import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
+import java.time.LocalDateTime
 import cosmos.gov.v1.Gov as GovV1
 import cosmos.gov.v1beta1.Gov as GovV1beta1
 
@@ -96,7 +96,7 @@ class GovProposalRecord(id: EntityID<Int>) : IntEntity(id) {
             GovProposalRecord.find { GovProposalTable.status notInList completeStatuses }.toList()
         }
 
-        fun getCompletedProposalsForPeriod(startDate: DateTime, endDate: DateTime) = transaction {
+        fun getCompletedProposalsForPeriod(startDate: LocalDateTime, endDate: LocalDateTime) = transaction {
             GovProposalRecord.find {
                 (GovProposalTable.txTimestamp.between(startDate, endDate)) and
                     (GovProposalTable.status inList completeStatuses) and
@@ -441,7 +441,7 @@ class ProposalMonitorRecord(id: EntityID<Int>) : IntEntity(id) {
             proposalId: Long,
             submittedHeight: Int,
             proposedCompletionHeight: Int,
-            votingEndTime: DateTime,
+            votingEndTime: LocalDateTime,
             proposalType: MonitorProposalType,
             dataHash: String
         ) = listOf(
@@ -458,7 +458,7 @@ class ProposalMonitorRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun ProposalMonitorRecord.checkIfProposalReadyForProcessing(
             proposalStatus: String,
-            currentBlockTime: DateTime
+            currentBlockTime: LocalDateTime
         ) =
             if (passStatuses.contains(proposalStatus) && this.votingEndTime.isBefore(currentBlockTime)) {
                 this.apply { this.readyForProcessing = true }

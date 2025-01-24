@@ -17,10 +17,11 @@ import io.provenance.explorer.model.ScheduledUpgrade
 import io.provenance.explorer.model.base.PagedResults
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 @Service
 class NotificationService(
@@ -55,14 +56,16 @@ class NotificationService(
             }.sortedBy { it.proposalId }
 
         val avgBlockTime = cacheService.getAvgBlockTime()
-        val currentTimeMs = DateTime.now(DateTimeZone.UTC).millis
+        val currentTimeMs = Instant.now().toEpochMilli()
 
         upgrades.map {
             val plan = it.getUpgradePlan()!!
             val plannedHeight = plan.height
             val heightDiff = plannedHeight - currentHeight
             val additionalMs = avgBlockTime.multiply(BigDecimal(1000)).multiply(BigDecimal(heightDiff)).toLong()
-            val approxUpgrade = DateTime(currentTimeMs + additionalMs, DateTimeZone.UTC)
+            val approxUpgrade = Instant.ofEpochMilli(currentTimeMs + additionalMs).let {
+                LocalDateTime.ofInstant(it, ZoneOffset.UTC)
+            }
 
             ScheduledUpgrade(
                 it.proposalId,
@@ -86,7 +89,7 @@ class NotificationService(
         return this
     }
 
-    fun getAnnouncements(page: Int, count: Int, fromDate: DateTime?) =
+    fun getAnnouncements(page: Int, count: Int, fromDate: LocalDateTime?) =
         AnnouncementRecord.getAnnouncements(page.toOffset(count), count, fromDate)
             .let { results ->
                 val totalCount = AnnouncementRecord.getAnnouncementCount(fromDate)

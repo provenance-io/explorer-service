@@ -44,9 +44,9 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
@@ -297,7 +297,7 @@ class AssetService(
     }
 }
 
-fun insertAssetPricing(marker: Pair<EntityID<Int>, MarkerCacheRecord>, markerDenom: String, markerAddress: String?, pricingDenom: String, pricingAmount: BigDecimal, timestamp: DateTime) = transaction {
+fun insertAssetPricing(marker: Pair<EntityID<Int>, MarkerCacheRecord>, markerDenom: String, markerAddress: String?, pricingDenom: String, pricingAmount: BigDecimal, timestamp: LocalDateTime) = transaction {
     marker.first.value.let { AssetPricingRecord.upsert(it, markerDenom, markerAddress, pricingDenom, pricingAmount, timestamp) }
 }
 fun String.getDenomByAddress() = MarkerCacheRecord.findByAddress(this)?.denom

@@ -13,11 +13,11 @@ class BatchUpsert(
     private val conflictKeys: List<Column<*>>,
     private val updateKeys: List<Column<*>>
 ) : BatchInsertStatement(table, false) {
-    override fun prepareSQL(transaction: Transaction): String {
+    override fun prepareSQL(transaction: Transaction, prepared: Boolean): String {
         val tm = TransactionManager.current()
         val updateSetter = updateKeys.joinToString { "${tm.identity(it)} = EXCLUDED.${tm.identity(it)}" }
         val onConflict = "ON CONFLICT (${conflictKeys.joinToString { tm.identity(it) }}) DO UPDATE SET $updateSetter"
-        return "${super.prepareSQL(transaction)} $onConflict"
+        return "${super.prepareSQL(transaction, prepared)} $onConflict"
     }
 }
 

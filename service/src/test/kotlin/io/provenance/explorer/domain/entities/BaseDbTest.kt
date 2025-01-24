@@ -9,7 +9,7 @@ abstract class BaseDbTest {
 
     companion object {
         init {
-            Database.connect("jdbc:h2:mem:test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;", driver = "org.h2.Driver")
+            Database.connect("jdbc:h2:mem:test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1;", driver = "org.h2.Driver")
             transaction {
                 var sql = this::class.java.getResource("/db/migration/V1_96__Add_nav_event_table.sql")!!
                     .readText()
@@ -17,6 +17,20 @@ abstract class BaseDbTest {
                     .replace("TIMESTAMPTZ", "TIMESTAMP")
                     .replace("TEXT", "VARCHAR(255)")
                 exec(sql)
+
+//                this::class.java.getResource("/db/migration/V1_98__Rename_Keyword_Columns.sql")!!
+//                    .readText().apply {
+//                        println(this)
+//                        exec(this)
+//                    }
+
+//                "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'NAV_EVENTS';".let {
+//                    exec(it) {
+//                        while (it.next()) {
+//                            println(it.getString(1))
+//                        }
+//                    }
+//                }
             }
         }
     }
