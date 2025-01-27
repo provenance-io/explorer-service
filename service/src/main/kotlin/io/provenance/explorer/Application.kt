@@ -18,6 +18,7 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
 import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.cache.annotation.EnableCaching
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.scheduling.annotation.EnableScheduling
 import java.util.TimeZone
@@ -27,6 +28,7 @@ import java.util.TimeZone
 @EnableAutoConfiguration(exclude = [HibernateJpaAutoConfiguration::class])
 @EnableConfigurationProperties(value = [ExplorerProperties::class])
 @EnableScheduling
+@EnableCaching
 class Application
 
 const val TIMEZONE = "UTC"

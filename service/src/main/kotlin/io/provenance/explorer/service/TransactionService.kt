@@ -62,6 +62,8 @@ import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -135,6 +137,9 @@ class TransactionService(
                 nftType = nft?.first, nftUuid = nft?.third, ibcChannelIds = ibcChannelIds
             )
 
+        // Mimic the date pattern that was returned previously with Jodatime.
+        val dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+
         val total = TxCacheRecord.findByQueryParamsForCount(params)
         TxCacheRecord.findByQueryForResults(params).map {
             val rec = it
@@ -150,7 +155,7 @@ class TransactionService(
                 rec.height,
                 MsgInfo(transaction { rec.txMessages.count() }, displayMsgType),
                 getMonikers(rec.id),
-                rec.txTimestamp.toString(),
+                rec.txTimestamp.atZone(ZoneId.of("UTC")).format(dateFormat),
                 transaction { rec.txFees.filter { fee -> fee.marker == UTILITY_TOKEN }.toFeePaid(UTILITY_TOKEN) },
                 getTxSignatures(rec.id.value),
                 if (rec.errorCode == null) "success" else "failed",
