@@ -23,7 +23,6 @@ import org.springframework.context.annotation.ComponentScan
 import org.springframework.scheduling.annotation.EnableScheduling
 import java.util.TimeZone
 
-// @EnableWebMvc
 @ComponentScan(basePackages = ["io.provenance.explorer" ])
 @EnableAutoConfiguration(exclude = [HibernateJpaAutoConfiguration::class])
 @EnableConfigurationProperties(value = [ExplorerProperties::class])

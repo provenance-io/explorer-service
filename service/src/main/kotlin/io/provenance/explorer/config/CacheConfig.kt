@@ -7,16 +7,10 @@ import java.util.concurrent.TimeUnit
 
 @Configuration
 class CacheConfig {
-    init {
-        println("INIT CacheConfig")
-    }
-
     @Bean
     fun cacheManager() =
         CaffeineCacheManager("responses").apply {
             setCaffeine(caffieneConfig())
-        }.also {
-            println("Configuring CacheManager")
         }
 
     fun caffieneConfig() =
