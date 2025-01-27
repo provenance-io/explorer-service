@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import java.time.LocalDateTime
+import java.time.LocalDate
 
 @Validated
 @RestController
@@ -67,8 +67,8 @@ class NotificationController(private val notifService: NotificationService) {
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: LocalDateTime?
-    ) = ResponseEntity.ok(notifService.getAnnouncements(page, count, fromDate))
+        fromDate: LocalDate?
+    ) = ResponseEntity.ok(notifService.getAnnouncements(page, count, fromDate?.atStartOfDay()))
 
     @Operation(summary = "Returns a single announcement by ID")
     @GetMapping("/announcement/{id}")

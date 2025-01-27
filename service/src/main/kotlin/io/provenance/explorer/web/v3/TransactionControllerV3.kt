@@ -1,14 +1,17 @@
 package io.provenance.explorer.web.v3
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.provenance.explorer.domain.models.explorer.download.TxHistoryDataRequest
 import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.Timeframe
+import io.provenance.explorer.model.download.TxHistoryChartData
 import io.provenance.explorer.service.TransactionService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.validation.annotation.Validated
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Validated
@@ -27,6 +31,8 @@ import java.time.LocalDateTime
     description = "Transaction endpoints",
 )
 class TransactionControllerV3(private val transactionService: TransactionService) {
+    @Autowired
+    lateinit var mapper: ObjectMapper
 
     @Operation(summary = "Get Tx History chart data")
     @GetMapping("/history")
@@ -37,14 +43,14 @@ class TransactionControllerV3(private val transactionService: TransactionService
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: LocalDateTime?,
+        fromDate: LocalDate?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: LocalDateTime?,
+        toDate: LocalDate?,
         @Parameter(
             description = "The granularity of data, either MONTH, DAY or HOUR",
             schema = Schema(defaultValue = "DAY", allowableValues = arrayOf("MONTH", "DAY", "HOUR")),
@@ -52,7 +58,9 @@ class TransactionControllerV3(private val transactionService: TransactionService
         )
         @RequestParam(defaultValue = "DAY")
         granularity: DateTruncGranularity
-    ) = transactionService.getTxHistoryChartData(TxHistoryDataRequest(fromDate, toDate, granularity))
+    ): List<TxHistoryChartData> {
+        return transactionService.getTxHistoryChartData(TxHistoryDataRequest(fromDate?.atStartOfDay(), toDate?.atStartOfDay(), granularity))
+    }
 
     @Operation(summary = "Get Tx History chart data as a ZIP download, containing CSVs")
     @GetMapping("/history/download", produces = ["application/zip"])

@@ -1,5 +1,6 @@
 package io.provenance.explorer.web.v3
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.annotation.HiddenApi
 import io.provenance.explorer.domain.models.explorer.TokenHistoricalDataRequest
@@ -10,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.validation.annotation.Validated
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Validated
@@ -27,6 +30,8 @@ import java.time.LocalDateTime
     description = "Utility Token-related data - statistics surrounding the utility token (nhash)"
 )
 class TokenController(private val tokenService: TokenService) {
+    @Autowired
+    lateinit var mapper: ObjectMapper
 
     @Operation(summary = "Returns token statistics for the chain, ie circulation, community pool")
     @GetMapping("/stats")
@@ -71,15 +76,15 @@ class TokenController(private val tokenService: TokenService) {
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: LocalDateTime?,
+        fromDate: LocalDate?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: LocalDateTime?
-    ) = tokenService.getTokenHistorical(fromDate, toDate)
+        toDate: LocalDate?
+    ) = tokenService.getTokenHistorical(fromDate?.atStartOfDay(), toDate?.atStartOfDay())
 
     @Operation(summary = "Returns CoinMarketCap latest token pricing")
     @GetMapping("/latest_pricing")

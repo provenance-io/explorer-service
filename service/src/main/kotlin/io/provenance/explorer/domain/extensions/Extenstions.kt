@@ -1,16 +1,9 @@
 package io.provenance.explorer.domain.extensions
 
-import com.fasterxml.jackson.annotation.JsonInclude
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.databind.node.ObjectNode
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.google.common.hash.Hashing
 import com.google.protobuf.ByteString
 import com.google.protobuf.Timestamp
-import com.hubspot.jackson.datatype.protobuf.ProtobufModule
 import cosmos.base.abci.v1beta1.Abci
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.OBJECT_MAPPER
@@ -196,18 +189,3 @@ fun List<BigDecimal>.average() = this.fold(BigDecimal.ZERO, BigDecimal::add)
 fun String.nullOrString() = this.ifBlank { null }
 
 fun String.toNormalCase() = this.splitToWords().joinToString(" ")
-
-/**
- * ObjectMapper extension for getting the ObjectMapper configured
- * Attach to
- * Spring Boot via @Bean and @Primary:
- *  @Primary
- *  @Bean
- *  fun mapper(): ObjectMapper = ObjectMapper().configureFigure()
- */
-fun ObjectMapper.configureProvenance(): ObjectMapper = this.registerKotlinModule()
-    .registerModule(JavaTimeModule())
-    .registerModule(ProtobufModule())
-    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-    .setSerializationInclusion(JsonInclude.Include.NON_NULL)
-    .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)

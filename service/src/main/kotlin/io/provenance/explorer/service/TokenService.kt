@@ -1,8 +1,8 @@
 package io.provenance.explorer.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import cosmos.auth.v1beta1.Auth
-import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
@@ -53,6 +53,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -67,6 +68,9 @@ class TokenService(
     private val accountClient: AccountGrpcClient,
     private val historicalPriceFetcherFactory: HistoricalPriceFetcherFactory
 ) {
+    @Autowired
+    lateinit var objectMapper: ObjectMapper
+
     protected val logger = logger(TokenService::class)
 
     protected val historicalPriceFetchers: List<HistoricalPriceFetcher> by lazy {
@@ -235,7 +239,7 @@ class TokenService(
         TokenHistoricalDailyRecord.findForDates(fromDate?.startOfDay(), toDate?.startOfDay())
 
     fun getTokenLatest() = CacheUpdateRecord.fetchCacheByKey(CacheKeys.UTILITY_TOKEN_LATEST.key)?.cacheValue?.let {
-        VANILLA_MAPPER.readValue<CmcLatestDataAbbrev>(it)
+        objectMapper.readValue<CmcLatestDataAbbrev>(it)
     }
 
     fun fetchHistoricalPriceData(fromDate: LocalDateTime?): List<HistoricalPrice> = runBlocking {
@@ -329,7 +333,7 @@ class TokenService(
     protected fun cacheLatestTokenData(data: CmcLatestDataAbbrev) {
         CacheUpdateRecord.updateCacheByKey(
             CacheKeys.UTILITY_TOKEN_LATEST.key,
-            VANILLA_MAPPER.writeValueAsString(data)
+            objectMapper.writeValueAsString(data)
         )
     }
 
