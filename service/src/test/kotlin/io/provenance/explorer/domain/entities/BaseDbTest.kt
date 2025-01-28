@@ -17,20 +17,6 @@ abstract class BaseDbTest {
                     .replace("TIMESTAMPTZ", "TIMESTAMP")
                     .replace("TEXT", "VARCHAR(255)")
                 exec(sql)
-
-//                this::class.java.getResource("/db/migration/V1_98__Rename_Keyword_Columns.sql")!!
-//                    .readText().apply {
-//                        println(this)
-//                        exec(this)
-//                    }
-
-//                "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'NAV_EVENTS';".let {
-//                    exec(it) {
-//                        while (it.next()) {
-//                            println(it.getString(1))
-//                        }
-//                    }
-//                }
             }
         }
     }

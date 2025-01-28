@@ -57,12 +57,13 @@ import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.scheduling.annotation.Scheduled
+import org.springframework.stereotype.Service
 import tendermint.types.BlockOuterClass
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-// @Service
+ @Service
 class ScheduledTaskService(
     private val props: ExplorerProperties,
     private val blockService: BlockService,
