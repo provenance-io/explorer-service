@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import java.time.LocalDateTime
+import java.time.LocalDate
 
 @Validated
 @RestController
@@ -109,14 +109,14 @@ class AccountControllerV3(private val accountService: AccountService, private va
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: LocalDateTime?,
+        fromDate: LocalDate?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: LocalDateTime?,
+        toDate: LocalDate?,
         @Parameter(
             description = "The granularity of data, either MONTH, DAY or HOUR",
             schema = Schema(defaultValue = "DAY", allowableValues = arrayOf("MONTH", "DAY", "HOUR")),
@@ -125,7 +125,7 @@ class AccountControllerV3(private val accountService: AccountService, private va
         )
         @RequestParam(defaultValue = "DAY")
         granularity: DateTruncGranularity
-    ) = accountService.getAccountTxHistoryChartData(address, TxHistoryDataRequest(fromDate, toDate, granularity))
+    ) = accountService.getAccountTxHistoryChartData(address, TxHistoryDataRequest(fromDate?.atStartOfDay(), toDate?.atStartOfDay(), granularity))
 
     @Operation(summary = "Get account tx history chart data as a ZIP download, containing CSVs")
     @GetMapping("{address}/tx_history/download", produces = ["application/zip"])
@@ -139,14 +139,14 @@ class AccountControllerV3(private val accountService: AccountService, private va
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: LocalDateTime?,
+        fromDate: LocalDate?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: LocalDateTime?,
+        toDate: LocalDate?,
         @Parameter(
             description = "The granularity of data, either MONTH, DAY or HOUR",
             schema = Schema(defaultValue = "DAY", allowableValues = arrayOf("MONTH", "DAY", "HOUR")),
@@ -163,7 +163,7 @@ class AccountControllerV3(private val accountService: AccountService, private va
         advancedMetrics: Boolean,
         response: HttpServletResponse
     ) {
-        val filters = TxHistoryDataRequest(fromDate, toDate, granularity, advancedMetrics)
+        val filters = TxHistoryDataRequest(fromDate?.atStartOfDay(), toDate?.atStartOfDay(), granularity, advancedMetrics)
         response.status = HttpServletResponse.SC_OK
         response.addHeader("Content-Disposition", "attachment; filename=\"${filters.getFileNameBase(address)}.zip\"")
         accountService.getAccountTxHistoryChartDataDownload(filters, address, response.outputStream)
