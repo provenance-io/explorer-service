@@ -14,6 +14,7 @@ import io.ktor.client.engine.java.Java
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.jackson.jackson
 import io.provenance.explorer.config.ExplorerProperties
+import kotlinx.coroutines.coroutineScope
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
 import org.springframework.boot.builder.SpringApplicationBuilder
@@ -21,6 +22,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.cache.annotation.EnableCaching
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.scheduling.annotation.EnableScheduling
+import java.time.Duration
+import java.time.Instant
 import java.util.TimeZone
 
 @ComponentScan(basePackages = ["io.provenance.explorer" ])
@@ -31,6 +34,23 @@ import java.util.TimeZone
 class Application
 
 const val TIMEZONE = "UTC"
+
+suspend fun <T> timed(title: String? = null, fn: suspend () -> T): T {
+    val titleStr = title ?: fn.toString()
+
+    val start = Instant.now()
+    println("$titleStr ${Thread.currentThread()} - $start")
+
+    val retVal = coroutineScope {
+        fn()
+    }
+    val end = Instant.now()
+
+    val totalTime = Duration.between(start, end)
+    println("$titleStr took $totalTime")
+
+    return retVal
+}
 
 fun main(args: Array<String>) {
     TimeZone.setDefault(TimeZone.getTimeZone(TIMEZONE))
