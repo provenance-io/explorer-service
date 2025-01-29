@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import java.time.LocalDateTime
+import java.time.LocalDate
 
 @Validated
 @RestController
@@ -148,19 +148,19 @@ class ValidatorControllerV2(
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: LocalDateTime?,
+        fromDate: LocalDate?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: LocalDateTime?,
+        toDate: LocalDate?,
         @Parameter(description = "The number of days of data returned", schema = Schema(defaultValue = "14"), required = false)
         @RequestParam(defaultValue = "14")
         @Min(1)
         dayCount: Int
-    ) = validatorService.getValidatorMarketRateStats(address, fromDate, toDate, dayCount)
+    ) = validatorService.getValidatorMarketRateStats(address, fromDate?.atStartOfDay(), toDate?.atStartOfDay(), dayCount)
 
     @Operation(summary = "Returns distinct validators with missed blocks for the timeframe")
     @GetMapping("/missed_blocks/distinct")

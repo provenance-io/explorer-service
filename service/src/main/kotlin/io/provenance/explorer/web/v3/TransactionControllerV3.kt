@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 @Validated
 @RestController
@@ -71,14 +70,14 @@ class TransactionControllerV3(private val transactionService: TransactionService
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: LocalDateTime?,
+        fromDate: LocalDate?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: LocalDateTime?,
+        toDate: LocalDate?,
         @Parameter(
             description = "The granularity of data, either MONTH, DAY or HOUR",
             schema = Schema(defaultValue = "DAY", allowableValues = arrayOf("MONTH", "DAY", "HOUR")),
@@ -94,7 +93,7 @@ class TransactionControllerV3(private val transactionService: TransactionService
         advancedMetrics: Boolean,
         response: HttpServletResponse
     ) {
-        val filters = TxHistoryDataRequest(fromDate, toDate, granularity, advancedMetrics)
+        val filters = TxHistoryDataRequest(fromDate?.atStartOfDay(), toDate?.atStartOfDay(), granularity, advancedMetrics)
         response.status = HttpServletResponse.SC_OK
         response.addHeader("Content-Disposition", "attachment; filename=\"${filters.getFileNameBase(null)}.zip\"")
         transactionService.getTxHistoryChartDataDownload(filters, response.outputStream)
@@ -118,14 +117,14 @@ class TransactionControllerV3(private val transactionService: TransactionService
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: LocalDateTime?,
+        fromDate: LocalDate?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: LocalDateTime?,
+        toDate: LocalDate?,
         @Parameter(
             description = "The timeframe of data, either QUARTER, MONTH, WEEK, or FOREVER",
             schema = Schema(defaultValue = "FOREVER", allowableValues = arrayOf("FOREVER", "QUARTER", "MONTH", "WEEK")),
@@ -133,5 +132,5 @@ class TransactionControllerV3(private val transactionService: TransactionService
         )
         @RequestParam(defaultValue = "FOREVER", required = false)
         timeframe: Timeframe
-    ) = transactionService.getTxHeatmap(fromDate, toDate, timeframe)
+    ) = transactionService.getTxHeatmap(fromDate?.atStartOfDay(), toDate?.atStartOfDay(), timeframe)
 }

@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 @Validated
 @RestController
@@ -99,17 +98,17 @@ class TokenController(private val tokenService: TokenService) {
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: LocalDateTime?,
+        fromDate: LocalDate?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: LocalDateTime?,
+        toDate: LocalDate?,
         response: HttpServletResponse
     ) {
-        val filters = TokenHistoricalDataRequest(fromDate, toDate)
+        val filters = TokenHistoricalDataRequest(fromDate?.atStartOfDay(), toDate?.atStartOfDay())
         response.status = HttpServletResponse.SC_OK
         response.addHeader("Content-Disposition", "attachment; filename=\"${filters.getFileNameBase()}.zip\"")
         tokenService.getHashPricingDataDownload(filters, response.outputStream)

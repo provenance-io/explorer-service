@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Validated
@@ -233,22 +234,22 @@ class TransactionControllerV2(private val transactionService: TransactionService
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: LocalDateTime?,
+        fromDate: LocalDate?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: LocalDateTime?
+        toDate: LocalDate?
     ) = transactionService.getTxsByQuery(
         address = address,
         msgType = msgType,
         txStatus = txStatus,
         count = count,
         page = page,
-        fromDate = fromDate,
-        toDate = toDate
+        fromDate = fromDate?.atStartOfDay(),
+        toDate = toDate?.atStartOfDay()
     )
 
     @Operation(summary = "Returns transactions by query params for a specific nft address")
@@ -278,21 +279,21 @@ class TransactionControllerV2(private val transactionService: TransactionService
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: LocalDateTime?,
+        fromDate: LocalDate?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: LocalDateTime?
+        toDate: LocalDate?
     ) = transactionService.getTxsByQuery(
         msgType = msgType,
         txStatus = txStatus,
         count = count,
         page = page,
-        fromDate = fromDate,
-        toDate = toDate,
+        fromDate = fromDate?.atStartOfDay(),
+        toDate = toDate?.atStartOfDay(),
         nftAddr = nftAddr
     )
 
@@ -323,15 +324,15 @@ class TransactionControllerV2(private val transactionService: TransactionService
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: LocalDateTime?,
+        fromDate: LocalDate?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: LocalDateTime?
-    ) = transactionService.getGovernanceTxs(address, msgType, txStatus, page, count, fromDate, toDate)
+        toDate: LocalDate?
+    ) = transactionService.getGovernanceTxs(address, msgType, txStatus, page, count, fromDate?.atStartOfDay(), toDate?.atStartOfDay())
 
     @Operation(summary = "Returns transactions for smart contract module with unique response type")
     @GetMapping("/module/smart_contract")
@@ -363,15 +364,15 @@ class TransactionControllerV2(private val transactionService: TransactionService
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: LocalDateTime?,
+        fromDate: LocalDate?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: LocalDateTime?
-    ) = transactionService.getSmartContractTxs(code, contract, msgType, txStatus, page, count, fromDate, toDate)
+        toDate: LocalDate?
+    ) = transactionService.getSmartContractTxs(code, contract, msgType, txStatus, page, count, fromDate?.atStartOfDay(), toDate?.atStartOfDay())
 
     @Operation(summary = "Returns transactions for the IBC module with standard response type")
     @GetMapping("/ibc/chain/{ibcChain}")
@@ -406,16 +407,16 @@ class TransactionControllerV2(private val transactionService: TransactionService
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: LocalDateTime?,
+        fromDate: LocalDate?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: LocalDateTime?
+        toDate: LocalDate?
     ) = transactionService.getTxsByQuery(
-        msgType = msgType, txStatus = txStatus, count = count, page = page, fromDate = fromDate,
-        toDate = toDate, ibcChain = ibcChain, ibcSrcPort = ibcSrcPort, ibcSrcChannel = ibcSrcChannel
+        msgType = msgType, txStatus = txStatus, count = count, page = page, fromDate = fromDate?.atStartOfDay(),
+        toDate = toDate?.atStartOfDay(), ibcChain = ibcChain, ibcSrcPort = ibcSrcPort, ibcSrcChannel = ibcSrcChannel
     )
 }
