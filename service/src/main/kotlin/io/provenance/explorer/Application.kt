@@ -14,7 +14,6 @@ import io.ktor.client.engine.java.Java
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.jackson.jackson
 import io.provenance.explorer.config.ExplorerProperties
-import kotlinx.coroutines.coroutineScope
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
 import org.springframework.boot.builder.SpringApplicationBuilder
@@ -35,19 +34,18 @@ class Application
 
 const val TIMEZONE = "UTC"
 
-suspend fun <T> timed(title: String? = null, fn: suspend () -> T): T {
+fun <T> timed(title: String? = null, fn: () -> T): T {
     val titleStr = title ?: fn.toString()
 
     val start = Instant.now()
     println("$titleStr ${Thread.currentThread()} - $start")
 
-    val retVal = coroutineScope {
-        fn()
-    }
+    val retVal = fn()
+
     val end = Instant.now()
 
     val totalTime = Duration.between(start, end)
-    println("$titleStr took $totalTime")
+    println("$titleStr took ${totalTime.seconds}s ${totalTime.toMillis()}ms")
 
     return retVal
 }
