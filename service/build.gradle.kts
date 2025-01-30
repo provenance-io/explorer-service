@@ -45,6 +45,8 @@ dependencies {
     implementation(libs.bundles.exposed)
     implementation(libs.bundles.jackson)
     implementation(libs.bundles.ktor)
+    implementation(libs.bundles.logback)
+
     implementation(libs.apache.commons.csv)
     implementation(libs.apache.commons.text)
     implementation(libs.bouncycastle)

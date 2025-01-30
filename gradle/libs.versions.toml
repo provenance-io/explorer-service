@@ -27,7 +27,9 @@ kotlin = "1.9.25"
 kotlinLogging = "3.0.5"
 kotlinx-coroutines = "1.6.4"
 ktor = "2.3.12"
-logback = "1.4.14"
+logback = "1.5.12"
+logback-access = "2.0.6"
+logback-json = "8.0"
 mockk = "1.13.10"
 moshi = "1.15.1"
 okhttp = "4.12.0"
@@ -95,6 +97,9 @@ ktor-client-java = { group = "io.ktor", name = "ktor-client-java", version.ref =
 ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serialization-jackson = { group = "io.ktor", name = "ktor-serialization-jackson", version.ref = "ktor" }
 logback-classic = { group = "ch.qos.logback", name = "logback-classic", version.ref = "logback" }
+logback-access = { group = "ch.qos.logback.access", name = "logback-access-common", version.ref = "logback-access" }
+logback-access-tomcat = { group = "ch.qos.logback.access", name = "logback-access-tomcat", version.ref = "logback-access" }
+logback-json = { group = "net.logstash.logback", name = "logstash-logback-encoder", version.ref = "logback-json" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 moshi = { group = "com.squareup.moshi", name = "moshi", version.ref = "moshi" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
@@ -131,6 +136,8 @@ grpc = ["grpc", "grpc-protobuf", "grpc-kotlin"]
 jackson = ["jackson-core", "jackson-kotlin", "jackson-module-protobuf", "jackson-databind", "jackson-javadatatype"]
 kotlinx-coroutines = ["kotlinx-coroutines-core", "kotlinx-coroutines-jdk8", "kotlinx-coroutines-reactor"]
 ktor = ["ktor-client-core", "ktor-client-java", "ktor-client-content-negotiation", "ktor-serialization-jackson"]
+logback = ["logback-classic"]
+#logback = ["logback-access", "logback-access-tomcat", "logback-json"]
 logging = ["kotlin-logging", "logback-classic"]
 protobuf = ["protobuf-java", "protobuf-java-util", "protobuf-kotlin"]
 testcontainers = ["testcontainers", "testcontainers-junit", "testcontainers-postgresql"]
