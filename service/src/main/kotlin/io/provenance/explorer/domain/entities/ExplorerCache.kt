@@ -1,7 +1,9 @@
 package io.provenance.explorer.domain.entities
 
+import com.fasterxml.jackson.databind.JsonNode
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
 import io.provenance.explorer.model.ChainAum
 import io.provenance.explorer.model.ChainMarketRate
 import io.provenance.explorer.model.CmcHistoricalQuote
@@ -14,6 +16,7 @@ import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
@@ -278,7 +281,7 @@ class ProcessQueueRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findByType(processType: ProcessQueueType) = transaction {
             ProcessQueueRecord.find {
                 (ProcessQueueTable.processType eq processType.name) and
-                    (ProcessQueueTable.processing eq false)
+                        (ProcessQueueTable.processing eq false)
             }.toList()
         }
 
@@ -291,19 +294,58 @@ class ProcessQueueRecord(id: EntityID<Int>) : IntEntity(id) {
         fun delete(processType: ProcessQueueType, value: String) = transaction {
             ProcessQueueTable.deleteWhere {
                 (ProcessQueueTable.processType eq processType.name) and
-                    (processValue eq value)
+                        (processValue eq value)
             }
         }
 
-        fun insertIgnore(processType: ProcessQueueType, processValue: String) = transaction {
-            ProcessQueueTable.insertIgnore {
-                it[this.processType] = processType.name
-                it[this.processValue] = processValue
+        fun insertIgnore(processType: ProcessQueueType, processValue: String) =
+            transaction {
+                ProcessQueueTable.insertIgnore {
+                    it[this.processType] = processType.name
+                    it[this.processValue] = processValue
+                }
             }
-        }
     }
 
     var processType by ProcessQueueTable.processType
     var processValue by ProcessQueueTable.processValue
     var processing by ProcessQueueTable.processing
+}
+
+object PulseCacheTable :
+    IdTable<LocalDateTime>(name = "pulse_cache") {
+    val cachedTimestamp = datetime("cached_timestamp")
+    override val id = cachedTimestamp.entityId()
+    val data = jsonb<PulseCacheTable, JsonNode>("data", OBJECT_MAPPER)
+    val denom = text("denom")
+    val type: Column<PulseCacheType> = enumerationByName("type", 128, PulseCacheType::class)
+}
+
+class PulseCacheRecord(id: EntityID<LocalDateTime>) : Entity<LocalDateTime>(id) {
+    companion object : EntityClass<LocalDateTime, PulseCacheRecord>(
+        PulseCacheTable
+    ) {
+
+        fun save(date: LocalDateTime, denom: String, type: PulseCacheType, data: JsonNode) =
+            transaction {
+                PulseCacheTable.insertIgnore {
+                    it[this.cachedTimestamp] = date
+                    it[this.denom] = denom
+                    it[this.type] = type
+                    it[this.data] = data
+                }
+            }
+
+        fun findByDateAndType(date: LocalDateTime, type: PulseCacheType) = transaction {
+            PulseCacheRecord.find {
+                (PulseCacheTable.cachedTimestamp eq date) and
+                        (PulseCacheTable.type eq type)
+            }.firstOrNull()
+        }
+    }
+
+    var denom by PulseCacheTable.denom
+    var type by PulseCacheTable.type
+    var data by PulseCacheTable.data
+    var cachedTimestamp by PulseCacheTable.cachedTimestamp
 }
