@@ -1,6 +1,5 @@
 FROM gradle:8-jdk21 AS build
 RUN gradle --version && java -version
-RUN ls -l
 WORKDIR /app
 
 # Only copy dependency-related files

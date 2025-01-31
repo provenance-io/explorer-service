@@ -20,6 +20,8 @@ dependencies {
     implementation(libs.provenance.proto)
 }
 
+// Leaving this for compatibility where others downstream users may still be on
+// an older version of Java.
 tasks.withType<JavaCompile> {
     sourceCompatibility = JavaVersion.VERSION_11.toString()
     targetCompatibility = sourceCompatibility

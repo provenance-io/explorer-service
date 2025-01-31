@@ -63,7 +63,7 @@ import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
 
- @Service
+@Service
 class ScheduledTaskService(
     private val props: ExplorerProperties,
     private val blockService: BlockService,

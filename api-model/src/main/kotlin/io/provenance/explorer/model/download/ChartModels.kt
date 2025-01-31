@@ -3,7 +3,6 @@ package io.provenance.explorer.model.download
 import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.stringfy
 import java.time.LocalDateTime
-import java.time.ZoneId
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.time.format.DateTimeFormatter

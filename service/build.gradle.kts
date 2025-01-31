@@ -8,7 +8,6 @@ plugins {
     alias(libs.plugins.java)
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.gradle.gitprops)
-//    alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.testlogger).apply(false)
 }
@@ -120,13 +119,5 @@ tasks.named<Test>("test") {
         events("STANDARD_OUT")
     }
 }
-
-// tasks.withType<Test> {
-//    useJUnitPlatform {
-//        excludeTags("intTest")
-//    }
-//
-//    failFast = true
-// }
 
 springBoot.mainClass.set("io.provenance.explorer.ApplicationKt")

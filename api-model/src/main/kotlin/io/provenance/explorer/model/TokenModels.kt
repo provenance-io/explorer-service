@@ -6,7 +6,6 @@ import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.explorer.model.download.currFormat
 import io.provenance.explorer.model.download.customFormat
 import java.time.LocalDateTime
-import java.time.ZoneId
 import java.math.BigDecimal
 
 data class TokenSupply(

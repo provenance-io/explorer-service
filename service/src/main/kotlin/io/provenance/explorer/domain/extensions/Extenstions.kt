@@ -166,15 +166,6 @@ fun LocalDateTime.monthToQuarter() = this.monthValue.let {
     }
 }
 
-// fun Int.monthToQuarter() =
-//    when {
-//        (1..3).contains(this) -> 1
-//        (4..6).contains(this) -> 2
-//        (7..9).contains(this) -> 3
-//        (10..12).contains(this) -> 4
-//        else -> throw InvalidArgumentException("Not a valid month: $this")
-//    }
-
 fun ServiceOuterClass.GetTxResponse.success() = this.txResponse.code == 0
 fun BlockOuterClass.Block.height() = this.header.height.toInt()
 fun Long.get24HrBlockHeight(avgBlockTime: BigDecimal) =
