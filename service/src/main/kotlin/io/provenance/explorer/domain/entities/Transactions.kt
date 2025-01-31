@@ -23,7 +23,6 @@ import io.provenance.explorer.domain.extensions.map
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.stringify
 import io.provenance.explorer.domain.extensions.success
-import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toDbHash
 import io.provenance.explorer.domain.models.explorer.CustomFeeList
 import io.provenance.explorer.domain.models.explorer.EventFee
@@ -63,15 +62,15 @@ import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.countDistinct
 import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.jodatime.DateColumnType
-import org.jetbrains.exposed.sql.jodatime.datetime
+import org.jetbrains.exposed.sql.javatime.JavaLocalDateTimeColumnType
+import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
 import java.math.BigDecimal
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 object TxCacheTable : IntIdTable(name = "tx_cache") {
     val hash = varchar("hash", 64)
@@ -87,7 +86,7 @@ object TxCacheTable : IntIdTable(name = "tx_cache") {
 class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxCacheRecord>(TxCacheTable) {
 
-        fun insertToProcedure(txUpdate: TxUpdate, height: Int, timestamp: DateTime) = transaction {
+        fun insertToProcedure(txUpdate: TxUpdate, height: Int, timestamp: LocalDateTime) = transaction {
             val txStr = txUpdate.toProcedureObject()
             val query = "CALL add_tx($txStr, $height, '${timestamp.toProcedureObject()}')"
             this.exec(query)
@@ -102,7 +101,7 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             query.execAndMap(arguments) { TxAssociatedValues(it.getString("value"), it.getString("type")) }
         }
 
-        fun buildInsert(tx: ServiceOuterClass.GetTxResponse, txTime: DateTime) =
+        fun buildInsert(tx: ServiceOuterClass.GetTxResponse, txTime: LocalDateTime) =
             listOf(
                 tx.txResponse.txhash,
                 tx.txResponse.height.toInt(),
@@ -541,7 +540,7 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         fun buildInsert(txInfo: TxData, gasUsed: Int, type: String) =
             listOf(0, txInfo.txTimestamp, txInfo.txHash, gasUsed, type, false, txInfo.blockHeight).toProcedureObject()
 
-        fun getGasStats(fromDate: DateTime, toDate: DateTime, granularity: String, msgType: String?) = transaction {
+        fun getGasStats(fromDate: LocalDateTime, toDate: LocalDateTime, granularity: String, msgType: String?) = transaction {
             val tblName = "tx_single_message_gas_stats_${granularity.lowercase()}"
             var query = """
                 |SELECT
@@ -562,7 +561,7 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
 
             query += " ORDER BY tx_timestamp ASC;"
 
-            val dateTimeType = DateColumnType(true)
+            val dateTimeType: ColumnType = JavaLocalDateTimeColumnType()
             val arguments = mutableListOf<Pair<ColumnType, *>>(
                 Pair(dateTimeType, fromDate.startOfDay()),
                 Pair(dateTimeType, toDate.startOfDay().plusDays(1))
@@ -571,13 +570,12 @@ class TxSingleMessageCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 arguments.add(Pair(VarCharColumnType(), msgType))
             }
 
-            val tz = DateTimeZone.UTC
-            val pattern = "yyyy-MM-dd HH:mm:ss"
+            val pattern = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
             query.exec(arguments)
                 .map {
                     GasStats(
-                        it.getTimestamp("tx_timestamp").toDateTime(tz, pattern),
+                        it.getTimestamp("tx_timestamp").toLocalDateTime().format(pattern),
                         it.getInt("min_gas_used"),
                         it.getInt("max_gas_used"),
                         it.getInt("avg_gas_used"),
@@ -633,7 +631,7 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 0
             ).toProcedureObject()
 
-        fun getGasVolume(fromDate: DateTime, toDate: DateTime, granularity: String) = transaction {
+        fun getGasVolume(fromDate: LocalDateTime, toDate: LocalDateTime, granularity: String) = transaction {
             val tblName = "tx_gas_fee_volume_${granularity.lowercase()}"
             val query = """
                 |SELECT
@@ -648,19 +646,18 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 |
             """.trimMargin()
 
-            val dateTimeType = DateColumnType(true)
-            val arguments = listOf<Pair<DateColumnType, DateTime>>(
+            val dateTimeType: ColumnType = JavaLocalDateTimeColumnType()
+            val arguments = listOf<Pair<ColumnType, LocalDateTime>>(
                 Pair(dateTimeType, fromDate.startOfDay()),
                 Pair(dateTimeType, toDate.startOfDay().plusDays(1))
             )
 
-            val tz = DateTimeZone.UTC
-            val pattern = "yyyy-MM-dd HH:mm:ss"
+            val pattern = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
             query.exec(arguments)
                 .map {
                     TxGasVolume(
-                        it.getTimestamp("tx_timestamp").toDateTime(tz, pattern),
+                        it.getTimestamp("tx_timestamp").toLocalDateTime().format(pattern),
                         it.getBigDecimal("gas_wanted").toBigInteger(),
                         it.getBigDecimal("gas_used").toBigInteger(),
                         it.getBigDecimal("fee_amount")

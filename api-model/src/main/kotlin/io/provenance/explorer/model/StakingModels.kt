@@ -1,7 +1,7 @@
 package io.provenance.explorer.model
 
 import io.provenance.explorer.model.base.CoinStr
-import org.joda.time.DateTime
+import java.time.LocalDateTime
 
 data class Delegation(
     val delegatorAddr: String,
@@ -11,7 +11,7 @@ data class Delegation(
     val initialBal: CoinStr?,
     val shares: String?,
     val block: Int?,
-    val endTime: DateTime?
+    val endTime: LocalDateTime?
 )
 
 data class UnpaginatedDelegation(

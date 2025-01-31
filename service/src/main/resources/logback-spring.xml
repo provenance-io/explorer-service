@@ -1,0 +1,39 @@
+<configuration>
+    <!--
+        development logging
+        we use a basic standard out format so that it is easier to read
+    -->
+    <springProfile name="development">
+        <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{YYYY-MM-dd HH:mm:ss.SSS} | %highlight(%-5level) | %gray(%-40logger{20}) | %-20thread{20} |
+                    MDC:[%mdc] | - %msg%n%xEx
+                </pattern>
+            </encoder>
+        </appender>
+
+        <root level="info">
+            <appender-ref ref="stdout"/>
+        </root>
+    </springProfile>
+
+    <!--
+        production container configuration
+        we swap to a json logger so that our tooling can parse in a useful manner
+    -->
+    <springProfile name="container">
+        <appender name="json" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="ch.qos.logback.classic.encoder.JsonEncoder">
+            </encoder>
+        </appender>
+
+
+        <root level="info">
+            <appender-ref ref="json"/>
+        </root>
+    </springProfile>
+
+    <logger name="org.springframework.beans.factory" level="INFO"/>
+    <logger name="org.springframework.context" level="INFO"/>
+    <logger name="io.swagger" level="INFO"/>
+</configuration>

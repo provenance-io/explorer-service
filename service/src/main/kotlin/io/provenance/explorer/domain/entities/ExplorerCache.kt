@@ -20,14 +20,16 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertIgnore
-import org.jetbrains.exposed.sql.jodatime.date
-import org.jetbrains.exposed.sql.jodatime.datetime
+import org.jetbrains.exposed.sql.javatime.date
+import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import org.joda.time.DateTime
 import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 object ValidatorMarketRateStatsTable : IntIdTable(name = "validator_market_rate_stats") {
     val date = date("date")
@@ -49,7 +51,7 @@ class ValidatorMarketRateStatsRecord(id: EntityID<Int>) : IntEntity(id) {
             minMarketRate: BigDecimal?,
             maxMarketRate: BigDecimal?,
             avgMarketRate: BigDecimal?,
-            date: DateTime
+            date: LocalDate
         ) =
             transaction {
                 ValidatorMarketRateStatsTable.insertIgnore {
@@ -61,7 +63,7 @@ class ValidatorMarketRateStatsRecord(id: EntityID<Int>) : IntEntity(id) {
                 }
             }
 
-        fun findByAddress(address: String, fromDate: DateTime?, toDate: DateTime?, count: Int) = transaction {
+        fun findByAddress(address: String, fromDate: LocalDateTime?, toDate: LocalDateTime?, count: Int) = transaction {
             val query =
                 ValidatorMarketRateStatsTable.select { ValidatorMarketRateStatsTable.operatorAddress eq address }
             if (fromDate != null) {
@@ -75,7 +77,7 @@ class ValidatorMarketRateStatsRecord(id: EntityID<Int>) : IntEntity(id) {
             ValidatorMarketRateStatsRecord.wrapRows(query).map {
                 ValidatorMarketRate(
                     it.operatorAddress,
-                    it.date.toString("yyyy-MM-dd"),
+                    it.date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                     it.minMarketRate,
                     it.maxMarketRate,
                     it.avgMarketRate
@@ -91,7 +93,7 @@ class ValidatorMarketRateStatsRecord(id: EntityID<Int>) : IntEntity(id) {
     var date by ValidatorMarketRateStatsTable.date
 }
 
-object ChainMarketRateStatsTable : IdTable<DateTime>(name = "chain_market_rate_stats") {
+object ChainMarketRateStatsTable : IdTable<LocalDate>(name = "chain_market_rate_stats") {
     val date = date("date")
     override val id = date.entityId()
     val minMarketRate = decimal("min_market_rate", 30, 10).nullable()
@@ -99,10 +101,10 @@ object ChainMarketRateStatsTable : IdTable<DateTime>(name = "chain_market_rate_s
     val avgMarketRate = decimal("avg_market_rate", 30, 10).nullable()
 }
 
-class ChainMarketRateStatsRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) {
-    companion object : EntityClass<DateTime, ChainMarketRateStatsRecord>(ChainMarketRateStatsTable) {
+class ChainMarketRateStatsRecord(id: EntityID<LocalDate>) : Entity<LocalDate>(id) {
+    companion object : EntityClass<LocalDate, ChainMarketRateStatsRecord>(ChainMarketRateStatsTable) {
 
-        fun save(minMarketRate: BigDecimal?, maxMarketRate: BigDecimal?, avgMarketRate: BigDecimal?, date: DateTime) =
+        fun save(minMarketRate: BigDecimal?, maxMarketRate: BigDecimal?, avgMarketRate: BigDecimal?, date: LocalDate) =
             transaction {
                 ChainMarketRateStatsTable.insertIgnore {
                     it[this.date] = date
@@ -112,7 +114,7 @@ class ChainMarketRateStatsRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) 
                 }
             }
 
-        fun findForDates(fromDate: DateTime?, toDate: DateTime?, count: Int) = transaction {
+        fun findForDates(fromDate: LocalDateTime?, toDate: LocalDateTime?, count: Int) = transaction {
             val query = ChainMarketRateStatsTable.selectAll()
             if (fromDate != null) {
                 query.andWhere { ChainMarketRateStatsTable.date greaterEq fromDate }
@@ -124,7 +126,7 @@ class ChainMarketRateStatsRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) 
             query.orderBy(ChainMarketRateStatsTable.date, SortOrder.ASC).limit(count)
             ChainMarketRateStatsRecord.wrapRows(query).map {
                 ChainMarketRate(
-                    it.date.toString("yyyy-MM-dd"),
+                    it.date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                     it.minMarketRate,
                     it.maxMarketRate,
                     it.avgMarketRate
@@ -164,7 +166,7 @@ class CacheUpdateRecord(id: EntityID<Int>) : IntEntity(id) {
         fun updateCacheByKey(key: String, value: String) = transaction {
             fetchCacheByKey(key)?.apply {
                 this.cacheValue = value
-                this.lastUpdated = DateTime.now()
+                this.lastUpdated = LocalDateTime.now()
             } ?: throw IllegalArgumentException("CacheUpdateTable: Key $key was not found as a cached value")
         }
     }
@@ -183,7 +185,7 @@ object ChainAumHourlyTable : IntIdTable(name = "chain_aum_hourly") {
 
 class ChainAumHourlyRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<ChainAumHourlyRecord>(ChainAumHourlyTable) {
-        fun getAumForPeriod(fromDate: DateTime, toDate: DateTime) = transaction {
+        fun getAumForPeriod(fromDate: LocalDateTime, toDate: LocalDateTime) = transaction {
             ChainAumHourlyRecord.find {
                 (ChainAumHourlyTable.datetime greaterEq fromDate) and
                     (ChainAumHourlyTable.datetime lessEq toDate.plusDays(1))
@@ -192,7 +194,7 @@ class ChainAumHourlyRecord(id: EntityID<Int>) : IntEntity(id) {
                 .toList()
         }
 
-        fun insertIgnore(date: DateTime, amount: BigDecimal, denom: String) = transaction {
+        fun insertIgnore(date: LocalDateTime, amount: BigDecimal, denom: String) = transaction {
             ChainAumHourlyTable.insertIgnore {
                 it[this.datetime] = date
                 it[this.amount] = amount
@@ -201,24 +203,24 @@ class ChainAumHourlyRecord(id: EntityID<Int>) : IntEntity(id) {
         }
     }
 
-    fun toDto() = ChainAum(this.datetime.toString("yyyy-MM-dd HH:mm:SS"), this.denom, this.amount)
+    fun toDto() = ChainAum(this.datetime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:SS")), this.denom, this.amount)
 
     var datetime by ChainAumHourlyTable.datetime
     var amount by ChainAumHourlyTable.amount
     var denom by ChainAumHourlyTable.denom
 }
 
-object TokenHistoricalDailyTable : IdTable<DateTime>(name = "token_historical_daily") {
+object TokenHistoricalDailyTable : IdTable<LocalDateTime>(name = "token_historical_daily") {
     val timestamp = datetime("historical_timestamp")
     override val id = timestamp.entityId()
     val data = jsonb<TokenHistoricalDailyTable, CmcHistoricalQuote>("data", OBJECT_MAPPER)
     val dataSource = text("source")
 }
 
-class TokenHistoricalDailyRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) {
-    companion object : EntityClass<DateTime, TokenHistoricalDailyRecord>(TokenHistoricalDailyTable) {
+class TokenHistoricalDailyRecord(id: EntityID<LocalDateTime>) : Entity<LocalDateTime>(id) {
+    companion object : EntityClass<LocalDateTime, TokenHistoricalDailyRecord>(TokenHistoricalDailyTable) {
 
-        fun save(date: DateTime, data: CmcHistoricalQuote, source: String) =
+        fun save(date: LocalDateTime, data: CmcHistoricalQuote, source: String) =
             transaction {
                 TokenHistoricalDailyTable.insertIgnore {
                     it[this.timestamp] = date
@@ -227,7 +229,7 @@ class TokenHistoricalDailyRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) 
                 }
             }
 
-        fun findForDates(fromDate: DateTime?, toDate: DateTime?) = transaction {
+        fun findForDates(fromDate: LocalDateTime?, toDate: LocalDateTime?) = transaction {
             val query = TokenHistoricalDailyTable.selectAll()
             if (fromDate != null) {
                 query.andWhere { TokenHistoricalDailyTable.timestamp greaterEq fromDate }
@@ -240,7 +242,7 @@ class TokenHistoricalDailyRecord(id: EntityID<DateTime>) : Entity<DateTime>(id) 
             TokenHistoricalDailyRecord.wrapRows(query).map { it.data }.toList()
         }
 
-        fun lastKnownPriceForDate(date: DateTime): BigDecimal = transaction {
+        fun lastKnownPriceForDate(date: LocalDateTime): BigDecimal = transaction {
             TokenHistoricalDailyRecord
                 .find { TokenHistoricalDailyTable.timestamp lessEq date }
                 .orderBy(Pair(TokenHistoricalDailyTable.timestamp, SortOrder.DESC))

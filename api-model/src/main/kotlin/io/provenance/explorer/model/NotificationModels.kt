@@ -1,6 +1,6 @@
 package io.provenance.explorer.model
 
-import org.joda.time.DateTime
+import java.time.LocalDateTime
 
 data class OpenProposals(
     val nonUpgradeOpenList: List<AnnouncementOut>,
@@ -13,7 +13,7 @@ data class ScheduledUpgrade(
     val upgradeName: String,
     val upgradeVersion: String,
     val upgradeHeight: Long,
-    val approximateTime: DateTime
+    val approximateTime: LocalDateTime
 )
 
 data class AnnouncementOut(

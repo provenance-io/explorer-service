@@ -4,15 +4,13 @@ import io.provenance.explorer.OBJECT_MAPPER
 import org.jetbrains.exposed.sql.IColumnType
 import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.transactions.TransactionManager
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
 import java.sql.ResultSet
 import java.sql.Timestamp
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
-fun Timestamp.toDateTime(newZone: DateTimeZone, pattern: String): String =
-    DateTime(this.time).withZone(newZone).toString(pattern)
-
-fun Timestamp.toDateTime() = DateTime(this.time)
+fun Timestamp.toDateTime(newZone: ZoneId, pattern: String) =
+    DateTimeFormatter.ofPattern(pattern).format(this.toLocalDateTime())
 
 fun String.exec(args: Iterable<Pair<IColumnType, Any?>>): ResultSet =
     with(TransactionManager.current().connection.prepareStatement(this, false)) {

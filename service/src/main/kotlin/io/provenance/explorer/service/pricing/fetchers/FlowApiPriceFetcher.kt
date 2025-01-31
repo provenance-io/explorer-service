@@ -4,7 +4,7 @@ import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import io.provenance.explorer.service.pricing.utils.HashCalculationUtils
 import io.provlabs.flow.api.NavEvent
-import org.joda.time.DateTime
+import java.time.LocalDateTime
 
 class FlowApiPriceFetcher(
     val denom: String,
@@ -15,7 +15,7 @@ class FlowApiPriceFetcher(
     override fun getSource(): String {
         return "flow-api"
     }
-    override fun fetchHistoricalPrice(fromDate: DateTime?): List<HistoricalPrice> {
+    override fun fetchHistoricalPrice(fromDate: LocalDateTime?): List<HistoricalPrice> {
         val onChainNavEvents = getMarkerNavByPriceDenoms(fromDate)
         return onChainNavEvents.map { navEvent ->
             val volumeHash = HashCalculationUtils.calculateVolumeHash(navEvent.volume)
@@ -32,7 +32,7 @@ class FlowApiPriceFetcher(
         }
     }
 
-    fun getMarkerNavByPriceDenoms(fromDate: DateTime?): List<NavEvent> {
+    fun getMarkerNavByPriceDenoms(fromDate: LocalDateTime?): List<NavEvent> {
         return flowApiGrpcClient.getAllMarkerNavByPriceDenoms(denom = denom, priceDenoms = pricingDenoms, fromDate = fromDate)
     }
 }

@@ -46,6 +46,7 @@ import io.provenance.explorer.service.MetricsService
 import io.provenance.explorer.service.TokenService
 import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.service.getBlock
+import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
@@ -55,14 +56,12 @@ import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
-import org.joda.time.LocalDate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import tendermint.types.BlockOuterClass
 import java.math.BigDecimal
-import javax.annotation.PostConstruct
+import java.time.LocalDate
+import java.time.LocalDateTime
 
 @Service
 class ScheduledTaskService(
@@ -145,20 +144,20 @@ class ScheduledTaskService(
         return collectHistorical
     }
 
-    fun getEndDate() = LocalDate().toDateTimeAtStartOfDay().minusDays(props.initialHistoricalDays() + 1)
+    fun getEndDate() = LocalDateTime.now().startOfDay().minusDays((props.initialHistoricalDays() + 1).toLong())
 
     fun BlockOuterClass.Block.day() = this.header.time.toDateTime()
 
     @Scheduled(cron = "0 0 1 * * ?") // Everyday at 1 am
     fun updateMarketRateStats() = transaction {
         logger.info("Updating market rate stats")
-        val date = DateTime.now().startOfDay().minusDays(1)
+        val date = LocalDateTime.now().startOfDay().minusDays(1)
         val records = ValidatorMarketRateRecord.findForDates(date, date, null)
-        records.groupBy { it.proposerAddress }.forEach { (k, v) -> calcAndInsert(v, k, date) }
-        calcAndInsert(records.toList(), null, date)
+        records.groupBy { it.proposerAddress }.forEach { (k, v) -> calcAndInsert(v, k, date.toLocalDate()) }
+        calcAndInsert(records.toList(), null, date.toLocalDate())
     }
 
-    private fun calcAndInsert(orig: List<ValidatorMarketRateRecord>, addr: String?, date: DateTime) = transaction {
+    private fun calcAndInsert(orig: List<ValidatorMarketRateRecord>, addr: String?, date: LocalDate) = transaction {
         val list = orig.map { it.marketRate }
         if (list.isNotEmpty()) {
             val max = list.maxWithOrNull(Comparator.naturalOrder())
@@ -255,7 +254,7 @@ class ScheduledTaskService(
 
     @Scheduled(cron = "0 0 1 * * ?") // Every day at 1 am
     fun updateTokenHistorical() {
-        val today = DateTime.now().startOfDay()
+        val today = LocalDateTime.now().startOfDay()
         val defaultStartDate = today.minusMonths(1)
 
         val latestEntryDate = TokenHistoricalDailyRecord.getLatestDateEntry()?.timestamp?.startOfDay()
@@ -265,7 +264,7 @@ class ScheduledTaskService(
 
     @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun updateTokenLatest() {
-        val today = DateTime.now().withZone(DateTimeZone.UTC)
+        val today = LocalDateTime.now()
         val startDate = today.minusDays(1)
         tokenService.updateAndSaveLatestTokenData(startDate, today)
     }
@@ -369,7 +368,7 @@ class ScheduledTaskService(
 
     @Scheduled(cron = "0 0 0 * * *") // Every beginning of every day
     fun calculateValidatorMetrics() {
-        val (year, quarter) = DateTime.now().minusMinutes(5).let { it.year to it.monthOfYear.monthToQuarter() }
+        val (year, quarter) = LocalDateTime.now().minusMinutes(5).let { it.year to it.monthToQuarter() }
         logger.info("Refreshing block spread view")
         BlockTxCountsCacheRecord.updateSpreadView()
         logger.info("Saving validator metrics")

@@ -1,9 +1,6 @@
 plugins {
-    id(PluginIds.Flyway) version PluginVersions.Flyway
-}
-
-dependencies {
-    implementation(Libraries.FlywayCore)
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.flyway)
 }
 
 flyway {

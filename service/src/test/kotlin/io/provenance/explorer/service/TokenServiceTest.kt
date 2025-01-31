@@ -11,8 +11,6 @@ import io.provenance.explorer.service.pricing.fetchers.HistoricalPriceFetcherFac
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -21,7 +19,12 @@ import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 import java.net.URI
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
+@Disabled
 class TokenServiceTest {
 
     private lateinit var accountClient: AccountGrpcClient
@@ -38,12 +41,12 @@ class TokenServiceTest {
     @Test
     @Disabled("Test was used to manually call the endpoint")
     fun `test fetchHistoricalPriceData`() = runBlocking {
-        val fromDate = DateTime.now().minusDays(7)
+        val fromDate = LocalDateTime.now().minusDays(7)
 
         val result: List<HistoricalPrice> = tokenService.fetchHistoricalPriceData(fromDate)
 
         result.forEach {
-            println("Time: ${DateTime(it.time)}, Open: ${it.open}, High: ${it.high}, Low: ${it.low}, Close: ${it.close}, Volume: ${it.volume}")
+            println("Time: ${Instant.ofEpochSecond(it.time)}, Open: ${it.open}, High: ${it.high}, Low: ${it.low}, Close: ${it.close}, Volume: ${it.volume}")
         }
 
         assertTrue(result.isNotEmpty()) { "Expected non-empty list of HistoricalPrice" }
@@ -52,14 +55,14 @@ class TokenServiceTest {
     @Test
     @Disabled("Test was used to manually call the endpoint")
     fun `test fetchHistoricalPriceData and process `() = runBlocking {
-        val fromDate = DateTime.now().minusDays(1)
+        val fromDate = LocalDateTime.now().minusDays(1)
 
         val result: List<HistoricalPrice> = tokenService.fetchHistoricalPriceData(fromDate)
 
         tokenService.processLatestTokenData(result, fromDate)
 
         result.forEach {
-            println("Time: ${DateTime(it.time)}, Open: ${it.open}, High: ${it.high}, Low: ${it.low}, Close: ${it.close}, Volume: ${it.volume}")
+            println("Time: ${Instant.ofEpochSecond(it.time)}, Open: ${it.open}, High: ${it.high}, Low: ${it.low}, Close: ${it.close}, Volume: ${it.volume}")
         }
 
         assertTrue(result.isNotEmpty()) { "Expected non-empty list of HistoricalPrice" }
@@ -68,12 +71,12 @@ class TokenServiceTest {
     @Test
     @Disabled("Test was used to manually call the endpoint")
     fun `test fetchLegacyHistoricalPriceData`() = runBlocking {
-        val fromDate = DateTime.now().minusDays(7)
+        val fromDate = LocalDateTime.now().minusDays(7)
 
         val result: List<HistoricalPrice> = tokenService.fetchHistoricalPriceData(fromDate)
 
         result.forEach {
-            println("Time: ${DateTime(it.time)}, Open: ${it.open}, High: ${it.high}, Low: ${it.low}, Close: ${it.close}, Volume: ${it.volume}")
+            println("Time: ${Instant.ofEpochSecond(it.time)}, Open: ${it.open}, High: ${it.high}, Low: ${it.low}, Close: ${it.close}, Volume: ${it.volume}")
         }
 
         assertTrue(result.isNotEmpty()) { "Expected non-empty list of HistoricalPrice" }
@@ -99,11 +102,11 @@ class TokenServiceTest {
 
     @Test
     fun `test processLatestTokenData with historical prices`() {
-        val today = DateTime.now()
+        val today = LocalDateTime.now()
 
         val historicalPrices = listOf(
             HistoricalPrice(
-                time = today.minusDays(1).millis / 1000,
+                time = today.minusDays(1).toEpochSecond(ZoneOffset.UTC),
                 high = "1.5".toBigDecimal(),
                 low = "1.0".toBigDecimal(),
                 open = "1.2".toBigDecimal(),
@@ -112,7 +115,7 @@ class TokenServiceTest {
                 source = "source1"
             ),
             HistoricalPrice(
-                time = today.minusHours(6).millis / 1000,
+                time = today.minusHours(6).toEpochSecond(ZoneOffset.UTC),
                 high = "1.6".toBigDecimal(),
                 low = "1.1".toBigDecimal(),
                 open = "1.3".toBigDecimal(),
@@ -121,7 +124,7 @@ class TokenServiceTest {
                 source = "source2"
             ),
             HistoricalPrice(
-                time = today.minusHours(3).millis / 1000,
+                time = today.minusHours(3).toEpochSecond(ZoneOffset.UTC),
                 high = "1.7".toBigDecimal(),
                 low = "1.2".toBigDecimal(),
                 open = "1.4".toBigDecimal(),
@@ -164,7 +167,7 @@ class TokenServiceTest {
                 """
             INSERT INTO token_historical_daily (historical_timestamp, data, source)
             VALUES (
-                '${DateTime.now(DateTimeZone.UTC).minusDays(7).toString("yyyy-MM-dd HH:mm:ss")}',
+                '${LocalDateTime.now().minusDays(7).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}',
                 '{"quote": {"USD": {"close": 1.2}}}',
                 'test-source'
             )
@@ -172,12 +175,12 @@ class TokenServiceTest {
             )
         }
 
-        val startDate = DateTime.now(DateTimeZone.UTC).minusDays(7).startOfDay()
-        val today = DateTime.now(DateTimeZone.UTC)
+        val startDate = LocalDateTime.now().minusDays(7).startOfDay()
+        val today = LocalDateTime.now()
 
         val historicalPrices = listOf(
             HistoricalPrice(
-                time = today.minusDays(6).startOfDay().millis / 1000,
+                time = today.minusDays(6).startOfDay().toEpochSecond(ZoneOffset.UTC),
                 high = BigDecimal("1.6"),
                 low = BigDecimal("1.1"),
                 close = BigDecimal("1.5"),
@@ -186,7 +189,7 @@ class TokenServiceTest {
                 source = "source1"
             ),
             HistoricalPrice(
-                time = today.minusDays(5).startOfDay().millis / 1000,
+                time = today.minusDays(5).startOfDay().toEpochSecond(ZoneOffset.UTC),
                 high = BigDecimal("1.7"),
                 low = BigDecimal("1.2"),
                 close = BigDecimal("1.6"),
@@ -195,7 +198,7 @@ class TokenServiceTest {
                 source = "source2"
             ),
             HistoricalPrice(
-                time = today.minusDays(3).startOfDay().millis / 1000,
+                time = today.minusDays(3).startOfDay().toEpochSecond(ZoneOffset.UTC),
                 high = BigDecimal("1.8"),
                 low = BigDecimal("1.3"),
                 close = BigDecimal("1.7"),

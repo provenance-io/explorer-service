@@ -122,8 +122,8 @@ import io.provenance.explorer.service.toWeightedVoteList
 import io.provenance.explorer.service.unchainDenom
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
 import org.springframework.stereotype.Service
+import java.time.LocalDateTime
 
 @Service
 class BlockAndTxProcessor(
@@ -160,7 +160,8 @@ class BlockAndTxProcessor(
 
     fun saveBlockEtc(
         blockRes: Query.GetBlockByHeightResponse?,
-        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false) // rerun txs, pull from db
+        // rerun txs, pull from db
+        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false)
     ): Query.GetBlockByHeightResponse? {
         if (blockRes == null) return null
         logger.info("saving block ${blockRes.block.height()}")
@@ -204,7 +205,8 @@ class BlockAndTxProcessor(
     fun saveTxs(
         blockRes: Query.GetBlockByHeightResponse,
         proposerRec: BlockProposer,
-        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false) // rerun txs, pull from db
+        // rerun txs, pull from db
+        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false)
     ): List<TxUpdate> {
         val toBeUpdated =
             addTxsToCache(
@@ -238,7 +240,8 @@ class BlockAndTxProcessor(
         expectedNumTxs: Int,
         blockTime: Timestamp,
         proposerRec: BlockProposer,
-        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false) // rerun txs, pull from db
+        // rerun txs, pull from db
+        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false)
     ) =
         if (txCountForHeight(blockHeight).toInt() == expectedNumTxs && !rerunTxs.first) {
             logger.info("Cache hit for transaction at height $blockHeight with $expectedNumTxs transactions")
@@ -272,7 +275,7 @@ class BlockAndTxProcessor(
 
     fun processAndSaveTransactionData(
         res: ServiceOuterClass.GetTxResponse,
-        blockTime: DateTime,
+        blockTime: LocalDateTime,
         proposerRec: BlockProposer
     ): TxUpdatedItems {
         val tx = TxCacheRecord.buildInsert(res, blockTime)

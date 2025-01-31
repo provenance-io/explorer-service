@@ -6,7 +6,7 @@ import cosmos.group.v1.Types.Proposal
 import cosmos.group.v1.Types.ProposalExecutorResult
 import cosmos.group.v1.Types.ProposalStatus
 import cosmos.group.v1.Types.VoteOption
-import org.joda.time.DateTime
+import java.time.LocalDateTime
 
 data class GroupMembers(val list: MutableList<Types.Member>)
 
@@ -15,11 +15,11 @@ data class GroupsProposalData(
     val metadata: String,
     val messages: List<Any>,
     val execType: String,
-    val submitTime: DateTime,
+    val submitTime: LocalDateTime,
     val groupVersion: Long,
     val policyVersion: Long,
     val finalTallyResult: Types.TallyResult? = null,
-    val votingPeriodEnd: DateTime? = null
+    val votingPeriodEnd: LocalDateTime? = null
 )
 
 data class GroupsProposalInsertData(

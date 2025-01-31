@@ -5,8 +5,7 @@ import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.explorer.model.download.currFormat
 import io.provenance.explorer.model.download.customFormat
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
+import java.time.LocalDateTime
 import java.math.BigDecimal
 
 data class TokenSupply(
@@ -36,16 +35,16 @@ data class RichAccount(
 )
 
 data class CmcHistoricalQuote(
-    val time_open: DateTime,
-    val time_close: DateTime,
-    val time_high: DateTime,
-    val time_low: DateTime,
+    val time_open: LocalDateTime,
+    val time_close: LocalDateTime,
+    val time_high: LocalDateTime,
+    val time_low: LocalDateTime,
     val quote: Map<String, CmcQuote>
 ) {
     fun toCsv(): MutableList<Any> =
         this.quote[USD_UPPER]!!.let {
             mutableListOf(
-                it.timestamp.withZone(DateTimeZone.UTC).customFormat(DateTruncGranularity.DAY),
+                it.timestamp.customFormat(DateTruncGranularity.DAY),
                 it.open,
                 it.high,
                 it.low,
@@ -62,11 +61,11 @@ data class CmcQuote(
     val close: BigDecimal,
     val volume: BigDecimal,
     val market_cap: BigDecimal,
-    val timestamp: DateTime
+    val timestamp: LocalDateTime
 )
 
 data class CmcLatestDataAbbrev(
-    val last_updated: DateTime,
+    val last_updated: LocalDateTime,
     val quote: Map<String, CmcLatestQuoteAbbrev>
 )
 
@@ -75,5 +74,5 @@ data class CmcLatestQuoteAbbrev(
     val percent_change_24h: BigDecimal,
     val volume_24h: BigDecimal,
     val market_cap_by_total_supply: BigDecimal?,
-    val last_updated: DateTime
+    val last_updated: LocalDateTime
 )

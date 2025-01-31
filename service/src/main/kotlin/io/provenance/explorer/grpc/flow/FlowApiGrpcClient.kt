@@ -10,10 +10,10 @@ import io.provlabs.flow.api.NavEventResponse
 import io.provlabs.flow.api.NavServiceGrpc
 import io.provlabs.flow.api.PaginationRequest
 import kotlinx.coroutines.runBlocking
-import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
 import org.springframework.stereotype.Component
 import java.net.URI
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
 @Component
@@ -40,8 +40,8 @@ class FlowApiGrpcClient(flowApiChannelUri: URI) {
         navService = NavServiceGrpc.newBlockingStub(channel)
     }
 
-    fun getMarkerNavByPriceDenoms(denom: String, priceDenoms: List<String>, fromDate: DateTime?, pageCount: Int = 100, page: Int = 0): List<NavEvent> = runBlocking {
-        val fromDateString = fromDate?.toString(DateTimeFormat.forPattern("yyyy-MM-dd")) ?: ""
+    fun getMarkerNavByPriceDenoms(denom: String, priceDenoms: List<String>, fromDate: LocalDateTime?, pageCount: Int = 100, page: Int = 0): List<NavEvent> = runBlocking {
+        val fromDateString = fromDate?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) ?: ""
         val pagination = PaginationRequest.newBuilder().setPage(page).setPageSize(pageCount).build()
         val requestBuilder = NavEventRequest.newBuilder()
             .setDenom(denom)
@@ -60,8 +60,8 @@ class FlowApiGrpcClient(flowApiChannelUri: URI) {
         }
     }
 
-    fun getAllMarkerNavByPriceDenoms(denom: String, priceDenoms: List<String>, fromDate: DateTime?, requestSize: Int = 10000): List<NavEvent> = runBlocking {
-        val fromDateString = fromDate?.toString(DateTimeFormat.forPattern("yyyy-MM-dd")) ?: ""
+    fun getAllMarkerNavByPriceDenoms(denom: String, priceDenoms: List<String>, fromDate: LocalDateTime?, requestSize: Int = 10000): List<NavEvent> = runBlocking {
+        val fromDateString = fromDate?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) ?: ""
         val allNavEvents = mutableListOf<NavEvent>()
         var currentPage = 0
         var hasMorePages = true
@@ -92,8 +92,8 @@ class FlowApiGrpcClient(flowApiChannelUri: URI) {
         return@runBlocking allNavEvents
     }
 
-    fun getLatestNavPrices(priceDenom: String, includeMarkers: Boolean = true, includeScopes: Boolean = true, fromDate: DateTime?, pageCount: Int = 100, page: Int = 0): List<NavEvent> = runBlocking {
-        val fromDateString = fromDate?.toString(DateTimeFormat.forPattern("yyyy-MM-dd")) ?: ""
+    fun getLatestNavPrices(priceDenom: String, includeMarkers: Boolean = true, includeScopes: Boolean = true, fromDate: LocalDateTime?, pageCount: Int = 100, page: Int = 0): List<NavEvent> = runBlocking {
+        val fromDateString = fromDate?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) ?: ""
         val pagination = PaginationRequest.newBuilder().setPage(page).setPageSize(pageCount).build()
         val request = LatestNavEventRequest.newBuilder()
             .setPriceDenom(priceDenom)
@@ -116,10 +116,10 @@ class FlowApiGrpcClient(flowApiChannelUri: URI) {
         priceDenom: String,
         includeMarkers: Boolean = true,
         includeScopes: Boolean = true,
-        fromDate: DateTime?,
+        fromDate: LocalDateTime?,
         requestSize: Int = 10000
     ): List<NavEvent> = runBlocking {
-        val fromDateString = fromDate?.toString(DateTimeFormat.forPattern("yyyy-MM-dd")) ?: ""
+        val fromDateString = fromDate?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) ?: ""
         var currentPage = 0
         var hasMorePages = true
         val allNavEvents = mutableListOf<NavEvent>()

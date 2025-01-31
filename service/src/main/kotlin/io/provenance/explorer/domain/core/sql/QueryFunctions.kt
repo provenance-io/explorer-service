@@ -12,22 +12,15 @@ import org.jetbrains.exposed.sql.QueryBuilder
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.append
-import org.jetbrains.exposed.sql.jodatime.CustomDateTimeFunction
-import org.jetbrains.exposed.sql.jodatime.DateColumnType
+import org.jetbrains.exposed.sql.javatime.CustomDateTimeFunction
 import org.jetbrains.exposed.sql.stringLiteral
-import org.joda.time.DateTime
 import java.math.BigDecimal
+import java.time.LocalDateTime
 import kotlin.Array
 
 // Generic Distinct function
 class Distinct<T>(val expr: Expression<T>, _columnType: IColumnType) : Function<T>(_columnType) {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) = queryBuilder { append("distinct(", expr, ")") }
-}
-
-// Custom expressions for complex query types
-class LagDesc(val lag: Expression<DateTime>, val orderBy: Expression<Int>) : Function<DateTime>(DateColumnType(true)) {
-    override fun toQueryBuilder(queryBuilder: QueryBuilder) =
-        queryBuilder { append("LAG(", lag, ") OVER (order by ", orderBy, " desc)") }
 }
 
 class Lag<T>(val lag: Expression<T>, val orderBy: Expression<T>, _columnType: IColumnType) : Function<T>(_columnType) {
@@ -40,22 +33,22 @@ class Lead<T>(val lead: Expression<T>, val orderBy: Expression<T>, _columnType: 
         queryBuilder { append("LEAD(", lead, ") OVER (order by ", orderBy, ")") }
 }
 
-class ExtractDay(val expr: Expression<DateTime>) : Function<String>(VarCharColumnType(9)) {
+class ExtractDay(val expr: Expression<LocalDateTime>) : Function<String>(VarCharColumnType(9)) {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) =
         queryBuilder { append("to_char(", expr, ", 'DAY')") }
 }
 
-class ExtractDOW(val expr: Expression<DateTime>) : Function<Int>(IntegerColumnType()) {
+class ExtractDOW(val expr: Expression<LocalDateTime>) : Function<Int>(IntegerColumnType()) {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) =
         queryBuilder { append("extract(dow from ", expr, " )") }
 }
 
-class ExtractEpoch(val expr: Expression<DateTime>) : Function<BigDecimal>(DecimalColumnType(10, 10)) {
+class ExtractEpoch(val expr: Expression<LocalDateTime>) : Function<BigDecimal>(DecimalColumnType(10, 10)) {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) =
         queryBuilder { append("extract(epoch from ", expr, " )") }
 }
 
-class ExtractHour(val expr: Expression<DateTime>) : Function<Int>(IntegerColumnType()) {
+class ExtractHour(val expr: Expression<LocalDateTime>) : Function<Int>(IntegerColumnType()) {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) =
         queryBuilder { append("extract(hour from ", expr, " )") }
 }

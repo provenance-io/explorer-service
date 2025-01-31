@@ -1,6 +1,6 @@
 -- Nav Events SQL Insert Statements
 -- Generated at: 2024-11-12 09:31:10
--- Source file: /Users/nullpointer0x00/Downloads/nav_view_prod.csv
+-- source file: /Users/nullpointer0x00/Downloads/nav_view_prod.csv
 INSERT INTO nav_events (block_height, block_time, tx_hash, denom, price_amount, volume, source, scope_id) VALUES (15925501, '2024-04-09 21:37:01.569028+00', '168239979EA00E5E378D1D37BE795D219830BC209497873BBCE82D4D55518D8F', 'nbtc.figure.se', 20715000, 300000, 'x/exchange market 1', NULL);
 INSERT INTO nav_events (block_height, block_time, tx_hash, denom, price_amount, volume, source, scope_id) VALUES (15925657, '2024-04-09 21:49:46.700126+00', '7699FBCB01DEE190E4C34D1B9CD27DFFC75662C396EDA539488AD52D59E58647', 'nbtc.figure.se', 6905000, 100000, 'x/exchange market 1', NULL);
 INSERT INTO nav_events (block_height, block_time, tx_hash, denom, price_amount, volume, source, scope_id) VALUES (16168628, '2024-04-23 18:41:06.830089+00', '8BE2F7270714A51E9A5DB0D8CA0304F0A8F70D289938F51FA6E460ACD17B0C02', 'nbtc.figure.se', 6598900, 100000, 'x/exchange market 1', NULL);

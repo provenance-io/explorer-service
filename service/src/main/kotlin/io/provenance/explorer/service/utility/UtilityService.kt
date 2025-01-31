@@ -23,8 +23,8 @@ import kotlinx.coroutines.runBlocking
 import net.pearx.kasechange.toSnakeCase
 import net.pearx.kasechange.universalWordSplitter
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
 import org.springframework.stereotype.Service
+import java.time.LocalDateTime
 
 @Service
 class UtilityService(
@@ -92,13 +92,13 @@ class UtilityService(
             }
         }
 
-    fun parseRawTxJson(rawJson: String, blockHeight: Int = 1, timestamp: DateTime = DateTime.now()) = transaction {
+    fun parseRawTxJson(rawJson: String, blockHeight: Int = 1, timestamp: LocalDateTime = LocalDateTime.now()) = transaction {
         val builder = ServiceOuterClass.GetTxResponse.newBuilder()
         protoParser.ignoringUnknownFields().merge(rawJson, builder)
-        async.processAndSaveTransactionData(builder.build(), DateTime.now(), BlockProposer(blockHeight, "", timestamp))
+        async.processAndSaveTransactionData(builder.build(), LocalDateTime.now(), BlockProposer(blockHeight, "", timestamp))
     }
 
-    fun saveRawTxJson(rawJson: String, blockHeight: Int = 1, timestamp: DateTime = DateTime.now()) = transaction {
+    fun saveRawTxJson(rawJson: String, blockHeight: Int = 1, timestamp: LocalDateTime = LocalDateTime.now()) = transaction {
         val parsed = parseRawTxJson(rawJson, blockHeight, timestamp)
         TxCacheRecord.insertToProcedure(parsed.txUpdate, blockHeight, timestamp)
     }

@@ -3,7 +3,7 @@ package io.provenance.explorer.domain.models.explorer
 import com.google.protobuf.Any
 import com.google.protobuf.Timestamp
 import io.provenance.explorer.model.base.CoinStr
-import org.joda.time.DateTime
+import java.time.LocalDateTime
 
 enum class GovParamType { voting, tallying, deposit }
 
@@ -20,7 +20,7 @@ data class VoteDbRecord(
     val weight: Double,
     val blockHeight: Int,
     val txHash: String,
-    val txTimestamp: DateTime,
+    val txTimestamp: LocalDateTime,
     val proposalId: Long,
     val proposalTitle: String,
     val proposalStatus: String,
@@ -33,7 +33,7 @@ data class VoteDbRecordAgg(
     val voteWeight: List<VoteWeightDbObj>,
     val blockHeight: Int,
     val txHash: String,
-    val txTimestamp: DateTime,
+    val txTimestamp: LocalDateTime,
     val proposalId: Long,
     val proposalTitle: String,
     val proposalStatus: String,

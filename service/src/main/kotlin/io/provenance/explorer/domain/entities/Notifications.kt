@@ -17,12 +17,11 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.jodatime.datetime
+import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
+import java.time.LocalDateTime
 
 object AnnouncementTable : IntIdTable(name = "announcements") {
     val title = varchar("title", 1000)
@@ -43,14 +42,14 @@ class AnnouncementRecord(id: EntityID<Int>) : IntEntity(id) {
             } ?: AnnouncementTable.insertAndGetId {
                 it[this.title] = obj.title!!
                 it[this.body] = obj.body!!
-                it[this.annTimestamp] = DateTime.now(DateTimeZone.UTC)
+                it[this.annTimestamp] = LocalDateTime.now()
             }.value
         }
 
         val prevId = Lag(AnnouncementTable.id, AnnouncementTable.id, AnnouncementTable.id.columnType)
         val nextId = Lead(AnnouncementTable.id, AnnouncementTable.id, AnnouncementTable.id.columnType)
 
-        fun getAnnouncements(offset: Int, limit: Int, fromDate: DateTime?) = transaction {
+        fun getAnnouncements(offset: Int, limit: Int, fromDate: LocalDateTime?) = transaction {
             AnnouncementTable
                 .slice(AnnouncementTable.columns.toMutableList() + prevId + nextId)
                 .select { if (fromDate != null) AnnouncementTable.annTimestamp greaterEq fromDate.startOfDay() else Op.TRUE }
@@ -68,7 +67,7 @@ class AnnouncementRecord(id: EntityID<Int>) : IntEntity(id) {
                 ?.toAnnouncementOut()
         }
 
-        fun getAnnouncementCount(fromDate: DateTime?) = transaction {
+        fun getAnnouncementCount(fromDate: LocalDateTime?) = transaction {
             AnnouncementRecord
                 .find { if (fromDate != null) AnnouncementTable.annTimestamp greaterEq fromDate.startOfDay() else Op.TRUE }
                 .count()

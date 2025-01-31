@@ -26,14 +26,14 @@ import io.provenance.explorer.domain.entities.TxSmContractTable
 import io.provenance.explorer.model.CustomFee
 import io.provenance.explorer.model.MsgTypeSet
 import io.provenance.explorer.model.TxStatus
-import org.joda.time.DateTime
 import java.math.BigDecimal
+import java.time.LocalDateTime
 
 data class TxData(
     val blockHeight: Int,
     val txHashId: Int?,
     val txHash: String,
-    val txTimestamp: DateTime
+    val txTimestamp: LocalDateTime
 )
 
 data class TxQueryParams(
@@ -48,8 +48,8 @@ data class TxQueryParams(
     val txStatus: TxStatus? = null,
     val count: Int,
     val offset: Int,
-    val fromDate: DateTime? = null,
-    val toDate: DateTime? = null,
+    val fromDate: LocalDateTime? = null,
+    val toDate: LocalDateTime? = null,
     val nftId: Int? = null,
     val nftType: String? = null,
     val nftUuid: String? = null,

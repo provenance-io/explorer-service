@@ -9,6 +9,7 @@ import cosmos.bank.v1beta1.queryDenomMetadataResponse
 import cosmos.bank.v1beta1.queryDenomOwnersRequest
 import cosmos.bank.v1beta1.queryDenomsMetadataRequest
 import cosmos.bank.v1beta1.queryParamsRequest
+import cosmos.bank.v1beta1.querySpendableBalanceByDenomRequest
 import cosmos.bank.v1beta1.querySpendableBalancesRequest
 import cosmos.bank.v1beta1.querySupplyOfRequest
 import cosmos.base.v1beta1.CoinOuterClass
@@ -180,23 +181,13 @@ class AccountGrpcClient(channelUri: URI) {
         return balances
     }
 
-    suspend fun getSpendableBalanceDenom(address: String, denom: String): CoinOuterClass.Coin? {
-        var (offset, limit) = 0 to 100
-        var balance: CoinOuterClass.Coin?
-        var noInfo = false
-        do {
-            val req = bankClient.spendableBalances(
-                querySpendableBalancesRequest {
-                    this.address = address
-                    this.pagination = getPagination(offset, limit)
-                }
-            ).balancesList
-            if (req.size == 0) noInfo = true
-            balance = req.firstOrNull { it.denom == denom }
-            offset += limit
-        } while (!noInfo && balance == null)
-        return balance
-    }
+    suspend fun getSpendableBalanceDenom(address: String, denom: String): CoinOuterClass.Coin? =
+        bankClient.spendableBalanceByDenom(
+            querySpendableBalanceByDenomRequest {
+                this.address = address
+                this.denom = denom
+            }
+        ).balance
 
     suspend fun getCurrentSupply(denom: String) =
         bankClient.supplyOf(querySupplyOfRequest { this.denom = denom }).amount
