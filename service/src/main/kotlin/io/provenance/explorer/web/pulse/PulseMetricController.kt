@@ -1,8 +1,9 @@
 package io.provenance.explorer.web.pulse
 
-import io.provenance.explorer.domain.models.explorer.pulse.AssetMetric
 import io.provenance.explorer.domain.models.explorer.pulse.HashMetricType
-import io.provenance.explorer.service.PulseService
+import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
+import io.provenance.explorer.domain.models.explorer.pulse.PulseMetric
+import io.provenance.explorer.service.PulseMetricService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.MediaType
@@ -13,17 +14,22 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping(
-    path = ["/api/pulse/metrics"],
+    path = ["/api/pulse/metric"],
     produces = [MediaType.APPLICATION_JSON_VALUE]
 )
 @Tag(
     name = "Pulse Metrics",
     description = "Pulse metrics endpoint for Hash, Market Cap, and other metrics"
 )
-class PulseMetricsController(private val pulseService: PulseService) {
+class PulseMetricController(private val pulseMetricService: PulseMetricService) {
 
     @Operation(summary = "Default base token (hash) metrics")
     @GetMapping("/hash/type/{type}")
-    fun getHashMarketCap(@PathVariable type: HashMetricType): AssetMetric =
-        pulseService.hashMetric(type)
+    fun getHashMetricsByType(@PathVariable type: HashMetricType): PulseMetric =
+        pulseMetricService.hashMetric(type)
+
+    @Operation(summary = "Global metrics based on the given type")
+    @GetMapping("/type/{type}")
+    fun getPulseMetricsByType(@PathVariable type: PulseCacheType): PulseMetric =
+        pulseMetricService.pulseMetric(type)
 }

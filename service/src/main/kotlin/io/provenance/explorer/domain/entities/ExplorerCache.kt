@@ -312,17 +312,15 @@ class ProcessQueueRecord(id: EntityID<Int>) : IntEntity(id) {
     var processing by ProcessQueueTable.processing
 }
 
-object PulseCacheTable :
-    IdTable<LocalDateTime>(name = "pulse_cache") {
+object PulseCacheTable : IntIdTable(name = "pulse_cache") {
     val cachedTimestamp = datetime("cached_timestamp")
-    override val id = cachedTimestamp.entityId()
     val data = jsonb<PulseCacheTable, JsonNode>("data", OBJECT_MAPPER)
     val denom = text("denom")
     val type: Column<PulseCacheType> = enumerationByName("type", 128, PulseCacheType::class)
 }
 
-class PulseCacheRecord(id: EntityID<LocalDateTime>) : Entity<LocalDateTime>(id) {
-    companion object : EntityClass<LocalDateTime, PulseCacheRecord>(
+class PulseCacheRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<PulseCacheRecord>(
         PulseCacheTable
     ) {
 
@@ -347,5 +345,4 @@ class PulseCacheRecord(id: EntityID<LocalDateTime>) : Entity<LocalDateTime>(id) 
     var denom by PulseCacheTable.denom
     var type by PulseCacheTable.type
     var data by PulseCacheTable.data
-    var cachedTimestamp by PulseCacheTable.cachedTimestamp
 }

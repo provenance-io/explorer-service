@@ -10,11 +10,3 @@ data class MetricTrend(
     val type: MetricTrendType,
     val period: MetricTrendPeriod,
 )
-
-fun MetricTrend.calculateTrend(): MetricTrendType {
-    return when {
-        percentage > BigDecimal.ZERO -> MetricTrendType.UP
-        percentage < BigDecimal.ZERO -> MetricTrendType.DOWN
-        else -> MetricTrendType.FLAT
-    }
-}
