@@ -1,9 +1,9 @@
 package io.provenance.explorer.domain.entities
 
-import com.fasterxml.jackson.databind.JsonNode
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
+import io.provenance.explorer.domain.models.explorer.pulse.PulseMetric
 import io.provenance.explorer.model.ChainAum
 import io.provenance.explorer.model.ChainMarketRate
 import io.provenance.explorer.model.CmcHistoricalQuote
@@ -313,9 +313,9 @@ class ProcessQueueRecord(id: EntityID<Int>) : IntEntity(id) {
 }
 
 object PulseCacheTable : IntIdTable(name = "pulse_cache") {
-    val cachedTimestamp = datetime("cached_timestamp")
-    val data = jsonb<PulseCacheTable, JsonNode>("data", OBJECT_MAPPER)
-    val denom = text("denom")
+    val cacheDate = date("cache_date")
+    val updatedTimestamp = datetime("updated_timestamp")
+    val data = jsonb<PulseCacheTable, PulseMetric>("data", OBJECT_MAPPER)
     val type: Column<PulseCacheType> = enumerationByName("type", 128, PulseCacheType::class)
 }
 
@@ -324,25 +324,29 @@ class PulseCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         PulseCacheTable
     ) {
 
-        fun save(date: LocalDateTime, denom: String, type: PulseCacheType, data: JsonNode) =
-            transaction {
-                PulseCacheTable.insertIgnore {
-                    it[this.cachedTimestamp] = date
-                    it[this.denom] = denom
-                    it[this.type] = type
-                    it[this.data] = data
-                }
+        fun upsert(date: LocalDate, type: PulseCacheType, data: PulseMetric) = transaction {
+            findByDateAndType(date, type)?.apply {
+                this.data = data
+                this.updatedTimestamp = LocalDateTime.now()
+            } ?:
+            PulseCacheTable.insertIgnore {
+                it[this.cacheDate] = date
+                it[this.updatedTimestamp] = LocalDateTime.now()
+                it[this.type] = type
+                it[this.data] = data
             }
-
-        fun findByDateAndType(date: LocalDateTime, type: PulseCacheType) = transaction {
-            PulseCacheRecord.find {
-                (PulseCacheTable.cachedTimestamp eq date) and
-                        (PulseCacheTable.type eq type)
-            }.firstOrNull()
         }
+
+        fun findByDateAndType(date: LocalDate, type: PulseCacheType) =
+            transaction {
+                PulseCacheRecord.find {
+                    (PulseCacheTable.cacheDate eq date) and
+                            (PulseCacheTable.type eq type)
+                }.firstOrNull()
+            }
     }
 
-    var denom by PulseCacheTable.denom
     var type by PulseCacheTable.type
     var data by PulseCacheTable.data
+    var updatedTimestamp by PulseCacheTable.updatedTimestamp
 }

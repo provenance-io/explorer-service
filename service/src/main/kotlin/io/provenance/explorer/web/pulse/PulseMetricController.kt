@@ -1,6 +1,5 @@
 package io.provenance.explorer.web.pulse
 
-import io.provenance.explorer.domain.models.explorer.pulse.HashMetricType
 import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
 import io.provenance.explorer.domain.models.explorer.pulse.PulseMetric
 import io.provenance.explorer.service.PulseMetricService
@@ -22,11 +21,6 @@ import org.springframework.web.bind.annotation.RestController
     description = "Pulse metrics endpoint for Hash, Market Cap, and other metrics"
 )
 class PulseMetricController(private val pulseMetricService: PulseMetricService) {
-
-    @Operation(summary = "Default base token (hash) metrics")
-    @GetMapping("/hash/type/{type}")
-    fun getHashMetricsByType(@PathVariable type: HashMetricType): PulseMetric =
-        pulseMetricService.hashMetric(type)
 
     @Operation(summary = "Global metrics based on the given type")
     @GetMapping("/type/{type}")

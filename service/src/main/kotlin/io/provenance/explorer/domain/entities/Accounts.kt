@@ -28,6 +28,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.insertIgnore
@@ -69,6 +70,13 @@ class AccountRecord(id: EntityID<Int>) : IntEntity(id) {
             AccountRecord.find { AccountTable.type inList types }.toList()
         }
 
+        fun countActiveAccounts() = transaction {
+            AccountRecord.find {
+                (AccountTable.isContract eq Op.FALSE) and
+                (AccountTable.baseAccount.isNotNull()) and
+                (AccountTable.type eq "BaseAccount")
+            }.count()
+        }
         fun findContractAccounts() = transaction {
             AccountRecord.find { AccountTable.isContract eq Op.TRUE }.toList()
         }
