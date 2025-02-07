@@ -116,7 +116,7 @@ class BlockCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
         fun getLastBlockBeforeTime(time: LocalDateTime?) = transaction {
             val query = "SELECT get_last_block_before_timestamp(?);"
             val arguments = listOf(Pair(JavaLocalDateTimeColumnType(), time))
-            query.execAndMap { it.getInt("get_last_block_before_timestamp") }.first()
+            query.execAndMap(arguments) { it.getInt("get_last_block_before_timestamp") }.first()
         }
 
         fun getBlocksForRange(from: Int, to: Int) = transaction {
