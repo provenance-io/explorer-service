@@ -490,7 +490,7 @@ class BlockAndTxProcessor(
                         when (pair.first) {
                             GovMsgType.PROPOSAL ->
                                 // Have to find the proposalId in the log events
-                                tx.txResponse.logsList[logsIdx]
+                                tx.txResponse
                                     .eventsList.first { it.type == "submit_proposal" }
                                     .attributesList.filter { it.key == "proposal_id" }.withIndex()
                                     .first { it.index == listIdx }
