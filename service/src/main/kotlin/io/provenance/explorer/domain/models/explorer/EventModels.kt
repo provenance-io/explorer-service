@@ -51,6 +51,9 @@ private fun List<Abci.ABCIMessageLog>.toProvenanceEvents(index: Int?): List<Prov
             }
         }
     } else {
+        if (this.size < index)
+            throw IllegalArgumentException("index $index does not exist in the event list.")
+
         this[index].eventsList.stringEventToProvenanceEvents().also {
             events.addAll(it)
         }
