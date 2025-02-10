@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController
 
 @Validated
 @RestController
-@RequestMapping(path = ["/api/v2/utility"], produces = [MediaType.APPLICATION_JSON_VALUE], consumes = [org.springframework.http.MediaType.APPLICATION_JSON_VALUE])
+@RequestMapping(path = ["/api/v2/utility"], produces = [MediaType.APPLICATION_JSON_VALUE])
 @Tag(
     name = "Utilities",
     description = "This should not be used by the UI"

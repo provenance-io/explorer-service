@@ -6,6 +6,7 @@ import com.google.protobuf.ByteString
 import com.google.protobuf.Timestamp
 import cosmos.base.abci.v1beta1.Abci
 import cosmos.tx.v1beta1.ServiceOuterClass
+import cosmos.tx.v1beta1.ServiceOuterClass.GetTxResponse
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_VAL_CONS_PREFIX
