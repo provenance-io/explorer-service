@@ -1,7 +1,6 @@
 package io.provenance.explorer.service
 
 import com.google.protobuf.util.JsonFormat
-import cosmos.base.abci.v1beta1.Abci
 import ibc.applications.transfer.v1.Transfer
 import ibc.applications.transfer.v1.Tx.MsgTransfer
 import ibc.core.channel.v1.ChannelOuterClass
@@ -25,6 +24,7 @@ import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.LedgerInfo
+import io.provenance.explorer.domain.models.explorer.ProvenanceEvent
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.grpc.extensions.denomEventRegexParse
 import io.provenance.explorer.grpc.extensions.scrubQuotes
@@ -67,23 +67,27 @@ class IbcService(
     fun buildIbcLedgerAck(ledger: LedgerInfo, txData: TxData, ledgerId: Int) =
         IbcLedgerAckRecord.buildInsert(ledger, txData, ledgerId)
 
-    fun parseTransfer(msg: MsgTransfer, logs: Abci.ABCIMessageLog): LedgerInfo {
-        val typed = logs.eventsList.associateBy { it.type }
+    fun parseTransfer(msg: MsgTransfer, logs: List<ProvenanceEvent>): LedgerInfo {
+        val typed = logs.associateBy { it.type }
         val channel = typed["send_packet"]!!.let { event ->
-            val port = event.attributesList.first { it.key == "packet_src_port" }.value
-            val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
+            val port = event.attributes["packet_src_port"]
+            val channel = event.attributes["packet_src_channel"]
+
+            if (port == null || channel == null)
+                throw IllegalStateException("Malformed event for 'send_packet' IBC message")
+
             IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
         }
         val ledger = LedgerInfo(channel = channel!!, logs = logs)
         ledger.ackType = IbcAckType.TRANSFER
         typed.forEach { (k, v) ->
             when (k) {
-                "transfer" -> v.attributesList.forEach {
+                "transfer" -> v.attributes.forEach {
                     when (it.key) {
                         "recipient" -> ledger.passThroughAddress = accountService.getAccountRaw(it.value)
                     }
                 }
-                "send_packet" -> v.attributesList.forEach {
+                "send_packet" -> v.attributes.forEach {
                     when (it.key) {
                         "packet_data_hex" ->
                             if (ledger.denom.isEmpty()) {
@@ -115,22 +119,26 @@ class IbcService(
         return ledger
     }
 
-    fun parseRecv(txSuccess: Boolean, msg: MsgRecvPacket, logs: Abci.ABCIMessageLog): LedgerInfo {
+    fun parseRecv(txSuccess: Boolean, msg: MsgRecvPacket, logs: List<ProvenanceEvent>): LedgerInfo {
         val ledger = LedgerInfo()
         ledger.logs = logs
         ledger.ackType = IbcAckType.RECEIVE
         ledger.movementIn = true
         if (txSuccess) {
             ledger.ack = true
-            val typed = logs.eventsList.associateBy { it.type }
+            val typed = logs.associateBy { it.type }
             ledger.channel = typed["recv_packet"]!!.let { event ->
-                val port = event.attributesList.first { it.key == "packet_dst_port" }.value
-                val channel = event.attributesList.first { it.key == "packet_dst_channel" }.value
+                val port = event.attributes["packet_dst_port"]
+                val channel = event.attributes["packet_dst_channel"]
+
+                if (port == null || channel == null)
+                    throw IllegalStateException("Malformed event 'recv_packet' for IBC message")
+
                 IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
             }
             typed.forEach { (k, v) ->
                 when (k) {
-                    "recv_packet" -> v.attributesList.forEach {
+                    "recv_packet" -> v.attributes.forEach {
                         when (it.key) {
                             "packet_data_hex" ->
                                 if (ledger.toAddress.isEmpty()) {
@@ -152,7 +160,7 @@ class IbcService(
                         }
                     }
                     "transfer" ->
-                        v.attributesList.forEach {
+                        v.attributes.forEach {
                             when (it.key) {
                                 "sender" -> ledger.passThroughAddress = accountService.getAccountRaw(it.value)
                                 "amount" -> {
@@ -176,26 +184,30 @@ class IbcService(
         return ledger
     }
 
-    fun parseAcknowledge(txSuccess: Boolean, msg: MsgAcknowledgement, logs: Abci.ABCIMessageLog): LedgerInfo {
+    fun parseAcknowledge(txSuccess: Boolean, msg: MsgAcknowledgement, logs: List<ProvenanceEvent>): LedgerInfo {
         val ledger = LedgerInfo()
         ledger.logs = logs
         ledger.ackType = IbcAckType.ACKNOWLEDGEMENT
         if (txSuccess) {
             ledger.ack = true
-            val typed = logs.eventsList.associateBy { it.type }
+            val typed = logs.associateBy { it.type }
             ledger.channel = typed["acknowledge_packet"]!!.let { event ->
-                val port = event.attributesList.first { it.key == "packet_src_port" }.value
-                val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
+                val port = event.attributes["packet_src_port"]
+                val channel = event.attributes["packet_src_channel"]
+
+                if (port == null || channel == null)
+                    throw IllegalStateException("Malformed event 'acknowledge_packet' for IBC message")
+
                 IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
             }
             typed.forEach { (k, v) ->
                 when (k) {
-                    "acknowledge_packet" -> v.attributesList.forEach {
+                    "acknowledge_packet" -> v.attributes.forEach {
                         when (it.key) {
                             "packet_sequence" -> ledger.sequence = it.value.toInt()
                         }
                     }
-                    "fungible_token_packet" -> v.attributesList.firstOrNull { it.key == "success" }
+                    "fungible_token_packet" -> v.attributes["success"]
                         ?.let {
                             ledger.changesEffected = true
                             ledger.ackSuccess = true
@@ -212,21 +224,25 @@ class IbcService(
         return ledger
     }
 
-    fun parseTimeout(txSuccess: Boolean, msg: MsgTimeout, logs: Abci.ABCIMessageLog): LedgerInfo {
+    fun parseTimeout(txSuccess: Boolean, msg: MsgTimeout, logs: List<ProvenanceEvent>): LedgerInfo {
         val ledger = LedgerInfo()
         ledger.logs = logs
         ledger.ackType = IbcAckType.TIMEOUT
         if (txSuccess) {
             ledger.ack = true
-            val typed = logs.eventsList.associateBy { it.type }
+            val typed = logs.associateBy { it.type }
             ledger.channel = typed["timeout_packet"]!!.let { event ->
-                val port = event.attributesList.first { it.key == "packet_src_port" }.value
-                val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
+                val port = event.attributes["packet_src_port"]
+                val channel = event.attributes["packet_src_channel"]
+
+                if (port == null || channel == null)
+                    throw IllegalStateException("Malformed event 'timeout_packet' for IBC message")
+
                 IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
             }
             typed.forEach { (k, v) ->
                 when (k) {
-                    "timeout_packet" -> v.attributesList.forEach {
+                    "timeout_packet" -> v.attributes.forEach {
                         when (it.key) {
                             "packet_sequence" -> ledger.sequence = it.value.toInt()
                         }
@@ -244,21 +260,25 @@ class IbcService(
         return ledger
     }
 
-    fun parseTimeoutOnClose(txSuccess: Boolean, msg: MsgTimeoutOnClose, logs: Abci.ABCIMessageLog): LedgerInfo {
+    fun parseTimeoutOnClose(txSuccess: Boolean, msg: MsgTimeoutOnClose, logs: List<ProvenanceEvent>): LedgerInfo {
         val ledger = LedgerInfo()
         ledger.logs = logs
         ledger.ackType = IbcAckType.TIMEOUT
         if (txSuccess) {
             ledger.ack = true
-            val typed = logs.eventsList.associateBy { it.type }
+            val typed = logs.associateBy { it.type }
             ledger.channel = typed["timeout_packet"]!!.let { event ->
-                val port = event.attributesList.first { it.key == "packet_src_port" }.value
-                val channel = event.attributesList.first { it.key == "packet_src_channel" }.value
+                val port = event.attributes["packet_src_port"]
+                val channel = event.attributes["packet_src_channel"]
+
+                if (port == null || channel == null)
+                    throw IllegalStateException("Malformed event 'timeout_packet' for IBC message")
+
                 IbcChannelRecord.findBySrcPortSrcChannel(port, channel)
             }
             typed.forEach { (k, v) ->
                 when (k) {
-                    "timeout_packet" -> v.attributesList.forEach {
+                    "timeout_packet" -> v.attributes.forEach {
                         when (it.key) {
                             "packet_sequence" -> ledger.sequence = it.value.toInt()
                         }

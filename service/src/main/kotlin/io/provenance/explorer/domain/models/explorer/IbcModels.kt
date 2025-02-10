@@ -1,6 +1,5 @@
 package io.provenance.explorer.domain.models.explorer
 
-import cosmos.base.abci.v1beta1.Abci
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.IbcAckType
 import io.provenance.explorer.domain.entities.IbcChannelRecord
@@ -10,7 +9,7 @@ import java.time.LocalDateTime
 data class LedgerInfo(
     var channel: IbcChannelRecord? = null,
     var denom: String = "",
-    var logs: Abci.ABCIMessageLog? = null,
+    var logs: List<ProvenanceEvent>? = null,
     var denomTrace: String = "",
     var balanceIn: String? = null,
     var balanceOut: String? = null,
