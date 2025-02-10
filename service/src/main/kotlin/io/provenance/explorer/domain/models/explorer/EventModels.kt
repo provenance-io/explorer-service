@@ -39,12 +39,12 @@ fun Abci.TxResponse.getProvenanceEventsAll(): List<ProvenanceEvent> = this.let {
     it.logsList.toProvenanceEvents() + it.eventsList.eventToProvenanceEvents()
 }
 
-private fun List<Abci.ABCIMessageLog>.toProvenanceEvents() = this.toProvenanceEvents(-1)
-private fun List<Abci.ABCIMessageLog>.toProvenanceEvents(index: Int = -1): List<ProvenanceEvent> {
+private fun List<Abci.ABCIMessageLog>.toProvenanceEvents() = this.toProvenanceEvents(null)
+private fun List<Abci.ABCIMessageLog>.toProvenanceEvents(index: Int?): List<ProvenanceEvent> {
     val events = mutableListOf<ProvenanceEvent>()
 
     // Convert all logs to events if the index wasn't specified
-    if (index == -1) {
+    if (index == null) {
         this.forEach {
             it.eventsList.stringEventToProvenanceEvents().also {
                 events.addAll(it)
