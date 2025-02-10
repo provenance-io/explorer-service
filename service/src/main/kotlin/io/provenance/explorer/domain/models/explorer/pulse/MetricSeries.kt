@@ -4,5 +4,5 @@ import java.math.BigDecimal
 
 data class MetricSeries(
     val seriesData: List<BigDecimal>,
-    val label: String
+    val labels: List<String>
 )

@@ -5,9 +5,10 @@ import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
-import io.provenance.explorer.domain.entities.BlockCacheHourlyTxCountsRecord
 import io.provenance.explorer.domain.entities.PulseCacheRecord
+import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.extensions.roundWhole
+import io.provenance.explorer.domain.models.explorer.pulse.MetricSeries
 import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
 import io.provenance.explorer.domain.models.explorer.pulse.PulseMetric
 import io.provenance.explorer.model.ValidatorState.ACTIVE
@@ -16,6 +17,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 /**
  * Service handler for the Provenance Pulse application
@@ -31,42 +33,61 @@ class PulseMetricService(
     val base = UTILITY_TOKEN
     val quote = USD_UPPER
 
-    private fun buildAndSaveMetric(
+    private fun buildAndSavePulseMetric(
         date: LocalDate, type: PulseCacheType,
         previous: BigDecimal, current: BigDecimal,
-        base: String, quote: String?
+        base: String,
+        quote: String? = null,
+        quoteAmount: BigDecimal? = null,
+        series: MetricSeries? = null
     ) =
         PulseMetric.build(
             previous = previous,
             current = current,
             base = base,
-            quote = quote
+            quote = quote,
+            quoteAmount = quoteAmount,
+            series = series
         ).also {
             PulseCacheRecord.upsert(date, type, it)
         }
 
-    private fun fetchCache(
+    private fun fetchOrBuildCacheFromDataSource(
         type: PulseCacheType,
-        metricFn: () -> PulseMetric
+        dataSourceFn: () -> PulseMetric
     ): PulseMetric = transaction {
         val today = LocalDate.now()
         val yesterday = today.minusDays(1)
 
         val todayCache = PulseCacheRecord.findByDateAndType(today, type)
 
-        val bustCache = scheduledTask() // if this is a scheduled task, bust the cache
+        val bustCache =
+            scheduledTask() // if this is a scheduled task, bust the cache
 
         if (todayCache == null || bustCache) {
-            val metric = metricFn()
+            val metric = dataSourceFn()
             val yesterdayMetric =
                 PulseCacheRecord.findByDateAndType(yesterday, type)?.data
-                    ?: buildAndSaveMetric(
-                        yesterday, type, metric.amount, metric.amount,
-                        metric.base, metric.quote
+                    ?: buildAndSavePulseMetric(
+                        date = yesterday,
+                        type = type,
+                        previous = metric.amount,
+                        current = metric.amount,
+                        base = metric.base,
+                        quote = metric.quote,
+                        quoteAmount = metric.quoteAmount,
+                        series = metric.series
                     )
-            buildAndSaveMetric(
-                today, type, yesterdayMetric.amount, metric.amount,
-                metric.base, metric.quote
+
+            buildAndSavePulseMetric(
+                date = today,
+                type = type,
+                previous = yesterdayMetric.amount,
+                current = metric.amount,
+                base = metric.base,
+                quote = metric.quote,
+                quoteAmount = metric.quoteAmount,
+                series = metric.series
             )
         } else todayCache.data
     }
@@ -76,92 +97,113 @@ class PulseMetricService(
      * to the current day's market cap
      */
     private fun hashMarketCapMetric(): PulseMetric =
-        fetchCache(
+        fetchOrBuildCacheFromDataSource(
             type = PulseCacheType.HASH_MARKET_CAP_METRIC
         ) {
             tokenService.getTokenLatest()?.takeIf { it.quote[quote] != null }?.let {
-                it.quote[quote]?.market_cap_by_total_supply?.let { marketCap ->
-                    PulseMetric.build(
-                        amount = marketCap.divide(UTILITY_TOKEN_BASE_MULTIPLIER).roundWhole(),
-                        quote = quote
-                    )
+                    it.quote[quote]?.market_cap_by_total_supply?.let { marketCap ->
+                        PulseMetric.build(
+                            base = USD_UPPER,
+                            amount = marketCap.roundWhole(),
+                        )
+                    }
                 }
-            } ?: throw ResourceNotFoundException("No quote found for $quote")
+                ?: throw ResourceNotFoundException("No quote found for $quote")
         }
 
     /**
      * Returns the current hash metrics for the given type
      */
     fun hashMetric(type: PulseCacheType, bustCache: Boolean = false) =
-        fetchCache(
+        fetchOrBuildCacheFromDataSource(
             type = type
         ) {
+            val latestHashPrice =
+                tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price
+                    ?: BigDecimal.ZERO
+
             when (type) {
                 PulseCacheType.HASH_STAKED_METRIC -> {
-                    val staked = validatorService.getStakingValidators(ACTIVE).sumOf { it.tokenCount }
+                    val staked = validatorService.getStakingValidators(ACTIVE)
+                        .sumOf { it.tokenCount }
                         .divide(UTILITY_TOKEN_BASE_MULTIPLIER).roundWhole()
-                    tokenService.getTokenBreakdown().let {
-                        PulseMetric.build(
-                            amount = staked,
-                            quote = null
-                        )
-                    }
+                    PulseMetric.build(
+                        base = UTILITY_TOKEN,
+                        amount = staked,
+                        quote = USD_UPPER,
+                        quoteAmount = latestHashPrice.times(staked)
+                    )
                 }
 
                 PulseCacheType.HASH_CIRCULATING_METRIC -> {
                     val tokenSupply = tokenService.totalSupply()
-                                        .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
-                                        .roundWhole()
+                        .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+                        .roundWhole()
                     PulseMetric.build(
+                        base = UTILITY_TOKEN,
                         amount = tokenSupply,
-                        quote = null
+                        quote = USD_UPPER,
+                        quoteAmount = latestHashPrice.times(tokenSupply)
                     )
                 }
 
                 PulseCacheType.HASH_SUPPLY_METRIC -> {
                     val tokenSupply = tokenService.maxSupply()
-                                        .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
-                                        .roundWhole()
+                        .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+                        .roundWhole()
                     PulseMetric.build(
-                        amount = tokenSupply,
-                        quote = null
+                        base = UTILITY_TOKEN,
+                        amount = tokenSupply
                     )
                 }
+
                 else -> throw ResourceNotFoundException("Invalid hash metric request for type $type")
             }
         }
 
     private fun pulseMarketCap(): PulseMetric =
-        fetchCache(
+        fetchOrBuildCacheFromDataSource(
             type = PulseCacheType.PULSE_MARKET_CAP_METRIC
         ) {
             pricingService.getTotalAum().let {
                 PulseMetric.build(
+                    base = USD_UPPER,
                     amount = it
                 )
             }
         }
 
     private fun transactionVolume(): PulseMetric =
-        fetchCache(
+        fetchOrBuildCacheFromDataSource(
             type = PulseCacheType.PULSE_TRANSACTION_VOLUME_METRIC
         ) {
-            BlockCacheHourlyTxCountsRecord.getTotalTxCount().let {
-                PulseMetric.build(
-                    amount = it.toBigDecimal(),
-                    quote = null
-                )
-            }
+            val countForDates = TxCacheRecord.countForDates(30)
+            val series = MetricSeries(
+                seriesData = countForDates.map { it.second.toBigDecimal() },
+                labels = countForDates.map {
+                    it.first.format(
+                        DateTimeFormatter.ofPattern(
+                            "MM-dd-yyyy"
+                        )
+                    )
+                }
+            )
+            PulseMetric.build(
+                base = base,
+                amount = TxCacheRecord.getTotalTxCount().toBigDecimal(),
+                quote = null,
+                series = series
+            )
         }
 
     private fun totalParticipants(): PulseMetric =
-        fetchCache(
+        fetchOrBuildCacheFromDataSource(
             type = PulseCacheType.PULSE_PARTICIPANTS_METRIC
         ) {
             AccountRecord.countActiveAccounts().let {
                 PulseMetric.build(
+                    base = UTILITY_TOKEN,
                     amount = it.toBigDecimal(),
-                    quote = null
                 )
             }
         }
@@ -187,7 +229,8 @@ class PulseMetricService(
         }
     }
 
-    private fun scheduledTask(): Boolean = Thread.currentThread().name.startsWith("scheduling-")
+    private fun scheduledTask(): Boolean =
+        Thread.currentThread().name.startsWith("scheduling-")
 
     fun refreshCache() = transaction {
         val threadName = Thread.currentThread().name

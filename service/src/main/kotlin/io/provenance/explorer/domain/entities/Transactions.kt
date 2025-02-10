@@ -69,6 +69,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.math.BigDecimal
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -205,6 +206,24 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             }
 
             query
+        }
+
+        fun countForDates(daysPrior: Int): List<Pair<LocalDate, Long>> = transaction {
+            val query = """
+                select sum(daily_tx_cnt.cnt) as count, ds
+                from (select count(*) cnt, tx_timestamp ts, date_trunc('day', tx_timestamp) ds
+                      from tx_cache
+                      where tx_timestamp > current_timestamp - interval '$daysPrior days'
+                      group by ts, ds) as daily_tx_cnt
+                group by ds
+                order by ds;
+            """.trimIndent()
+            query.execAndMap {
+                Pair(
+                    it.getTimestamp("ds").toLocalDateTime().toLocalDate(),
+                     it.getLong("count")
+                )
+            }
         }
     }
 

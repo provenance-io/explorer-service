@@ -1,9 +1,8 @@
 package io.provenance.explorer.domain.models.explorer.pulse
 
-import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.extensions.calculatePulseMetricTrend
-import io.provenance.explorer.model.base.USD_UPPER
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.util.UUID
 
 data class PulseMetric(
@@ -11,6 +10,7 @@ data class PulseMetric(
     val base: String,
     val amount: BigDecimal,
     val quote: String? = null,
+    val quoteAmount: BigDecimal?,
     val trend: MetricTrend? = null,
     val progress: MetricProgress? = null,
     val series: MetricSeries? = null
@@ -18,26 +18,33 @@ data class PulseMetric(
     companion object {
         fun build(
             amount: BigDecimal,
-            base: String = UTILITY_TOKEN,
-            quote: String? = USD_UPPER
+            base: String,
+            quote: String? = null,
+            quoteAmount: BigDecimal? = null,
+            series: MetricSeries? = null
         ) = PulseMetric(
             id = UUID.randomUUID(),
             base = base,
             amount = amount,
-            quote = quote
+            quote = quote,
+            quoteAmount = quoteAmount,
+            series = series
         )
 
         fun build(
             previous: BigDecimal,
             current: BigDecimal,
-            base: String = UTILITY_TOKEN,
-            quote: String? = USD_UPPER
+            base: String,
+            quote: String? = null,
+            quoteAmount: BigDecimal? = null,
+            series: MetricSeries? = null
         ) =
             PulseMetric(
                 id = UUID.randomUUID(),
                 base = base,
                 amount = current,
                 quote = quote,
+                quoteAmount = quoteAmount,
                 trend = MetricTrend(
                     previousQuantity = previous,
                     currentQuantity = current,
@@ -45,7 +52,8 @@ data class PulseMetric(
                     percentage = percentageChange(previous, current),
                     type = current.minus(previous).calculatePulseMetricTrend(),
                     period = MetricTrendPeriod.DAY
-                )
+                ),
+                series = series
             )
 
         // create a function called build
@@ -55,7 +63,7 @@ data class PulseMetric(
         private fun percentageChange(
             previous: BigDecimal,
             current: BigDecimal
-        ) = if (current == BigDecimal.ZERO) BigDecimal.ZERO
-        else change(previous, current) / previous * BigDecimal(100)
+        ) = if (previous == BigDecimal.ZERO) BigDecimal.ZERO
+        else change(previous, current).divide(previous, 8, RoundingMode.HALF_UP) * BigDecimal(100)
     }
 }
