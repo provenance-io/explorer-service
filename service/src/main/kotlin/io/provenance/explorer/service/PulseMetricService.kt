@@ -5,18 +5,22 @@ import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.extensions.roundWhole
+import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.pulse.MetricSeries
 import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
 import io.provenance.explorer.domain.models.explorer.pulse.PulseMetric
 import io.provenance.explorer.model.ValidatorState.ACTIVE
+import io.provenance.explorer.model.base.USD_LOWER
 import io.provenance.explorer.model.base.USD_UPPER
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 /**
@@ -26,7 +30,7 @@ import java.time.format.DateTimeFormatter
 class PulseMetricService(
     private val tokenService: TokenService,
     private val validatorService: ValidatorService,
-    private val pricingService: PricingService
+    private val pricingService: PricingService,
 ) {
     protected val logger = logger(PulseMetricService::class)
 
@@ -61,8 +65,8 @@ class PulseMetricService(
 
         val todayCache = PulseCacheRecord.findByDateAndType(today, type)
 
-        val bustCache =
-            scheduledTask() // if this is a scheduled task, bust the cache
+        // if this is a scheduled task, bust the cache
+        val bustCache = scheduledTask()
 
         if (todayCache == null || bustCache) {
             val metric = dataSourceFn()
@@ -173,6 +177,54 @@ class PulseMetricService(
             }
         }
 
+    private fun pulseTradesSettled(): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_TRADE_SETTLEMENT_METRIC
+        ) {
+            NavEventsRecord.getNavEvents(
+                fromDate = LocalDateTime.now().startOfDay()
+            ).count { it.source.startsWith("x/exchange") } // gross
+             .toBigDecimal().let {
+                    PulseMetric.build(
+                        base = UTILITY_TOKEN,
+                        amount = it
+                    )
+            }
+        }
+
+    private fun pulseTradeValueSettled(): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_TRADE_VALUE_SETTLED_METRIC
+        ) {
+            NavEventsRecord.getNavEvents(
+                fromDate = LocalDateTime.now().startOfDay()
+            ).filter {
+                it.source.startsWith("x/exchange") &&
+                       it.priceDenom?.startsWith("u$USD_LOWER") == true
+            } // gross
+                .sumOf { it.priceAmount!! }.toBigDecimal().let {
+                    PulseMetric.build(
+                        base = USD_UPPER,
+                        amount = it.divide(1000000.toBigDecimal()) // all uusd is micro
+                    )
+                }
+        }
+
+    private fun pulseReceivableValue(): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_RECEIVABLES_METRIC
+        ) { // TODO technically correct assuming only metadata nav events are receivables
+            NavEventsRecord.getNavEvents(
+                fromDate = LocalDateTime.now().startOfDay()
+            ).filter { it.source == "metadata" && it.scopeId != null } // gross
+                .sumOf { it.priceAmount!! }.toBigDecimal().let {
+                    PulseMetric.build(
+                        base = USD_UPPER,
+                        amount = it
+                    )
+                }
+        }
+
     private fun transactionVolume(): PulseMetric =
         fetchOrBuildCacheFromDataSource(
             type = PulseCacheType.PULSE_TRANSACTION_VOLUME_METRIC
@@ -208,6 +260,12 @@ class PulseMetricService(
             }
         }
 
+    private fun todoPulse(): PulseMetric =
+        PulseMetric.build(
+            base = UTILITY_TOKEN,
+            amount = BigDecimal.ZERO
+        )
+
     /**
      * Returns the pulse metric for the given type - pulse metrics are "global"
      * metrics that are not specific to Hash
@@ -220,12 +278,13 @@ class PulseMetricService(
             PulseCacheType.HASH_SUPPLY_METRIC -> hashMetric(type)
             PulseCacheType.PULSE_MARKET_CAP_METRIC -> pulseMarketCap()
             PulseCacheType.PULSE_TRANSACTION_VOLUME_METRIC -> transactionVolume()
-            PulseCacheType.PULSE_FEES_AUCTIONS_METRIC -> pulseMarketCap()
-            PulseCacheType.PULSE_RECEIVABLES_METRIC -> pulseMarketCap()
-            PulseCacheType.PULSE_TRADE_SETTLEMENT_METRIC -> pulseMarketCap()
+            PulseCacheType.PULSE_RECEIVABLES_METRIC -> pulseReceivableValue()
+            PulseCacheType.PULSE_TRADE_SETTLEMENT_METRIC -> pulseTradesSettled()
+            PulseCacheType.PULSE_TRADE_VALUE_SETTLED_METRIC -> pulseTradeValueSettled()
             PulseCacheType.PULSE_PARTICIPANTS_METRIC -> totalParticipants()
-            PulseCacheType.PULSE_MARGIN_LOANS_METRIC -> pulseMarketCap()
-            PulseCacheType.PULSE_DEMOCRATIZED_PRIME_POOLS_METRIC -> pulseMarketCap()
+            PulseCacheType.PULSE_DEMOCRATIZED_PRIME_POOLS_METRIC -> todoPulse()
+            PulseCacheType.PULSE_MARGIN_LOANS_METRIC -> todoPulse()
+            PulseCacheType.PULSE_FEES_AUCTIONS_METRIC -> todoPulse()
         }
     }
 
@@ -238,5 +297,6 @@ class PulseMetricService(
         PulseCacheType.entries.forEach { type ->
             pulseMetric(type)
         }
+        logger.info("Pulse cache refreshed for thread $threadName")
     }
 }
