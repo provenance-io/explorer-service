@@ -41,6 +41,11 @@ fun Abci.TxResponse.getProvenanceEventsAll(): List<ProvenanceEvent> = this.let {
 
 private fun List<Abci.ABCIMessageLog>.toProvenanceEvents() = this.toProvenanceEvents(null)
 private fun List<Abci.ABCIMessageLog>.toProvenanceEvents(index: Int?): List<ProvenanceEvent> {
+    // No need to process an empty list. We can't throw any exceptions here since it stops
+    // processing upstream.
+    if (this.isEmpty())
+        return emptyList()
+
     val events = mutableListOf<ProvenanceEvent>()
 
     // Convert all logs to events if the index wasn't specified
@@ -51,9 +56,6 @@ private fun List<Abci.ABCIMessageLog>.toProvenanceEvents(index: Int?): List<Prov
             }
         }
     } else {
-        if (this.size < index)
-            throw IllegalArgumentException("index $index does not exist in the event list.")
-
         this[index].eventsList.stringEventToProvenanceEvents().also {
             events.addAll(it)
         }
