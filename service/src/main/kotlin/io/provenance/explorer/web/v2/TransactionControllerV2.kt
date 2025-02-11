@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 @Validated
 @RestController
@@ -55,21 +54,21 @@ class TransactionControllerV2(private val transactionService: TransactionService
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: LocalDateTime?,
+        fromDate: LocalDate?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: LocalDateTime?
+        toDate: LocalDate?
     ) = transactionService.getTxsByQuery(
         msgType = msgType,
         txStatus = txStatus,
         count = count,
         page = page,
-        fromDate = fromDate,
-        toDate = toDate
+        fromDate = fromDate?.atStartOfDay(),
+        toDate = toDate?.atStartOfDay()
     )
 
     @Operation(summary = "Return transaction detail by hash value")
@@ -194,16 +193,16 @@ class TransactionControllerV2(private val transactionService: TransactionService
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        fromDate: LocalDateTime?,
+        fromDate: LocalDate?,
         @Parameter(
             description = "DateTime format as  `yyyy-MM-dd` — for example, \"2000-10-31\"",
             required = false
         )
         @RequestParam(required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        toDate: LocalDateTime?
+        toDate: LocalDate?
     ) = transactionService.getTxsByQuery(
-        address, denom, module, msgType, null, txStatus, count, page, fromDate, toDate, nftAddr,
+        address, denom, module, msgType, null, txStatus, count, page, fromDate?.atStartOfDay(), toDate?.atStartOfDay(), nftAddr,
         ibcChain, ibcSrcPort, ibcSrcChannel
     )
 
