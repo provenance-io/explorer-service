@@ -16,7 +16,7 @@ import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.Timeframe
 import io.provenance.explorer.model.download.TxHistoryChartData
-import java.time.LocalDateTime
+import java.time.LocalDate
 
 object TransactionRoutes {
     const val TX_V2 = "${BaseRoutes.V2_BASE}/txs"
@@ -44,8 +44,8 @@ interface TransactionClient : BaseClient {
 
     @RequestLine("GET ${TransactionRoutes.HISTORY}?fromDate={fromDate}&toDate={toDate}&granularity={granularity}")
     fun history(
-        @Param("fromDate") fromDate: LocalDateTime? = null,
-        @Param("toDate") toDate: LocalDateTime? = null,
+        @Param("fromDate") fromDate: LocalDate? = null,
+        @Param("toDate") toDate: LocalDate? = null,
         @Param("granularity") granularity: DateTruncGranularity = DateTruncGranularity.DAY
     ): List<TxHistoryChartData>
 
@@ -55,8 +55,8 @@ interface TransactionClient : BaseClient {
         @Param("page") page: Int = 1,
         @Param("msgType") msgType: String? = null,
         @Param("txStatus") txStatus: TxStatus? = null,
-        @Param("fromDate") fromDate: LocalDateTime? = null,
-        @Param("toDate") toDate: LocalDateTime? = null
+        @Param("fromDate") fromDate: LocalDate? = null,
+        @Param("toDate") toDate: LocalDate? = null
     ): PagedResults<TxSummary>
 
     @RequestLine("GET ${TransactionRoutes.TX}?blockHeight={blockHeight}")
@@ -95,8 +95,8 @@ interface TransactionClient : BaseClient {
 
     @RequestLine("GET ${TransactionRoutes.HEATMAP}?fromDate={fromDate}&toDate={toDate}&timeframe={timeframe}")
     fun heatmap(
-        @Param("fromDate") fromDate: LocalDateTime? = null,
-        @Param("toDate") toDate: LocalDateTime? = null,
+        @Param("fromDate") fromDate: LocalDate? = null,
+        @Param("toDate") toDate: LocalDate? = null,
         @Param("timeframe") timeframe: Timeframe = Timeframe.FOREVER
     ): TxHeatmapRes
 
@@ -119,8 +119,8 @@ interface TransactionClient : BaseClient {
         @Param("ibcChain") ibcChain: String? = null,
         @Param("ibcSrcPort") ibcSrcPort: String? = null,
         @Param("ibcSrcChannel") ibcSrcChannel: String? = null,
-        @Param("fromDate") fromDate: LocalDateTime? = null,
-        @Param("toDate") toDate: LocalDateTime? = null
+        @Param("fromDate") fromDate: LocalDate? = null,
+        @Param("toDate") toDate: LocalDate? = null
     ): PagedResults<TxSummary>
 
     @RequestLine("GET ${TransactionRoutes.TXS_BY_ADDRESS}?$PAGE_PARAMETERS&msgType={msgType}&txStatus={txStatus}&fromDate={fromDate}&toDate={toDate}")
@@ -130,8 +130,8 @@ interface TransactionClient : BaseClient {
         @Param("page") page: Int = 1,
         @Param("msgType") msgType: String? = null,
         @Param("txStatus") txStatus: TxStatus? = null,
-        @Param("fromDate") fromDate: LocalDateTime? = null,
-        @Param("toDate") toDate: LocalDateTime? = null
+        @Param("fromDate") fromDate: LocalDate? = null,
+        @Param("toDate") toDate: LocalDate? = null
     ): PagedResults<TxSummary>
 
     @RequestLine("GET ${TransactionRoutes.TXS_BY_NFT}?$PAGE_PARAMETERS&msgType={msgType}&txStatus={txStatus}&fromDate={fromDate}&toDate={toDate}")
@@ -141,8 +141,8 @@ interface TransactionClient : BaseClient {
         @Param("page") page: Int = 1,
         @Param("msgType") msgType: String? = null,
         @Param("txStatus") txStatus: TxStatus? = null,
-        @Param("fromDate") fromDate: LocalDateTime? = null,
-        @Param("toDate") toDate: LocalDateTime? = null
+        @Param("fromDate") fromDate: LocalDate? = null,
+        @Param("toDate") toDate: LocalDate? = null
     ): PagedResults<TxSummary>
 
     @RequestLine("GET ${TransactionRoutes.TXS_BY_MODULE_GOV}?$PAGE_PARAMETERS&address={address}&msgType={msgType}&txStatus={txStatus}&fromDate={fromDate}&toDate={toDate}")
@@ -152,8 +152,8 @@ interface TransactionClient : BaseClient {
         @Param("address") address: String? = null,
         @Param("msgType") msgType: String? = null,
         @Param("txStatus") txStatus: TxStatus? = null,
-        @Param("fromDate") fromDate: LocalDateTime? = null,
-        @Param("toDate") toDate: LocalDateTime? = null
+        @Param("fromDate") fromDate: LocalDate? = null,
+        @Param("toDate") toDate: LocalDate? = null
     ): PagedResults<TxGov>
 
     @RequestLine("GET ${TransactionRoutes.TXS_BY_MODULE_SMART_CONTRACT}?$PAGE_PARAMETERS&code={code}&contract={contract}&msgType={msgType}&txStatus={txStatus}&fromDate={fromDate}&toDate={toDate}")
@@ -164,8 +164,8 @@ interface TransactionClient : BaseClient {
         @Param("contract") contract: String? = null,
         @Param("msgType") msgType: String? = null,
         @Param("txStatus") txStatus: TxStatus? = null,
-        @Param("fromDate") fromDate: LocalDateTime? = null,
-        @Param("toDate") toDate: LocalDateTime? = null
+        @Param("fromDate") fromDate: LocalDate? = null,
+        @Param("toDate") toDate: LocalDate? = null
     ): PagedResults<TxGov>
 
     @RequestLine("GET ${TransactionRoutes.TXS_BY_IBC_CHAIN}?$PAGE_PARAMETERS&msgType={msgType}&txStatus={txStatus}&ibcSrcPort={ibcSrcPort}&ibcSrcChannel={ibcSrcChannel}&fromDate={fromDate}&toDate={toDate}")
@@ -177,7 +177,7 @@ interface TransactionClient : BaseClient {
         @Param("txStatus") txStatus: TxStatus? = null,
         @Param("ibcSrcPort") ibcSrcPort: String? = null,
         @Param("ibcSrcChannel") ibcSrcChannel: String? = null,
-        @Param("fromDate") fromDate: LocalDateTime? = null,
-        @Param("toDate") toDate: LocalDateTime? = null
+        @Param("fromDate") fromDate: LocalDate? = null,
+        @Param("toDate") toDate: LocalDate? = null
     ): PagedResults<TxSummary>
 }

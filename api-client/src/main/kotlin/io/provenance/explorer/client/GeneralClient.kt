@@ -14,7 +14,7 @@ import io.provenance.explorer.model.Params
 import io.provenance.explorer.model.Spotlight
 import io.provenance.explorer.model.TxGasVolume
 import io.provenance.explorer.model.base.DateTruncGranularity
-import java.time.LocalDateTime
+import java.time.LocalDate
 
 object GeneralRoutes {
     const val GENERAL_V2 = BaseRoutes.V2_BASE
@@ -43,16 +43,16 @@ interface GeneralClient : BaseClient {
 
     @RequestLine("GET ${GeneralRoutes.GAS_STATS}?fromDate={fromDate}&toDate={toDate}&granularity={granularity}&msgType={msgType}")
     fun gasStats(
-        @Param("fromDate") fromDate: LocalDateTime,
-        @Param("toDate") toDate: LocalDateTime,
+        @Param("fromDate") fromDate: LocalDate,
+        @Param("toDate") toDate: LocalDate,
         @Param("granularity") granularity: DateTruncGranularity = DateTruncGranularity.DAY,
         @Param("msgType") msgType: String? = null
     ): List<GasStats>
 
     @RequestLine("GET ${GeneralRoutes.GAS_VOLUME}?fromDate={fromDate}&toDate={toDate}&granularity={granularity}")
     fun gasVolume(
-        @Param("fromDate") fromDate: LocalDateTime,
-        @Param("toDate") toDate: LocalDateTime,
+        @Param("fromDate") fromDate: LocalDate,
+        @Param("toDate") toDate: LocalDate,
         @Param("granularity") granularity: DateTruncGranularity = DateTruncGranularity.DAY
     ): List<TxGasVolume>
 
@@ -61,8 +61,8 @@ interface GeneralClient : BaseClient {
 
     @RequestLine("GET ${GeneralRoutes.CHAIN_MARKET_RATE_PERIOD}?fromDate={fromDate}&toDate={toDate}&dayCount={dayCount}")
     fun marketRateOverTime(
-        @Param("fromDate") fromDate: LocalDateTime,
-        @Param("toDate") toDate: LocalDateTime,
+        @Param("fromDate") fromDate: LocalDate,
+        @Param("toDate") toDate: LocalDate,
         @Param("dayCount") dayCount: Int = 14
     ): List<ChainMarketRate>
 
@@ -80,8 +80,8 @@ interface GeneralClient : BaseClient {
 
     @RequestLine("GET ${GeneralRoutes.CHAIN_AUM_LIST}?fromDate={fromDate}&toDate={toDate}&dayCount={dayCount}")
     fun aumOverTime(
-        @Param("fromDate") fromDate: LocalDateTime? = null,
-        @Param("toDate") toDate: LocalDateTime? = null,
+        @Param("fromDate") fromDate: LocalDate? = null,
+        @Param("toDate") toDate: LocalDate? = null,
         @Param("dayCount") dayCount: Int = 14
     ): List<ChainAum>
 }
