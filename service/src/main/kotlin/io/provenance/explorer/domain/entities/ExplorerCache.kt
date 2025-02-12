@@ -317,6 +317,7 @@ object PulseCacheTable : IntIdTable(name = "pulse_cache") {
     val updatedTimestamp = datetime("updated_timestamp")
     val data = jsonb<PulseCacheTable, PulseMetric>("data", OBJECT_MAPPER)
     val type: Column<PulseCacheType> = enumerationByName("type", 128, PulseCacheType::class)
+    val subtype = text("subtype").nullable()
 }
 
 class PulseCacheRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -324,8 +325,8 @@ class PulseCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         PulseCacheTable
     ) {
 
-        fun upsert(date: LocalDate, type: PulseCacheType, data: PulseMetric) = transaction {
-            findByDateAndType(date, type)?.apply {
+        fun upsert(date: LocalDate, type: PulseCacheType, data: PulseMetric, subtype: String? = null) = transaction {
+            findByDateAndType(date, type, subtype)?.apply {
                 this.data = data
                 this.updatedTimestamp = LocalDateTime.now()
             } ?:
@@ -333,15 +334,17 @@ class PulseCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.cacheDate] = date
                 it[this.updatedTimestamp] = LocalDateTime.now()
                 it[this.type] = type
+                it[this.subtype] = subtype
                 it[this.data] = data
             }
         }
 
-        fun findByDateAndType(date: LocalDate, type: PulseCacheType) =
+        fun findByDateAndType(date: LocalDate, type: PulseCacheType, subtype: String? = null) =
             transaction {
                 PulseCacheRecord.find {
                     (PulseCacheTable.cacheDate eq date) and
-                            (PulseCacheTable.type eq type)
+                            (PulseCacheTable.type eq type) and
+                            (if (subtype != null) PulseCacheTable.subtype eq subtype else PulseCacheTable.subtype.isNull())
                 }.firstOrNull()
             }
     }
@@ -349,4 +352,5 @@ class PulseCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var type by PulseCacheTable.type
     var data by PulseCacheTable.data
     var updatedTimestamp by PulseCacheTable.updatedTimestamp
+    var subtype by PulseCacheTable.subtype
 }
