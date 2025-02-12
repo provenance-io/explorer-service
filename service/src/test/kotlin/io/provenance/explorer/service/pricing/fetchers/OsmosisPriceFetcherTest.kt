@@ -2,12 +2,13 @@ package io.provenance.explorer.service.pricing.fetchers
 
 import io.provenance.explorer.domain.models.OsmosisHistoricalPrice
 import kotlinx.coroutines.runBlocking
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 class OsmosisPriceFetcherTest {
 
@@ -21,11 +22,11 @@ class OsmosisPriceFetcherTest {
     @Test
     @Disabled("Test was used to manually call the endpoint")
     fun `test fetchOsmosisData and print results`() = runBlocking {
-        val fromDate = DateTime.parse("2024-10-01")
+        val fromDate = LocalDateTime.parse("2024-10-01", DateTimeFormatter.ofPattern("yyyy-MM-dd"))
 
         val result: List<OsmosisHistoricalPrice> = osmosisPriceFetcher.fetchOsmosisData(fromDate)
         result.forEach {
-            println("Time: ${DateTime(it.time * 1000)}, Open: ${it.open}, High: ${it.high}, Low: ${it.low}, Close: ${it.close}, Volume: ${it.volume}")
+            println("Time: ${Instant.ofEpochSecond(it.time)}, Open: ${it.open}, High: ${it.high}, Low: ${it.low}, Close: ${it.close}, Volume: ${it.volume}")
         }
         val totalVolume = result.sumOf { it.volume }
         println("Total Volume: $totalVolume")
@@ -33,7 +34,7 @@ class OsmosisPriceFetcherTest {
 
     @Test
     fun `test determineTimeFrame`() {
-        val now = DateTime.now(DateTimeZone.UTC)
+        val now = LocalDateTime.now()
 
         val fromDate1 = now.minusDays(10)
         val timeFrame1 = osmosisPriceFetcher.determineTimeFrame(fromDate1)
@@ -50,7 +51,7 @@ class OsmosisPriceFetcherTest {
 
     @Test
     fun `test buildInputQuery`() {
-        val now = DateTime.now(DateTimeZone.UTC)
+        val now = LocalDateTime.now()
 
         val fromDate1 = now.minusDays(10)
         val timeFrame1 = OsmosisPriceFetcher.TimeFrame.FIVE_MINUTES

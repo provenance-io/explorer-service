@@ -1,4 +1,4 @@
-FROM gradle:7.4.2-jdk11 AS build
+FROM gradle:8-jdk21 AS build
 RUN gradle --version && java -version
 WORKDIR /app
 
@@ -10,18 +10,20 @@ COPY build.gradle.kts gradle.properties settings.gradle.kts buildSrc/build.gradl
 RUN gradle clean build --no-daemon > /dev/null 2>&1 || true
 
 # Copy all files
+COPY .editorconfig /app/
 COPY buildSrc /app/buildSrc/
 COPY build.gradle.kts gradle.properties settings.gradle.kts /app/
 COPY api-model /app/api-model/
 COPY database /app/database/
 COPY service /app/service/
+COPY gradle/libs.versions.toml /app/gradle/libs.versions.toml
 COPY CHANGELOG.md CODE_OF_CONDUCT.md CONTRIBUTING.md LICENSE README.md /app/
 COPY .git /app/.git/
 
 # Do the actual build
 RUN gradle clean build --no-daemon
 
-FROM openjdk:11-jre
+FROM openjdk:21-jdk
 
 COPY --from=build /app/service/build/libs/*.jar /service.jar
 ADD docker/service-configure /configure

@@ -16,7 +16,7 @@ import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.PeriodInSeconds
 import io.provenance.explorer.model.download.TxHistoryChartData
-import org.joda.time.DateTime
+import java.time.LocalDate
 
 object AccountRoutes {
     const val ACCOUNTS_V2 = "${BaseRoutes.V2_BASE}/accounts"
@@ -80,8 +80,8 @@ interface AccountClient : BaseClient {
     @RequestLine("GET ${AccountRoutes.FEEPAYER_HISTORY}?fromDate={fromDate}&toDate={toDate}&granularity={granularity}")
     fun feepayerHistory(
         @Param("address") address: String,
-        @Param("fromDate") fromDate: DateTime? = null,
-        @Param("toDate") toDate: DateTime? = null,
+        @Param("fromDate") fromDate: LocalDate? = null,
+        @Param("toDate") toDate: LocalDate? = null,
         @Param("granularity") granularity: DateTruncGranularity? = DateTruncGranularity.DAY
     ): List<TxHistoryChartData>
 

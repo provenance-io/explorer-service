@@ -1,105 +1,108 @@
-import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
-import org.springframework.boot.gradle.tasks.bundling.BootJar
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jlleitschuh.gradle.ktlint.KtlintExtension
 import org.springframework.boot.gradle.tasks.run.BootRun
 
 plugins {
-    kotlin(PluginIds.KotlinSpring) version PluginVersions.Kotlin
-    kotlin(PluginIds.Kapt)
-    id(PluginIds.GoryLenkoGitProps) version PluginVersions.GoryLenkoGitProps
-    id(PluginIds.SpringDependency) version PluginVersions.SpringDependency
-    id(PluginIds.SpringBoot) version PluginVersions.SpringBoot
-    id(PluginIds.TestLogger) version PluginVersions.TestLogger apply false
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.lint)
+    alias(libs.plugins.java)
+    alias(libs.plugins.kotlin.spring)
+    alias(libs.plugins.gradle.gitprops)
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.testlogger).apply(false)
+}
+
+// There is some generated but committed java code that has linting issues. We'll just
+// exclude that here for now.
+configure<KtlintExtension> {
+    filter {
+        exclude("**/src/java/**")
+    }
+}
+
+tasks.withType<KotlinCompile> {
+    kotlinOptions {
+        freeCompilerArgs =
+            listOf(
+                "-Xjsr305=strict",
+                "-Xopt-in=kotlin.RequiresOptIn",
+                "-Xopt-in=kotlin.contracts.ExperimentalContracts",
+            )
+    }
 }
 
 sourceSets {
-    test {
-        withConvention(KotlinSourceSet::class) {
-            kotlin.srcDirs("src/test/kotlin")
-            resources.srcDirs("src/test/resources")
-        }
+    val test by getting {
+        kotlin.srcDirs("src/test/kotlin")
     }
 }
 
 dependencies {
     implementation(project(":database"))
     implementation(project(":api-model"))
-    implementation(Libraries.KotlinReflect)
-    implementation(Libraries.KotlinStdlib)
-    implementation(Libraries.ProtobufKotlin)
-    implementation(Libraries.ProvenanceProto)
-    implementation(Libraries.Reflections)
-    implementation(Libraries.Caffeine)
 
-    implementation(Libraries.SpringBootStarterWeb)
-    implementation(Libraries.SpringBootStarterJdbc)
-    implementation(Libraries.SpringBootStarterActuator)
-    implementation(Libraries.SpringBootStarterValidation)
-    implementation(Libraries.SpringBootStarterCache)
-    kapt(Libraries.SpringBootConfigProcessor)
+    implementation(libs.bundles.exposed)
+    implementation(libs.bundles.jackson)
+    implementation(libs.bundles.ktor)
+    implementation(libs.bundles.logback)
 
-    implementation(Libraries.BouncyCastle)
-    implementation(Libraries.KotlinXCoRoutinesCoreJvm) {
+    implementation(libs.apache.commons.csv)
+    implementation(libs.apache.commons.text)
+    implementation(libs.bouncycastle)
+    implementation(libs.caffeine)
+    implementation(libs.flyway)
+    implementation(libs.grpc.netty)
+    implementation(libs.json)
+    implementation(libs.kase.change)
+    implementation(libs.kotlin.reflect)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.postgresql)
+    implementation(libs.protobuf.kotlin)
+    implementation(libs.provenance.proto)
+    implementation(libs.reflections)
+    implementation(libs.spring.starter.actuator)
+    implementation(libs.spring.starter.cache)
+    implementation(libs.spring.starter.jdbc)
+    implementation(libs.spring.starter.validation)
+    implementation(libs.spring.starter.web)
+    implementation(libs.springdoc.openapi.starter.webmvc.api)
+    implementation(libs.springdoc.openapi.starter.webmvc.ui)
+
+    // We're excluding this due to some weirdness going on in GovService with usage of coroutine code
+    // that can't be executed outside of a coroutine. The runBlocking call in there is a bit scary, but we're
+    // leaving it for now...
+    implementation(libs.kotlinx.coroutines.core.jvm) {
         exclude(module = "kotlinx-coroutines-bom")
     }
-    implementation(Libraries.KotlinXCoRoutinesCore)
-    implementation(Libraries.ApacheCommonsText)
-    implementation(Libraries.ApacheCommonsCsv)
-    implementation(Libraries.KaseChange)
-    implementation(Libraries.ApacheHttpClient)
-    implementation(Libraries.KtorClientCore)
-    implementation(Libraries.KtorClientEngineJava)
-    implementation(Libraries.KtorClientSerialization)
-    implementation(Libraries.KtorClientContentNeg)
-    implementation(Libraries.Json)
 
-    implementation(Libraries.GrpcNetty)
+    developmentOnly(libs.spring.dev.tools)
 
-    implementation(Libraries.JacksonModuleKotlin)
-    implementation(Libraries.JacksonDatatype)
-    implementation(Libraries.JacksonJoda)
-    implementation(Libraries.JacksonProtobuf)
-    implementation(Libraries.Postgres)
-
-    implementation(Libraries.Swagger)
-    implementation(Libraries.Exposed)
-    implementation(Libraries.ExposedJavaTime)
-    implementation(Libraries.ExposedDao)
-    implementation(Libraries.ExposedJdbc)
-    implementation(Libraries.FlywayCore)
-
-    developmentOnly(Libraries.SpringBootDevTools)
-
-    testImplementation(Libraries.SpringBootStarterTest) {
+    testImplementation(libs.spring.starter.test) {
         exclude(module = "junit")
         exclude(module = "assertj-core")
     }
-    testImplementation(Libraries.JunitJupiterApi)
-    testImplementation(Libraries.H2Database)
-    testRuntimeOnly(Libraries.JunitJupiterEngine)
-    testImplementation(Libraries.SpringMockk)
-    testImplementation(Libraries.KotestAssert)
+
+    testImplementation(libs.junit.jupiter.api)
+    testImplementation(libs.h2)
+    testImplementation(libs.spring.mock)
+    testImplementation(libs.kotest.assert)
+
+    testRuntimeOnly(libs.junit.jupiter.engine)
 }
 
-dependencyManagement {
-    resolutionStrategy {
-        cacheChangingModulesFor(0, "seconds")
-    }
-}
-
-var profiles = System.getenv("SPRING_PROFILES_ACTIVE") ?: "development"
-
+// Configure the bootRun task to default to dev mode rather than having to type the
+// config option in each time the service is started.
+val profiles = System.getenv("SPRING_PROFILES_ACTIVE") ?: "development"
 tasks.getByName<BootRun>("bootRun") {
     args = mutableListOf("--spring.profiles.active=$profiles")
 }
 
-springBoot.mainClass.set("io.provenance.explorer.ApplicationKt")
-
-println("\nExclude Spring Boot Dev tools? " + version.toString().contains("main"))
-tasks.getByName<BootJar>("bootJar") {
-    if (!project.version.toString().contains("main"))
-        classpath += configurations.developmentOnly
-    enabled = true
-}
+// println("\nExclude Spring Boot Dev tools? " + version.toString().contains("main"))
+// tasks.getByName<BootJar>("bootJar") {
+//    if (!project.version.toString().contains("main"))
+//        classpath += configurations.developmentOnly
+//    enabled = true
+// }
 
 plugins.withType<com.adarshr.gradle.testlogger.TestLoggerPlugin> {
     configure<com.adarshr.gradle.testlogger.TestLoggerExtension> {
@@ -110,10 +113,11 @@ plugins.withType<com.adarshr.gradle.testlogger.TestLoggerPlugin> {
     }
 }
 
-tasks.withType<Test> {
-    useJUnitPlatform {
-        excludeTags("intTest")
+tasks.named<Test>("test") {
+    useJUnitPlatform()
+    testLogging {
+        events("STANDARD_OUT")
     }
-
-    failFast = true
 }
+
+springBoot.mainClass.set("io.provenance.explorer.ApplicationKt")

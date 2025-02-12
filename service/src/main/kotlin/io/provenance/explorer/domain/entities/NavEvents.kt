@@ -1,7 +1,6 @@
 package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.domain.extensions.execAndMap
-import io.provenance.explorer.domain.extensions.toDateTime
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -9,11 +8,11 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.insertIgnore
-import org.jetbrains.exposed.sql.jodatime.DateColumnType
-import org.jetbrains.exposed.sql.jodatime.datetime
+import org.jetbrains.exposed.sql.javatime.JavaLocalDateTimeColumnType
+import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
 import java.sql.ResultSet
+import java.time.LocalDateTime
 
 object NavEventsTable : IntIdTable(name = "nav_events") {
     val blockHeight = integer("block_height")
@@ -37,7 +36,7 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<NavEventsRecord>(NavEventsTable) {
         fun insert(
             blockHeight: Int,
-            blockTime: DateTime,
+            blockTime: LocalDateTime,
             txHash: String,
             eventOrder: Int,
             eventType: String,
@@ -66,8 +65,8 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
         fun getNavEvents(
             denom: String? = null,
             scopeId: String? = null,
-            fromDate: DateTime? = null,
-            toDate: DateTime? = null,
+            fromDate: LocalDateTime? = null,
+            toDate: LocalDateTime? = null,
             priceDenoms: List<String>? = null
         ) = transaction {
             var query = """
@@ -89,12 +88,12 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
 
             fromDate?.let {
                 query += " AND block_time >= ?"
-                args.add(Pair(DateColumnType(true), it))
+                args.add(Pair(JavaLocalDateTimeColumnType(), it))
             }
 
             toDate?.let {
                 query += " AND block_time <= ?"
-                args.add(Pair(DateColumnType(true), it))
+                args.add(Pair(JavaLocalDateTimeColumnType(), it))
             }
 
             priceDenoms?.let {
@@ -112,7 +111,7 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             query.execAndMap(args) {
                 NavEvent(
                     it.getInt("block_height"),
-                    it.getTimestamp("block_time").toDateTime(),
+                    it.getTimestamp("block_time").toLocalDateTime(),
                     it.getString("tx_hash"),
                     it.getInt("event_order"),
                     it.getString("event_type"),
@@ -130,7 +129,7 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             priceDenom: String,
             includeMarkers: Boolean,
             includeScopes: Boolean,
-            fromDate: DateTime? = null
+            fromDate: LocalDateTime? = null
         ) = transaction {
             require(includeMarkers || includeScopes) { "Either includeMarkers or includeScope must be true" }
 
@@ -148,7 +147,7 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
 
             fromDate?.let {
                 query += " AND block_time >= ?"
-                args.add(Pair(DateColumnType(true), it))
+                args.add(Pair(JavaLocalDateTimeColumnType(), it))
             }
 
             when {
@@ -162,7 +161,7 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             query.execAndMap(args) {
                 NavEvent(
                     it.getInt("block_height"),
-                    it.getTimestamp("block_time").toDateTime(),
+                    it.getTimestamp("block_time").toLocalDateTime(),
                     it.getString("tx_hash"),
                     it.getInt("event_order"),
                     it.getString("event_type"),
@@ -192,7 +191,7 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
 
 data class NavPrice(
     val blockHeight: Int,
-    val blockTime: DateTime,
+    val blockTime: LocalDateTime,
     val txHash: String,
     val eventOrder: Int,
     val eventType: String,
@@ -205,7 +204,7 @@ data class NavPrice(
 ) {
     constructor(rs: ResultSet) : this(
         rs.getInt("block_height"),
-        rs.getTimestamp("block_time").toDateTime(),
+        rs.getTimestamp("block_time").toLocalDateTime(),
         rs.getString("tx_hash"),
         rs.getInt("event_order"),
         rs.getString("event_type"),
@@ -234,7 +233,7 @@ data class NavPrice(
 
 data class NavEvent(
     val blockHeight: Int,
-    val blockTime: DateTime,
+    val blockTime: LocalDateTime,
     val txHash: String?,
     val eventOrder: Int,
     val eventType: String,

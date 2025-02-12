@@ -74,12 +74,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
 import org.json.JSONArray
 import org.json.JSONObject
 import org.springframework.stereotype.Service
 import tendermint.types.ValidatorOuterClass
 import java.math.BigDecimal
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 
 @Service
 class ExplorerService(
@@ -182,14 +183,14 @@ class ExplorerService(
         Pair<BigDecimal, String>(totalBondedTokens, totalBlockChainTokens)
     }
 
-    fun getGasStats(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?, msgType: String?) =
+    fun getGasStats(fromDate: LocalDateTime, toDate: LocalDateTime, granularity: DateTruncGranularity?, msgType: String?) =
         TxSingleMessageCacheRecord
             .getGasStats(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name, msgType)
 
-    fun getGasVolume(fromDate: DateTime, toDate: DateTime, granularity: DateTruncGranularity?) =
+    fun getGasVolume(fromDate: LocalDateTime, toDate: LocalDateTime, granularity: DateTruncGranularity?) =
         TxGasCacheRecord.getGasVolume(fromDate, toDate, (granularity ?: DateTruncGranularity.DAY).name)
 
-    fun getChainMarketRateStats(fromDate: DateTime?, toDate: DateTime?, count: Int) =
+    fun getChainMarketRateStats(fromDate: LocalDateTime?, toDate: LocalDateTime?, count: Int) =
         ChainMarketRateStatsRecord.findForDates(fromDate, toDate, count)
 
     fun getChainMarketRateAvg(blockCount: Int) =
@@ -404,14 +405,14 @@ class ExplorerService(
     fun getMsgBasedFeeList() = msgFeeClient.getMsgFees().msgFeesList.map { it.toDto() }
 
     fun saveChainAum() = transaction {
-        val date = DateTime.now().hourOfDay().roundFloorCopy()
+        val date = LocalDateTime.now().truncatedTo(ChronoUnit.HOURS)
         val amount = pricingService.getTotalAum()
         ChainAumHourlyRecord.insertIgnore(date, amount, USD_UPPER)
     }
 
-    fun getChainAumRecords(from: DateTime?, to: DateTime?, dayCount: Int) = transaction {
-        val fromDate = from ?: DateTime.now().startOfDay().minusDays(dayCount)
-        val toDate = to ?: DateTime.now().startOfDay()
+    fun getChainAumRecords(from: LocalDateTime?, to: LocalDateTime?, dayCount: Int) = transaction {
+        val fromDate = from ?: LocalDateTime.now().startOfDay().minusDays(dayCount.toLong())
+        val toDate = to ?: LocalDateTime.now().startOfDay()
 
         ChainAumHourlyRecord.getAumForPeriod(fromDate, toDate).map { it.toDto() }
     }

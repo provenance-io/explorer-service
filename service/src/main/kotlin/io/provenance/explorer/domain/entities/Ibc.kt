@@ -31,8 +31,8 @@ import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.insertIgnore
-import org.jetbrains.exposed.sql.jodatime.DateColumnType
-import org.jetbrains.exposed.sql.jodatime.datetime
+import org.jetbrains.exposed.sql.javatime.JavaLocalDateTimeColumnType
+import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.ResultSet
@@ -197,7 +197,7 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
             if (ledger.movementIn) IbcMovementType.IN.name else IbcMovementType.OUT.name
         ).joinToString("").toDbHash()
 
-        val lastTxTime = Max(IbcLedgerTable.txTimestamp, DateColumnType(true))
+        val lastTxTime = Max(IbcLedgerTable.txTimestamp, JavaLocalDateTimeColumnType())
         val balanceInSum = Sum(IbcLedgerTable.balanceIn, DecimalColumnType(100, 10))
         val balanceOutSum = Sum(IbcLedgerTable.balanceOut, DecimalColumnType(100, 10))
 

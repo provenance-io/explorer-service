@@ -13,12 +13,12 @@ import io.provenance.explorer.model.MetricPeriod
 import io.provenance.explorer.model.ValidatorMetrics
 import io.provenance.explorer.model.ValidatorState
 import io.provenance.explorer.model.base.CountTotal
+import jakarta.servlet.ServletOutputStream
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
 import org.springframework.stereotype.Service
+import java.time.LocalDateTime
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import javax.servlet.ServletOutputStream
 
 @Service
 class MetricsService(
@@ -28,7 +28,7 @@ class MetricsService(
 
     fun getQuarters(address: String) = transaction {
         valService.getValidatorOperatorAddress(address)?.let { vali ->
-            val (year, quarter) = DateTime.now().let { it.year to it.monthOfYear.monthToQuarter() }
+            val (year, quarter) = LocalDateTime.now().let { it.year to it.monthToQuarter() }
             ValidatorMetricsRecord.findByOperAddr(vali.operatorAddrId)
                 .map {
                     val label = it.toMetricPeriodLabel(it.year == year && it.quarter == quarter)
@@ -38,7 +38,7 @@ class MetricsService(
     }
 
     fun getAllQuarters() = transaction {
-        val (year, quarter) = DateTime.now().let { it.year to it.monthOfYear.monthToQuarter() }
+        val (year, quarter) = LocalDateTime.now().let { it.year to it.monthToQuarter() }
         ValidatorMetricsRecord.findDistinctPeriods(year, quarter)
     }
 

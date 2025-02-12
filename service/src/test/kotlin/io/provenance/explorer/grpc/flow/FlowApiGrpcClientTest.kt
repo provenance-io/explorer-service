@@ -2,7 +2,6 @@ package io.provenance.explorer.grpc.flow
 
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provlabs.flow.api.NavEvent
-import org.joda.time.DateTime
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -11,6 +10,7 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.net.URI
+import java.time.LocalDateTime
 
 class FlowApiGrpcClientTest {
 
@@ -31,7 +31,7 @@ class FlowApiGrpcClientTest {
         val priceDenom = "usd"
         val includeMarkers = true
         val includeScopes = true
-        val fromDate = DateTime.now().minusDays(7)
+        val fromDate = LocalDateTime.now().minusDays(7)
         val limit = 5
 
         val navEvents: List<NavEvent> = grpcClient.getLatestNavPrices(priceDenom, includeMarkers, includeScopes, fromDate, limit)
@@ -51,7 +51,7 @@ class FlowApiGrpcClientTest {
         val priceDenom = "usd"
         val includeMarkers = true
         val includeScopes = true
-        val fromDate = DateTime.now().minusDays(1)
+        val fromDate = LocalDateTime.now().minusDays(1)
 
         val navEvents: List<NavEvent> = grpcClient.getAllLatestNavPrices(priceDenom, includeMarkers, includeScopes, fromDate)
 
@@ -68,7 +68,7 @@ class FlowApiGrpcClientTest {
     fun `test getAllMarkerNavByPriceDenoms with valid data`() {
         val denom = UTILITY_TOKEN
         val priceDenoms = listOf("uusd.trading", "uusdc.figure.se", "uusdt.figure.se")
-        val fromDate = DateTime.now().minusDays(7)
+        val fromDate = LocalDateTime.now().minusDays(7)
 
         val navEvents: List<NavEvent> = grpcClient.getAllMarkerNavByPriceDenoms(denom, priceDenoms, fromDate)
 

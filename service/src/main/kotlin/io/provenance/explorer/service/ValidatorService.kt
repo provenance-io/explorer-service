@@ -71,11 +71,11 @@ import io.provenance.explorer.model.base.stringfy
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
 import org.json.JSONObject
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.BigInteger
+import java.time.LocalDateTime
 
 @Service
 class ValidatorService(
@@ -469,7 +469,7 @@ class ValidatorService(
                 .let { list -> MarketRateAvg(list.size, list.minOrNull()!!, list.maxOrNull()!!, list.average()) }
         } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
 
-    fun getValidatorMarketRateStats(address: String, fromDate: DateTime?, toDate: DateTime?, count: Int) =
+    fun getValidatorMarketRateStats(address: String, fromDate: LocalDateTime?, toDate: LocalDateTime?, count: Int) =
         getValidatorOperatorAddress(address)?.let { addr ->
             ValidatorMarketRateStatsRecord.findByAddress(addr.operatorAddress, fromDate, toDate, count)
         } ?: throw ResourceNotFoundException("Invalid validator address: '$address'")
@@ -479,7 +479,7 @@ class ValidatorService(
 
     fun buildProposerInsert(
         blockMeta: Query.GetBlockByHeightResponse,
-        timestamp: DateTime,
+        timestamp: LocalDateTime,
         blockHeight: Int
     ): BlockProposer {
         val consAddr = getProposerConsensusAddr(blockMeta)

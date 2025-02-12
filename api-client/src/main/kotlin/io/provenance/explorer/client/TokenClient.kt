@@ -8,7 +8,7 @@ import io.provenance.explorer.model.CmcLatestDataAbbrev
 import io.provenance.explorer.model.RichAccount
 import io.provenance.explorer.model.TokenDistribution
 import io.provenance.explorer.model.TokenSupply
-import org.joda.time.DateTime
+import java.time.LocalDate
 import java.math.BigDecimal
 
 object TokenRoutes {
@@ -46,8 +46,8 @@ interface TokenClient : BaseClient {
 
     @RequestLine("GET ${TokenRoutes.HISTORICAL_PRICING}?fromDate={fromDate}&toDate={toDate}")
     fun historicalPricing(
-        @Param("fromDate") fromDate: DateTime? = null,
-        @Param("toDate") toDate: DateTime? = null
+        @Param("fromDate") fromDate: LocalDate? = null,
+        @Param("toDate") toDate: LocalDate? = null
     ): List<CmcHistoricalQuote>
 
     @RequestLine("GET ${TokenRoutes.LATEST_PRICING}")

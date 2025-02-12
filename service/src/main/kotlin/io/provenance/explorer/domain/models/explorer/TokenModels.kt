@@ -6,11 +6,11 @@ import io.provenance.explorer.domain.extensions.CsvData
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.model.base.CountStrTotal
 import io.provenance.explorer.model.base.DateTruncGranularity
-import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
 import java.io.ByteArrayOutputStream
 import java.io.PrintWriter
 import java.math.BigDecimal
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 data class TokenDistributionPaginatedResults(
     val ownerAddress: String,
@@ -31,8 +31,8 @@ data class DlobHistorical(
 )
 
 data class TokenHistoricalDataRequest(
-    val fromDate: DateTime? = null,
-    val toDate: DateTime? = null
+    val fromDate: LocalDateTime? = null,
+    val toDate: LocalDateTime? = null
 ) {
     fun getFileList(): MutableList<CsvData> =
         mutableListOf(
@@ -53,11 +53,11 @@ data class TokenHistoricalDataRequest(
             null
         }
 
-    private val dateFormat = DateTimeFormat.forPattern("yyy-MM-dd")
+    private val dateFormat = DateTimeFormatter.ofPattern("yyy-MM-dd")
 
     fun getFileNameBase(): String {
-        val to = if (toDate != null) dateFormat.print(toDate) else "CURRENT"
-        val full = if (fromDate != null) "${dateFormat.print(fromDate)} thru $to" else "ALL"
+        val to = if (toDate != null) dateFormat.format(toDate) else "CURRENT"
+        val full = if (fromDate != null) "${dateFormat.format(fromDate)} thru $to" else "ALL"
         return "$full BY ${DateTruncGranularity.DAY.name} - Token Historical Data"
     }
 
@@ -65,8 +65,8 @@ data class TokenHistoricalDataRequest(
         val baos = ByteArrayOutputStream()
         PrintWriter(baos).use { writer ->
             writer.println("Filters used --")
-            writer.println("fromDate: ${if (fromDate != null) dateFormat.print(fromDate) else "NULL"}")
-            writer.println("toDate: ${if (toDate != null) dateFormat.print(toDate) else "NULL"}")
+            writer.println("fromDate: ${if (fromDate != null) dateFormat.format(fromDate) else "NULL"}")
+            writer.println("toDate: ${if (toDate != null) dateFormat.format(toDate) else "NULL"}")
             writer.println("granularity: ${DateTruncGranularity.DAY.name}")
             writer.flush()
             return baos.toByteArray()

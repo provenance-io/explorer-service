@@ -54,8 +54,11 @@ import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.models.explorer.BlockProposer
 import io.provenance.explorer.domain.models.explorer.BlockUpdate
 import io.provenance.explorer.domain.models.explorer.Name
+import io.provenance.explorer.domain.models.explorer.ProvenanceEvent
 import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxUpdate
+import io.provenance.explorer.domain.models.explorer.getProvenanceEvents
+import io.provenance.explorer.domain.models.explorer.getProvenanceEventsAll
 import io.provenance.explorer.grpc.extensions.AddressEvents
 import io.provenance.explorer.grpc.extensions.DenomEvents
 import io.provenance.explorer.grpc.extensions.GovMsgType
@@ -122,8 +125,8 @@ import io.provenance.explorer.service.toWeightedVoteList
 import io.provenance.explorer.service.unchainDenom
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
 import org.springframework.stereotype.Service
+import java.time.LocalDateTime
 
 @Service
 class BlockAndTxProcessor(
@@ -160,7 +163,8 @@ class BlockAndTxProcessor(
 
     fun saveBlockEtc(
         blockRes: Query.GetBlockByHeightResponse?,
-        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false) // rerun txs, pull from db
+        // rerun txs, pull from db
+        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false)
     ): Query.GetBlockByHeightResponse? {
         if (blockRes == null) return null
         logger.info("saving block ${blockRes.block.height()}")
@@ -204,7 +208,8 @@ class BlockAndTxProcessor(
     fun saveTxs(
         blockRes: Query.GetBlockByHeightResponse,
         proposerRec: BlockProposer,
-        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false) // rerun txs, pull from db
+        // rerun txs, pull from db
+        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false)
     ): List<TxUpdate> {
         val toBeUpdated =
             addTxsToCache(
@@ -238,7 +243,8 @@ class BlockAndTxProcessor(
         expectedNumTxs: Int,
         blockTime: Timestamp,
         proposerRec: BlockProposer,
-        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false) // rerun txs, pull from db
+        // rerun txs, pull from db
+        rerunTxs: Pair<Boolean, Boolean> = Pair(false, false)
     ) =
         if (txCountForHeight(blockHeight).toInt() == expectedNumTxs && !rerunTxs.first) {
             logger.info("Cache hit for transaction at height $blockHeight with $expectedNumTxs transactions")
@@ -272,7 +278,7 @@ class BlockAndTxProcessor(
 
     fun processAndSaveTransactionData(
         res: ServiceOuterClass.GetTxResponse,
-        blockTime: DateTime,
+        blockTime: LocalDateTime,
         proposerRec: BlockProposer
     ): TxUpdatedItems {
         val tx = TxCacheRecord.buildInsert(res, blockTime)
@@ -330,8 +336,9 @@ class BlockAndTxProcessor(
             val msgRec = TxMessageRecord.buildInsert(txInfo, msg, idx)
             var single: String? = null
             var events = listOf<String>()
-            if (tx.txResponse.logsCount > 0) {
-                events = saveEvents(txInfo, tx, primTypeId.value, idx)
+            val eventList = tx.txResponse.getProvenanceEventsAll()
+            if (eventList.count() > 0) {
+                events = saveEvents(txInfo, tx, primTypeId.value, eventList)
                 if (tx.tx.body.messagesCount == 1) {
                     single = TxSingleMessageCacheRecord.buildInsert(txInfo, tx.txResponse.gasUsed.toInt(), primaryType.type)
                 }
@@ -353,28 +360,27 @@ class BlockAndTxProcessor(
         txInfo: TxData,
         tx: ServiceOuterClass.GetTxResponse,
         msgTypeId: Int,
-        idx: Int
+        events: List<ProvenanceEvent>
     ) = transaction {
-        tx.txResponse.logsList[idx].eventsList.map { event ->
+        events.map { event ->
             val eventStr = TxEventRecord.buildInsert(
                 txInfo.blockHeight,
                 txInfo.txHash,
                 event.type,
                 msgTypeId
             )
-            val attrs = event.attributesList.mapIndexed { idx, attr -> TxEventAttrRecord.buildInsert(idx, attr.key, attr.value) }
+            val attrs = event.attributes.toList().mapIndexed { idx, attr -> TxEventAttrRecord.buildInsert(idx, attr.first, attr.second) }
             listOf(eventStr, attrs.toArray(TxEventAttrTable.tableName)).toObject()
         }
     }
 
     private fun saveAddresses(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse, txUpdate: TxUpdate) = transaction {
         val msgAddrs = tx.tx.body.messagesList.flatMap { it.getAssociatedAddresses() }
-        val eventAddrs = tx.txResponse.logsList
-            .flatMap { it.eventsList }
+        val eventAddrs = tx.txResponse.getProvenanceEventsAll()
             .filter { it.type in AddressEvents.values().map { addr -> addr.event } }
             .flatMap { e ->
                 getAddressEventByEvent(e.type)!!.let {
-                    e.attributesList
+                    e.attributes
                         .filter { attr -> attr.key in it.idField }
                         .map { found -> found.value.scrubQuotes() }
                 }
@@ -416,12 +422,11 @@ class BlockAndTxProcessor(
         val denoms = msgDenoms.flatMap { it.first }
         // captures all events that have a denom
         val eventDenoms =
-            tx.txResponse.logsList
-                .flatMap { it.eventsList }
+            tx.txResponse.getProvenanceEventsAll()
                 .filter { it.type in DenomEvents.values().map { de -> de.event } }
                 .flatMap { e ->
                     getDenomEventByEvent(e.type)!!.let {
-                        e.attributesList
+                        e.attributes
                             .filter { attr -> attr.key == it.idField }
                             .mapNotNull { found ->
                                 if (it.parse) {
@@ -487,11 +492,9 @@ class BlockAndTxProcessor(
                         when (pair.first) {
                             GovMsgType.PROPOSAL ->
                                 // Have to find the proposalId in the log events
-                                tx.txResponse.logsList[logsIdx]
-                                    .eventsList.first { it.type == "submit_proposal" }
-                                    .attributesList.filter { it.key == "proposal_id" }.withIndex()
-                                    .first { it.index == listIdx }
-                                    .value.value.toLong()
+                                tx.txResponse.getProvenanceEvents(listIdx)
+                                    .first { it.type == "submit_proposal" }
+                                    .attributes["proposal_id"]!!.toLong()
                                     .let { id ->
                                         val proposer = when {
                                             pair.second.typeUrl.endsWith("gov.v1beta1.MsgSubmitProposal") -> pair.second.toMsgSubmitProposalOld().proposer
@@ -627,28 +630,28 @@ class BlockAndTxProcessor(
                         any.typeUrl.endsWith("MsgTransfer") -> {
                             if (!txSuccess) return@forEachIndexed
                             val msg = any.toMsgTransfer()
-                            ibcService.parseTransfer(msg, tx.txResponse.logsList[idx])
+                            ibcService.parseTransfer(msg, tx.txResponse.getProvenanceEvents(idx))
                         }
                         any.typeUrl.endsWith("MsgIbcTransferRequest") -> {
                             if (!txSuccess) return@forEachIndexed
                             val msg = any.toMsgIbcTransferRequest()
-                            ibcService.parseTransfer(msg.transfer, tx.txResponse.logsList[idx])
+                            ibcService.parseTransfer(msg.transfer, tx.txResponse.getProvenanceEvents(idx))
                         }
                         any.typeUrl.endsWith("MsgRecvPacket") -> {
                             val msg = any.toMsgRecvPacket()
-                            ibcService.parseRecv(txSuccess, msg, tx.txResponse.logsList[idx])
+                            ibcService.parseRecv(txSuccess, msg, tx.txResponse.getProvenanceEvents(idx))
                         }
                         any.typeUrl.endsWith("MsgAcknowledgement") -> {
                             val msg = any.toMsgAcknowledgement()
-                            ibcService.parseAcknowledge(txSuccess, msg, tx.txResponse.logsList[idx])
+                            ibcService.parseAcknowledge(txSuccess, msg, tx.txResponse.getProvenanceEvents(idx))
                         }
                         any.typeUrl.endsWith("MsgTimeout") -> {
                             val msg = any.toMsgTimeout()
-                            ibcService.parseTimeout(txSuccess, msg, tx.txResponse.logsList[idx])
+                            ibcService.parseTimeout(txSuccess, msg, tx.txResponse.getProvenanceEvents(idx))
                         }
                         any.typeUrl.endsWith("MsgTimeoutOnClose") -> {
                             val msg = any.toMsgTimeoutOnClose()
-                            ibcService.parseTimeoutOnClose(txSuccess, msg, tx.txResponse.logsList[idx])
+                            ibcService.parseTimeoutOnClose(txSuccess, msg, tx.txResponse.getProvenanceEvents(idx))
                         }
                         else -> logger.debug("This typeUrl is not yet supported in as an ibc ledger msg: ${any.typeUrl}")
                             .let { return@forEachIndexed }

@@ -1,8 +1,10 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
-    id("kotlin")
-    id("maven-publish")
-    id("signing")
-    id("java-library")
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.maven.publish)
+    alias(libs.plugins.signing)
+    alias(libs.plugins.java.lib)
 }
 
 group = project.property("group.id") as String
@@ -14,9 +16,29 @@ repositories {
 
 dependencies {
     api(project(":api-model"))
-    implementation("io.github.openfeign:feign-jackson:13.5")
-    implementation("joda-time:joda-time:2.13.0")
-    implementation(Libraries.ProvenanceProto)
+    implementation(libs.bundles.feign)
+    implementation(libs.provenance.proto)
+}
+
+// Leaving this for compatibility where others downstream users may still be on
+// an older version of Java.
+tasks.withType<JavaCompile> {
+    sourceCompatibility = JavaVersion.VERSION_11.toString()
+    targetCompatibility = sourceCompatibility
+}
+
+tasks.withType<KotlinCompile> {
+    kotlinOptions {
+        freeCompilerArgs =
+            listOf(
+                "-Xjsr305=strict",
+                "-Xopt-in=kotlin.RequiresOptIn",
+                "-Xopt-in=kotlin.contracts.ExperimentalContracts",
+            )
+        jvmTarget = "11"
+        languageVersion = "1.6"
+        apiVersion = "1.6"
+    }
 }
 
 tasks.jar {

@@ -3,8 +3,8 @@ package io.provenance.explorer.model
 import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.CountStrTotal
 import io.provenance.explorer.model.base.CountTotal
-import org.joda.time.DateTime
 import java.math.BigDecimal
+import java.time.LocalDateTime
 
 data class ValidatorSummary(
     val moniker: String,
@@ -45,7 +45,7 @@ data class ValidatorDetails(
     val identity: String?,
     val status: String,
     val unbondingHeight: Long?,
-    val jailedUntil: DateTime?,
+    val jailedUntil: LocalDateTime?,
     val removed: Boolean,
     val isVerified: Boolean
 )

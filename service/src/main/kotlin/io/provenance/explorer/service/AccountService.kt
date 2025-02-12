@@ -67,6 +67,7 @@ import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.PeriodInSeconds
 import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.explorer.model.download.TxHistoryChartData
+import jakarta.servlet.ServletOutputStream
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.SortOrder
@@ -79,7 +80,6 @@ import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import javax.servlet.ServletOutputStream
 
 @Service
 class AccountService(
@@ -140,7 +140,8 @@ class AccountService(
                     .toCoinStr(USD_UPPER),
                 it.data?.isVesting() ?: false,
                 AccountFlags(it.isContract, it.data?.isVesting() ?: false, it.data?.isIca() ?: false),
-                it.owner // /// do not link to anything, this is a third party chain address
+                // do not link to anything, this is a third party chain address
+                it.owner
             )
         }
     }
@@ -325,7 +326,11 @@ class AccountService(
             requireToMessage(request.to.isStandardAddress()) { "to must be a standard address format" },
             requireToMessage(request.to != request.from) { "The to address must be different that the from address" },
             *request.funds.map { assetService.validateDenom(it.denom) }.toTypedArray(),
-            requireToMessage(request.funds.none { it.amount.toBigDecimal() == BigDecimal.ZERO }) { "At least one deposit must have an amount greater than zero." }
+            requireToMessage(
+                request.funds.none {
+                it.amount.toBigDecimal() == BigDecimal.ZERO
+            }
+            ) { "At least one deposit must have an amount greater than zero." }
         )
         return msgSend {
             fromAddress = request.from

@@ -36,14 +36,14 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.insertIgnoreAndGetId
-import org.jetbrains.exposed.sql.jodatime.datetime
+import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.leftJoin
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.joda.time.DateTime
 import java.math.BigDecimal
 import java.sql.ResultSet
+import java.time.LocalDateTime
 
 object ValidatorsCacheTable : CacheIdTable<Int>(name = "validators_cache") {
     val height = integer("height")
@@ -55,7 +55,7 @@ class ValidatorsCacheRecord(id: EntityID<Int>) : CacheEntity<Int>(id) {
     companion object : CacheEntityClass<Int, ValidatorsCacheRecord>(ValidatorsCacheTable) {
 
         fun buildInsert(blockHeight: Int, json: Query.GetValidatorSetByHeightResponse) =
-            listOf(blockHeight, json, DateTime.now(), 0).toProcedureObject()
+            listOf(blockHeight, json, LocalDateTime.now(), 0).toProcedureObject()
 
         fun getMissingBlocks() = transaction {
             BlockCacheTable.leftJoin(ValidatorsCacheTable, { BlockCacheTable.height }, { ValidatorsCacheTable.height })
@@ -367,7 +367,7 @@ class ValidatorMarketRateRecord(id: EntityID<Int>) : IntEntity(id) {
                 .toList()
         }
 
-        fun findForDates(fromDate: DateTime, toDate: DateTime, address: String?) = transaction {
+        fun findForDates(fromDate: LocalDateTime, toDate: LocalDateTime, address: String?) = transaction {
             val query = ValidatorMarketRateTable
                 .select { ValidatorMarketRateTable.blockTimestamp.between(fromDate, toDate.plusDays(1)) }
             if (address != null) {
@@ -405,7 +405,9 @@ class ValidatorMetricsRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<ValidatorMetricsRecord>(ValidatorMetricsTable) {
 
         fun findByOperAddrForPeriod(operAddrId: Int, year: Int, quarter: Int) = transaction {
-            ValidatorMetricsRecord.find { (ValidatorMetricsTable.operAddrId eq operAddrId) and (ValidatorMetricsTable.year eq year) and (ValidatorMetricsTable.quarter eq quarter) }
+            ValidatorMetricsRecord.find {
+                (ValidatorMetricsTable.operAddrId eq operAddrId) and (ValidatorMetricsTable.year eq year) and (ValidatorMetricsTable.quarter eq quarter)
+            }
                 .firstOrNull()
         }
 
