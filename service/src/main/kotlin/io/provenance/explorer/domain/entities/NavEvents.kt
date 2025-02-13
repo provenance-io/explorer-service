@@ -67,7 +67,8 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             scopeId: String? = null,
             fromDate: LocalDateTime? = null,
             toDate: LocalDateTime? = null,
-            priceDenoms: List<String>? = null
+            priceDenoms: List<String>? = null,
+            source: String? = null
         ) = transaction {
             var query = """
             SELECT block_height, block_time, tx_hash, event_order, 
@@ -104,6 +105,11 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
                         args.add(Pair(VarCharColumnType(), denom))
                     }
                 }
+            }
+
+            source?.let {
+                query += " AND source = ?"
+                args.add(Pair(VarCharColumnType(), it))
             }
 
             query += " ORDER BY block_height DESC, event_order DESC"

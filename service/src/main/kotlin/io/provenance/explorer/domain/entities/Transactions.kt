@@ -9,10 +9,7 @@ import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
-import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_OVERAGE
-import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_USED
-import io.provenance.explorer.domain.entities.FeeType.CUSTOM_FEE
-import io.provenance.explorer.domain.entities.FeeType.MSG_BASED_FEE
+import io.provenance.explorer.domain.entities.FeeType.*
 import io.provenance.explorer.domain.extensions.CUSTOM_FEE_MSG_TYPE
 import io.provenance.explorer.domain.extensions.exec
 import io.provenance.explorer.domain.extensions.execAndMap
@@ -43,6 +40,7 @@ import io.provenance.explorer.model.TxAssociatedValues
 import io.provenance.explorer.model.TxFeepayer
 import io.provenance.explorer.model.TxGasVolume
 import io.provenance.explorer.model.TxStatus
+import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.stringfy
 import io.provenance.explorer.service.AssetService
 import org.jetbrains.exposed.dao.IntEntity
@@ -225,7 +223,61 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 )
             }
         }
-    }
+
+        fun pulseTransactionsWithValue(denom: String, afterDateTime: LocalDateTime, page: Int, count: Int): PagedResults<Map<String, kotlin.Any?>> = transaction {
+            val query = """
+                select tx.id as tx_id,
+                       tx.hash,
+                       tx.height,
+                       tx.tx_timestamp,
+                       mtype.category,
+                       mtype.type,
+                       mtype.proto_type,
+                       mtype.module,
+                       tme.event_type,
+                       attr.attr_key,
+                       attr.attr_value
+                from tx_cache tx
+                         join tx_msg_event as tme on tx.id = tme.tx_hash_id
+                         join tx_msg_event_attr as attr on tme.id = attr.tx_msg_event_id
+                         join tx_message_type as mtype on mtype.id = tme.tx_msg_type_id
+                         join tx_marker_join as denom on denom.tx_hash_id = tx.id
+                where tme.tx_msg_type_id IN
+                      (select id from tx_message_type where module in ('exchange', 'bank'))
+                  and tx.tx_timestamp > ?
+                  and tx.error_code is null
+                  and tx.codespace is null
+                  and denom.denom = ?
+                  and event_type = 'coin_spent'
+                  and attr_key = 'amount'
+                  and attr_value like ?
+                order by height desc, tx_id
+            """.trimIndent()
+            val arguments = mutableListOf<Pair<ColumnType, *>>(
+                Pair(JavaLocalDateTimeColumnType(), afterDateTime),
+                Pair(TextColumnType(), denom),
+                Pair(TextColumnType(), "%$denom%"),
+            )
+
+            val countQuery = "select count(*) from ($query) as count"
+            val rowCount = countQuery.execAndMap(arguments) {
+                it.getLong(1)
+            }.first()
+
+            arguments.add(Pair(IntegerColumnType(), count))
+            arguments.add(Pair(IntegerColumnType(), page * count))
+
+            "$query limit ? offset ?".execAndMap(arguments) {
+                    val map = mutableMapOf<String, kotlin.Any?>()
+                    (1..it.metaData.columnCount).forEach { index ->
+                        map[it.metaData.getColumnName(index)] = it.getObject(index)
+                    }
+                    map // return a list of map because i like to party
+                }.let {
+                    PagedResults(rowCount.div(count).toInt(), it, rowCount, emptyMap())
+                }
+            }
+        }
 
     var hash by TxCacheTable.hash
     var height by TxCacheTable.height

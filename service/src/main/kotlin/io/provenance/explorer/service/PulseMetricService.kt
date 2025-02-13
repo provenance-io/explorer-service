@@ -18,12 +18,16 @@ import io.provenance.explorer.domain.models.explorer.pulse.MetricSeries
 import io.provenance.explorer.domain.models.explorer.pulse.PulseAssetSummary
 import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
 import io.provenance.explorer.domain.models.explorer.pulse.PulseMetric
+import io.provenance.explorer.domain.models.explorer.pulse.TransactionSummary
 import io.provenance.explorer.grpc.v1.ExchangeGrpcClient
 import io.provenance.explorer.model.ValidatorState.ACTIVE
+import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.USD_LOWER
 import io.provenance.explorer.model.base.USD_UPPER
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.springdoc.core.utils.PropertyResolverUtils
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -44,8 +48,10 @@ class PulseMetricService(
     private val pricingService: PricingService,
     private val assetService: AssetService,
     private val exchangeGrpcClient: ExchangeGrpcClient,
+    private val propertyResolverUtils: PropertyResolverUtils,
 ) {
     protected val logger = logger(PulseMetricService::class)
+
     private val pulseMetricCache: Cache<Triple<LocalDate, PulseCacheType, String?>, PulseMetric> =
         Caffeine.newBuilder().apply {
             maximumSize(200)
@@ -156,6 +162,32 @@ class PulseMetricService(
                 subtype = subtype
             )
         } else todayCache
+    }
+
+    /**
+     * Use the assumption that Spring scheduled task threads begin with "scheduling-"
+     * to determine if the current thread is a scheduled task
+     */
+    private fun isScheduledTask(): Boolean =
+        Thread.currentThread().name.startsWith("scheduling-")
+
+    /**
+     * Periodically refreshes the pulse cache
+     */
+    fun refreshCache() = transaction {
+        val threadName = Thread.currentThread().name
+        logger.info("Refreshing pulse cache for thread $threadName")
+        PulseCacheType.entries.filter {
+            it != PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC &&
+                    it != PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
+        }
+            .forEach { type ->
+                pulseMetric(type)
+            }
+
+        pulseAssetSummaries()
+
+        logger.info("Pulse cache refreshed for thread $threadName")
     }
 
     private fun denomSupplyCache(denom: String) =
@@ -412,32 +444,6 @@ class PulseMetricService(
     }
 
     /**
-     * Use the assumption that Spring scheduled task threads begin with "scheduling-"
-     * to determine if the current thread is a scheduled task
-     */
-    private fun isScheduledTask(): Boolean =
-        Thread.currentThread().name.startsWith("scheduling-")
-
-    /**
-     * Periodically refreshes the pulse cache
-     */
-    fun refreshCache() = transaction {
-        val threadName = Thread.currentThread().name
-        logger.info("Refreshing pulse cache for thread $threadName")
-        PulseCacheType.entries.filter {
-            it != PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC &&
-                    it != PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
-        }
-            .forEach { type ->
-                pulseMetric(type)
-            }
-
-        pulseAssetSummaries()
-
-        logger.info("Pulse cache refreshed for thread $threadName")
-    }
-
-    /**
      * Asset denom  metadata from chain
      */
     private fun pulseAssetDenomMetadata(denom: String) =
@@ -462,12 +468,16 @@ class PulseMetricService(
      * Build cache of exchange-traded asset summaries using nav events from
      * exchange module for USD-based assets
      */
-    private fun pulseAssetSummariesForNavEvents(denom: String) =
+    private fun pulseAssetSummariesForNavEvents(
+        denom: String,
+        source: String? = null
+    ) =
         NavEventsRecord.getNavEvents(
             denom = denom,
-            fromDate = LocalDateTime.now().startOfDay()
+            fromDate = LocalDateTime.now().startOfDay(),
+            source = source
         ).filter {
-            it.source.startsWith("x/exchange") &&
+            (source != null || it.source.startsWith("x/exchange")) &&
                     it.priceDenom?.lowercase()
                         ?.startsWith("u$USD_LOWER") == true
         }
@@ -550,26 +560,35 @@ class PulseMetricService(
     fun exchangeSummaries(denom: String): List<ExchangeSummary> = runBlocking {
         exchangeGrpcClient.getMarketBriefsByDenom(denom)
     }.map {
-        /* TODO LEFT OFF HERE:
-                - get the market volume
-                - get the market settlement by denom - not sure how with events?
-                - get market details including intermediate currency
-                - we're going to want to cache this stuff
-                - join these run blocks
-         */
-
         val denomMetadata = pulseAssetDenomMetadata(denom)
-        val commitments =
-            runBlocking { exchangeGrpcClient.getMarketCommitments(it.marketId) }
+        val denomExp = denomExponent(denomMetadata) ?: 1
+        val denomPow = inversePowerOfTen(denomExp)
 
-        val market = runBlocking { exchangeGrpcClient.getMarket(it.marketId) }
+        val (commitments, market) = runBlocking {
+            val commitmentsDeferred =
+                async { exchangeGrpcClient.getMarketCommitments(it.marketId) }
+            val marketDeferred =
+                async { exchangeGrpcClient.getMarket(it.marketId) }
+            commitmentsDeferred.await() to marketDeferred.await()
+        }
 
         val denomCommittedAmount = commitments.map { commitment ->
             commitment.amountList.filter { amount ->
                 amount.denom == denom
             }.sumOf { s -> s.amount.toBigDecimal() }
         }.sumOf { s -> s }
-            .times(inversePowerOfTen(denomExponent(denomMetadata) ?: 1))
+            .times(denomPow)
+
+        val eventScope = "x/exchange market ${it.marketId}"
+        val events = pulseAssetSummariesForNavEvents(denom, eventScope)
+        // seems backwards, but settlements is the volume of the denom settled
+        val settlement = events.sumOf { e -> e.volume }
+            .toBigDecimal()
+            .times(denomPow)
+        // and volume is the value of the denom settled
+        val volume = events.sumOf { e -> e.priceAmount!! }
+            .toBigDecimal()
+            .times(inversePowerOfTen(6))
 
         ExchangeSummary(
             id = UUID.randomUUID(),
@@ -581,10 +600,71 @@ class PulseMetricService(
             iconUri = it.marketDetails.iconUri,
             websiteUrl = it.marketDetails.websiteUrl,
             base = denomMetadata.base,
-            quote = market.intermediaryDenom,
+            quote = USD_UPPER, // TODO probably need to use this instead of hard code: market.intermediaryDenom,
             committed = denomCommittedAmount,
-            volume = BigDecimal.ZERO, // TODO how do get this one market?
-            settlement = BigDecimal.ZERO // TODO why charlie hate dennis
+            volume = volume,
+            settlement = settlement
         )
     }
+
+    /**
+     * Retrieve pageable transaction summaries for transactions that have exchanged
+     * bank or exchange value by denom
+     */
+    fun transactionSummaries(
+        denom: String,
+        count: Int,
+        page: Int
+    ): PagedResults<TransactionSummary> =
+        TxCacheRecord.pulseTransactionsWithValue(
+            denom,
+            LocalDateTime.now().minusDays(1).startOfDay(),
+            page,
+            count
+        ).let { pr ->
+            val denomMetadata = pulseAssetDenomMetadata(denom)
+            val denomExp = denomExponent(denomMetadata) ?: 1
+            val denomPow = inversePowerOfTen(denomExp)
+            /*
+            map of denom value by tx hash - provenance also puts coin values
+            in a comma-separated list in the event value and sometimes it's
+            quoted, sometimes it's not - so parse that madness
+             */
+            val denomVolumeMapByHash = pr.results.map { r ->
+                r["hash"] as String to r["attr_value"].toString()
+                    .replace("\"", "")
+                    .split(",")
+                    .filter { f -> f.contains(denom) }
+                    .sumOf { v ->
+                        v.substringBefore(denom).toBigDecimal()
+                    }
+            }.groupBy { it.first }
+                .mapValues { e -> e.value.sumOf { it.second }.times(denomPow) }
+
+            val denomPrice =
+                fromPulseMetricCache(
+                    LocalDateTime.now().minusDays(1).startOfDay().toLocalDate(),
+                    PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC, denom
+                )?.amount ?: BigDecimal.ZERO
+
+            PagedResults(
+                pages = pr.pages,
+                results = pr.results.distinctBy { it["hash"] }.map { tx ->
+                    val hash = tx["hash"] as String
+                    TransactionSummary(
+                        txHash = hash,
+                        block = tx["height"] as Int,
+                        time = tx["tx_timestamp"].toString(),
+                        type = tx["type"] as String,
+                        value = denomVolumeMapByHash[hash] ?: BigDecimal.ZERO,
+                        quoteValue = (denomVolumeMapByHash[hash] ?: BigDecimal.ZERO)
+                            .times(denomPrice),
+                        quoteDenom = USD_UPPER,
+                        details = emptyList()
+                    )
+                },
+                total = pr.total
+
+            )
+        }
 }
