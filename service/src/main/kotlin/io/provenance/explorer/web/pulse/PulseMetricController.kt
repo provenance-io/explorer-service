@@ -1,6 +1,5 @@
 package io.provenance.explorer.web.pulse
 
-import io.provenance.explorer.domain.models.explorer.pulse.PulseAssetSummary
 import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
 import io.provenance.explorer.domain.models.explorer.pulse.PulseMetric
 import io.provenance.explorer.service.PulseMetricService
@@ -27,9 +26,4 @@ class PulseMetricController(private val pulseMetricService: PulseMetricService) 
     @GetMapping("/type/{type}")
     fun getPulseMetricsByType(@PathVariable type: PulseCacheType): PulseMetric =
         pulseMetricService.pulseMetric(type)
-
-    @Operation(summary = "Exchange-traded Asset Summaries")
-    @GetMapping("/asset/summary/list")
-    fun getPulseAssetSummaries(): List<PulseAssetSummary> =
-        pulseMetricService.pulseAssetSummaries()
 }

@@ -63,7 +63,7 @@ data class PulseMetric(
         private fun percentageChange(
             previous: BigDecimal,
             current: BigDecimal
-        ) = if (previous == BigDecimal.ZERO) BigDecimal.ZERO
+        ) = if (previous.compareTo(BigDecimal.ZERO) == 0) BigDecimal.ZERO
         else change(previous, current).divide(previous, 8, RoundingMode.HALF_UP) * BigDecimal(100)
     }
 }

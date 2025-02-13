@@ -1,5 +1,7 @@
 package io.provenance.explorer.service
 
+import com.github.benmanes.caffeine.cache.Cache
+import com.github.benmanes.caffeine.cache.Caffeine
 import cosmos.bank.v1beta1.Bank
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
@@ -11,13 +13,16 @@ import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.extensions.roundWhole
 import io.provenance.explorer.domain.extensions.startOfDay
+import io.provenance.explorer.domain.models.explorer.pulse.ExchangeSummary
 import io.provenance.explorer.domain.models.explorer.pulse.MetricSeries
 import io.provenance.explorer.domain.models.explorer.pulse.PulseAssetSummary
 import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
 import io.provenance.explorer.domain.models.explorer.pulse.PulseMetric
+import io.provenance.explorer.grpc.v1.ExchangeGrpcClient
 import io.provenance.explorer.model.ValidatorState.ACTIVE
 import io.provenance.explorer.model.base.USD_LOWER
 import io.provenance.explorer.model.base.USD_UPPER
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
@@ -26,6 +31,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import kotlin.math.pow
 
 /**
@@ -36,13 +42,33 @@ class PulseMetricService(
     private val tokenService: TokenService,
     private val validatorService: ValidatorService,
     private val pricingService: PricingService,
-    private val assetService: AssetService
+    private val assetService: AssetService,
+    private val exchangeGrpcClient: ExchangeGrpcClient,
 ) {
     protected val logger = logger(PulseMetricService::class)
+    private val pulseMetricCache: Cache<Triple<LocalDate, PulseCacheType, String?>, PulseMetric> =
+        Caffeine.newBuilder().apply {
+            maximumSize(200)
+        }.build()
+
+    private val denomMetadataCache: Cache<String, Bank.Metadata> =
+        Caffeine.newBuilder().apply {
+            expireAfterWrite(1, TimeUnit.HOURS)
+            maximumSize(100)
+        }.build()
+
+    private val denomCurrentSupplyCache: Cache<String, BigDecimal> =
+        Caffeine.newBuilder().apply {
+            expireAfterWrite(30, TimeUnit.MINUTES)
+            maximumSize(100)
+        }.build()
 
     val base = UTILITY_TOKEN
     val quote = USD_UPPER
 
+    /**
+     * Builds a pulse metric and saves it to the DB cache and Caffeine cache
+     */
     private fun buildAndSavePulseMetric(
         date: LocalDate, type: PulseCacheType,
         previous: BigDecimal, current: BigDecimal,
@@ -65,10 +91,29 @@ class PulseMetricService(
                     logger.warn("Failed to insert pulse cache record for $date $type $subtype")
                 }
             }
+            pulseMetricCache.put(Triple(date, type, subtype), it)
         }
 
     /**
-     * Creates a cache record for the given type if it does not exist, or fetches the cache record
+     * Retrieve pulse metric from caffeine cache or DB cache
+     */
+    private fun fromPulseMetricCache(
+        date: LocalDate,
+        type: PulseCacheType,
+        subtype: String? = null
+    ): PulseMetric? =
+        pulseMetricCache.get(
+            Triple(
+                date,
+                type,
+                subtype
+            )
+        ) { PulseCacheRecord.findByDateAndType(date, type, subtype)?.data }
+
+    /**
+     * Creates a cache record for the given type if it does not exist, or fetches the cache record.
+     * Pulse operates on the premise that 2 days of history are required to calculate the current day's metric
+     * where daily history is built up from a scheduled task refreshing the metric from a functional data source.
      */
     private fun fetchOrBuildCacheFromDataSource(
         type: PulseCacheType,
@@ -78,8 +123,7 @@ class PulseMetricService(
         val today = LocalDate.now()
         val yesterday = today.minusDays(1)
 
-        val todayCache =
-            PulseCacheRecord.findByDateAndType(today, type, subtype)
+        val todayCache = fromPulseMetricCache(today, type, subtype)
 
         // if this is a scheduled task, bust the cache
         val bustCache = isScheduledTask()
@@ -87,11 +131,7 @@ class PulseMetricService(
         if (todayCache == null || bustCache) {
             val metric = dataSourceFn()
             val yesterdayMetric =
-                PulseCacheRecord.findByDateAndType(
-                    yesterday,
-                    type,
-                    subtype
-                )?.data
+                fromPulseMetricCache(yesterday, type, subtype)
                     ?: buildAndSavePulseMetric(
                         date = yesterday,
                         type = type,
@@ -115,8 +155,13 @@ class PulseMetricService(
                 series = metric.series,
                 subtype = subtype
             )
-        } else todayCache.data
+        } else todayCache
     }
+
+    private fun denomSupplyCache(denom: String) =
+        denomCurrentSupplyCache.get(denom) {
+            assetService.getCurrentSupply(denom).toBigDecimal()
+        } ?: BigDecimal.ZERO
 
     /**
      * Returns the current hash market cap metric comparing the previous day's market cap
@@ -303,6 +348,38 @@ class PulseMetricService(
             }
         }
 
+    /**
+     * Returns the total committed assets across all exchanges - a simple count of all commitments
+     */
+    private fun exchangeCommittedAssets(): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_COMMITTED_ASSETS_METRIC
+        ) {
+            runBlocking {
+                exchangeGrpcClient.totalCommitmentCount().toBigDecimal().let {
+                    PulseMetric.build(
+                        base = UTILITY_TOKEN,
+                        amount = it
+                    )
+                }
+            }
+        }
+
+    /**
+     * Returns the total committed assets value across all exchanges - a sum of all commitments
+     */
+    private fun exchangeCommittedAssetsValue(): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_COMMITTED_ASSETS_VALUE_METRIC
+        ) {
+            committedAssetTotals().values.sumOf { it }.let {
+                PulseMetric.build(
+                    base = USD_UPPER,
+                    amount = it.times(inversePowerOfTen(6))
+                )
+            }
+        }
+
     private fun todoPulse(): PulseMetric =
         PulseMetric.build(
             base = UTILITY_TOKEN,
@@ -325,6 +402,8 @@ class PulseMetricService(
             PulseCacheType.PULSE_TRADE_SETTLEMENT_METRIC -> pulseTradesSettled()
             PulseCacheType.PULSE_TRADE_VALUE_SETTLED_METRIC -> pulseTradeValueSettled()
             PulseCacheType.PULSE_PARTICIPANTS_METRIC -> totalParticipants()
+            PulseCacheType.PULSE_COMMITTED_ASSETS_METRIC -> exchangeCommittedAssets()
+            PulseCacheType.PULSE_COMMITTED_ASSETS_VALUE_METRIC -> exchangeCommittedAssetsValue()
             PulseCacheType.PULSE_DEMOCRATIZED_PRIME_POOLS_METRIC -> todoPulse()
             PulseCacheType.PULSE_MARGIN_LOANS_METRIC -> todoPulse()
             PulseCacheType.PULSE_FEES_AUCTIONS_METRIC -> todoPulse()
@@ -332,6 +411,10 @@ class PulseMetricService(
         }
     }
 
+    /**
+     * Use the assumption that Spring scheduled task threads begin with "scheduling-"
+     * to determine if the current thread is a scheduled task
+     */
     private fun isScheduledTask(): Boolean =
         Thread.currentThread().name.startsWith("scheduling-")
 
@@ -349,13 +432,7 @@ class PulseMetricService(
                 pulseMetric(type)
             }
 
-        PulseCacheType.entries.filter {
-            it == PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC ||
-                    it == PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
-        }
-            .forEach { type ->
-                pulseAssetSummaries()
-            }
+        pulseAssetSummaries()
 
         logger.info("Pulse cache refreshed for thread $threadName")
     }
@@ -364,11 +441,20 @@ class PulseMetricService(
      * Asset denom  metadata from chain
      */
     private fun pulseAssetDenomMetadata(denom: String) =
-        assetService.getDenomMetadataSingle(denom)
+        denomMetadataCache.get(denom) {
+            assetService.getDenomMetadataSingle(denom)
+        }!!
 
+    /**
+     * Returns the exponent for the given denom metadata
+     */
     private fun denomExponent(denomMetadata: Bank.Metadata) =
         denomMetadata.denomUnitsList.firstOrNull { it.exponent != 0 }?.exponent
 
+    /**
+     * Returns the inverse power of ten for the given exponent because I
+     * mostly don't like to divide to move decimal places
+     */
     private fun inversePowerOfTen(exp: Int) =
         10.0.pow(exp.toDouble() * -1).toBigDecimal()
 
@@ -376,9 +462,10 @@ class PulseMetricService(
      * Build cache of exchange-traded asset summaries using nav events from
      * exchange module for USD-based assets
      */
-    private fun pulseAssetSummariesForNavEvents() =
+    private fun pulseAssetSummariesForNavEvents(denom: String) =
         NavEventsRecord.getNavEvents(
-            fromDate = LocalDateTime.now().minusDays(1).startOfDay()
+            denom = denom,
+            fromDate = LocalDateTime.now().startOfDay()
         ).filter {
             it.source.startsWith("x/exchange") &&
                     it.priceDenom?.lowercase()
@@ -386,65 +473,118 @@ class PulseMetricService(
         }
 
     /**
-     * TODO - this is problematic for a number of reasons:
-     *        - it's not clear how to handle assets that are not USD-based
-     *        - as we turn over a new day, there are no rows in the Nav Events until exchanges trade
-     *        - the market cap is based on the trade volume for the day, which is not a good metric
-     *          instead, we should be using the total supply of the asset based on commitments?
-     *        - this outer query on NavEvents takes 10s to run :( - perhaps pull committed assets from the chain first?
-     *
+     * Returns the total committed assets across all exchanges
+     */
+    private fun committedAssetTotals() = runBlocking {
+        exchangeGrpcClient.totalCommittedAssetTotals()
+    }
+
+    /**
+     * TODO - this is problematic because it assumes all assets are USD-based
      */
     fun pulseAssetSummaries(): List<PulseAssetSummary> =
-        pulseAssetSummariesForNavEvents()
-            .groupBy { it.denom!! }
-            .map { (denom, events) ->
-                val denomMetadata = pulseAssetDenomMetadata(denom)
-                val denomExp = denomExponent(denomMetadata) ?: 1
-
-                val priceMetric = fetchOrBuildCacheFromDataSource(
-                    type = PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC,
-                    subtype = denom
-                ) {
-                    // TODO i'm not sure i like how this lambda captures the events object list
-                    val tradeValue = events.sumOf { it.priceAmount!! }
-                        .toBigDecimal()
-                        .times(inversePowerOfTen(6))
-                    val tradeVolume = events.sumOf { it.volume }
-                        .toBigDecimal()
-                        .times(inversePowerOfTen(denomExp))
-                    val avgTradePrice =
+        committedAssetTotals().keys.distinct().map { denom ->
+            val denomMetadata = pulseAssetDenomMetadata(denom)
+            val denomExp = denomExponent(denomMetadata) ?: 1
+            val denomPow = inversePowerOfTen(denomExp)
+            val usdPow = inversePowerOfTen(6)
+            val priceMetric = fetchOrBuildCacheFromDataSource(
+                type = PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC,
+                subtype = denom
+            ) {
+                val events = pulseAssetSummariesForNavEvents(denom)
+                val tradeValue = events.sumOf { it.priceAmount!! }
+                    .toBigDecimal()
+                    .times(usdPow)
+                val tradeVolume = events.sumOf { it.volume }
+                    .toBigDecimal()
+                    .times(denomPow)
+                val avgTradePrice =
+                    if (tradeVolume.compareTo(BigDecimal.ZERO) == 0) BigDecimal.ZERO else
                         tradeValue.divide(tradeVolume, 6, RoundingMode.HALF_UP)
 
-                    PulseMetric.build(
-                        base = USD_UPPER,
-                        amount = avgTradePrice,
-                    )
-                }
-
-                val volumeMetric = fetchOrBuildCacheFromDataSource(
-                    type = PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC,
-                    subtype = denom
-                ) {
-                    val tradeVolume = events.sumOf { it.volume }
-                        .toBigDecimal()
-                        .times(inversePowerOfTen(denomExp))
-
-                    PulseMetric.build(
-                        base = denom,
-                        amount = tradeVolume
-                    )
-                }
-
-                PulseAssetSummary(
-                    id = UUID.randomUUID(),
-                    name = denomMetadata.name,
-                    description = denomMetadata.description,
-                    symbol = denomMetadata.symbol,
-                    base = denom,
-                    quote = USD_UPPER,
-                    marketCap = priceMetric.amount.times(volumeMetric.amount),
-                    priceTrend = priceMetric.trend,
-                    volumeTrend = volumeMetric.trend
+                PulseMetric.build(
+                    base = USD_UPPER,
+                    amount = avgTradePrice,
                 )
-            }.sortedBy { it.symbol }
+            }
+            val volumeMetric = fetchOrBuildCacheFromDataSource(
+                type = PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC,
+                subtype = denom
+            ) {
+                val events = pulseAssetSummariesForNavEvents(denom)
+                val tradeValue = events.sumOf { it.priceAmount!! }
+                    .toBigDecimal()
+                    .times(usdPow)
+
+                PulseMetric.build(
+                    base = USD_UPPER,
+                    amount = tradeValue
+                )
+            }
+            val supply = denomSupplyCache(denom)
+                .times(denomPow)
+            val marketCap = supply
+                .times(priceMetric.amount)
+
+            PulseAssetSummary(
+                id = UUID.randomUUID(),
+                name = denomMetadata.name,
+                description = denomMetadata.description,
+                symbol = denomMetadata.symbol,
+                display = denomMetadata.display,
+                base = denom,
+                quote = USD_UPPER, // TODO a gross assumption but will suffice for now
+                marketCap = marketCap,
+                supply = supply,
+                priceTrend = priceMetric.trend,
+                volumeTrend = volumeMetric.trend
+            )
+        }.sortedWith(
+            compareBy(
+                { it.symbol.isEmpty() },
+                { it.symbol }
+            )
+        ) // empties to the bottom
+
+    fun exchangeSummaries(denom: String): List<ExchangeSummary> = runBlocking {
+        exchangeGrpcClient.getMarketBriefsByDenom(denom)
+    }.map {
+        /* TODO LEFT OFF HERE:
+                - get the market volume
+                - get the market settlement by denom - not sure how with events?
+                - get market details including intermediate currency
+                - we're going to want to cache this stuff
+                - join these run blocks
+         */
+
+        val denomMetadata = pulseAssetDenomMetadata(denom)
+        val commitments =
+            runBlocking { exchangeGrpcClient.getMarketCommitments(it.marketId) }
+
+        val market = runBlocking { exchangeGrpcClient.getMarket(it.marketId) }
+
+        val denomCommittedAmount = commitments.map { commitment ->
+            commitment.amountList.filter { amount ->
+                amount.denom == denom
+            }.sumOf { s -> s.amount.toBigDecimal() }
+        }.sumOf { s -> s }
+            .times(inversePowerOfTen(denomExponent(denomMetadata) ?: 1))
+
+        ExchangeSummary(
+            id = UUID.randomUUID(),
+            marketAddress = it.marketAddress,
+            name = it.marketDetails.name,
+            symbol = denomMetadata.symbol,
+            display = denomMetadata.display,
+            description = it.marketDetails.description,
+            iconUri = it.marketDetails.iconUri,
+            websiteUrl = it.marketDetails.websiteUrl,
+            base = denomMetadata.base,
+            quote = market.intermediaryDenom,
+            committed = denomCommittedAmount,
+            volume = BigDecimal.ZERO, // TODO how do get this one market?
+            settlement = BigDecimal.ZERO // TODO why charlie hate dennis
+        )
+    }
 }
