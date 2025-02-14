@@ -150,19 +150,19 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             var join: ColumnSet = TxCacheTable
 
             if (tqp.msgTypes.isNotEmpty()) {
-                join = join.innerJoin(TxMsgTypeQueryTable, { TxCacheTable.id }, { TxMsgTypeQueryTable.txHashId })
+                join = join.innerJoin(TxMsgTypeQueryTable, { TxCacheTable.id }, { txHashId })
             }
             if ((tqp.addressId != null && tqp.addressType != null) || tqp.address != null) {
-                join = join.innerJoin(TxAddressJoinTable, { TxCacheTable.id }, { TxAddressJoinTable.txHashId })
+                join = join.innerJoin(TxAddressJoinTable, { TxCacheTable.id }, { txHashId })
             }
             if (tqp.markerId != null || tqp.denom != null) {
-                join = join.innerJoin(TxMarkerJoinTable, { TxCacheTable.id }, { TxMarkerJoinTable.txHashId })
+                join = join.innerJoin(TxMarkerJoinTable, { TxCacheTable.id }, { txHashId })
             }
             if (tqp.nftId != null) {
-                join = join.innerJoin(TxNftJoinTable, { TxCacheTable.id }, { TxNftJoinTable.txHashId })
+                join = join.innerJoin(TxNftJoinTable, { TxCacheTable.id }, { txHashId })
             }
             if (tqp.ibcChannelIds.isNotEmpty()) {
-                join = join.innerJoin(TxIbcTable, { TxCacheTable.id }, { TxIbcTable.txHashId })
+                join = join.innerJoin(TxIbcTable, { TxCacheTable.id }, { txHashId })
             }
 
             val query = if (distinctQuery != null) join.slice(distinctQuery).selectAll() else join.selectAll()
@@ -435,7 +435,7 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findByHashIdPaginated(hashId: Int, msgTypes: List<Int>, limit: Int, offset: Int) = transaction {
             val query = TxMessageTable
-                .innerJoin(TxMsgTypeSubtypeTable, { TxMessageTable.id }, { TxMsgTypeSubtypeTable.txMsgId })
+                .innerJoin(TxMsgTypeSubtypeTable, { TxMessageTable.id }, { txMsgId })
                 .slice(tableColSet)
                 .select { TxMessageTable.txHashId eq hashId }
             if (msgTypes.isNotEmpty()) {
@@ -487,17 +487,17 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
 
             if (tqp.msgTypes.isNotEmpty())
                 join = if (tqp.primaryTypesOnly)
-                    join.innerJoin(TxMsgTypeSubtypeTable, { TxMessageTable.txHashId }, { TxMsgTypeSubtypeTable.txHashId })
+                    join.innerJoin(TxMsgTypeSubtypeTable, { TxMessageTable.txHashId }, { txHashId })
                 else
-                    join.innerJoin(TxMsgTypeQueryTable, { TxMessageTable.txHashId }, { TxMsgTypeQueryTable.txHashId })
+                    join.innerJoin(TxMsgTypeQueryTable, { TxMessageTable.txHashId }, { txHashId })
             if (tqp.txStatus != null)
                 join = join.innerJoin(TxCacheTable, { TxMessageTable.txHashId }, { TxCacheTable.id })
             if ((tqp.addressId != null && tqp.addressType != null) || tqp.address != null)
-                join = join.innerJoin(TxAddressJoinTable, { TxMessageTable.txHashId }, { TxAddressJoinTable.txHashId })
+                join = join.innerJoin(TxAddressJoinTable, { TxMessageTable.txHashId }, { txHashId })
             if (tqp.smCodeId != null)
-                join = join.innerJoin(TxSmCodeTable, { TxMessageTable.txHashId }, { TxSmCodeTable.txHashId })
+                join = join.innerJoin(TxSmCodeTable, { TxMessageTable.txHashId }, { txHashId })
             if (tqp.smContractAddrId != null)
-                join = join.innerJoin(TxSmContractTable, { TxMessageTable.txHashId }, { TxSmContractTable.txHashId })
+                join = join.innerJoin(TxSmContractTable, { TxMessageTable.txHashId }, { txHashId })
 
             val query = if (distinctQuery != null) join.slice(distinctQuery).selectAll() else join.selectAll()
 
