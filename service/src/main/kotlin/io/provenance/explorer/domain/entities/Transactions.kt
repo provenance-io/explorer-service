@@ -9,10 +9,6 @@ import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
-import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_OVERAGE
-import io.provenance.explorer.domain.entities.FeeType.BASE_FEE_USED
-import io.provenance.explorer.domain.entities.FeeType.CUSTOM_FEE
-import io.provenance.explorer.domain.entities.FeeType.MSG_BASED_FEE
 import io.provenance.explorer.domain.extensions.CUSTOM_FEE_MSG_TYPE
 import io.provenance.explorer.domain.extensions.exec
 import io.provenance.explorer.domain.extensions.execAndMap
@@ -43,6 +39,7 @@ import io.provenance.explorer.model.TxAssociatedValues
 import io.provenance.explorer.model.TxFeepayer
 import io.provenance.explorer.model.TxGasVolume
 import io.provenance.explorer.model.TxStatus
+import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.stringfy
 import io.provenance.explorer.service.AssetService
 import org.jetbrains.exposed.dao.IntEntity
@@ -69,6 +66,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.math.BigDecimal
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -151,19 +149,19 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             var join: ColumnSet = TxCacheTable
 
             if (tqp.msgTypes.isNotEmpty()) {
-                join = join.innerJoin(TxMsgTypeQueryTable, { TxCacheTable.id }, { TxMsgTypeQueryTable.txHashId })
+                join = join.innerJoin(TxMsgTypeQueryTable, { TxCacheTable.id }, { txHashId })
             }
             if ((tqp.addressId != null && tqp.addressType != null) || tqp.address != null) {
-                join = join.innerJoin(TxAddressJoinTable, { TxCacheTable.id }, { TxAddressJoinTable.txHashId })
+                join = join.innerJoin(TxAddressJoinTable, { TxCacheTable.id }, { txHashId })
             }
             if (tqp.markerId != null || tqp.denom != null) {
-                join = join.innerJoin(TxMarkerJoinTable, { TxCacheTable.id }, { TxMarkerJoinTable.txHashId })
+                join = join.innerJoin(TxMarkerJoinTable, { TxCacheTable.id }, { txHashId })
             }
             if (tqp.nftId != null) {
-                join = join.innerJoin(TxNftJoinTable, { TxCacheTable.id }, { TxNftJoinTable.txHashId })
+                join = join.innerJoin(TxNftJoinTable, { TxCacheTable.id }, { txHashId })
             }
             if (tqp.ibcChannelIds.isNotEmpty()) {
-                join = join.innerJoin(TxIbcTable, { TxCacheTable.id }, { TxIbcTable.txHashId })
+                join = join.innerJoin(TxIbcTable, { TxCacheTable.id }, { txHashId })
             }
 
             val query = if (distinctQuery != null) join.slice(distinctQuery).selectAll() else join.selectAll()
@@ -206,7 +204,79 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
 
             query
         }
-    }
+
+        fun countForDates(daysPrior: Int): List<Pair<LocalDate, Long>> = transaction {
+            val query = """
+                select sum(daily_tx_cnt.cnt) as count, ds
+                from (select count(*) cnt, tx_timestamp ts, date_trunc('day', tx_timestamp) ds
+                      from tx_cache
+                      where tx_timestamp > current_timestamp - interval '$daysPrior days'
+                      group by ts, ds) as daily_tx_cnt
+                group by ds
+                order by ds;
+            """.trimIndent()
+            query.execAndMap {
+                Pair(
+                    it.getTimestamp("ds").toLocalDateTime().toLocalDate(),
+                     it.getLong("count")
+                )
+            }
+        }
+
+        fun pulseTransactionsWithValue(denom: String, afterDateTime: LocalDateTime, page: Int, count: Int): PagedResults<Map<String, kotlin.Any?>> = transaction {
+            val query = """
+                select tx.id as tx_id,
+                       tx.hash,
+                       tx.height,
+                       tx.tx_timestamp,
+                       mtype.category,
+                       mtype.type,
+                       mtype.proto_type,
+                       mtype.module,
+                       tme.event_type,
+                       attr.attr_key,
+                       attr.attr_value
+                from tx_cache tx
+                         join tx_msg_event as tme on tx.id = tme.tx_hash_id
+                         join tx_msg_event_attr as attr on tme.id = attr.tx_msg_event_id
+                         join tx_message_type as mtype on mtype.id = tme.tx_msg_type_id
+                         join tx_marker_join as denom on denom.tx_hash_id = tx.id
+                where tme.tx_msg_type_id IN
+                      (select id from tx_message_type where module in ('exchange', 'bank'))
+                  and tx.tx_timestamp > ?
+                  and tx.error_code is null
+                  and tx.codespace is null
+                  and denom.denom = ?
+                  and event_type = 'coin_spent'
+                  and attr_key = 'amount'
+                  and attr_value like ?
+                order by height desc, tx_id
+            """.trimIndent()
+            val arguments = mutableListOf<Pair<ColumnType, *>>(
+                Pair(JavaLocalDateTimeColumnType(), afterDateTime),
+                Pair(TextColumnType(), denom),
+                Pair(TextColumnType(), "%$denom%"),
+            )
+
+            val countQuery = "select count(*) from ($query) as count"
+            val rowCount = countQuery.execAndMap(arguments) {
+                it.getLong(1)
+            }.first()
+
+            arguments.add(Pair(IntegerColumnType(), count))
+            arguments.add(Pair(IntegerColumnType(), page * count))
+
+            "$query limit ? offset ?".execAndMap(arguments) {
+                    val map = mutableMapOf<String, kotlin.Any?>()
+                    (1..it.metaData.columnCount).forEach { index ->
+                        map[it.metaData.getColumnName(index)] = it.getObject(index)
+                    }
+                    map // return a list of map because i like to party
+                }.let {
+                    PagedResults(rowCount.div(count).toInt(), it, rowCount, emptyMap())
+                }
+            }
+        }
 
     var hash by TxCacheTable.hash
     var height by TxCacheTable.height
@@ -364,7 +434,7 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findByHashIdPaginated(hashId: Int, msgTypes: List<Int>, limit: Int, offset: Int) = transaction {
             val query = TxMessageTable
-                .innerJoin(TxMsgTypeSubtypeTable, { TxMessageTable.id }, { TxMsgTypeSubtypeTable.txMsgId })
+                .innerJoin(TxMsgTypeSubtypeTable, { TxMessageTable.id }, { txMsgId })
                 .slice(tableColSet)
                 .select { TxMessageTable.txHashId eq hashId }
             if (msgTypes.isNotEmpty()) {
@@ -416,17 +486,17 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
 
             if (tqp.msgTypes.isNotEmpty())
                 join = if (tqp.primaryTypesOnly)
-                    join.innerJoin(TxMsgTypeSubtypeTable, { TxMessageTable.txHashId }, { TxMsgTypeSubtypeTable.txHashId })
+                    join.innerJoin(TxMsgTypeSubtypeTable, { TxMessageTable.txHashId }, { txHashId })
                 else
-                    join.innerJoin(TxMsgTypeQueryTable, { TxMessageTable.txHashId }, { TxMsgTypeQueryTable.txHashId })
+                    join.innerJoin(TxMsgTypeQueryTable, { TxMessageTable.txHashId }, { txHashId })
             if (tqp.txStatus != null)
                 join = join.innerJoin(TxCacheTable, { TxMessageTable.txHashId }, { TxCacheTable.id })
             if ((tqp.addressId != null && tqp.addressType != null) || tqp.address != null)
-                join = join.innerJoin(TxAddressJoinTable, { TxMessageTable.txHashId }, { TxAddressJoinTable.txHashId })
+                join = join.innerJoin(TxAddressJoinTable, { TxMessageTable.txHashId }, { txHashId })
             if (tqp.smCodeId != null)
-                join = join.innerJoin(TxSmCodeTable, { TxMessageTable.txHashId }, { TxSmCodeTable.txHashId })
+                join = join.innerJoin(TxSmCodeTable, { TxMessageTable.txHashId }, { txHashId })
             if (tqp.smContractAddrId != null)
-                join = join.innerJoin(TxSmContractTable, { TxMessageTable.txHashId }, { TxSmContractTable.txHashId })
+                join = join.innerJoin(TxSmContractTable, { TxMessageTable.txHashId }, { txHashId })
 
             val query = if (distinctQuery != null) join.slice(distinctQuery).selectAll() else join.selectAll()
 
@@ -772,13 +842,13 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                 }.let { (baseFeeOverage, baseFeeUsed) ->
                     val nhash = assetService.getAssetRaw(ExplorerProperties.UTILITY_TOKEN).second
                     // insert used fee
-                    feeList.add(buildInsert(txInfo, BASE_FEE_USED.name, nhash.id.value, nhash.denom, baseFeeUsed))
+                    feeList.add(buildInsert(txInfo, FeeType.BASE_FEE_USED.name, nhash.id.value, nhash.denom, baseFeeUsed))
                     // insert paid too much fee if > 0
                     if (baseFeeOverage > BigDecimal.ZERO) {
                         feeList.add(
                             buildInsert(
                                 txInfo,
-                                BASE_FEE_OVERAGE.name,
+                                FeeType.BASE_FEE_OVERAGE.name,
                                 nhash.id.value,
                                 nhash.denom,
                                 baseFeeOverage
@@ -789,7 +859,7 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                     if (tx.success()) {
                         msgBasedFeeList.forEach { fee ->
                             val feeType =
-                                if (fee.msgType == CUSTOM_FEE_MSG_TYPE) CUSTOM_FEE.name else MSG_BASED_FEE.name
+                                if (fee.msgType == CUSTOM_FEE_MSG_TYPE) FeeType.CUSTOM_FEE.name else FeeType.MSG_BASED_FEE.name
                             feeList.add(
                                 buildInsert(
                                     txInfo,
