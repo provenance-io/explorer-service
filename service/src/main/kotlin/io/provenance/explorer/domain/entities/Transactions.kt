@@ -9,7 +9,6 @@ import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.core.sql.toProcedureObject
-import io.provenance.explorer.domain.entities.FeeType.*
 import io.provenance.explorer.domain.extensions.CUSTOM_FEE_MSG_TYPE
 import io.provenance.explorer.domain.extensions.exec
 import io.provenance.explorer.domain.extensions.execAndMap
@@ -843,13 +842,13 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                 }.let { (baseFeeOverage, baseFeeUsed) ->
                     val nhash = assetService.getAssetRaw(ExplorerProperties.UTILITY_TOKEN).second
                     // insert used fee
-                    feeList.add(buildInsert(txInfo, BASE_FEE_USED.name, nhash.id.value, nhash.denom, baseFeeUsed))
+                    feeList.add(buildInsert(txInfo, FeeType.BASE_FEE_USED.name, nhash.id.value, nhash.denom, baseFeeUsed))
                     // insert paid too much fee if > 0
                     if (baseFeeOverage > BigDecimal.ZERO) {
                         feeList.add(
                             buildInsert(
                                 txInfo,
-                                BASE_FEE_OVERAGE.name,
+                                FeeType.BASE_FEE_OVERAGE.name,
                                 nhash.id.value,
                                 nhash.denom,
                                 baseFeeOverage
@@ -860,7 +859,7 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                     if (tx.success()) {
                         msgBasedFeeList.forEach { fee ->
                             val feeType =
-                                if (fee.msgType == CUSTOM_FEE_MSG_TYPE) CUSTOM_FEE.name else MSG_BASED_FEE.name
+                                if (fee.msgType == CUSTOM_FEE_MSG_TYPE) FeeType.CUSTOM_FEE.name else FeeType.MSG_BASED_FEE.name
                             feeList.add(
                                 buildInsert(
                                     txInfo,

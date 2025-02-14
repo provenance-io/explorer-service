@@ -310,11 +310,11 @@ class PulseMetricService(
             ).filter {
                 it.source.startsWith("x/exchange") &&
                         it.priceDenom?.startsWith("u$USD_LOWER") == true
-            } // gross
+            } // gross, but all uusd is micro
                 .sumOf { it.priceAmount!! }.toBigDecimal().let {
                     PulseMetric.build(
                         base = USD_UPPER,
-                        amount = it.divide(1000000.toBigDecimal()) // all uusd is micro
+                        amount = it.divide(1000000.toBigDecimal())
                     )
                 }
         }
@@ -537,6 +537,7 @@ class PulseMetricService(
             val marketCap = supply
                 .times(priceMetric.amount)
 
+            // TODO a gross assumption using USD_UPPER but will suffice for now
             PulseAssetSummary(
                 id = UUID.randomUUID(),
                 name = denomMetadata.name,
@@ -544,7 +545,7 @@ class PulseMetricService(
                 symbol = denomMetadata.symbol,
                 display = denomMetadata.display,
                 base = denom,
-                quote = USD_UPPER, // TODO a gross assumption but will suffice for now
+                quote = USD_UPPER,
                 marketCap = marketCap,
                 supply = supply,
                 priceTrend = priceMetric.trend,
@@ -589,7 +590,7 @@ class PulseMetricService(
         val volume = events.sumOf { e -> e.priceAmount!! }
             .toBigDecimal()
             .times(inversePowerOfTen(6))
-
+        // TODO probably need to use this instead of hard code USD_UPPER: market.intermediaryDenom,
         ExchangeSummary(
             id = UUID.randomUUID(),
             marketAddress = it.marketAddress,
@@ -600,7 +601,7 @@ class PulseMetricService(
             iconUri = it.marketDetails.iconUri,
             websiteUrl = it.marketDetails.websiteUrl,
             base = denomMetadata.base,
-            quote = USD_UPPER, // TODO probably need to use this instead of hard code: market.intermediaryDenom,
+            quote = USD_UPPER,
             committed = denomCommittedAmount,
             volume = volume,
             settlement = settlement
