@@ -26,6 +26,7 @@ import io.provenance.explorer.model.base.USD_LOWER
 import io.provenance.explorer.model.base.USD_UPPER
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
@@ -388,7 +389,7 @@ class PulseMetricService(
             runBlocking {
                 exchangeGrpcClient.totalCommitmentCount().toBigDecimal().let {
                     PulseMetric.build(
-                        base = UTILITY_TOKEN,
+                        base = UTILITY_TOKEN, // this is just a placeholder denom, not the query
                         amount = it
                     )
                 }
@@ -563,7 +564,7 @@ class PulseMetricService(
         val denomExp = denomExponent(denomMetadata) ?: 1
         val denomPow = inversePowerOfTen(denomExp)
 
-        val (commitments, market) = runBlocking {
+        val (commitments, _) = runBlocking {
             val commitmentsDeferred =
                 async { exchangeGrpcClient.getMarketCommitments(it.marketId) }
             val marketDeferred =
@@ -613,33 +614,21 @@ class PulseMetricService(
     fun transactionSummaries(
         denom: String,
         count: Int,
-        page: Int
+        page: Int,
+        sort: List<SortOrder>,
+        sortColumn: List<String>
     ): PagedResults<TransactionSummary> =
         TxCacheRecord.pulseTransactionsWithValue(
             denom,
             LocalDateTime.now().minusDays(1).startOfDay(),
             page,
-            count
+            count,
+            sort,
+            sortColumn
         ).let { pr ->
             val denomMetadata = pulseAssetDenomMetadata(denom)
             val denomExp = denomExponent(denomMetadata) ?: 1
             val denomPow = inversePowerOfTen(denomExp)
-            /*
-            map of denom value by tx hash - provenance also puts coin values
-            in a comma-separated list in the event value and sometimes it's
-            quoted, sometimes it's not - so parse that madness
-             */
-            val denomVolumeMapByHash = pr.results.map { r ->
-                r["hash"] as String to r["attr_value"].toString()
-                    .replace("\"", "")
-                    .split(",")
-                    .filter { f -> f.contains(denom) }
-                    .sumOf { v ->
-                        v.substringBefore(denom).toBigDecimal()
-                    }
-            }.groupBy { it.first }
-                .mapValues { e -> e.value.sumOf { it.second }.times(denomPow) }
-
             val denomPrice =
                 fromPulseMetricCache(
                     LocalDateTime.now().minusDays(1).startOfDay().toLocalDate(),
@@ -648,16 +637,21 @@ class PulseMetricService(
 
             PagedResults(
                 pages = pr.pages,
-                results = pr.results.distinctBy { it["hash"] }.map { tx ->
-                    val hash = tx["hash"] as String
+                results = pr.results.map { tx ->
+                    val denomTotal =
+                        if (tx["denom_total"] != null)
+                            BigDecimal(tx["denom_total"].toString()).times(denomPow)
+                        else
+                            BigDecimal.ZERO
+
+                    val denomQuoteValue = denomTotal.times(denomPrice)
                     TransactionSummary(
-                        txHash = hash,
+                        txHash = tx["hash"].toString(),
                         block = tx["height"] as Int,
                         time = tx["tx_timestamp"].toString(),
                         type = tx["type"] as String,
-                        value = denomVolumeMapByHash[hash] ?: BigDecimal.ZERO,
-                        quoteValue = (denomVolumeMapByHash[hash] ?: BigDecimal.ZERO)
-                            .times(denomPrice),
+                        value = denomTotal,
+                        quoteValue = denomQuoteValue,
                         quoteDenom = USD_UPPER,
                         details = emptyList()
                     )

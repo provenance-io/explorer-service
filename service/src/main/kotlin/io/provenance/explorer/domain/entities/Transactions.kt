@@ -223,24 +223,32 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             }
         }
 
-        fun pulseTransactionsWithValue(denom: String, afterDateTime: LocalDateTime, page: Int, count: Int): PagedResults<Map<String, kotlin.Any?>> = transaction {
+        fun pulseTransactionsWithValue(
+            denom: String, afterDateTime: LocalDateTime,
+                                       page: Int, count: Int,
+                                       sort: List<SortOrder>, sortColumn: List<String>
+        ): PagedResults<Map<String, kotlin.Any?>> = transaction {
+            /* This is simultaneously the scariest and most beautiful query I've ever seen. */
             val query = """
                 select tx.id as tx_id,
                        tx.hash,
                        tx.height,
                        tx.tx_timestamp,
-                       mtype.category,
                        mtype.type,
-                       mtype.proto_type,
-                       mtype.module,
-                       tme.event_type,
-                       attr.attr_key,
-                       attr.attr_value
+                       attr_denom_value.denom as denom,
+                       sum(attr_denom_value.value) as denom_total
                 from tx_cache tx
                          join tx_msg_event as tme on tx.id = tme.tx_hash_id
-                         join tx_msg_event_attr as attr on tme.id = attr.tx_msg_event_id
                          join tx_message_type as mtype on mtype.id = tme.tx_msg_type_id
                          join tx_marker_join as denom on denom.tx_hash_id = tx.id
+                         join
+                     (SELECT attr.tx_msg_event_id,
+                             substring(rec from '[0-9]+(.*)${'$'}')     AS denom,
+                             substring(rec from '^[0-9]+')::bigint AS value
+                      FROM tx_msg_event_attr attr
+                               CROSS JOIN LATERAL unnest(string_to_array(attr.attr_value, ',')) AS rec
+                           where attr.attr_key = 'amount') as attr_denom_value
+                     on attr_denom_value.tx_msg_event_id = tme.id
                 where tme.tx_msg_type_id IN
                       (select id from tx_message_type where module in ('exchange', 'bank'))
                   and tx.tx_timestamp > ?
@@ -248,14 +256,13 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                   and tx.codespace is null
                   and denom.denom = ?
                   and event_type = 'coin_spent'
-                  and attr_key = 'amount'
-                  and attr_value like ?
-                order by height desc, tx_id
+                  and attr_denom_value.denom = ?
+                group by tx_id, tx.hash, tx.height, tx.tx_timestamp, mtype.type, attr_denom_value.denom                
             """.trimIndent()
             val arguments = mutableListOf<Pair<ColumnType, *>>(
                 Pair(JavaLocalDateTimeColumnType(), afterDateTime),
                 Pair(TextColumnType(), denom),
-                Pair(TextColumnType(), "%$denom%"),
+                Pair(TextColumnType(), denom),
             )
 
             val countQuery = "select count(*) from ($query) as count"
@@ -266,7 +273,11 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             arguments.add(Pair(IntegerColumnType(), count))
             arguments.add(Pair(IntegerColumnType(), page * count))
 
-            "$query limit ? offset ?".execAndMap(arguments) {
+            val sortExpr = "order by " + if (sort.isNotEmpty() && sort.size == sortColumn.size)
+                List(sort.size) { i -> "${sortColumn[i]} ${sort[i]} " }.joinToString(",")
+            else "height desc, tx_id "
+
+            "$query $sortExpr limit ? offset ?".execAndMap(arguments) {
                     val map = mutableMapOf<String, kotlin.Any?>()
                     (1..it.metaData.columnCount).forEach { index ->
                         map[it.metaData.getColumnName(index)] = it.getObject(index)

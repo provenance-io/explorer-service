@@ -7,11 +7,13 @@ import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.service.PulseMetricService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
+import org.jetbrains.exposed.sql.SortOrder
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.math.BigDecimal
 
 @RestController
 @RequestMapping(
@@ -26,7 +28,11 @@ class PulseAssetController(private val pulseMetricService: PulseMetricService) {
 
     @Operation(summary = "Exchange-traded Asset Summaries")
     @GetMapping("/summary/list")
-    fun getPulseAssetSummaries(@RequestParam(required = false) search: String?): List<PulseAssetSummary> =
+    fun getPulseAssetSummaries(
+        @RequestParam(required = false) search: String?,
+                               @RequestParam(required = false) sortOrder: List<SortOrder>?,
+                               @RequestParam(required = false) sortColumn: List<String>?
+    ): List<PulseAssetSummary> =
         pulseMetricService.pulseAssetSummaries().filter {
             // this is a small list so we can get away with this
             search.isNullOrBlank() ||
@@ -35,7 +41,32 @@ class PulseAssetController(private val pulseMetricService: PulseMetricService) {
                     it.display.contains(search, ignoreCase = true) ||
                     it.base.contains(search, ignoreCase = true) ||
                     it.description.contains(search, ignoreCase = true)
+        }.sortedWith(
+            Comparator { a, b ->
+            if (sortColumn == null || sortOrder == null) return@Comparator 0
+
+            for (i in sortColumn.indices) {
+                val column = sortColumn[i]
+                val order = sortOrder[i]
+
+                val comparisonResult = when (column) {
+                    "name" -> compareValues(
+                        a.name.ifEmpty { a.base },
+                        b.name.ifEmpty { b.base }
+                    )
+                    "price" -> compareValues(a.priceTrend?.currentQuantity ?: BigDecimal.ZERO, b.priceTrend?.currentQuantity ?: BigDecimal.ZERO)
+                    "marketCap" -> compareValues(a.marketCap, b.marketCap)
+                    "volume" -> compareValues(a.volumeTrend?.currentQuantity ?: BigDecimal.ZERO, b.volumeTrend?.currentQuantity ?: BigDecimal.ZERO)
+                    else -> throw IllegalArgumentException("Invalid sort column: $column")
+                }
+
+                if (comparisonResult != 0) {
+                    return@Comparator if (order == SortOrder.ASC) comparisonResult else -comparisonResult
+                }
+            }
+            0
         }
+        )
 
     /**
      * Note that `denom` is a required request param instead of a path variable
@@ -55,7 +86,9 @@ class PulseAssetController(private val pulseMetricService: PulseMetricService) {
     fun getAssetTransactionSummary(
         @RequestParam(required = true) denom: String,
                                    @RequestParam(required = false) page: Int = 0,
-                                   @RequestParam(required = false) count: Int = 10
+                                   @RequestParam(required = false) count: Int = 10,
+                                   @RequestParam(required = false) sortOrder: List<SortOrder>?,
+                                   @RequestParam(required = false) sortColumn: List<String>?
     ): PagedResults<TransactionSummary> =
-        pulseMetricService.transactionSummaries(denom, count, page)
+        pulseMetricService.transactionSummaries(denom, count, page, sortOrder.orEmpty(), sortColumn.orEmpty())
 }
