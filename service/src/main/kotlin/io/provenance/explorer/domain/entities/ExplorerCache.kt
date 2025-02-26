@@ -2,6 +2,8 @@ package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
+import io.provenance.explorer.domain.models.explorer.pulse.PulseMetric
 import io.provenance.explorer.model.ChainAum
 import io.provenance.explorer.model.ChainMarketRate
 import io.provenance.explorer.model.CmcHistoricalQuote
@@ -14,6 +16,7 @@ import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
@@ -278,7 +281,7 @@ class ProcessQueueRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findByType(processType: ProcessQueueType) = transaction {
             ProcessQueueRecord.find {
                 (ProcessQueueTable.processType eq processType.name) and
-                    (ProcessQueueTable.processing eq false)
+                        (ProcessQueueTable.processing eq false)
             }.toList()
         }
 
@@ -291,19 +294,63 @@ class ProcessQueueRecord(id: EntityID<Int>) : IntEntity(id) {
         fun delete(processType: ProcessQueueType, value: String) = transaction {
             ProcessQueueTable.deleteWhere {
                 (ProcessQueueTable.processType eq processType.name) and
-                    (processValue eq value)
+                        (processValue eq value)
             }
         }
 
-        fun insertIgnore(processType: ProcessQueueType, processValue: String) = transaction {
-            ProcessQueueTable.insertIgnore {
-                it[this.processType] = processType.name
-                it[this.processValue] = processValue
+        fun insertIgnore(processType: ProcessQueueType, processValue: String) =
+            transaction {
+                ProcessQueueTable.insertIgnore {
+                    it[this.processType] = processType.name
+                    it[this.processValue] = processValue
+                }
             }
-        }
     }
 
     var processType by ProcessQueueTable.processType
     var processValue by ProcessQueueTable.processValue
     var processing by ProcessQueueTable.processing
+}
+
+object PulseCacheTable : IntIdTable(name = "pulse_cache") {
+    val cacheDate = date("cache_date")
+    val updatedTimestamp = datetime("updated_timestamp")
+    val data = jsonb<PulseCacheTable, PulseMetric>("data", OBJECT_MAPPER)
+    val type: Column<PulseCacheType> = enumerationByName("type", 128, PulseCacheType::class)
+    val subtype = text("subtype").nullable()
+}
+
+class PulseCacheRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<PulseCacheRecord>(
+        PulseCacheTable
+    ) {
+
+        fun upsert(date: LocalDate, type: PulseCacheType, data: PulseMetric, subtype: String? = null) = transaction {
+            findByDateAndType(date, type, subtype)?.apply {
+                this.data = data
+                this.updatedTimestamp = LocalDateTime.now()
+            } ?:
+            PulseCacheTable.insertIgnore {
+                it[this.cacheDate] = date
+                it[this.updatedTimestamp] = LocalDateTime.now()
+                it[this.type] = type
+                it[this.subtype] = subtype
+                it[this.data] = data
+            }
+        }
+
+        fun findByDateAndType(date: LocalDate, type: PulseCacheType, subtype: String? = null) =
+            transaction {
+                PulseCacheRecord.find {
+                    (PulseCacheTable.cacheDate eq date) and
+                            (PulseCacheTable.type eq type) and
+                            (if (subtype != null) PulseCacheTable.subtype eq subtype else PulseCacheTable.subtype.isNull())
+                }.firstOrNull()
+            }
+    }
+
+    var type by PulseCacheTable.type
+    var data by PulseCacheTable.data
+    var updatedTimestamp by PulseCacheTable.updatedTimestamp
+    var subtype by PulseCacheTable.subtype
 }

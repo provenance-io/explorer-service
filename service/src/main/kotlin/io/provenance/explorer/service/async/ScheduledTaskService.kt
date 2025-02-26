@@ -43,6 +43,7 @@ import io.provenance.explorer.service.CacheService
 import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.service.GovService
 import io.provenance.explorer.service.MetricsService
+import io.provenance.explorer.service.PulseMetricService
 import io.provenance.explorer.service.TokenService
 import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.service.getBlock
@@ -56,14 +57,17 @@ import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import tendermint.types.BlockOuterClass
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.util.concurrent.TimeUnit
 
 @Service
+@ConditionalOnProperty(value = ["explorer.scheduled-tasks.enabled"], havingValue = "true", matchIfMissing = true)
 class ScheduledTaskService(
     private val props: ExplorerProperties,
     private val blockService: BlockService,
@@ -75,7 +79,8 @@ class ScheduledTaskService(
     private val accountService: AccountService,
     private val valService: ValidatorService,
     private val metricsService: MetricsService,
-    private val assetService: AssetService
+    private val assetService: AssetService,
+    private val pulseMetricService: PulseMetricService
 ) {
 
     protected val logger = logger(ScheduledTaskService::class)
@@ -387,5 +392,10 @@ class ScheduledTaskService(
                 logger.error("Error processing metrics for validator: ${vali.operatorAddress}", e.message)
             }
         }
+    }
+
+    @Scheduled(initialDelay = 1L, fixedDelay = 5L, timeUnit = TimeUnit.MINUTES)
+    fun refreshPulseMetricCache() {
+        pulseMetricService.refreshCache()
     }
 }

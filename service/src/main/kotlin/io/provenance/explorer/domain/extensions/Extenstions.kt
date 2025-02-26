@@ -14,6 +14,7 @@ import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_VAL_OPER_
 import io.provenance.explorer.domain.entities.MissedBlocksRecord
 import io.provenance.explorer.domain.exceptions.InvalidArgumentException
 import io.provenance.explorer.domain.models.explorer.Addresses
+import io.provenance.explorer.domain.models.explorer.pulse.MetricTrendType
 import io.provenance.explorer.model.base.Bech32
 import io.provenance.explorer.model.base.toBech32Data
 import io.provenance.explorer.model.base.toMAddress
@@ -181,3 +182,10 @@ fun List<BigDecimal>.average() = this.fold(BigDecimal.ZERO, BigDecimal::add)
 fun String.nullOrString() = this.ifBlank { null }
 
 fun String.toNormalCase() = this.splitToWords().joinToString(" ")
+
+fun BigDecimal.calculatePulseMetricTrend() =
+    when {
+        this > BigDecimal.ZERO -> MetricTrendType.UP
+        this < BigDecimal.ZERO -> MetricTrendType.DOWN
+        else -> MetricTrendType.FLAT
+    }
