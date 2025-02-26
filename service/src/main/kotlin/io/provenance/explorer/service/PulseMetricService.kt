@@ -388,8 +388,9 @@ class PulseMetricService(
         ) {
             runBlocking {
                 exchangeGrpcClient.totalCommitmentCount().toBigDecimal().let {
+                    // base Utility Token is just a placeholder denom, not a query
                     PulseMetric.build(
-                        base = UTILITY_TOKEN, // this is just a placeholder denom, not the query
+                        base = UTILITY_TOKEN,
                         amount = it
                     )
                 }
