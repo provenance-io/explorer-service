@@ -33,6 +33,35 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ## Unreleased
 
+## [v7.0.2](https://github.com/provenance-io/explorer-service/releases/tag/v7.0.2) - 2025-02-27
+
+Version 7.0.2 of Explorer Service fixes asset value bugs related to how metadata
+NAV USD decimals are handled and committed valuations are calculated.
+
+## Bug Fixes
+
+* Use 3 decimals for `metadata` NAV events when calculating USD value
+* Get the exchange module-based price when valuing committed assets and
+  ensure denom metadata is used to calculate the denom's volume. 
+
+## [v7.0.1](https://github.com/provenance-io/explorer-service/releases/tag/v7.0.1) - 2025-02-26
+
+## Upgrades
+
+Version 7.0.1 of Explorer introduces new endpoints for the Provenance Pulse. 
+Provenance Pulse is a new web application that rolls up the high-level value, 
+volume, exchange, and transactions associated with assets on the chain. It is 
+not intended to replace the Provenance Explorer. Instead, it's purpose is to 
+provide fast visualization of the value of Provenance assets.
+
+**Highlights**
+
+"Today compared to Yesterday" metrics for fast, simple visualizations
+Daily metrics are maintained in DB for future, longer timespan metrics
+Metrics include value, volume, etc trends
+Metrics can include series data for chart visualizations
+Accompanied by a Provenance Pulse web application.
+
 ## [v7.0.0](https://github.com/provenance-io/explorer-service/releases/tag/v7.0.0) - 2025-02-12
 
 ## Upgrades
