@@ -8,6 +8,7 @@ import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.NavEvent
 import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
@@ -170,29 +171,20 @@ class PulseMetricService(
     private fun isScheduledTask(): Boolean =
         Thread.currentThread().name.startsWith("scheduling-")
 
-    /**
-     * Periodically refreshes the pulse cache
-     */
-    fun refreshCache() = transaction {
-        val threadName = Thread.currentThread().name
-        logger.info("Refreshing pulse cache for thread $threadName")
-        PulseCacheType.entries.filter {
-            it != PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC &&
-                    it != PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
-        }
-            .forEach { type ->
-                pulseMetric(type)
-            }
-
-        pulseAssetSummaries()
-
-        logger.info("Pulse cache refreshed for thread $threadName")
-    }
-
     private fun denomSupplyCache(denom: String) =
         denomCurrentSupplyCache.get(denom) {
             assetService.getCurrentSupply(denom).toBigDecimal()
         } ?: BigDecimal.ZERO
+
+    private fun latestPulseAssetPrice(denom: String) =
+        fromPulseMetricCache(
+            LocalDateTime.now().startOfDay().toLocalDate(),
+            PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC, denom
+        )?.amount ?:
+        fromPulseMetricCache(
+            LocalDateTime.now().minusDays(1).startOfDay().toLocalDate(),
+            PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC, denom
+        )?.amount ?: BigDecimal.ZERO
 
     /**
      * Returns the current hash market cap metric comparing the previous day's market cap
@@ -212,56 +204,6 @@ class PulseMetricService(
                     }
                 }
                 ?: throw ResourceNotFoundException("No quote found for $quote")
-        }
-
-    /**
-     * Returns the current hash metrics for the given type
-     */
-    fun hashMetric(type: PulseCacheType, bustCache: Boolean = false) =
-        fetchOrBuildCacheFromDataSource(
-            type = type
-        ) {
-            val latestHashPrice =
-                tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price
-                    ?: BigDecimal.ZERO
-
-            when (type) {
-                PulseCacheType.HASH_STAKED_METRIC -> {
-                    val staked = validatorService.getStakingValidators(ACTIVE)
-                        .sumOf { it.tokenCount }
-                        .divide(UTILITY_TOKEN_BASE_MULTIPLIER).roundWhole()
-                    PulseMetric.build(
-                        base = UTILITY_TOKEN,
-                        amount = staked,
-                        quote = USD_UPPER,
-                        quoteAmount = latestHashPrice.times(staked)
-                    )
-                }
-
-                PulseCacheType.HASH_CIRCULATING_METRIC -> {
-                    val tokenSupply = tokenService.totalSupply()
-                        .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
-                        .roundWhole()
-                    PulseMetric.build(
-                        base = UTILITY_TOKEN,
-                        amount = tokenSupply,
-                        quote = USD_UPPER,
-                        quoteAmount = latestHashPrice.times(tokenSupply)
-                    )
-                }
-
-                PulseCacheType.HASH_SUPPLY_METRIC -> {
-                    val tokenSupply = tokenService.maxSupply()
-                        .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
-                        .roundWhole()
-                    PulseMetric.build(
-                        base = UTILITY_TOKEN,
-                        amount = tokenSupply
-                    )
-                }
-
-                else -> throw ResourceNotFoundException("Invalid hash metric request for type $type")
-            }
         }
 
     /**
@@ -327,12 +269,21 @@ class PulseMetricService(
             type = PulseCacheType.PULSE_RECEIVABLES_METRIC
         ) { // TODO technically correct assuming only metadata nav events are receivables
             NavEventsRecord.getNavEvents(
-                fromDate = LocalDateTime.now().startOfDay()
-            ).filter { it.source == "metadata" && it.scopeId != null } // gross
+                fromDate = LocalDateTime.now().startOfDay(),
+                source = "metadata",
+                priceDenoms = listOf(USD_LOWER)
+            ).sortedWith(compareBy<NavEvent> { it.scopeId }.thenByDescending { it.blockTime })
+                .distinctBy {
+                    // will keep the first occurrence which is the latest price event
+                    it.scopeId
+                }
                 .sumOf { it.priceAmount!! }.toBigDecimal().let {
+                    /* so it turns out that the `usd` in metadata nav events
+                       use 3 decimal places - :|
+                     */
                     PulseMetric.build(
                         base = USD_UPPER,
-                        amount = it
+                        amount = it.times(inversePowerOfTen(3))
                     )
                 }
         }
@@ -398,50 +349,30 @@ class PulseMetricService(
         }
 
     /**
-     * Returns the total committed assets value across all exchanges - a sum of all commitments
+     * Returns the total committed assets value across all exchanges
+     * as a sum of all commitments
      */
     private fun exchangeCommittedAssetsValue(): PulseMetric =
         fetchOrBuildCacheFromDataSource(
             type = PulseCacheType.PULSE_COMMITTED_ASSETS_VALUE_METRIC
         ) {
-            committedAssetTotals().values.sumOf { it }.let {
+            committedAssetTotals().map {
+                // convert amount to appropriate denom decimal
+                var dE = denomExponent(it.key)
+                if (dE == 0 && it.key.lowercase().contains(USD_LOWER)) {
+                    dE = 6
+                }
+                Pair(it.key, it.value.times(inversePowerOfTen(dE)))
+            }.map {
+                // get price of the asset
+                Pair(it.first, it.second.times(latestPulseAssetPrice(it.first)))
+            }.sumOf { it.second }.let {
                 PulseMetric.build(
                     base = USD_UPPER,
-                    amount = it.times(inversePowerOfTen(6))
+                    amount = it
                 )
             }
         }
-
-    private fun todoPulse(): PulseMetric =
-        PulseMetric.build(
-            base = UTILITY_TOKEN,
-            amount = BigDecimal.ZERO
-        )
-
-    /**
-     * Returns the pulse metric for the given type - pulse metrics are "global"
-     * metrics that are not specific to Hash
-     */
-    fun pulseMetric(type: PulseCacheType): PulseMetric {
-        return when (type) {
-            PulseCacheType.HASH_MARKET_CAP_METRIC -> hashMarketCapMetric()
-            PulseCacheType.HASH_STAKED_METRIC -> hashMetric(type)
-            PulseCacheType.HASH_CIRCULATING_METRIC -> hashMetric(type)
-            PulseCacheType.HASH_SUPPLY_METRIC -> hashMetric(type)
-            PulseCacheType.PULSE_MARKET_CAP_METRIC -> pulseMarketCap()
-            PulseCacheType.PULSE_TRANSACTION_VOLUME_METRIC -> transactionVolume()
-            PulseCacheType.PULSE_RECEIVABLES_METRIC -> pulseReceivableValue()
-            PulseCacheType.PULSE_TRADE_SETTLEMENT_METRIC -> pulseTradesSettled()
-            PulseCacheType.PULSE_TRADE_VALUE_SETTLED_METRIC -> pulseTradeValueSettled()
-            PulseCacheType.PULSE_PARTICIPANTS_METRIC -> totalParticipants()
-            PulseCacheType.PULSE_COMMITTED_ASSETS_METRIC -> exchangeCommittedAssets()
-            PulseCacheType.PULSE_COMMITTED_ASSETS_VALUE_METRIC -> exchangeCommittedAssetsValue()
-            PulseCacheType.PULSE_DEMOCRATIZED_PRIME_POOLS_METRIC -> todoPulse()
-            PulseCacheType.PULSE_MARGIN_LOANS_METRIC -> todoPulse()
-            PulseCacheType.PULSE_FEES_AUCTIONS_METRIC -> todoPulse()
-            else -> throw ResourceNotFoundException("Invalid pulse metric request for type $type")
-        }
-    }
 
     /**
      * Asset denom  metadata from chain
@@ -456,6 +387,9 @@ class PulseMetricService(
      */
     private fun denomExponent(denomMetadata: Bank.Metadata) =
         denomMetadata.denomUnitsList.firstOrNull { it.exponent != 0 }?.exponent
+
+    private fun denomExponent(denom: String) =
+        denomExponent(pulseAssetDenomMetadata(denom)) ?: 0
 
     /**
      * Returns the inverse power of ten for the given exponent because I
@@ -489,8 +423,108 @@ class PulseMetricService(
         exchangeGrpcClient.totalCommittedAssetTotals()
     }
 
+    private fun todoPulse(): PulseMetric =
+        PulseMetric.build(
+            base = UTILITY_TOKEN,
+            amount = BigDecimal.ZERO
+        )
+
     /**
-     * TODO - this is problematic because it assumes all assets are USD-based
+     * Periodically refreshes the pulse cache
+     */
+    fun refreshCache() = transaction {
+        val threadName = Thread.currentThread().name
+        logger.info("Refreshing pulse cache for thread $threadName")
+        PulseCacheType.entries.filter {
+            it != PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC &&
+                    it != PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
+        }
+            .forEach { type ->
+                pulseMetric(type)
+            }
+
+        pulseAssetSummaries()
+
+        logger.info("Pulse cache refreshed for thread $threadName")
+    }
+
+    /**
+     * Returns the current hash metrics for the given type
+     */
+    fun hashMetric(type: PulseCacheType, bustCache: Boolean = false) =
+        fetchOrBuildCacheFromDataSource(
+            type = type
+        ) {
+            val latestHashPrice =
+                tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price
+                    ?: BigDecimal.ZERO
+
+            when (type) {
+                PulseCacheType.HASH_STAKED_METRIC -> {
+                    val staked = validatorService.getStakingValidators(ACTIVE)
+                        .sumOf { it.tokenCount }
+                        .divide(UTILITY_TOKEN_BASE_MULTIPLIER).roundWhole()
+                    PulseMetric.build(
+                        base = UTILITY_TOKEN,
+                        amount = staked,
+                        quote = USD_UPPER,
+                        quoteAmount = latestHashPrice.times(staked)
+                    )
+                }
+
+                PulseCacheType.HASH_CIRCULATING_METRIC -> {
+                    val tokenSupply = tokenService.totalSupply()
+                        .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+                        .roundWhole()
+                    PulseMetric.build(
+                        base = UTILITY_TOKEN,
+                        amount = tokenSupply,
+                        quote = USD_UPPER,
+                        quoteAmount = latestHashPrice.times(tokenSupply)
+                    )
+                }
+
+                PulseCacheType.HASH_SUPPLY_METRIC -> {
+                    val tokenSupply = tokenService.maxSupply()
+                        .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+                        .roundWhole()
+                    PulseMetric.build(
+                        base = UTILITY_TOKEN,
+                        amount = tokenSupply
+                    )
+                }
+
+                else -> throw ResourceNotFoundException("Invalid hash metric request for type $type")
+            }
+        }
+
+    /**
+     * Returns the pulse metric for the given type - pulse metrics are "global"
+     * metrics that are not specific to Hash
+     */
+    fun pulseMetric(type: PulseCacheType): PulseMetric {
+        return when (type) {
+            PulseCacheType.HASH_MARKET_CAP_METRIC -> hashMarketCapMetric()
+            PulseCacheType.HASH_STAKED_METRIC -> hashMetric(type)
+            PulseCacheType.HASH_CIRCULATING_METRIC -> hashMetric(type)
+            PulseCacheType.HASH_SUPPLY_METRIC -> hashMetric(type)
+            PulseCacheType.PULSE_MARKET_CAP_METRIC -> pulseMarketCap()
+            PulseCacheType.PULSE_TRANSACTION_VOLUME_METRIC -> transactionVolume()
+            PulseCacheType.PULSE_RECEIVABLES_METRIC -> pulseReceivableValue()
+            PulseCacheType.PULSE_TRADE_SETTLEMENT_METRIC -> pulseTradesSettled()
+            PulseCacheType.PULSE_TRADE_VALUE_SETTLED_METRIC -> pulseTradeValueSettled()
+            PulseCacheType.PULSE_PARTICIPANTS_METRIC -> totalParticipants()
+            PulseCacheType.PULSE_COMMITTED_ASSETS_METRIC -> exchangeCommittedAssets()
+            PulseCacheType.PULSE_COMMITTED_ASSETS_VALUE_METRIC -> exchangeCommittedAssetsValue()
+            PulseCacheType.PULSE_DEMOCRATIZED_PRIME_POOLS_METRIC -> todoPulse()
+            PulseCacheType.PULSE_MARGIN_LOANS_METRIC -> todoPulse()
+            PulseCacheType.PULSE_FEES_AUCTIONS_METRIC -> todoPulse()
+            else -> throw ResourceNotFoundException("Invalid pulse metric request for type $type")
+        }
+    }
+
+    /**
+     * TODO - this is problematic because it assumes all assets are USD quoted
      */
     fun pulseAssetSummaries(): List<PulseAssetSummary> =
         committedAssetTotals().keys.distinct().map { denom ->
@@ -630,11 +664,7 @@ class PulseMetricService(
             val denomMetadata = pulseAssetDenomMetadata(denom)
             val denomExp = denomExponent(denomMetadata) ?: 1
             val denomPow = inversePowerOfTen(denomExp)
-            val denomPrice =
-                fromPulseMetricCache(
-                    LocalDateTime.now().minusDays(1).startOfDay().toLocalDate(),
-                    PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC, denom
-                )?.amount ?: BigDecimal.ZERO
+            val denomPrice = latestPulseAssetPrice(denom)
 
             PagedResults(
                 pages = pr.pages,
