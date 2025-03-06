@@ -11,6 +11,7 @@ import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.javatime.JavaLocalDateTimeColumnType
 import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.math.BigDecimal
 import java.sql.ResultSet
 import java.time.LocalDateTime
 
@@ -179,6 +180,55 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
                     it.getString("source")
                 )
             }
+        }
+
+        fun navPricesBetweenDays(
+            startDateTime: LocalDateTime,
+            endDateTime: LocalDateTime
+        ) = transaction {
+            val query = """
+                select c.denom,c.source, c.scope_id,
+                       c.price_amount as current_amount,
+                       c.volume as current_volume,
+                       max(c.block_time) as current_block_time,
+                       p.price_amount as previous_amount,
+                       p.volume as previous_volume,
+                       p.block_time as previous_block_time
+                    from nav_events c,
+                         (select p.scope_id, p.price_amount, p.volume, max(p.block_time) as block_time
+                          from nav_events p
+                          where p.source = 'metadata'
+                            and date_trunc('DAYS', block_time) = ?
+                          group by p.scope_id, p.price_amount, p.volume) as p
+                    where c.source = 'metadata'
+                     and date_trunc('DAYS', c.block_time) = ?
+                     and c.scope_id = p.scope_id
+                    group by c.denom, c.source, c.scope_id, c.price_amount, c.volume, p.price_amount, p.volume, p.block_time
+            """.trimIndent()
+
+            val args = mutableListOf<Pair<ColumnType, *>>(
+                Pair(JavaLocalDateTimeColumnType(), startDateTime),
+                Pair(JavaLocalDateTimeColumnType(), endDateTime)
+            )
+            query.execAndMap(args) {
+                val map = mutableMapOf<String, Any?>()
+                (1..it.metaData.columnCount).forEach { index ->
+                    map[it.metaData.getColumnName(index)] = it.getObject(index)
+                }
+                map // return a list of map of column name/value
+            }
+        }
+
+        fun totalMetadataNavs() = transaction {
+            val query = """
+                select sum(price_amount)
+                from (select scope_id, price_amount, row_number() over (partition by scope_id order by block_height desc) as r
+                      from nav_events where source = 'metadata' and price_amount > 0) s
+                where r = 1
+            """.trimIndent()
+            query.execAndMap {
+                BigDecimal(it.getString(1))
+            }.firstOrNull() ?: BigDecimal.ZERO
         }
     }
 
