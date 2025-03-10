@@ -48,7 +48,7 @@ class PulseMetricService(
     private val validatorService: ValidatorService,
     private val pricingService: PricingService,
     private val assetService: AssetService,
-    private val exchangeGrpcClient: ExchangeGrpcClient
+    private val exchangeGrpcClient: ExchangeGrpcClient,
 ) {
     protected val logger = logger(PulseMetricService::class)
 
@@ -68,6 +68,11 @@ class PulseMetricService(
             expireAfterWrite(30, TimeUnit.MINUTES)
             maximumSize(100)
         }.build()
+
+    /* so it turns out that the `usd` in metadata nav events
+       use 3 decimal places - :|
+     */
+    private val scopeNAVDecimal = inversePowerOfTen(3)
 
     val base = UTILITY_TOKEN
     val quote = USD_UPPER
@@ -264,9 +269,9 @@ class PulseMetricService(
      * Uses metadata module reported values to calculate receivables since
      * all data in metadata today is loan receivables
      */
-    private fun pulseReceivableValue(): PulseMetric =
+    private fun pulseTodaysNavs(): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PULSE_RECEIVABLES_METRIC
+            type = PulseCacheType.PULSE_TODAYS_NAV_METRIC
         ) { // TODO technically correct assuming only metadata nav events are receivables
             NavEventsRecord.getNavEvents(
                 fromDate = LocalDateTime.now().startOfDay(),
@@ -278,14 +283,46 @@ class PulseMetricService(
                     it.scopeId
                 }
                 .sumOf { it.priceAmount!! }.toBigDecimal().let {
-                    /* so it turns out that the `usd` in metadata nav events
-                       use 3 decimal places - :|
-                     */
                     PulseMetric.build(
                         base = USD_UPPER,
-                        amount = it.times(inversePowerOfTen(3))
+                        amount = it.times(scopeNAVDecimal)
                     )
                 }
+        }
+
+    private fun dailyNavDecrease(): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_NAV_DECREASE_METRIC
+        ) {
+            val today = LocalDateTime.now().startOfDay()
+            NavEventsRecord.navPricesBetweenDays(
+                startDateTime = today.minusDays(1),
+                endDateTime = today
+            ).map {
+                val currentAmount = BigDecimal(it["current_amount"].toString())
+                val previousAmount = BigDecimal(it["previous_amount"].toString())
+                val changeAmount = previousAmount.minus(currentAmount)
+
+                Triple(currentAmount, previousAmount, changeAmount)
+            }.filter { it.third >= BigDecimal.ZERO }
+                .sumOf { it.third }.let {
+                    PulseMetric.build(
+                        base = USD_UPPER,
+                        amount = it.times(scopeNAVDecimal)
+                    )
+                }
+        }
+
+    private fun totalMetadataNavs(): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_TOTAL_NAV_METRIC
+        ) {
+            NavEventsRecord.totalMetadataNavs().let {
+                PulseMetric.build(
+                    base = USD_UPPER,
+                    amount = it.times(scopeNAVDecimal)
+                )
+            }
         }
 
     /**
@@ -510,7 +547,11 @@ class PulseMetricService(
             PulseCacheType.HASH_SUPPLY_METRIC -> hashMetric(type)
             PulseCacheType.PULSE_MARKET_CAP_METRIC -> pulseMarketCap()
             PulseCacheType.PULSE_TRANSACTION_VOLUME_METRIC -> transactionVolume()
-            PulseCacheType.PULSE_RECEIVABLES_METRIC -> pulseReceivableValue()
+
+            PulseCacheType.PULSE_TODAYS_NAV_METRIC -> pulseTodaysNavs()
+            PulseCacheType.PULSE_NAV_DECREASE_METRIC -> dailyNavDecrease()
+            PulseCacheType.PULSE_TOTAL_NAV_METRIC -> totalMetadataNavs()
+
             PulseCacheType.PULSE_TRADE_SETTLEMENT_METRIC -> pulseTradesSettled()
             PulseCacheType.PULSE_TRADE_VALUE_SETTLED_METRIC -> pulseTradeValueSettled()
             PulseCacheType.PULSE_PARTICIPANTS_METRIC -> totalParticipants()
