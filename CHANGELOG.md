@@ -31,7 +31,11 @@ Types of changes (Stanzas):
 Ref: https://keepachangelog.com/en/1.0.0/
 -->
 
-## Unreleased
+## [v7.0.3](https://github.com/provenance-io/explorer-service/releases/tag/v7.0.3) - 2025-03-10
+
+Version 7.0.3 adds new cards for total NAV values based on metadata module NAV
+events like creating/adding NAV to a scope and reduction in NAV balance via
+payment/sales.
 
 ## [v7.0.2](https://github.com/provenance-io/explorer-service/releases/tag/v7.0.2) - 2025-02-27
 
