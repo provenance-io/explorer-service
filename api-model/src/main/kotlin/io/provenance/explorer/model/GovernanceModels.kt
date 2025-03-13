@@ -15,7 +15,8 @@ data class ProposalHeader(
     val type: String,
     val title: String,
     val description: String,
-    val details: List<ObjectNode>
+    val details: List<ObjectNode>,
+    val metadata: String
 )
 
 data class GovAddress(

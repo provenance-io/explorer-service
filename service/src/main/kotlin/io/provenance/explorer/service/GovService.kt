@@ -409,7 +409,8 @@ class GovService(
             record.proposalType,
             record.title,
             record.description,
-            record.getContentToPrint(protoPrinter)
+            record.getContentToPrint(protoPrinter),
+            record.dataV1?.metadata ?: ""
         ),
         ProposalTimings(
             getDepositPercentage(record.proposalId, record.depositParamCheckHeight),
@@ -745,14 +746,18 @@ fun Any.getGovMsgDetail(txHash: String) =
     }
 
 fun Gov.Proposal.toProposalTitleAndDescription(protoPrinter: JsonFormat.Printer) =
-    this.messagesList.firstOrNull { it.typeUrl.contains("gov.v1.MsgExecLegacyContent") }
-        ?.toMsgExecLegacyContent()?.content?.let { cont ->
-            OBJECT_MAPPER.readValue(protoPrinter.print(cont), ObjectNode::class.java)
-                .let { it.get("title").asText() to it.get("description").asText() }
-        } ?: (
-        this.metadata.getProposalMetadata("parsing-title-description")?.let { it.title to it.summary }
-            ?: ("Proposal ${this.id}" to "No Description")
-        )
+    if (this.title.isNotEmpty() && this.summary.isNotEmpty()) {
+        this.title to this.summary
+    } else {
+        this.messagesList.firstOrNull { it.typeUrl.contains("gov.v1.MsgExecLegacyContent") }
+            ?.toMsgExecLegacyContent()?.content?.let { cont ->
+                OBJECT_MAPPER.readValue(protoPrinter.print(cont), ObjectNode::class.java)
+                    .let { it.get("title").asText() to it.get("description").asText() }
+            } ?: (
+                this.metadata.getProposalMetadata("parsing-title-description")?.let { it.title to it.summary }
+                    ?: ("Proposal ${this.id}" to "No Description")
+                )
+    }
 
 fun String.getProposalMetadata(comingFrom: String): GovProposalMetadata? = runBlocking {
     try {

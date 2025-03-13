@@ -31,6 +31,12 @@ Types of changes (Stanzas):
 Ref: https://keepachangelog.com/en/1.0.0/
 -->
 
+## [v7.0.4](https://github.com/provenance-io/explorer-service/releases/tag/v7.0.4) - 2025-03-13
+
+Version 7.0.4 updates the Explorer Governance Proposal API to include the proposal
+title, summary, and metadata. This allows the frontend to display the proposal
+details in a more user-friendly manner.
+
 ## [v7.0.3](https://github.com/provenance-io/explorer-service/releases/tag/v7.0.3) - 2025-03-10
 
 Version 7.0.3 adds new cards for total NAV values based on metadata module NAV
