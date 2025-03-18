@@ -1,0 +1,5 @@
+ALTER TABLE tx_msg_event ALTER COLUMN id SET DATA TYPE BIGINT;
+ALTER SEQUENCE tx_msg_event_id_seq AS BIGINT;
+
+ALTER TABLE tx_msg_event_attr ALTER COLUMN id SET DATA TYPE BIGINT;
+ALTER SEQUENCE tx_msg_event_attr_id_seq AS BIGINT;
