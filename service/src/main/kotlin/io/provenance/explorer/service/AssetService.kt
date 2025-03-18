@@ -24,7 +24,6 @@ import io.provenance.explorer.domain.extensions.usdPriceDenoms
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
 import io.provenance.explorer.grpc.extensions.getManagingAccounts
 import io.provenance.explorer.grpc.extensions.isMintable
-import io.provenance.explorer.grpc.flow.FlowApiGrpcClient
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
@@ -59,7 +58,6 @@ class AssetService(
     private val protoPrinter: JsonFormat.Printer,
     private val pricingService: PricingService,
     private val tokenService: TokenService,
-    private val flowApiGrpcClient: FlowApiGrpcClient
 ) {
     protected val logger = logger(AssetService::class)
 
@@ -244,7 +242,9 @@ class AssetService(
 
     fun updateAssetPricingFromLatestNav() = runBlocking {
         val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC)
-        logger.info("Updating asset pricing, last run at: $assetPricinglastRun")
+        if (assetPricinglastRun == null) {
+            assetPricinglastRun = AssetPricingRecord.getLastUpdatedTime()?.atOffset(ZoneOffset.UTC)
+        }
 
         val latestPrices = NavEventsRecord.getLatestNavEvents(
             priceDenoms = usdPriceDenoms,
@@ -252,9 +252,11 @@ class AssetService(
             includeScopes = false,
             fromDate = assetPricinglastRun?.toDateTime()
         )
-        latestPrices.forEach { price ->
+
+        latestPrices.filter { it.denom !in usdPriceDenoms }.forEach { price ->
             if (price.denom != UTILITY_TOKEN) {
                 val marker = getAssetRaw(price.denom!!)
+
                 insertAssetPricing(
                     marker = marker,
                     markerDenom = price.denom,

@@ -156,7 +156,7 @@ fun LocalDateTime.startOfDay() = this.with(LocalTime.MIN)
 
 fun String.toDateTime() = LocalDateTime.parse(this, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"))
 fun String.toDateTimeWithFormat(formatter: DateTimeFormatter) = LocalDateTime.parse(this, formatter)
-fun OffsetDateTime.toDateTime() = this.toInstant().toEpochMilli().toDateTime()
+fun OffsetDateTime.toDateTime() = this.toInstant().toEpochMilli().div(1000).toDateTime()
 
 fun LocalDateTime.monthToQuarter() = this.monthValue.let {
     when {

@@ -1,5 +1,6 @@
 package io.provenance.explorer.domain.entities
 
+import io.provenance.explorer.domain.core.sql.toDbQueryList
 import io.provenance.explorer.domain.extensions.execAndMap
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
@@ -140,6 +141,7 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             includeScopes: Boolean,
             fromDate: LocalDateTime? = null
         ) = transaction {
+            require(priceDenoms.isNotEmpty()) { "At least one price denom must be provided" }
             require(includeMarkers || includeScopes) { "Either includeMarkers or includeScope must be true" }
 
             var query = """
@@ -147,16 +149,10 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
                 block_height, block_time, tx_hash, event_order, event_type, 
                 scope_id, denom, price_amount, price_denom, volume, source
             FROM nav_events
-            WHERE 1=1
+            WHERE price_denom in (${priceDenoms.toSet().toDbQueryList()})
             """.trimIndent()
 
             val args = mutableListOf<Pair<ColumnType, *>>()
-
-            val denomPlaceholders = priceDenoms.joinToString(", ") { "?" }
-            query += " AND price_denom IN ($denomPlaceholders)"
-            priceDenoms.forEach { denom ->
-                args.add(Pair(VarCharColumnType(), denom))
-            }
 
             fromDate?.let {
                 query += " AND block_time >= ?"

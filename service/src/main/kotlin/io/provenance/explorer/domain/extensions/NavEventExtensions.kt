@@ -28,16 +28,17 @@ private fun calculateUsdPrice(priceDenom: String?, priceAmount: Long?, volume: L
         return BigDecimal.ZERO
     }
 
-    if (volume == 0L) {
+    if (priceAmount == null || volume == 0L) {
         return BigDecimal.ZERO
     }
 
-    val divisor = when (priceDenom) {
-        USD_LOWER -> 1000
-        else -> 1000000
+    // TODO this works fine for now but probably should be improved to use the metadata exponent of the denom being priced
+    val (divisor, scale) = when (priceDenom) {
+        USD_LOWER -> 1000 to 3
+        else -> 1000000 to 12
     }
-    return BigDecimal(priceAmount ?: 0)
-        .setScale(3, RoundingMode.DOWN)
-        .divide(BigDecimal(divisor), RoundingMode.DOWN)
-        .divide(BigDecimal(volume), 3, RoundingMode.DOWN)
+
+    return BigDecimal(priceAmount)
+        .divide(BigDecimal(divisor), scale, RoundingMode.DOWN)
+        .divide(BigDecimal(volume), scale, RoundingMode.DOWN)
 }

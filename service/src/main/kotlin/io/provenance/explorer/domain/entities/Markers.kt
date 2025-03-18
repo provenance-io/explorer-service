@@ -252,6 +252,12 @@ class AssetPricingRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findByDenom(denom: String) = transaction {
             AssetPricingRecord.find { AssetPricingTable.denom eq denom }.firstOrNull()
         }
+
+        fun getLastUpdatedTime() = transaction {
+            AssetPricingRecord.all()
+                .orderBy(Pair(AssetPricingTable.lastUpdated, SortOrder.DESC))
+                .limit(1).firstOrNull()?.lastUpdated
+        }
     }
 
     var markerId by AssetPricingTable.markerId
