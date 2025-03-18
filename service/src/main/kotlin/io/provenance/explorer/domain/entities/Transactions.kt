@@ -563,7 +563,7 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
     var txTimestamp by TxMessageTable.txTimestamp
 }
 
-object TxEventsTable : LongIdTable(name = "tx_msg_event") {
+object TxEventsTable : IntIdTable(name = "tx_msg_event") {
     val blockHeight = integer("block_height")
     val txHash = varchar("tx_hash", 64)
     val txHashId = reference("tx_hash_id", TxCacheTable)
@@ -572,8 +572,8 @@ object TxEventsTable : LongIdTable(name = "tx_msg_event") {
     val eventType = varchar("event_type", 256)
 }
 
-class TxEventRecord(id: EntityID<Long>) : LongEntity(id) {
-    companion object : LongEntityClass<TxEventRecord>(TxEventsTable) {
+class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<TxEventRecord>(TxEventsTable) {
 
         fun buildInsert(blockHeight: Int, txHash: String, type: String, msgTypeId: Int) =
             listOf(0, blockHeight, 0, txHash, 0, type, msgTypeId).toProcedureObject()
@@ -588,7 +588,7 @@ class TxEventRecord(id: EntityID<Long>) : LongEntity(id) {
 }
 
 object TxEventAttrTable : LongIdTable(name = "tx_msg_event_attr") {
-    val txMsgEventId = long("tx_msg_event_id")
+    val txMsgEventId = integer("tx_msg_event_id")
     val attrKey = varchar("attr_key", 256)
     val attrValue = text("attr_value")
     val attrIdx = integer("attr_idx")
