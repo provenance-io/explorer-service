@@ -20,6 +20,7 @@ import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
+import io.provenance.explorer.domain.extensions.usdPriceDenoms
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
 import io.provenance.explorer.grpc.extensions.getManagingAccounts
 import io.provenance.explorer.grpc.extensions.isMintable
@@ -246,7 +247,7 @@ class AssetService(
         logger.info("Updating asset pricing, last run at: $assetPricinglastRun")
 
         val latestPrices = NavEventsRecord.getLatestNavEvents(
-            priceDenom = USD_LOWER,
+            priceDenoms = usdPriceDenoms,
             includeMarkers = true,
             includeScopes = false,
             fromDate = assetPricinglastRun?.toDateTime()
@@ -258,7 +259,7 @@ class AssetService(
                     marker = marker,
                     markerDenom = price.denom,
                     markerAddress = marker.second.markerAddress,
-                    pricingDenom = price.priceDenom!!,
+                    pricingDenom = USD_LOWER,
                     pricingAmount = price.calculateUsdPricePerUnit(),
                     timestamp = price.blockTime
                 )

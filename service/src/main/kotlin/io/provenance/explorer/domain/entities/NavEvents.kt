@@ -132,8 +132,10 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             }
         }
 
+        fun getLatestNavEvents(priceDenom: String, includeMarkers: Boolean, includeScopes: Boolean, fromDate: LocalDateTime? = null) = getLatestNavEvents(listOf(priceDenom), includeMarkers, includeScopes, fromDate)
+
         fun getLatestNavEvents(
-            priceDenom: String,
+            priceDenoms: List<String>,
             includeMarkers: Boolean,
             includeScopes: Boolean,
             fromDate: LocalDateTime? = null
@@ -145,12 +147,16 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
                 block_height, block_time, tx_hash, event_order, event_type, 
                 scope_id, denom, price_amount, price_denom, volume, source
             FROM nav_events
-            WHERE price_denom = ?
+            WHERE 1=1
             """.trimIndent()
 
-            val args = mutableListOf<Pair<ColumnType, *>>(
-                Pair(VarCharColumnType(), priceDenom)
-            )
+            val args = mutableListOf<Pair<ColumnType, *>>()
+
+            val denomPlaceholders = priceDenoms.joinToString(", ") { "?" }
+            query += " AND price_denom IN ($denomPlaceholders)"
+            priceDenoms.forEach { denom ->
+                args.add(Pair(VarCharColumnType(), denom))
+            }
 
             fromDate?.let {
                 query += " AND block_time >= ?"
