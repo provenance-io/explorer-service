@@ -1,21 +1,22 @@
 CREATE TABLE ledger_entry (
     asset_uuid UUID,
     ledger_uuid UNIQUE UUID,
+    bucket TEXT,
     ledger_entry_type TEXT,
     post_date TIMESTAMP,
     effective_date TIMESTAMP,
-    bucket TEXT,
     entry_amount DOUBLE PRECISION,
     prin_applied DOUBLE PRECISION,
     prin_balance DOUBLE PRECISION,
     int_applied DOUBLE PRECISION,
     int_balance DOUBLE PRECISION,
-    PRIMARY KEY (asset_uuid, ledger_uuid) -- Composite primary key
+    PRIMARY KEY (asset_uuid, ledger_uuid, bucket) -- Composite primary key
 );
 
 CREATE TABLE loan_detail (
     asset_uuid UUID PRIMARY KEY,
     asset_owner_uuid UUID,
+    loan_status TEXT,
     funded_date TIMESTAMP,
     reg_pmt_amt DOUBLE PRECISION,
     cur_pmt_amt DOUBLE PRECISION,
