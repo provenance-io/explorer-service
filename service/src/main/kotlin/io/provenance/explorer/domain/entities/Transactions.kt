@@ -44,8 +44,11 @@ import io.provenance.explorer.model.base.stringfy
 import io.provenance.explorer.service.AssetService
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
+import org.jetbrains.exposed.dao.LongEntity
+import org.jetbrains.exposed.dao.LongEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.dao.id.LongIdTable
 import org.jetbrains.exposed.sql.ColumnSet
 import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.Expression
@@ -584,7 +587,7 @@ class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
     var eventType by TxEventsTable.eventType
 }
 
-object TxEventAttrTable : IntIdTable(name = "tx_msg_event_attr") {
+object TxEventAttrTable : LongIdTable(name = "tx_msg_event_attr") {
     val txMsgEventId = integer("tx_msg_event_id")
     val attrKey = varchar("attr_key", 256)
     val attrValue = text("attr_value")
@@ -592,8 +595,8 @@ object TxEventAttrTable : IntIdTable(name = "tx_msg_event_attr") {
     val attrHash = text("attr_hash")
 }
 
-class TxEventAttrRecord(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<TxEventAttrRecord>(TxEventAttrTable) {
+class TxEventAttrRecord(id: EntityID<Long>) : LongEntity(id) {
+    companion object : LongEntityClass<TxEventAttrRecord>(TxEventAttrTable) {
 
         fun buildInsert(idx: Int, key: String, value: String) =
             listOf(0, 0, key, value, idx, listOf(idx, key, value).joinToString("").toDbHash()).toProcedureObject()
