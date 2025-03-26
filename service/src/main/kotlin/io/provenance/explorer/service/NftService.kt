@@ -2,10 +2,12 @@ package io.provenance.explorer.service
 
 import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.entities.NftContractSpecRecord
 import io.provenance.explorer.domain.entities.NftScopeRecord
 import io.provenance.explorer.domain.entities.NftScopeSpecRecord
 import io.provenance.explorer.domain.entities.TxNftJoinRecord
+import io.provenance.explorer.domain.extensions.calculateUsdPricePerUnit
 import io.provenance.explorer.domain.extensions.formattedString
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.protoTypesFieldsToCheckForMetadata
@@ -26,6 +28,7 @@ import io.provenance.explorer.model.ScopeRecord
 import io.provenance.explorer.model.base.MdParent
 import io.provenance.explorer.model.base.MetadataAddress
 import io.provenance.explorer.model.base.PagedResults
+import io.provenance.explorer.model.base.USD_LOWER
 import io.provenance.explorer.model.base.getParentForType
 import io.provenance.explorer.model.base.toMAddress
 import io.provenance.explorer.model.base.toMAddressContractSpec
@@ -44,7 +47,7 @@ import org.springframework.stereotype.Service
 class NftService(
     private val metadataClient: MetadataGrpcClient,
     private val attrClient: AttributeGrpcClient,
-    private val protoPrinter: JsonFormat.Printer
+    private val protoPrinter: JsonFormat.Printer,
 ) {
 
     suspend fun getScopeDescrip(addr: String) =
@@ -53,6 +56,13 @@ class NftService(
     // TODO: need to update to pull from db tables for owner/VO/data access
     fun getScopesForOwningAddress(address: String, page: Int, count: Int) = runBlocking {
         metadataClient.getScopesByOwner(address, page.toOffset(count), count).let {
+            val records = it.scopeUuidsList.map { uuid -> scopeToListview(uuid) }
+            PagedResults(it.pagination.total.pageCountOfResults(count), records, it.pagination.total)
+        }
+    }
+
+    fun getScopesForValueOwner(address: String, page: Int, count: Int) = runBlocking {
+        metadataClient.getScopesByValueOwner(address, page.toOffset(count), count).let {
             val records = it.scopeUuidsList.map { uuid -> scopeToListview(uuid) }
             PagedResults(it.pagination.total.pageCountOfResults(count), records, it.pagination.total)
         }
@@ -217,6 +227,16 @@ class NftService(
             MdParent.SCOPE_SPEC -> NftScopeSpecRecord.findByUuid(md.getPrimaryUuid().toString())!!.id.value
             MdParent.CONTRACT_SPEC -> NftContractSpecRecord.findByUuid(md.getPrimaryUuid().toString())!!.id.value
             else -> null.also { logger().debug("This prefix doesn't have a parent type: ${md?.getPrefix()}") }
+        }
+    }
+
+    fun getScopeTotalForNavEvents() = runBlocking {
+        NavEventsRecord.getLatestNavEvents(
+            priceDenoms = listOf(USD_LOWER),
+            includeMarkers = false,
+            includeScopes = true,
+        ).sumOf {
+            it.calculateUsdPricePerUnit()
         }
     }
 }

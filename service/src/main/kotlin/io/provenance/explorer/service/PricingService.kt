@@ -16,7 +16,8 @@ import java.math.BigDecimal
 @Service
 class PricingService(
     private val props: ExplorerProperties,
-    private val tokenService: TokenService
+    private val tokenService: TokenService,
+    private val nftService: NftService,
 ) {
     protected val logger = logger(PricingService::class)
 
@@ -25,12 +26,20 @@ class PricingService(
             MarkerCacheRecord.find {
                 (MarkerCacheTable.status eq MarkerStatus.MARKER_STATUS_ACTIVE.name) and
                     (MarkerCacheTable.supply greater BigDecimal.ZERO)
+            }.filterNot {
+                // excluding portfolio manager pools in favor of scope navs
+                it.denom.startsWith("pm.")
             }.associate { it.denom to (if (it.denom != UTILITY_TOKEN) it.supply else tokenService.totalSupply()) }
         }
-        val pricing = baseMap.keys.toList().chunked(100) { getPricingInfo(it, "totalAUM") }.flatMap { it.toList() }
+
+        val assetPricing = baseMap.keys.toList().chunked(100) { getPricingInfo(it, "totalAUM") }.flatMap { it.toList() }
             .toMap()
             .toMutableMap()
-        baseMap.map { (k, v) -> (pricing[k] ?: BigDecimal.ZERO).multiply(v) }.sumOf { it }
+
+        val assetsTotalAum = baseMap.map { (k, v) -> (assetPricing[k] ?: BigDecimal.ZERO).multiply(v) }.sumOf { it }
+        val nftsTotalAum = nftService.getScopeTotalForNavEvents()
+
+        assetsTotalAum.add(nftsTotalAum)
     }
 
     fun getAumForList(denoms: Map<String, String>, comingFrom: String): BigDecimal {

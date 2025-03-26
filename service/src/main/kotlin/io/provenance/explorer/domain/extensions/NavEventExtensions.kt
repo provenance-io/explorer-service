@@ -32,7 +32,6 @@ private fun calculateUsdPrice(priceDenom: String?, priceAmount: Long?, volume: L
         return BigDecimal.ZERO
     }
 
-    // TODO this works fine for now but probably should be improved to use the metadata exponent of the denom being priced
     val (divisor, scale) = when (priceDenom) {
         USD_LOWER -> 1000 to 3
         else -> 1000000 to 12
