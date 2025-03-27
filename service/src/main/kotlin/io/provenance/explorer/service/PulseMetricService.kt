@@ -1,23 +1,32 @@
 package io.provenance.explorer.service
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import cosmos.bank.v1beta1.Bank
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import io.ktor.client.request.url
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
 import io.provenance.explorer.config.ResourceNotFoundException
+import io.provenance.explorer.config.pulse.PulseProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.NavEvent
 import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
+import io.provenance.explorer.domain.entities.TxEventRecord
 import io.provenance.explorer.domain.extensions.roundWhole
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.pulse.ExchangeSummary
+import io.provenance.explorer.domain.models.explorer.pulse.MetricRangeType
 import io.provenance.explorer.domain.models.explorer.pulse.MetricSeries
 import io.provenance.explorer.domain.models.explorer.pulse.PulseAssetSummary
 import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
+import io.provenance.explorer.domain.models.explorer.pulse.PulseFTSLoanLedger
 import io.provenance.explorer.domain.models.explorer.pulse.PulseMetric
 import io.provenance.explorer.domain.models.explorer.pulse.TransactionSummary
 import io.provenance.explorer.grpc.v1.ExchangeGrpcClient
@@ -29,12 +38,15 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.math.pow
@@ -49,6 +61,8 @@ class PulseMetricService(
     private val pricingService: PricingService,
     private val assetService: AssetService,
     private val exchangeGrpcClient: ExchangeGrpcClient,
+    private val pulseProperties: PulseProperties,
+    @Qualifier("pulseHttpClient") private val pulseHttpClient: HttpClient
 ) {
     protected val logger = logger(PulseMetricService::class)
 
@@ -76,6 +90,11 @@ class PulseMetricService(
 
     val base = UTILITY_TOKEN
     val quote = USD_UPPER
+
+    private val count = "COUNT"
+
+    private fun nowUTC() = LocalDateTime.now(ZoneOffset.UTC)
+    private fun startOfNowUTC() = nowUTC().startOfDay().toLocalDate()
 
     /**
      * Builds a pulse metric and saves it to the DB cache and Caffeine cache
@@ -121,18 +140,30 @@ class PulseMetricService(
             )
         ) { PulseCacheRecord.findByDateAndType(date, type, subtype)?.data }
 
+    private fun backInTime(range: MetricRangeType) =
+        nowUTC().minusDays(
+            when (range) {
+                MetricRangeType.DAY -> 1
+                MetricRangeType.WEEK -> 7
+                MetricRangeType.MONTH -> 30
+                MetricRangeType.YEAR -> 365
+            }
+        )
+
     /**
      * Creates a cache record for the given type if it does not exist, or fetches the cache record.
-     * Pulse operates on the premise that 2 days of history are required to calculate the current day's metric
+     * Pulse operates on the premise that a range of history are required to calculate the current day's metric
      * where daily history is built up from a scheduled task refreshing the metric from a functional data source.
      */
     private fun fetchOrBuildCacheFromDataSource(
         type: PulseCacheType,
         subtype: String? = null,
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null,
         dataSourceFn: () -> PulseMetric
     ): PulseMetric = transaction {
-        val today = LocalDate.now()
-        val yesterday = today.minusDays(1)
+        val today = atDateTime?.toLocalDate() ?: nowUTC().toLocalDate()
+        val backInTime = backInTime(range).toLocalDate()
 
         val todayCache = fromPulseMetricCache(today, type, subtype)
 
@@ -141,10 +172,10 @@ class PulseMetricService(
 
         if (todayCache == null || bustCache) {
             val metric = dataSourceFn()
-            val yesterdayMetric =
-                fromPulseMetricCache(yesterday, type, subtype)
+            val previousMetric =
+                fromPulseMetricCache(backInTime, type, subtype)
                     ?: buildAndSavePulseMetric(
-                        date = yesterday,
+                        date = backInTime,
                         type = type,
                         previous = metric.amount,
                         current = metric.amount,
@@ -158,7 +189,7 @@ class PulseMetricService(
             buildAndSavePulseMetric(
                 date = today,
                 type = type,
-                previous = yesterdayMetric.amount,
+                previous = previousMetric.amount,
                 current = metric.amount,
                 base = metric.base,
                 quote = metric.quote,
@@ -183,41 +214,67 @@ class PulseMetricService(
 
     private fun latestPulseAssetPrice(denom: String) =
         fromPulseMetricCache(
-            LocalDateTime.now().startOfDay().toLocalDate(),
+            nowUTC().startOfDay().toLocalDate(),
             PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC, denom
-        )?.amount ?:
-        fromPulseMetricCache(
-            LocalDateTime.now().minusDays(1).startOfDay().toLocalDate(),
+        )?.amount ?: fromPulseMetricCache(
+            nowUTC().minusDays(1).startOfDay().toLocalDate(),
             PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC, denom
         )?.amount ?: BigDecimal.ZERO
 
     /**
-     * Returns the current hash market cap metric comparing the previous day's market cap
+     * Returns the current hash market cap metric comparing the previous range market cap
      * to the current day's market cap
      */
-    private fun hashMarketCapMetric(): PulseMetric =
+    private fun hashMarketCapMetric(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.HASH_MARKET_CAP_METRIC
+            type = PulseCacheType.HASH_MARKET_CAP_METRIC,
+            atDateTime = atDateTime,
+            range = range
         ) {
-            tokenService.getTokenLatest()?.takeIf { it.quote[quote] != null }
-                ?.let {
-                    it.quote[quote]?.market_cap_by_total_supply?.let { marketCap ->
-                        PulseMetric.build(
-                            base = USD_UPPER,
-                            amount = marketCap.roundWhole(),
-                        )
+            if (atDateTime != null) {
+                tokenService.getTokenHistorical(
+                    fromDate = atDateTime.startOfDay(),
+                    toDate = atDateTime
+                )
+                    .firstOrNull { it.quote[quote] != null }
+                    ?.let {
+                        it.quote[quote]?.market_cap?.let { marketCap ->
+                            PulseMetric.build(
+                                base = USD_UPPER,
+                                amount = marketCap.roundWhole(),
+                            )
+                        }
                     }
-                }
-                ?: throw ResourceNotFoundException("No quote found for $quote")
+            } else {
+                tokenService.getTokenLatest()
+                    ?.takeIf { it.quote[quote] != null }
+                    ?.let {
+                        it.quote[quote]?.market_cap_by_total_supply?.let { marketCap ->
+                            PulseMetric.build(
+                                base = USD_UPPER,
+                                amount = marketCap.roundWhole(),
+                            )
+                        }
+                    }
+            } ?: throw ResourceNotFoundException("No quote found for $quote")
         }
 
     /**
      * Returns global market cap aka total AUM
      */
-    private fun pulseMarketCap(): PulseMetric =
+    private fun pulseMarketCap(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PULSE_MARKET_CAP_METRIC
+            type = PulseCacheType.PULSE_MARKET_CAP_METRIC,
+            range = range,
+            atDateTime = atDateTime
         ) {
+            // TODO refactor to TVL calculated as: scope NAVs + exchange committed assets values
             pricingService.getTotalAum().let {
                 PulseMetric.build(
                     base = USD_UPPER,
@@ -229,16 +286,28 @@ class PulseMetricService(
     /**
      * Return exchange-based trade settlement count
      */
-    private fun pulseTradesSettled(): PulseMetric =
+    private fun pulseTradesSettled(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PULSE_TRADE_SETTLEMENT_METRIC
+            type = PulseCacheType.PULSE_TRADE_SETTLEMENT_METRIC,
+            range = range,
+            atDateTime = atDateTime
         ) {
-            NavEventsRecord.getNavEvents(
-                fromDate = LocalDateTime.now().startOfDay()
-            ).count { it.source.startsWith("x/exchange") } // gross
+            if (atDateTime != null) {
+                NavEventsRecord.getNavEvents(
+                    fromDate = atDateTime.startOfDay(),
+                    toDate = atDateTime
+                )
+            } else {
+                NavEventsRecord.getNavEvents(
+                    fromDate = nowUTC().startOfDay()
+                )
+            }.count { it.source.startsWith("x/exchange") } // gross
                 .toBigDecimal().let {
                     PulseMetric.build(
-                        base = UTILITY_TOKEN,
+                        base = count,
                         amount = it
                     )
                 }
@@ -247,13 +316,25 @@ class PulseMetricService(
     /**
      * Return exchange-based trade value settled
      */
-    private fun pulseTradeValueSettled(): PulseMetric =
+    private fun pulseTradeValueSettled(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PULSE_TRADE_VALUE_SETTLED_METRIC
+            type = PulseCacheType.PULSE_TRADE_VALUE_SETTLED_METRIC,
+            range = range,
+            atDateTime = atDateTime
         ) {
-            NavEventsRecord.getNavEvents(
-                fromDate = LocalDateTime.now().startOfDay()
-            ).filter {
+            if (atDateTime != null) {
+                NavEventsRecord.getNavEvents(
+                    fromDate = atDateTime.startOfDay(),
+                    toDate = atDateTime
+                )
+            } else {
+                NavEventsRecord.getNavEvents(
+                    fromDate = nowUTC().startOfDay()
+                )
+            }.filter {
                 it.source.startsWith("x/exchange") &&
                         it.priceDenom?.startsWith("u$USD_LOWER") == true
             } // gross, but all uusd is micro
@@ -269,15 +350,30 @@ class PulseMetricService(
      * Uses metadata module reported values to calculate receivables since
      * all data in metadata today is loan receivables
      */
-    private fun pulseTodaysNavs(): PulseMetric =
+    private fun pulseTodaysNavs(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PULSE_TODAYS_NAV_METRIC
+            type = PulseCacheType.PULSE_TODAYS_NAV_METRIC,
+            range = range,
+            atDateTime = atDateTime
         ) { // TODO technically correct assuming only metadata nav events are receivables
-            NavEventsRecord.getNavEvents(
-                fromDate = LocalDateTime.now().startOfDay(),
-                source = "metadata",
-                priceDenoms = listOf(USD_LOWER)
-            ).sortedWith(compareBy<NavEvent> { it.scopeId }.thenByDescending { it.blockTime })
+            if (atDateTime != null) {
+                NavEventsRecord.getNavEvents(
+                    fromDate = atDateTime.startOfDay(),
+                    toDate = atDateTime,
+                    source = "metadata",
+                    priceDenoms = listOf(USD_LOWER)
+                )
+            } else {
+                NavEventsRecord.getNavEvents(
+                    fromDate = nowUTC().startOfDay(),
+                    source = "metadata",
+                    priceDenoms = listOf(USD_LOWER)
+                )
+            }
+                .sortedWith(compareBy<NavEvent> { it.scopeId }.thenByDescending { it.blockTime })
                 .distinctBy {
                     // will keep the first occurrence which is the latest price event
                     it.scopeId
@@ -290,17 +386,30 @@ class PulseMetricService(
                 }
         }
 
-    private fun dailyNavDecrease(): PulseMetric =
+    private fun dailyNavDecrease(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PULSE_NAV_DECREASE_METRIC
+            type = PulseCacheType.PULSE_NAV_DECREASE_METRIC,
+            range = range,
+            atDateTime = atDateTime
         ) {
-            val today = LocalDateTime.now().startOfDay()
-            NavEventsRecord.navPricesBetweenDays(
-                startDateTime = today.minusDays(1),
-                endDateTime = today
-            ).map {
+            if (atDateTime != null) {
+                NavEventsRecord.navPricesBetweenDays(
+                    startDateTime = atDateTime.startOfDay().minusDays(1),
+                    endDateTime = atDateTime
+                )
+            } else {
+                val today = nowUTC().startOfDay()
+                NavEventsRecord.navPricesBetweenDays(
+                    startDateTime = today.minusDays(1),
+                    endDateTime = today
+                )
+            }.map {
                 val currentAmount = BigDecimal(it["current_amount"].toString())
-                val previousAmount = BigDecimal(it["previous_amount"].toString())
+                val previousAmount =
+                    BigDecimal(it["previous_amount"].toString())
                 val changeAmount = previousAmount.minus(currentAmount)
 
                 Triple(currentAmount, previousAmount, changeAmount)
@@ -313,11 +422,16 @@ class PulseMetricService(
                 }
         }
 
-    private fun totalMetadataNavs(): PulseMetric =
+    private fun totalMetadataNavs(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PULSE_TOTAL_NAV_METRIC
+            type = PulseCacheType.PULSE_TOTAL_NAV_METRIC,
+            range = range,
+            atDateTime = atDateTime
         ) {
-            NavEventsRecord.totalMetadataNavs().let {
+            NavEventsRecord.totalMetadataNavs(atDateTime).let {
                 PulseMetric.build(
                     base = USD_UPPER,
                     amount = it.times(scopeNAVDecimal)
@@ -329,11 +443,19 @@ class PulseMetricService(
      * Retrieves the transaction volume for the last 30 days to build
      * metric chart data
      */
-    private fun transactionVolume(): PulseMetric =
+    private fun transactionVolume(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PULSE_TRANSACTION_VOLUME_METRIC
+            type = PulseCacheType.PULSE_TRANSACTION_VOLUME_METRIC,
+            range = range,
+            atDateTime = atDateTime
         ) {
-            val countForDates = TxCacheRecord.countForDates(30)
+            val countForDates = TxCacheRecord.countForDates(
+                daysPrior = 30,
+                atDateTime = atDateTime
+            )
             val series = MetricSeries(
                 seriesData = countForDates.map { it.second.toBigDecimal() },
                 labels = countForDates.map {
@@ -355,13 +477,18 @@ class PulseMetricService(
     /**
      * Total ecosystem participants based on active accounts
      */
-    private fun totalParticipants(): PulseMetric =
+    private fun totalParticipants(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PULSE_PARTICIPANTS_METRIC
+            type = PulseCacheType.PULSE_PARTICIPANTS_METRIC,
+            range = range,
+            atDateTime = atDateTime
         ) {
             AccountRecord.countActiveAccounts().let {
                 PulseMetric.build(
-                    base = UTILITY_TOKEN,
+                    base = count,
                     amount = it.toBigDecimal(),
                 )
             }
@@ -370,15 +497,19 @@ class PulseMetricService(
     /**
      * Returns the total committed assets across all exchanges - a simple count of all commitments
      */
-    private fun exchangeCommittedAssets(): PulseMetric =
+    private fun exchangeCommittedAssets(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PULSE_COMMITTED_ASSETS_METRIC
+            type = PulseCacheType.PULSE_COMMITTED_ASSETS_METRIC,
+            range = range,
+            atDateTime = atDateTime
         ) {
             runBlocking {
                 exchangeGrpcClient.totalCommitmentCount().toBigDecimal().let {
-                    // base Utility Token is just a placeholder denom, not a query
                     PulseMetric.build(
-                        base = UTILITY_TOKEN,
+                        base = count,
                         amount = it
                     )
                 }
@@ -389,11 +520,20 @@ class PulseMetricService(
      * Returns the total committed assets value across all exchanges
      * as a sum of all commitments
      */
-    private fun exchangeCommittedAssetsValue(): PulseMetric =
+    private fun exchangeCommittedAssetsValue(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PULSE_COMMITTED_ASSETS_VALUE_METRIC
+            type = PulseCacheType.PULSE_COMMITTED_ASSETS_VALUE_METRIC,
+            range = range,
+            atDateTime = atDateTime
         ) {
-            committedAssetTotals().map {
+            if (atDateTime != null) {
+                TxEventRecord.pulseExchangeCommittedAssets(atDateTime.toLocalDate())
+            } else {
+                committedAssetTotals()
+            }.map {
                 // convert amount to appropriate denom decimal
                 var dE = denomExponent(it.key)
                 if (dE == 0 && it.key.lowercase().contains(USD_LOWER)) {
@@ -403,12 +543,181 @@ class PulseMetricService(
             }.map {
                 // get price of the asset
                 Pair(it.first, it.second.times(latestPulseAssetPrice(it.first)))
-            }.sumOf { it.second }.let {
+            }.sumOf { it.second }
+                .let {
+                    PulseMetric.build(
+                        base = USD_UPPER,
+                        amount = it
+                    )
+                }
+        }
+
+    /**
+     * FTS Loan-based Metrics
+     */
+
+    private fun ftsUrl(endpoint: String, atDateTime: LocalDateTime? = null) =
+        if (atDateTime != null) {
+            "${pulseProperties.ftsLoanDataUrl}/$endpoint?atDate=${atDateTime.toLocalDate().format(
+                DateTimeFormatter.ISO_LOCAL_DATE
+            )}"
+        } else {
+            "${pulseProperties.ftsLoanDataUrl}/$endpoint"
+        }
+
+    private fun ftsGetLoanLedger(
+        endpoint: String,
+        atDateTime: LocalDateTime? = null
+    ) =
+        runBlocking {
+            try {
+                ftsUrl(endpoint, atDateTime).let {
+                    pulseHttpClient.get {
+                        url(it)
+                    }.body<List<PulseFTSLoanLedger>>()
+                }
+            } catch (e: Exception) {
+                logger.error("Failed to fetch FTS loan ledger data: ${e.message}")
+                emptyList()
+            }
+        }
+
+    private fun ftsEffectiveDateFilter(atDateTime: LocalDateTime? = null) =
+        if (atDateTime != null) {
+            atDateTime.startOfDay()
+        } else {
+            nowUTC().startOfDay()
+        }
+
+    private fun ftsLoanTotalBalance(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ) =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.FTS_LOAN_TOTAL_BALANCE_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            runBlocking {
+                pulseHttpClient.get {
+                    url(ftsUrl("balances", atDateTime))
+                }.body<JsonNode>().let {
+                    PulseMetric.build(
+                        base = USD_UPPER,
+                        amount = it["TotalBalance"].asText().toBigDecimal()
+                    )
+                }
+            }
+        }
+
+    private fun ftsLoanTotalCount(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ) =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.FTS_LOAN_TOTAL_COUNT_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            runBlocking {
+                pulseHttpClient.get {
+                    url(ftsUrl("balances", atDateTime))
+                }.body<JsonNode>().let {
+                    PulseMetric.build(
+                        base = count,
+                        amount = it["TotalCount"].asText().toBigDecimal()
+                    )
+                }
+            }
+        }
+
+    private fun ftsLoanPayments(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ) =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.FTS_LOAN_PAYMENTS_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            ftsGetLoanLedger("payments", atDateTime)
+                .filter {
+                    it.effectiveDate.startOfDay() == ftsEffectiveDateFilter(
+                        atDateTime
+                    )
+                }
+                .sumOf { it.entryAmount }.let {
+                    PulseMetric.build(
+                        base = USD_UPPER,
+                        amount = it.toBigDecimal()
+                    )
+                }
+        }
+
+    private fun ftsLoanTotalPayments(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ) =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.FTS_LOAN_TOTAL_PAYMENTS_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            ftsGetLoanLedger("payments", atDateTime).count {
+                it.effectiveDate.startOfDay() == ftsEffectiveDateFilter(
+                    atDateTime
+                )
+            }.let {
                 PulseMetric.build(
-                    base = USD_UPPER,
-                    amount = it
+                    base = count,
+                    amount = it.toBigDecimal()
                 )
             }
+        }
+
+    private fun ftsLoanDisbursements(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ) =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.FTS_LOAN_DISBURSEMENTS_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            ftsGetLoanLedger("disbursements", atDateTime)
+                .filter {
+                    it.effectiveDate.startOfDay() == ftsEffectiveDateFilter(
+                        atDateTime
+                    )
+                }
+                .sumOf { it.entryAmount }.let {
+                    PulseMetric.build(
+                        base = USD_UPPER,
+                        amount = it.toBigDecimal()
+                    )
+                }
+        }
+
+    private fun ftsLoanDisbursementCount(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ) =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.FTS_LOAN_DISBURSEMENT_COUNT_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            ftsGetLoanLedger("disbursements", atDateTime)
+                .count {
+                    it.effectiveDate.startOfDay() == ftsEffectiveDateFilter(
+                        atDateTime
+                    )
+                }.let {
+                    PulseMetric.build(
+                        base = count,
+                        amount = it.toBigDecimal()
+                    )
+                }
         }
 
     /**
@@ -445,7 +754,7 @@ class PulseMetricService(
     ) =
         NavEventsRecord.getNavEvents(
             denom = denom,
-            fromDate = LocalDateTime.now().startOfDay(),
+            fromDate = nowUTC().startOfDay(),
             source = source
         ).filter {
             (source != null || it.source.startsWith("x/exchange")) &&
@@ -477,7 +786,7 @@ class PulseMetricService(
                     it != PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
         }
             .forEach { type ->
-                pulseMetric(type)
+                pulseMetric(type = type)
             }
 
         pulseAssetSummaries()
@@ -488,10 +797,18 @@ class PulseMetricService(
     /**
      * Returns the current hash metrics for the given type
      */
-    fun hashMetric(type: PulseCacheType, bustCache: Boolean = false) =
+    fun hashMetric(
+        type: PulseCacheType, bustCache: Boolean = false,
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ) =
         fetchOrBuildCacheFromDataSource(
-            type = type
+            type = type,
+            range = range,
+            atDateTime = atDateTime
         ) {
+            // TODO left off here - get prices, metrics at date if possible....
+
             val latestHashPrice =
                 tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price
                     ?: BigDecimal.ZERO
@@ -539,27 +856,119 @@ class PulseMetricService(
      * Returns the pulse metric for the given type - pulse metrics are "global"
      * metrics that are not specific to Hash
      */
-    fun pulseMetric(type: PulseCacheType): PulseMetric {
+    fun pulseMetric(
+        range: MetricRangeType = MetricRangeType.DAY,
+        type: PulseCacheType,
+        atDateTime: LocalDateTime? = null,
+    ): PulseMetric {
         return when (type) {
-            PulseCacheType.HASH_MARKET_CAP_METRIC -> hashMarketCapMetric()
-            PulseCacheType.HASH_STAKED_METRIC -> hashMetric(type)
-            PulseCacheType.HASH_CIRCULATING_METRIC -> hashMetric(type)
-            PulseCacheType.HASH_SUPPLY_METRIC -> hashMetric(type)
-            PulseCacheType.PULSE_MARKET_CAP_METRIC -> pulseMarketCap()
-            PulseCacheType.PULSE_TRANSACTION_VOLUME_METRIC -> transactionVolume()
+            PulseCacheType.HASH_MARKET_CAP_METRIC -> hashMarketCapMetric(
+                range = range,
+                atDateTime = atDateTime
+            )
 
-            PulseCacheType.PULSE_TODAYS_NAV_METRIC -> pulseTodaysNavs()
-            PulseCacheType.PULSE_NAV_DECREASE_METRIC -> dailyNavDecrease()
-            PulseCacheType.PULSE_TOTAL_NAV_METRIC -> totalMetadataNavs()
+            PulseCacheType.HASH_STAKED_METRIC -> hashMetric(
+                range = range,
+                type = type,
+                atDateTime = atDateTime
+            )
 
-            PulseCacheType.PULSE_TRADE_SETTLEMENT_METRIC -> pulseTradesSettled()
-            PulseCacheType.PULSE_TRADE_VALUE_SETTLED_METRIC -> pulseTradeValueSettled()
-            PulseCacheType.PULSE_PARTICIPANTS_METRIC -> totalParticipants()
-            PulseCacheType.PULSE_COMMITTED_ASSETS_METRIC -> exchangeCommittedAssets()
-            PulseCacheType.PULSE_COMMITTED_ASSETS_VALUE_METRIC -> exchangeCommittedAssetsValue()
+            PulseCacheType.HASH_CIRCULATING_METRIC -> hashMetric(
+                range = range,
+                type = type,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.HASH_SUPPLY_METRIC -> hashMetric(
+                range = range,
+                type = type,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.PULSE_MARKET_CAP_METRIC -> pulseMarketCap(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.PULSE_TRANSACTION_VOLUME_METRIC -> transactionVolume(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.PULSE_TODAYS_NAV_METRIC -> pulseTodaysNavs(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.PULSE_NAV_DECREASE_METRIC -> dailyNavDecrease(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.PULSE_TOTAL_NAV_METRIC -> totalMetadataNavs(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.PULSE_TRADE_SETTLEMENT_METRIC -> pulseTradesSettled(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.PULSE_TRADE_VALUE_SETTLED_METRIC -> pulseTradeValueSettled(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.PULSE_PARTICIPANTS_METRIC -> totalParticipants(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.PULSE_COMMITTED_ASSETS_METRIC -> exchangeCommittedAssets(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.PULSE_COMMITTED_ASSETS_VALUE_METRIC -> exchangeCommittedAssetsValue(
+                range = range,
+                atDateTime = atDateTime
+            )
+
             PulseCacheType.PULSE_DEMOCRATIZED_PRIME_POOLS_METRIC -> todoPulse()
             PulseCacheType.PULSE_MARGIN_LOANS_METRIC -> todoPulse()
             PulseCacheType.PULSE_FEES_AUCTIONS_METRIC -> todoPulse()
+
+            PulseCacheType.FTS_LOAN_PAYMENTS_METRIC -> ftsLoanPayments(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.FTS_LOAN_TOTAL_PAYMENTS_METRIC -> ftsLoanTotalPayments(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.FTS_LOAN_TOTAL_BALANCE_METRIC -> ftsLoanTotalBalance(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.FTS_LOAN_TOTAL_COUNT_METRIC -> ftsLoanTotalCount(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.FTS_LOAN_DISBURSEMENTS_METRIC -> ftsLoanDisbursements(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.FTS_LOAN_DISBURSEMENT_COUNT_METRIC -> ftsLoanDisbursementCount(
+                range = range,
+                atDateTime = atDateTime
+            )
+
             else -> throw ResourceNotFoundException("Invalid pulse metric request for type $type")
         }
     }
@@ -696,7 +1105,7 @@ class PulseMetricService(
     ): PagedResults<TransactionSummary> =
         TxCacheRecord.pulseTransactionsWithValue(
             denom,
-            LocalDateTime.now().minusDays(1).startOfDay(),
+            nowUTC().minusDays(1).startOfDay(),
             page,
             count,
             sort,
@@ -712,7 +1121,9 @@ class PulseMetricService(
                 results = pr.results.map { tx ->
                     val denomTotal =
                         if (tx["denom_total"] != null)
-                            BigDecimal(tx["denom_total"].toString()).times(denomPow)
+                            BigDecimal(tx["denom_total"].toString()).times(
+                                denomPow
+                            )
                         else
                             BigDecimal.ZERO
 
@@ -732,4 +1143,25 @@ class PulseMetricService(
 
             )
         }
+
+    /**
+     * Fill in the pulse cache for a date range for a list of cache types
+     */
+    fun backFillAllMetrics(
+        fromDate: LocalDate,
+        toDate: LocalDate,
+        types: List<PulseCacheType>
+    ) {
+        val days = fromDate.until(toDate, ChronoUnit.DAYS)
+        for (i in 0..days) {
+            val d = fromDate.plusDays(i).atStartOfDay()
+            for (type in types) {
+                logger.info("Backfilling $type for $d")
+                pulseMetric(
+                    type = type,
+                    atDateTime = d
+                )
+            }
+        }
+    }
 }

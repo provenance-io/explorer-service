@@ -14,6 +14,7 @@ import io.ktor.client.engine.java.Java
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.jackson.jackson
 import io.provenance.explorer.config.ExplorerProperties
+import io.provenance.explorer.config.pulse.PulseProperties
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
 import org.springframework.boot.builder.SpringApplicationBuilder
@@ -27,7 +28,7 @@ import java.util.TimeZone
 
 @ComponentScan(basePackages = ["io.provenance.explorer" ])
 @EnableAutoConfiguration(exclude = [HibernateJpaAutoConfiguration::class])
-@EnableConfigurationProperties(value = [ExplorerProperties::class])
+@EnableConfigurationProperties(value = [ExplorerProperties::class, PulseProperties::class])
 @EnableScheduling
 @EnableCaching
 class Application

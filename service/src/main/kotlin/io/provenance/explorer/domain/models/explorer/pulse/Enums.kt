@@ -1,5 +1,7 @@
 package io.provenance.explorer.domain.models.explorer.pulse
 
+import java.beans.PropertyEditorSupport
+
 enum class MetricTrendType {
     UP,
     DOWN,
@@ -10,11 +12,25 @@ enum class MetricTrendPeriod {
     DAY,
 }
 
+class MetricRangeTypeConverter : PropertyEditorSupport() {
+    override fun setAsText(text: String) {
+        value = MetricRangeType.entries.find { it.range == text }
+    }
+}
+
+enum class MetricRangeType(val range: String) {
+    DAY("24h"),
+    WEEK("1w"),
+    MONTH("1m"),
+    YEAR("1y")
+}
+
 enum class PulseCacheType {
     HASH_MARKET_CAP_METRIC,
     HASH_SUPPLY_METRIC,
     HASH_STAKED_METRIC,
     HASH_CIRCULATING_METRIC,
+
     PULSE_MARKET_CAP_METRIC,
     PULSE_TRANSACTION_VOLUME_METRIC,
     PULSE_FEES_AUCTIONS_METRIC,
@@ -30,4 +46,11 @@ enum class PulseCacheType {
     PULSE_COMMITTED_ASSETS_METRIC,
     PULSE_ASSET_PRICE_SUMMARY_METRIC,
     PULSE_ASSET_VOLUME_SUMMARY_METRIC,
+
+    FTS_LOAN_TOTAL_BALANCE_METRIC,
+    FTS_LOAN_TOTAL_COUNT_METRIC,
+    FTS_LOAN_DISBURSEMENTS_METRIC,
+    FTS_LOAN_DISBURSEMENT_COUNT_METRIC,
+    FTS_LOAN_PAYMENTS_METRIC,
+    FTS_LOAN_TOTAL_PAYMENTS_METRIC,
 }

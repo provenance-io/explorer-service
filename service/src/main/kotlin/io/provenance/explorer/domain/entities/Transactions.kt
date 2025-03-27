@@ -208,12 +208,15 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             query
         }
 
-        fun countForDates(daysPrior: Int): List<Pair<LocalDate, Long>> = transaction {
+        fun countForDates(daysPrior: Int, atDateTime: LocalDateTime? = null): List<Pair<LocalDate, Long>> = transaction {
+            val atDateQuery = atDateTime?.let { "tx_timestamp > '${atDateTime.minusDays(daysPrior.toLong()).toLocalDate()}'" }
+                ?: "tx_timestamp > current_timestamp - interval '$daysPrior days'"
+
             val query = """
                 select sum(daily_tx_cnt.cnt) as count, ds
                 from (select count(*) cnt, tx_timestamp ts, date_trunc('day', tx_timestamp) ds
                       from tx_cache
-                      where tx_timestamp > current_timestamp - interval '$daysPrior days'
+                      where $atDateQuery
                       group by ts, ds) as daily_tx_cnt
                 group by ds
                 order by ds;
@@ -249,7 +252,7 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                              substring(rec from '[0-9]+(.*)${'$'}')     AS denom,
                              substring(rec from '^[0-9]+')::bigint AS value
                       FROM tx_msg_event_attr attr
-                               CROSS JOIN LATERAL unnest(string_to_array(attr.attr_value, ',')) AS rec
+                               CROSS JOIN LATERAL unnest(string_to_array(replace(attr.attr_value,'"',''), ',')) AS rec
                            where attr.attr_key = 'amount') as attr_denom_value
                      on attr_denom_value.tx_msg_event_id = tme.id
                 where tme.tx_msg_type_id IN
@@ -575,10 +578,54 @@ object TxEventsTable : IntIdTable(name = "tx_msg_event") {
 class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxEventRecord>(TxEventsTable) {
 
-        fun buildInsert(blockHeight: Int, txHash: String, type: String, msgTypeId: Int) =
-            listOf(0, blockHeight, 0, txHash, 0, type, msgTypeId).toProcedureObject()
-    }
+        fun buildInsert(
+            blockHeight: Int,
+            txHash: String,
+            type: String,
+            msgTypeId: Int
+        ) =
+            listOf(
+                0,
+                blockHeight,
+                0,
+                txHash,
+                0,
+                type,
+                msgTypeId
+            ).toProcedureObject()
 
+        fun pulseExchangeCommittedAssets(atDate: LocalDate): Map<String, BigDecimal> {
+            val query = """
+                select denom, sum(value) as total
+                from tx_msg_event e
+                         join tx_cache c on c.id = e.tx_hash_id
+                         join (SELECT attr.tx_msg_event_id,
+                                      rec,
+                                      substring(rec from '[0-9]+(.*)${'$'}')    AS denom,
+                                      substring(rec from '^[0-9]+')::bigint AS value
+                               FROM tx_msg_event_attr attr
+                                        CROSS JOIN LATERAL unnest(
+                                            string_to_array(replace(attr.attr_value,'"',''), ',')) AS rec
+                               where attr.attr_key = 'amount') as attr_denom_value
+                              on attr_denom_value.tx_msg_event_id = e.id
+                where e.event_type = 'provenance.exchange.v1.EventFundsCommitted'
+                  and date_trunc('DAYS',c.tx_timestamp) = ?
+                group by denom                            
+        """.trimIndent()
+
+            val args = listOf(
+                Pair(JavaLocalDateTimeColumnType(), atDate)
+            )
+
+            return query.execAndMap(args) { resultSet ->
+                val map = mutableMapOf<String, BigDecimal>()
+                (1..resultSet.metaData.columnCount).forEach { index ->
+                    map[resultSet.metaData.getColumnName(index)] = resultSet.getString(index).toBigDecimal()
+                }
+                map.toMap()
+            }.firstOrNull() ?: emptyMap()
+        }
+    }
     var blockHeight by TxEventsTable.blockHeight
     var txHash by TxEventsTable.txHash
     var txHashId by TxEventsTable.txHashId
