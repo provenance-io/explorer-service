@@ -84,6 +84,7 @@ class NftService(
         }
     }
 
+    // TODO update to pull from db for scope info
     fun getScopeDetail(addr: String) = runBlocking {
         metadataClient.getScopeById(addr).let {
             val spec = getScopeDescrip(it.scope.scopeSpecIdInfo.scopeSpecAddr)
@@ -188,11 +189,16 @@ class NftService(
 
     fun translateAddress(addr: String) = MetadataAddress.fromBech32(addr)
 
+    fun insertOrUpdateNft(uuid: String, address: String) = runBlocking {
+        val scope = metadataClient.getScopeById(address, false, false).scope.scope
+        NftScopeRecord
+            .insertOrUpdate(uuid, address, scope)
+    }
+
     fun saveMAddress(md: MetadataAddress) = transaction {
         when (md.getParentForType()) {
             MdParent.SCOPE ->
-                NftScopeRecord
-                    .getOrInsert(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressScope().toString())
+                insertOrUpdateNft(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressScope().toString())
                     .let { Triple(MdParent.SCOPE, it.id.value, it.uuid) }
             MdParent.SCOPE_SPEC ->
                 NftScopeSpecRecord
@@ -202,6 +208,7 @@ class NftService(
                 NftContractSpecRecord
                     .getOrInsert(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressContractSpec().toString())
                     .let { Triple(MdParent.CONTRACT_SPEC, it.id.value, it.uuid) }
+
             else -> null.also { logger().debug("This prefix doesn't have a parent type: ${md.getPrefix()}") }
         }
     }
@@ -210,7 +217,7 @@ class NftService(
         when (md.getParentForType()) {
             MdParent.SCOPE ->
                 NftScopeRecord
-                    .markDeleted(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressScope().toString())
+                    .markDeleted(md.getPrimaryUuid().toString())
             MdParent.SCOPE_SPEC ->
                 NftScopeSpecRecord
                     .markDeleted(md.getPrimaryUuid().toString(), md.getPrimaryUuid().toMAddressScopeSpec().toString())
@@ -237,6 +244,12 @@ class NftService(
             includeScopes = true,
         ).sumOf {
             it.calculateUsdPricePerUnit()
+        }
+    }
+
+    fun populateScopes() = runBlocking {
+        NftScopeRecord.findWithMissingScope().forEach {
+            insertOrUpdateNft(it.uuid, it.address)
         }
     }
 }

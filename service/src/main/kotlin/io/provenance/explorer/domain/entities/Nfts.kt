@@ -1,6 +1,9 @@
 package io.provenance.explorer.domain.entities
 
+import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.models.explorer.NftVOTransferObj
+import io.provenance.metadata.v1.Scope
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -14,6 +17,7 @@ object NftScopeTable : IntIdTable(name = "nft_scope") {
     val uuid = varchar("uuid", 128)
     val address = varchar("address", 128)
     val deleted = bool("deleted").default(false)
+    val scope = jsonb<NftScopeTable, Scope>("scope", OBJECT_MAPPER).nullable()
 }
 
 class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -27,22 +31,30 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
             NftScopeRecord.find { NftScopeTable.address eq addr }.firstOrNull()
         }
 
-        fun getOrInsert(uuid: String, address: String) =
+        fun findWithMissingScope() = transaction {
+            NftScopeRecord.find { NftScopeTable.scope.isNull() }.toList()
+        }
+
+        fun insertOrUpdate(uuid: String, address: String, scope: Scope) =
             transaction {
-                findByUuid(uuid) ?: NftScopeTable.insertAndGetId {
+                findByUuid(uuid)?.apply {
+                    this.scope = scope
+                } ?: NftScopeTable.insertAndGetId {
                     it[this.uuid] = uuid
                     it[this.address] = address
+                    it[this.scope] = scope
                 }.let { findById(it)!! }
             }
 
-        fun markDeleted(uuid: String, address: String) = transaction {
-            (findByUuid(uuid) ?: getOrInsert(uuid, address)).apply { this.deleted = true }
+        fun markDeleted(uuid: String) = transaction {
+            findByUuid(uuid)?.apply { this.deleted = true }
         }
     }
 
     var uuid by NftScopeTable.uuid
     var address by NftScopeTable.address
     var deleted by NftScopeTable.deleted
+    var scope by NftScopeTable.scope
 }
 
 object NftScopeSpecTable : IntIdTable(name = "nft_scope_spec") {
@@ -56,6 +68,10 @@ class NftScopeSpecRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findByUuid(uuid: String) = transaction {
             NftScopeSpecRecord.find { NftScopeSpecTable.uuid eq uuid }.firstOrNull()
+        }
+
+        fun findByAddress(address: String) = transaction {
+            NftScopeSpecRecord.find { NftScopeSpecTable.address eq address }.firstOrNull()
         }
 
         fun getOrInsert(uuid: String, address: String) =
