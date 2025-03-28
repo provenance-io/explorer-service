@@ -246,6 +246,8 @@ class AssetService(
             assetPricinglastRun = AssetPricingRecord.getLastUpdatedTime()?.atOffset(ZoneOffset.UTC)
         }
 
+        logger.info("Updating asset pricing, last run at: $assetPricinglastRun")
+
         val latestPrices = NavEventsRecord.getLatestNavEvents(
             priceDenoms = usdPriceDenoms,
             includeMarkers = true,

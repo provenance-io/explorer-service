@@ -32,6 +32,7 @@ private fun calculateUsdPrice(priceDenom: String?, priceAmount: Long?, volume: L
         return BigDecimal.ZERO
     }
 
+    // approaching unacceptable levels of grossness but will suffice for now
     val (divisor, scale) = when (priceDenom) {
         USD_LOWER -> 1000 to 3
         else -> 1000000 to 12

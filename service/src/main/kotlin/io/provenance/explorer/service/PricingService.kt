@@ -1,6 +1,5 @@
 package io.provenance.explorer.service
 
-import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AssetPricingRecord
@@ -15,7 +14,6 @@ import java.math.BigDecimal
 
 @Service
 class PricingService(
-    private val props: ExplorerProperties,
     private val tokenService: TokenService,
     private val nftService: NftService,
 ) {
@@ -28,6 +26,7 @@ class PricingService(
                     (MarkerCacheTable.supply greater BigDecimal.ZERO)
             }.filterNot {
                 // excluding portfolio manager pools in favor of scope navs
+                // we may be able to remove this after scope data migration
                 it.denom.startsWith("pm.")
             }.associate { it.denom to (if (it.denom != UTILITY_TOKEN) it.supply else tokenService.totalSupply()) }
         }
