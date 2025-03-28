@@ -43,7 +43,7 @@ class NftController(private val nftService: NftService) {
         @Min(1)
         @Max(200)
         count: Int
-    ) = nftService.getScopesForOwningAddress(address, page, count)
+    ) = nftService.getScopeDetailsForOwningAddress(address, page, count)
 
     @Operation(summary = "Returns NFTs for the owning address and type e.g. PARTY_TYPE_ORIGINATOR")
     @GetMapping("/scope/owner/{address}/{type}")
@@ -59,7 +59,7 @@ class NftController(private val nftService: NftService) {
         @Min(1)
         @Max(200)
         count: Int
-    ) = nftService.getScopesForOwnerAndType(address, type, page, count)
+    ) = nftService.getScopeDetailsForOwnerAndType(address, type, page, count)
 
     @Operation(summary = "Returns MetadataAddress obj for bech32 addr")
     @GetMapping("/address/{addr}")
@@ -100,4 +100,17 @@ class NftController(private val nftService: NftService) {
     @GetMapping("/scope/{addr}/owners/{type}")
     fun getNftOwnersByType(@PathVariable addr: String, @PathVariable type: PartyType) =
         nftService.getScopeOwnersByPartyType(addr, type)
+
+    @Operation(summary = "Returns basic nft data for the owning address, includes address as value owner or owner")
+    @GetMapping("/scope/owner/{address}/all")
+    fun getNftsbyOwnerAll(
+        @Parameter(description = "The standard account address for the chain.") @PathVariable address: String
+    ) = nftService.getScopesForOwningAddress(address)
+
+    @Operation(summary = "Returns basic nft data for the owning address and type e.g. PARTY_TYPE_ORIGINATOR")
+    @GetMapping("/scope/owner/{address}/{type}/all")
+    fun getNftsbyOwnerAndTypeAll(
+        @Parameter(description = "The standard account address for the chain.") @PathVariable address: String,
+        @Parameter(description = "The party type") @PathVariable type: PartyType
+    ) = nftService.getScopesForOwnerAndType(address, type)
 }

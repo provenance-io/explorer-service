@@ -133,7 +133,8 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             }
         }
 
-        fun getLatestNavEvents(priceDenom: String, includeMarkers: Boolean, includeScopes: Boolean, fromDate: LocalDateTime? = null) = getLatestNavEvents(listOf(priceDenom), includeMarkers, includeScopes, fromDate)
+        fun getLatestNavEvents(priceDenom: String, includeMarkers: Boolean, includeScopes: Boolean, fromDate: LocalDateTime? = null) =
+            getLatestNavEvents(listOf(priceDenom), includeMarkers, includeScopes, fromDate)
 
         fun getLatestNavEvents(
             priceDenoms: List<String>,

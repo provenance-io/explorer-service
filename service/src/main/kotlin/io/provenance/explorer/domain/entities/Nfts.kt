@@ -69,7 +69,7 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findByOwnerAndType(address: String, partyType: String, limit: Int? = null, offset: Int? = null) = transaction {
             var query = """
                 SELECT * FROM nft_scope
-                WHERE OR scope->'owners' @> '[{"role": "$partyType", "address": "$address"}]'
+                WHERE scope->'owners' @> '[{"role": "$partyType", "address": "$address"}]'
                 ORDER BY id DESC
             """.trimIndent()
 

@@ -56,8 +56,8 @@ class NftService(
     suspend fun getScopeDescrip(addr: String) =
         metadataClient.getScopeSpecById(addr).scopeSpecification.specification.description
 
-    // TODO: switch to getScopesForOwningAddressDb after data migration
-    fun getScopesForOwningAddress(ownerAddress: String, page: Int, count: Int) = runBlocking {
+    // TODO: switch to getScopeDetailsForOwningAddressDb after data migration
+    fun getScopeDetailsForOwningAddress(ownerAddress: String, page: Int, count: Int) = runBlocking {
         metadataClient.getScopesByOwner(ownerAddress, page.toOffset(count), count).let {
             val records = it.scopeUuidsList.map { uuid ->
                 scopeToListview(metadataClient.getScopeById(uuid).scope.toNftData(), ownerAddress)
@@ -66,24 +66,29 @@ class NftService(
         }
     }
 
-    fun getScopesForOwningAddressDb(ownerAddress: String, page: Int, count: Int) {
+    fun getScopeDetailsForOwningAddressDb(ownerAddress: String, page: Int, count: Int): PagedResults<ScopeListview> {
         val scopes = NftScopeRecord.findAllByOwner(ownerAddress, count, page.toOffset(count))
             .map { scopeToListview(it, ownerAddress) }
         val total = NftScopeRecord.findAllByOwner(ownerAddress).size.toLong()
-        PagedResults(total.pageCountOfResults(count), scopes, total)
+        return PagedResults(total.pageCountOfResults(count), scopes, total)
     }
 
-    fun getScopesForOwnerAndType(ownerAddress: String, partyType: PartyType, page: Int, count: Int) {
-        val scopes = NftScopeRecord.findByOwnerAndType(ownerAddress, partyType.name, page.toOffset(count), count)
+    fun getScopesForOwningAddress(ownerAddress: String) = NftScopeRecord.findAllByOwner(ownerAddress)
+
+    fun getScopeDetailsForOwnerAndType(ownerAddress: String, partyType: PartyType, page: Int, count: Int): PagedResults<ScopeListview> {
+        val scopes = NftScopeRecord.findByOwnerAndType(ownerAddress, partyType.name, count, page.toOffset(count))
             .map { scopeToListview(it, ownerAddress) }
         val total = NftScopeRecord.findByOwnerAndType(ownerAddress, partyType.name).size.toLong()
-        PagedResults(total.pageCountOfResults(count), scopes, total)
+        return PagedResults(total.pageCountOfResults(count), scopes, total)
     }
 
-    fun getScopeOwnersByPartyType(scopeAddress: String, partyType: PartyType) {
-        NftScopeRecord.findByAddr(scopeAddress)?.scope?.ownersList?.filter {
+    fun getScopesForOwnerAndType(ownerAddress: String, partyType: PartyType) =
+        NftScopeRecord.findByOwnerAndType(ownerAddress, partyType.name)
+
+    fun getScopeOwnersByPartyType(scopeAddress: String, partyType: PartyType): List<String> {
+        return NftScopeRecord.findByAddr(scopeAddress)?.scope?.ownersList?.filter {
             it.role == partyType
-        }?.map { it.address }
+        }?.map { it.address } ?: emptyList()
     }
 
     private fun scopeToListview(nft: NftData, ownerAddress: String) = runBlocking {
@@ -104,13 +109,12 @@ class NftService(
     fun getScopeDetail(addr: String) = runBlocking {
         val nftRecord = NftScopeRecord.findByAddr(addr)
         val scope = nftRecord?.scope ?: metadataClient.getScopeById(addr).scope.scope
-        val scopeUuid = nftRecord?.uuid ?: scope.scopeId.toMAddress().getPrimaryUuid().toString()
         val scopeSpecAddr = scope.specificationId.toMAddress().getPrimaryUuid().toMAddressScopeSpec().toString()
         val spec = getScopeDescrip(scopeSpecAddr)
         val attributes = async { attrClient.getAllAttributesForAddress(addr) }
 
         ScopeDetail(
-            scopeUuid,
+            nftRecord?.uuid ?: scope.scopeId.toMAddress().getPrimaryUuid().toString(),
             addr,
             spec?.name,
             scopeSpecAddr,
@@ -260,7 +264,7 @@ class NftService(
         }
     }
 
-    fun getScopeTotalForNavEvents() = runBlocking {
+    fun getScopeTotalForNavEvents() =
         // TODO could query for marker owned scopes and filter them out here after scope migration
         NavEventsRecord.getLatestNavEvents(
             priceDenoms = listOf(USD_LOWER),
@@ -269,7 +273,6 @@ class NftService(
         ).sumOf {
             it.calculateUsdPricePerUnit()
         }
-    }
 
     fun populateScopes() = runBlocking {
         NftScopeRecord.findWithMissingScope().forEach {
