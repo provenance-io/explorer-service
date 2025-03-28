@@ -20,7 +20,10 @@ import cosmos.staking.v1beta1.queryDelegatorDelegationsResponse
 import cosmos.staking.v1beta1.queryDelegatorUnbondingDelegationsRequest
 import cosmos.staking.v1beta1.queryPoolRequest
 import cosmos.staking.v1beta1.queryRedelegationsRequest
+import cosmos.staking.v1beta1.queryValidatorDelegationsRequest
+import cosmos.staking.v1beta1.queryValidatorsRequest
 import io.grpc.ManagedChannelBuilder
+import io.grpc.Metadata
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.extensions.toDecimalStringOld
 import io.provenance.explorer.grpc.extensions.addBlockHeightToQuery
@@ -65,6 +68,12 @@ class AccountGrpcClient(channelUri: URI) {
         distClient = DistGrpc.QueryCoroutineStub(channel)
         mintClient = MintGrpc.QueryCoroutineStub(channel)
     }
+    private fun heightMetadata(height: String?) =
+        Metadata().apply {
+            if (height != null) {
+                this.put(Metadata.Key.of("x-cosmos-block-height", Metadata.ASCII_STRING_MARSHALLER), height)
+            }
+        }
 
     suspend fun getAccountInfo(address: String) =
         try {
@@ -189,8 +198,14 @@ class AccountGrpcClient(channelUri: URI) {
             }
         ).balance
 
-    suspend fun getCurrentSupply(denom: String) =
+    suspend fun getCurrentSupply(denom: String): CoinOuterClass.Coin =
         bankClient.supplyOf(querySupplyOfRequest { this.denom = denom }).amount
+
+    suspend fun getCurrentSupplyAtHeight(denom: String, height: String): CoinOuterClass.Coin =
+        bankClient.supplyOf(
+            querySupplyOfRequest { this.denom = denom },
+            heightMetadata(height)
+        ).amount
 
     suspend fun getDenomMetadata(denom: String) =
         try {
@@ -274,4 +289,23 @@ class AccountGrpcClient(channelUri: URI) {
                 this.pagination = getPagination(offset, count)
             }
         )
+
+    suspend fun getTotalValidatorDelegations(height: String? = null) =
+        stakingClient.validators(
+            queryValidatorsRequest {
+                this.pagination = getPagination(0, 1000)
+            },
+            heightMetadata(height)
+        ).validatorsList.filter { !it.jailed }.map {
+            stakingClient.validatorDelegations(
+                queryValidatorDelegationsRequest {
+                    this.validatorAddr = it.operatorAddress
+                    // TODO paginate properly
+                    this.pagination = getPagination(0, 10000)
+                },
+                heightMetadata(height)
+            ).delegationResponsesList.sumOf { delegation ->
+                delegation.balance.amount.toBigDecimal()
+            }
+        }.sumOf { it }
 }

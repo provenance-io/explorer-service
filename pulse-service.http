@@ -1,11 +1,11 @@
 
-### Send Pulse backfill POST request
+### Send Pulse backfill POST ALL request
 POST http://localhost:8612//api/pulse/metric/backfill
 Content-Type: application/x-www-form-urlencoded
 timeout: 1800000
 
-fromDate = 2025-01-01 &
-toDate = 2025-02-12 &
+fromDate = 2025-01-21 &
+toDate = 2025-02-01 &
 types = PULSE_MARKET_CAP_METRIC &
 types = PULSE_TRANSACTION_VOLUME_METRIC &
 types = HASH_MARKET_CAP_METRIC &
@@ -29,6 +29,18 @@ types = FTS_LOAN_TOTAL_COUNT_METRIC &
 types = FTS_LOAN_DISBURSEMENTS_METRIC &
 types = FTS_LOAN_DISBURSEMENT_COUNT_METRIC &
 types = FTS_LOAN_PAYMENTS_METRIC &
-types = FTS_LOAN_TOTAL_PAYMENTS_METRIC
+types = FTS_LOAN_TOTAL_PAYMENTS_METRIC &
+types = PULSE_ASSET_PRICE_SUMMARY_METRIC &
+types = PULSE_ASSET_VOLUME_SUMMARY_METRIC
 
+
+
+### Send Pulse backfill POST SOME request
+POST http://localhost:8612//api/pulse/metric/backfill
+Content-Type: application/x-www-form-urlencoded
+timeout: 1800000
+
+fromDate = 2025-02-01 &
+toDate = 2025-02-12 &
+types = HASH_STAKED_METRIC
 

@@ -14,11 +14,11 @@ import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.config.pulse.PulseProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
+import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.NavEvent
 import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
-import io.provenance.explorer.domain.entities.TxEventRecord
 import io.provenance.explorer.domain.extensions.roundWhole
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.pulse.ExchangeSummary
@@ -29,6 +29,7 @@ import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
 import io.provenance.explorer.domain.models.explorer.pulse.PulseFTSLoanLedger
 import io.provenance.explorer.domain.models.explorer.pulse.PulseMetric
 import io.provenance.explorer.domain.models.explorer.pulse.TransactionSummary
+import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.ExchangeGrpcClient
 import io.provenance.explorer.model.ValidatorState.ACTIVE
 import io.provenance.explorer.model.base.PagedResults
@@ -61,6 +62,7 @@ class PulseMetricService(
     private val pricingService: PricingService,
     private val assetService: AssetService,
     private val exchangeGrpcClient: ExchangeGrpcClient,
+    private val accountGrpcClient: AccountGrpcClient,
     private val pulseProperties: PulseProperties,
     @Qualifier("pulseHttpClient") private val pulseHttpClient: HttpClient
 ) {
@@ -94,7 +96,8 @@ class PulseMetricService(
     private val count = "COUNT"
 
     private fun nowUTC() = LocalDateTime.now(ZoneOffset.UTC)
-    private fun startOfNowUTC() = nowUTC().startOfDay().toLocalDate()
+    private fun endOfDay(time: LocalDateTime) =
+        time.plusDays(1).minusSeconds(1)
 
     /**
      * Builds a pulse metric and saves it to the DB cache and Caffeine cache
@@ -116,8 +119,8 @@ class PulseMetricService(
             quoteAmount = quoteAmount,
             series = series
         ).also {
-            PulseCacheRecord.upsert(date, type, it, subtype).also {
-                if (it is org.jetbrains.exposed.sql.statements.InsertStatement<*> && it.insertedCount == 0) {
+            PulseCacheRecord.upsert(date, type, it, subtype).also { p ->
+                if (p is org.jetbrains.exposed.sql.statements.InsertStatement<*> && p.insertedCount == 0) {
                     logger.warn("Failed to insert pulse cache record for $date $type $subtype")
                 }
             }
@@ -163,19 +166,20 @@ class PulseMetricService(
         dataSourceFn: () -> PulseMetric
     ): PulseMetric = transaction {
         val today = atDateTime?.toLocalDate() ?: nowUTC().toLocalDate()
-        val backInTime = backInTime(range).toLocalDate()
-
         val todayCache = fromPulseMetricCache(today, type, subtype)
-
         // if this is a scheduled task, bust the cache
         val bustCache = isScheduledTask()
 
         if (todayCache == null || bustCache) {
             val metric = dataSourceFn()
             val previousMetric =
-                fromPulseMetricCache(backInTime, type, subtype)
+                fromPulseMetricCache(
+                    backInTime(range).toLocalDate(),
+                    type,
+                    subtype
+                )
                     ?: buildAndSavePulseMetric(
-                        date = backInTime,
+                        date = backInTime(range).toLocalDate(),
                         type = type,
                         previous = metric.amount,
                         current = metric.amount,
@@ -198,6 +202,25 @@ class PulseMetricService(
                 subtype = subtype
             )
         } else todayCache
+    }.let {
+        if (range != MetricRangeType.DAY) {
+            val previous = fromPulseMetricCache(
+                backInTime(range).toLocalDate(),
+                type,
+                subtype
+            )?.amount ?: BigDecimal.ZERO
+
+            PulseMetric.build(
+                previous = previous,
+                current = it.amount,
+                base = it.base,
+                quote = it.quote,
+                quoteAmount = it.quoteAmount,
+                series = it.series
+            )
+        } else {
+            it
+        }
     }
 
     /**
@@ -207,17 +230,29 @@ class PulseMetricService(
     private fun isScheduledTask(): Boolean =
         Thread.currentThread().name.startsWith("scheduling-")
 
-    private fun denomSupplyCache(denom: String) =
-        denomCurrentSupplyCache.get(denom) {
-            assetService.getCurrentSupply(denom).toBigDecimal()
+    private fun denomSupplyCache(
+        denom: String,
+        atDateTime: LocalDateTime? = null
+    ) =
+        if (atDateTime != null) {
+            val height = BlockCacheRecord.getLastBlockBeforeTime(atDateTime)
+            assetService.getCurrentSupplyAtHeight(denom, height.toString())
+                .toBigDecimal()
+        } else {
+            denomCurrentSupplyCache.get(denom) {
+                assetService.getCurrentSupply(denom).toBigDecimal()
+            }
         } ?: BigDecimal.ZERO
 
-    private fun latestPulseAssetPrice(denom: String) =
+    private fun pulseAssetPrice(
+        denom: String,
+        atDate: LocalDate = nowUTC().startOfDay().toLocalDate()
+    ) =
         fromPulseMetricCache(
-            nowUTC().startOfDay().toLocalDate(),
+            atDate,
             PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC, denom
         )?.amount ?: fromPulseMetricCache(
-            nowUTC().minusDays(1).startOfDay().toLocalDate(),
+            atDate.minusDays(1),
             PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC, denom
         )?.amount ?: BigDecimal.ZERO
 
@@ -237,7 +272,7 @@ class PulseMetricService(
             if (atDateTime != null) {
                 tokenService.getTokenHistorical(
                     fromDate = atDateTime.startOfDay(),
-                    toDate = atDateTime
+                    toDate = endOfDay(atDateTime)
                 )
                     .firstOrNull { it.quote[quote] != null }
                     ?.let {
@@ -275,6 +310,7 @@ class PulseMetricService(
             atDateTime = atDateTime
         ) {
             // TODO refactor to TVL calculated as: scope NAVs + exchange committed assets values
+            // TODO add atDateTime via NavEventsRecord.getNavEvents?
             pricingService.getTotalAum().let {
                 PulseMetric.build(
                     base = USD_UPPER,
@@ -298,7 +334,7 @@ class PulseMetricService(
             if (atDateTime != null) {
                 NavEventsRecord.getNavEvents(
                     fromDate = atDateTime.startOfDay(),
-                    toDate = atDateTime
+                    toDate = endOfDay(atDateTime)
                 )
             } else {
                 NavEventsRecord.getNavEvents(
@@ -328,7 +364,7 @@ class PulseMetricService(
             if (atDateTime != null) {
                 NavEventsRecord.getNavEvents(
                     fromDate = atDateTime.startOfDay(),
-                    toDate = atDateTime
+                    toDate = endOfDay(atDateTime)
                 )
             } else {
                 NavEventsRecord.getNavEvents(
@@ -362,7 +398,7 @@ class PulseMetricService(
             if (atDateTime != null) {
                 NavEventsRecord.getNavEvents(
                     fromDate = atDateTime.startOfDay(),
-                    toDate = atDateTime,
+                    toDate = endOfDay(atDateTime),
                     source = "metadata",
                     priceDenoms = listOf(USD_LOWER)
                 )
@@ -466,9 +502,15 @@ class PulseMetricService(
                     )
                 }
             )
+            val count = if (atDateTime != null) {
+                TxCacheRecord.getTotalTxCountToDate(atDateTime)
+            } else {
+                TxCacheRecord.getTotalTxCount()
+            }
+
             PulseMetric.build(
                 base = base,
-                amount = TxCacheRecord.getTotalTxCount().toBigDecimal(),
+                amount = count.toBigDecimal(),
                 quote = null,
                 series = series
             )
@@ -486,6 +528,8 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
+            // TODO no great way to get participants by date/block
+            // TODO refactor to "active" accounts - i.e. doing stuff on the network
             AccountRecord.countActiveAccounts().let {
                 PulseMetric.build(
                     base = count,
@@ -497,7 +541,7 @@ class PulseMetricService(
     /**
      * Returns the total committed assets across all exchanges - a simple count of all commitments
      */
-    private fun exchangeCommittedAssets(
+    private fun exchangeCommittedAssetCount(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
     ): PulseMetric =
@@ -506,13 +550,18 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
+            val height = if (atDateTime != null) {
+                BlockCacheRecord.getLastBlockBeforeTime(atDateTime).toString()
+            } else {
+                null
+            }
             runBlocking {
-                exchangeGrpcClient.totalCommitmentCount().toBigDecimal().let {
-                    PulseMetric.build(
-                        base = count,
-                        amount = it
-                    )
-                }
+                exchangeGrpcClient.totalCommitmentCount(height).toBigDecimal()
+            }.let {
+                PulseMetric.build(
+                    base = count,
+                    amount = it
+                )
             }
         }
 
@@ -529,21 +578,18 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            if (atDateTime != null) {
-                TxEventRecord.pulseExchangeCommittedAssets(atDateTime.toLocalDate())
-            } else {
-                committedAssetTotals()
-            }.map {
-                // convert amount to appropriate denom decimal
-                var dE = denomExponent(it.key)
-                if (dE == 0 && it.key.lowercase().contains(USD_LOWER)) {
-                    dE = 6
-                }
-                Pair(it.key, it.value.times(inversePowerOfTen(dE)))
-            }.map {
-                // get price of the asset
-                Pair(it.first, it.second.times(latestPulseAssetPrice(it.first)))
-            }.sumOf { it.second }
+            committedAssetTotals(atDateTime)
+                .map {
+                    // convert amount to appropriate denom decimal
+                    var dE = denomExponent(it.key)
+                    if (dE == 0 && it.key.lowercase().contains(USD_LOWER)) {
+                        dE = 6
+                    }
+                    Pair(it.key, it.value.times(inversePowerOfTen(dE)))
+                }.map {
+                    // get price of the asset
+                    Pair(it.first, it.second.times(pulseAssetPrice(it.first)))
+                }.sumOf { it.second }
                 .let {
                     PulseMetric.build(
                         base = USD_UPPER,
@@ -555,12 +601,13 @@ class PulseMetricService(
     /**
      * FTS Loan-based Metrics
      */
-
     private fun ftsUrl(endpoint: String, atDateTime: LocalDateTime? = null) =
         if (atDateTime != null) {
-            "${pulseProperties.ftsLoanDataUrl}/$endpoint?atDate=${atDateTime.toLocalDate().format(
-                DateTimeFormatter.ISO_LOCAL_DATE
-            )}"
+            "${pulseProperties.ftsLoanDataUrl}/$endpoint?atDate=${
+                atDateTime.toLocalDate().format(
+                    DateTimeFormatter.ISO_LOCAL_DATE
+                )
+            }"
         } else {
             "${pulseProperties.ftsLoanDataUrl}/$endpoint"
         }
@@ -750,24 +797,41 @@ class PulseMetricService(
      */
     private fun pulseAssetSummariesForNavEvents(
         denom: String,
-        source: String? = null
+        source: String? = null,
+        atDateTime: LocalDateTime? = null
     ) =
-        NavEventsRecord.getNavEvents(
-            denom = denom,
-            fromDate = nowUTC().startOfDay(),
-            source = source
-        ).filter {
-            (source != null || it.source.startsWith("x/exchange")) &&
-                    it.priceDenom?.lowercase()
+        if (atDateTime != null) {
+            NavEventsRecord.getNavEvents(
+                denom = denom,
+                fromDate = atDateTime.startOfDay(),
+                toDate = endOfDay(atDateTime),
+                source = source
+            )
+        } else {
+            NavEventsRecord.getNavEvents(
+                denom = denom,
+                fromDate = nowUTC().startOfDay(),
+                source = source
+            )
+        }.filter { e ->
+            (source != null || e.source.startsWith("x/exchange")) &&
+                    e.priceDenom?.lowercase()
                         ?.startsWith("u$USD_LOWER") == true
         }
 
     /**
      * Returns the total committed assets across all exchanges
      */
-    private fun committedAssetTotals() = runBlocking {
-        exchangeGrpcClient.totalCommittedAssetTotals()
-    }
+    private fun committedAssetTotals(atDateTime: LocalDateTime? = null) =
+        runBlocking {
+            if (atDateTime != null) {
+                BlockCacheRecord.getLastBlockBeforeTime(atDateTime).toString()
+            } else {
+                null
+            }.let {
+                exchangeGrpcClient.totalCommittedAssetTotals(it)
+            }
+        }
 
     private fun todoPulse(): PulseMetric =
         PulseMetric.build(
@@ -807,22 +871,39 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            // TODO left off here - get prices, metrics at date if possible....
-
-            val latestHashPrice =
+            val hashPriceAtDate = if (atDateTime != null) {
+                tokenService.getTokenHistorical(atDateTime, atDateTime)
+                    .firstOrNull { it.quote[USD_UPPER] != null }
+                    ?.let {
+                        it.quote[USD_UPPER]?.close
+                    }
+            } else {
                 tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price
-                    ?: BigDecimal.ZERO
+            } ?: BigDecimal.ZERO
 
             when (type) {
                 PulseCacheType.HASH_STAKED_METRIC -> {
-                    val staked = validatorService.getStakingValidators(ACTIVE)
-                        .sumOf { it.tokenCount }
-                        .divide(UTILITY_TOKEN_BASE_MULTIPLIER).roundWhole()
+                    val staked = (
+                        if (atDateTime != null) {
+                        val height =
+                            BlockCacheRecord.getLastBlockBeforeTime(atDateTime)
+                        runBlocking {
+                            accountGrpcClient.getTotalValidatorDelegations(
+                                height.toString()
+                            )
+                        }
+                    } else {
+                        // i bet you're thinking "why not use the grpc client?", me too and i wrote this
+                        validatorService.getStakingValidators(ACTIVE)
+                            .sumOf { it.tokenCount }
+                    }
+                    ).divide(UTILITY_TOKEN_BASE_MULTIPLIER).roundWhole()
+
                     PulseMetric.build(
                         base = UTILITY_TOKEN,
                         amount = staked,
                         quote = USD_UPPER,
-                        quoteAmount = latestHashPrice.times(staked)
+                        quoteAmount = hashPriceAtDate.times(staked)
                     )
                 }
 
@@ -834,7 +915,7 @@ class PulseMetricService(
                         base = UTILITY_TOKEN,
                         amount = tokenSupply,
                         quote = USD_UPPER,
-                        quoteAmount = latestHashPrice.times(tokenSupply)
+                        quoteAmount = hashPriceAtDate.times(tokenSupply)
                     )
                 }
 
@@ -925,7 +1006,7 @@ class PulseMetricService(
                 atDateTime = atDateTime
             )
 
-            PulseCacheType.PULSE_COMMITTED_ASSETS_METRIC -> exchangeCommittedAssets(
+            PulseCacheType.PULSE_COMMITTED_ASSETS_METRIC -> exchangeCommittedAssetCount(
                 range = range,
                 atDateTime = atDateTime
             )
@@ -976,17 +1057,21 @@ class PulseMetricService(
     /**
      * TODO - this is problematic because it assumes all assets are USD quoted
      */
-    fun pulseAssetSummaries(): List<PulseAssetSummary> =
-        committedAssetTotals().keys.distinct().map { denom ->
+    fun pulseAssetSummaries(atDateTime: LocalDateTime? = null): List<PulseAssetSummary> =
+        committedAssetTotals(atDateTime).keys.distinct().map { denom ->
             val denomMetadata = pulseAssetDenomMetadata(denom)
             val denomExp = denomExponent(denomMetadata) ?: 1
             val denomPow = inversePowerOfTen(denomExp)
             val usdPow = inversePowerOfTen(6)
             val priceMetric = fetchOrBuildCacheFromDataSource(
                 type = PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC,
-                subtype = denom
+                subtype = denom,
+                atDateTime = atDateTime
             ) {
-                val events = pulseAssetSummariesForNavEvents(denom)
+                val events = pulseAssetSummariesForNavEvents(
+                    denom = denom,
+                    atDateTime = atDateTime
+                )
                 val tradeValue = events.sumOf { it.priceAmount!! }
                     .toBigDecimal()
                     .times(usdPow)
@@ -1004,9 +1089,14 @@ class PulseMetricService(
             }
             val volumeMetric = fetchOrBuildCacheFromDataSource(
                 type = PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC,
-                subtype = denom
+                subtype = denom,
+                atDateTime = atDateTime
             ) {
-                val events = pulseAssetSummariesForNavEvents(denom)
+                val events = pulseAssetSummariesForNavEvents(
+                    denom = denom,
+                    atDateTime = atDateTime
+                )
+
                 val tradeValue = events.sumOf { it.priceAmount!! }
                     .toBigDecimal()
                     .times(usdPow)
@@ -1016,8 +1106,9 @@ class PulseMetricService(
                     amount = tradeValue
                 )
             }
-            val supply = denomSupplyCache(denom)
-                .times(denomPow)
+            val supply =
+                denomSupplyCache(denom = denom, atDateTime = atDateTime)
+                    .times(denomPow)
             val marketCap = supply
                 .times(priceMetric.amount)
 
@@ -1114,7 +1205,7 @@ class PulseMetricService(
             val denomMetadata = pulseAssetDenomMetadata(denom)
             val denomExp = denomExponent(denomMetadata) ?: 1
             val denomPow = inversePowerOfTen(denomExp)
-            val denomPrice = latestPulseAssetPrice(denom)
+            val denomPrice = pulseAssetPrice(denom)
 
             PagedResults(
                 pages = pr.pages,
@@ -1156,11 +1247,24 @@ class PulseMetricService(
         for (i in 0..days) {
             val d = fromDate.plusDays(i).atStartOfDay()
             for (type in types) {
-                logger.info("Backfilling $type for $d")
-                pulseMetric(
-                    type = type,
-                    atDateTime = d
-                )
+                try {
+                    logger.info("Backfilling $type for $d")
+                    if (type == PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC ||
+                        type == PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC
+                    ) {
+                        pulseAssetSummaries(d) // first to set prices
+                    } else {
+                        pulseMetric(
+                            type = type,
+                            atDateTime = d
+                        )
+                    }
+                } catch (e: Exception) {
+                    logger.warn(
+                        "Failed to backfill $type for $d: ${e.message}",
+                        e
+                    )
+                }
             }
         }
     }

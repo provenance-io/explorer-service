@@ -2,6 +2,7 @@ package io.provenance.explorer.grpc.v1
 
 import cosmos.base.query.v1beta1.Pagination
 import io.grpc.ManagedChannelBuilder
+import io.grpc.Metadata
 import io.provenance.exchange.v1.AccountAmount
 import io.provenance.exchange.v1.Market
 import io.provenance.exchange.v1.MarketBrief
@@ -38,6 +39,13 @@ class ExchangeGrpcClient(channelUri: URI) {
         exchangeClient = QueryGrpcKt.QueryCoroutineStub(channel)
     }
 
+    private fun heightMetadata(height: String?) =
+        Metadata().apply {
+            if (height != null) {
+                this.put(Metadata.Key.of("x-cosmos-block-height", Metadata.ASCII_STRING_MARSHALLER), height)
+            }
+        }
+
     suspend fun getMarket(marketId: Int): Market = exchangeClient.getMarket(
         QueryGetMarketRequest.newBuilder().apply {
             this.marketId = marketId
@@ -54,24 +62,27 @@ class ExchangeGrpcClient(channelUri: URI) {
         } != null
     }
 
-    suspend fun getMarketCommitments(marketId: Int): List<AccountAmount> = exchangeClient.getMarketCommitments(
+    suspend fun getMarketCommitments(marketId: Int, height: String? = null): List<AccountAmount> = exchangeClient.getMarketCommitments(
         QueryGetMarketCommitmentsRequest.newBuilder().apply {
             this.marketId = marketId
             // TODO cripes this is going to need paging
             this.pagination = Pagination.PageRequest.newBuilder().apply {
                 limit = 10000
             }.build()
-        }.build()
+        }.build(),
+        heightMetadata(height)
     ).commitmentsList
 
-    suspend fun totalCommitmentCount() = exchangeClient.getAllMarkets(
-        QueryGetAllMarketsRequest.newBuilder().build()
-    ).marketsList.sumOf { getMarketCommitments(it.marketId).size }
+    suspend fun totalCommitmentCount(height: String? = null) = exchangeClient.getAllMarkets(
+        QueryGetAllMarketsRequest.newBuilder().build(),
+        heightMetadata(height)
+    ).marketsList.sumOf { getMarketCommitments(it.marketId, height).size }
 
-    suspend fun totalCommittedAssetTotals() = exchangeClient.getAllMarkets(
-        QueryGetAllMarketsRequest.newBuilder().build()
+    suspend fun totalCommittedAssetTotals(height: String? = null) = exchangeClient.getAllMarkets(
+        QueryGetAllMarketsRequest.newBuilder().build(),
+        heightMetadata(height)
     ).marketsList.flatMap {
-        getMarketCommitments(it.marketId).map { commitment ->
+        getMarketCommitments(it.marketId, height).map { commitment ->
             commitment.amountList.map { amount ->
                 amount.denom to amount.amount.toBigDecimal()
             }
