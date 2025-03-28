@@ -15,6 +15,7 @@ import io.provenance.explorer.domain.extensions.toObjectNodeMAddressValues
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.NftData
 import io.provenance.explorer.domain.models.explorer.toDataObject
+import io.provenance.explorer.domain.models.explorer.toNftData
 import io.provenance.explorer.domain.models.explorer.toOwnerRoles
 import io.provenance.explorer.domain.models.explorer.toSpecDescrip
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
@@ -58,21 +59,23 @@ class NftService(
     // TODO: switch to getScopesForOwningAddressDb after data migration
     fun getScopesForOwningAddress(ownerAddress: String, page: Int, count: Int) = runBlocking {
         metadataClient.getScopesByOwner(ownerAddress, page.toOffset(count), count).let {
-            val records = it.scopeUuidsList.map { uuid -> scopeToListview(uuid, ownerAddress) }
+            val records = it.scopeUuidsList.map { uuid ->
+                scopeToListview(metadataClient.getScopeById(uuid).scope.toNftData(), ownerAddress)
+            }
             PagedResults(it.pagination.total.pageCountOfResults(count), records, it.pagination.total)
         }
     }
 
     fun getScopesForOwningAddressDb(ownerAddress: String, page: Int, count: Int) {
         val scopes = NftScopeRecord.findAllByOwner(ownerAddress, count, page.toOffset(count))
-            .map { scopeToListviewDb(it, ownerAddress) }
+            .map { scopeToListview(it, ownerAddress) }
         val total = NftScopeRecord.findAllByOwner(ownerAddress).size.toLong()
         PagedResults(total.pageCountOfResults(count), scopes, total)
     }
 
     fun getScopesForOwnerAndType(ownerAddress: String, partyType: PartyType, page: Int, count: Int) {
         val scopes = NftScopeRecord.findByOwnerAndType(ownerAddress, partyType.name, page.toOffset(count), count)
-            .map { scopeToListviewDb(it, ownerAddress) }
+            .map { scopeToListview(it, ownerAddress) }
         val total = NftScopeRecord.findByOwnerAndType(ownerAddress, partyType.name).size.toLong()
         PagedResults(total.pageCountOfResults(count), scopes, total)
     }
@@ -83,23 +86,7 @@ class NftService(
         }?.map { it.address }
     }
 
-    private fun scopeToListview(scopeAddr: String, ownerAddress: String) = runBlocking {
-        metadataClient.getScopeById(scopeAddr).let {
-            val lastTx = TxNftJoinRecord.findTxByUuid(it.scope.scopeIdInfo.scopeUuid, 0, 1).firstOrNull()
-            ScopeListview(
-                it.scope.scopeIdInfo.scopeUuid,
-                it.scope.scopeIdInfo.scopeAddr,
-                getScopeDescrip(it.scope.scopeSpecIdInfo.scopeSpecAddr)?.name,
-                it.scope.scopeSpecIdInfo.scopeSpecAddr,
-                lastTx?.txTimestamp?.toString() ?: "",
-                it.scope.scope.ownersList.map { own -> own.address }.contains(ownerAddress),
-                it.scope.scope.dataAccessList.contains(ownerAddress),
-                it.scope.scope.valueOwnerAddress == ownerAddress
-            )
-        }
-    }
-
-    private fun scopeToListviewDb(nft: NftData, ownerAddress: String) = runBlocking {
+    private fun scopeToListview(nft: NftData, ownerAddress: String) = runBlocking {
         val scopeSpecAddr = nft.scope.specificationId.toMAddress().getPrimaryUuid().toMAddressScopeSpec().toString()
         val lastTx = TxNftJoinRecord.findTxByUuid(nft.uuid, 0, 1).firstOrNull()
         ScopeListview(

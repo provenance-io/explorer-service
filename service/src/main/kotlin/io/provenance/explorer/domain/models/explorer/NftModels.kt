@@ -9,12 +9,15 @@ import io.provenance.metadata.v1.Description
 import io.provenance.metadata.v1.Party
 import io.provenance.metadata.v1.RecordOutput
 import io.provenance.metadata.v1.Scope
+import io.provenance.metadata.v1.ScopeWrapper
 
 fun Description.toSpecDescrip() = SpecDescrip(this.name, this.description, this.websiteUrl, this.iconUrl)
 
 fun List<Party>.toOwnerRoles() = this.map { PartyAndRole(it.address, it.role.name) }
 
 fun RecordOutput.toDataObject(name: String) = RecordInputOutput(name, this.hash, this.status.name)
+
+fun ScopeWrapper.toNftData() = NftData(scopeIdInfo.scopeUuid, scopeIdInfo.scopeAddr, scope)
 
 data class NftVOTransferObj(
     val scope: NftScopeRecord,
