@@ -85,10 +85,11 @@ class NftService(
     fun getScopesForOwnerAndType(ownerAddress: String, partyType: PartyType) =
         NftScopeRecord.findByOwnerAndType(ownerAddress, partyType.name)
 
-    fun getScopeOwnersByPartyType(scopeAddress: String, partyType: PartyType): List<String> {
-        return NftScopeRecord.findByAddr(scopeAddress)?.scope?.ownersList?.filter {
-            it.role == partyType
-        }?.map { it.address } ?: emptyList()
+    fun getScopeOwnersByPartyType(scopeId: String, partyType: PartyType): List<String> {
+        return NftScopeRecord.findByScopeId(scopeId)?.scope?.ownersList
+            ?.filter { it.role == partyType }
+            ?.map { it.address }
+            ?: emptyList()
     }
 
     private fun scopeToListview(nft: NftData, ownerAddress: String) = runBlocking {
@@ -107,7 +108,7 @@ class NftService(
     }
 
     fun getScopeDetail(addr: String) = runBlocking {
-        val nftRecord = NftScopeRecord.findByAddr(addr)
+        val nftRecord = NftScopeRecord.findByScopeId(addr)
         val scope = nftRecord?.scope ?: metadataClient.getScopeById(addr).scope.scope
         val scopeSpecAddr = scope.specificationId.toMAddress().getPrimaryUuid().toMAddressScopeSpec().toString()
         val spec = getScopeDescrip(scopeSpecAddr)

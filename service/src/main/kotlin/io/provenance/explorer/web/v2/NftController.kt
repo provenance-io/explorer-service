@@ -97,9 +97,11 @@ class NftController(private val nftService: NftService) {
     ) = nftService.getRecordSpecJson(recordSpec)
 
     @Operation(summary = "Returns the owner addresses for a scope for a given type e.g. PARTY_TYPE_ORIGINATOR")
-    @GetMapping("/scope/{addr}/owners/{type}")
-    fun getNftOwnersByType(@PathVariable addr: String, @PathVariable type: PartyType) =
-        nftService.getScopeOwnersByPartyType(addr, type)
+    @GetMapping("/scope/{scopeId}/owners/{type}")
+    fun getNftOwnersByType(
+        @Parameter(description = "The uuid or address for the scope") @PathVariable scopeId: String,
+        @PathVariable type: PartyType
+    ) = nftService.getScopeOwnersByPartyType(scopeId, type)
 
     @Operation(summary = "Returns basic nft data for the owning address, includes address as value owner or owner")
     @GetMapping("/scope/owner/{address}/all")

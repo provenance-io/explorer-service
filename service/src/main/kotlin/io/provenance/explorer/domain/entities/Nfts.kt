@@ -13,6 +13,7 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insertAndGetId
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.ResultSet
 
@@ -32,6 +33,12 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findByAddr(addr: String) = transaction {
             NftScopeRecord.find { NftScopeTable.address eq addr }.firstOrNull()
+        }
+
+        fun findByScopeId(scopeId: String) = transaction {
+            NftScopeRecord.find {
+                (NftScopeTable.uuid eq scopeId) or (NftScopeTable.address eq scopeId)
+            }.firstOrNull()
         }
 
         // returns scopes that have the given address as the value owner or one of the owners
