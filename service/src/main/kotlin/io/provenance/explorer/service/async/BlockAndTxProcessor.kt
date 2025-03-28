@@ -448,8 +448,15 @@ class BlockAndTxProcessor(
     }
 
     private fun saveDenom(denom: String, txInfo: TxData, txUpdate: TxUpdate): String {
-        assetService.getAssetRaw(denom).let { (id, _) ->
-            txUpdate.apply { this.markerJoin.add(TxMarkerJoinRecord.buildInsert(txInfo, id.value, denom)) }
+        val nftPrefix = "nft/"
+        if (denom.startsWith(nftPrefix)) {
+            // update the scope data for this nft coin as its ownership could have changed in this Tx
+            // do we want these in the marker cache? :notsureif:
+            nftService.updateNft(denom.removePrefix(nftPrefix))
+        } else {
+            assetService.getAssetRaw(denom).let { (id, _) ->
+                txUpdate.apply { this.markerJoin.add(TxMarkerJoinRecord.buildInsert(txInfo, id.value, denom)) }
+            }
         }
         return denom
     }

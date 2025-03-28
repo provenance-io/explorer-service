@@ -8,6 +8,7 @@ import io.provenance.explorer.model.SpecDescrip
 import io.provenance.metadata.v1.Description
 import io.provenance.metadata.v1.Party
 import io.provenance.metadata.v1.RecordOutput
+import io.provenance.metadata.v1.Scope
 
 fun Description.toSpecDescrip() = SpecDescrip(this.name, this.description, this.websiteUrl, this.iconUrl)
 
@@ -19,4 +20,10 @@ data class NftVOTransferObj(
     val scope: NftScopeRecord,
     val address: String,
     val tx: TxCacheRecord
+)
+
+data class NftData(
+    val uuid: String,
+    val address: String,
+    val scope: Scope
 )

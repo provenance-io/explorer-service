@@ -13,6 +13,7 @@ import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.protoTypesFieldsToCheckForMetadata
 import io.provenance.explorer.domain.extensions.toObjectNodeMAddressValues
 import io.provenance.explorer.domain.extensions.toOffset
+import io.provenance.explorer.domain.models.explorer.NftData
 import io.provenance.explorer.domain.models.explorer.toDataObject
 import io.provenance.explorer.domain.models.explorer.toOwnerRoles
 import io.provenance.explorer.domain.models.explorer.toSpecDescrip
@@ -34,6 +35,7 @@ import io.provenance.explorer.model.base.toMAddress
 import io.provenance.explorer.model.base.toMAddressContractSpec
 import io.provenance.explorer.model.base.toMAddressScope
 import io.provenance.explorer.model.base.toMAddressScopeSpec
+import io.provenance.metadata.v1.PartyType
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flatMapMerge
@@ -53,23 +55,36 @@ class NftService(
     suspend fun getScopeDescrip(addr: String) =
         metadataClient.getScopeSpecById(addr).scopeSpecification.specification.description
 
-    // TODO: need to update to pull from db tables for owner/VO/data access
-    fun getScopesForOwningAddress(address: String, page: Int, count: Int) = runBlocking {
-        metadataClient.getScopesByOwner(address, page.toOffset(count), count).let {
-            val records = it.scopeUuidsList.map { uuid -> scopeToListview(uuid) }
+    // TODO: switch to getScopesForOwningAddressDb after data migration
+    fun getScopesForOwningAddress(ownerAddress: String, page: Int, count: Int) = runBlocking {
+        metadataClient.getScopesByOwner(ownerAddress, page.toOffset(count), count).let {
+            val records = it.scopeUuidsList.map { uuid -> scopeToListview(uuid, ownerAddress) }
             PagedResults(it.pagination.total.pageCountOfResults(count), records, it.pagination.total)
         }
     }
 
-    fun getScopesForValueOwner(address: String, page: Int, count: Int) = runBlocking {
-        metadataClient.getScopesByValueOwner(address, page.toOffset(count), count).let {
-            val records = it.scopeUuidsList.map { uuid -> scopeToListview(uuid) }
-            PagedResults(it.pagination.total.pageCountOfResults(count), records, it.pagination.total)
-        }
+    fun getScopesForOwningAddressDb(ownerAddress: String, page: Int, count: Int) {
+        val scopes = NftScopeRecord.findAllByOwner(ownerAddress, count, page.toOffset(count))
+            .map { scopeToListviewDb(it, ownerAddress) }
+        val total = NftScopeRecord.findAllByOwner(ownerAddress).size.toLong()
+        PagedResults(total.pageCountOfResults(count), scopes, total)
     }
 
-    private fun scopeToListview(addr: String) = runBlocking {
-        metadataClient.getScopeById(addr).let {
+    fun getScopesForOwnerAndType(ownerAddress: String, partyType: PartyType, page: Int, count: Int) {
+        val scopes = NftScopeRecord.findByOwnerAndType(ownerAddress, partyType.name, page.toOffset(count), count)
+            .map { scopeToListviewDb(it, ownerAddress) }
+        val total = NftScopeRecord.findByOwnerAndType(ownerAddress, partyType.name).size.toLong()
+        PagedResults(total.pageCountOfResults(count), scopes, total)
+    }
+
+    fun getScopeOwnersByPartyType(scopeAddress: String, partyType: PartyType) {
+        NftScopeRecord.findByAddr(scopeAddress)?.scope?.ownersList?.filter {
+            it.role == partyType
+        }?.map { it.address }
+    }
+
+    private fun scopeToListview(scopeAddr: String, ownerAddress: String) = runBlocking {
+        metadataClient.getScopeById(scopeAddr).let {
             val lastTx = TxNftJoinRecord.findTxByUuid(it.scope.scopeIdInfo.scopeUuid, 0, 1).firstOrNull()
             ScopeListview(
                 it.scope.scopeIdInfo.scopeUuid,
@@ -77,30 +92,47 @@ class NftService(
                 getScopeDescrip(it.scope.scopeSpecIdInfo.scopeSpecAddr)?.name,
                 it.scope.scopeSpecIdInfo.scopeSpecAddr,
                 lastTx?.txTimestamp?.toString() ?: "",
-                it.scope.scope.ownersList.map { own -> own.address }.contains(addr),
-                it.scope.scope.dataAccessList.contains(addr),
-                it.scope.scope.valueOwnerAddress == addr
+                it.scope.scope.ownersList.map { own -> own.address }.contains(ownerAddress),
+                it.scope.scope.dataAccessList.contains(ownerAddress),
+                it.scope.scope.valueOwnerAddress == ownerAddress
             )
         }
     }
 
-    // TODO update to pull from db for scope info
+    private fun scopeToListviewDb(nft: NftData, ownerAddress: String) = runBlocking {
+        val scopeSpecAddr = nft.scope.specificationId.toMAddress().getPrimaryUuid().toMAddressScopeSpec().toString()
+        val lastTx = TxNftJoinRecord.findTxByUuid(nft.uuid, 0, 1).firstOrNull()
+        ScopeListview(
+            nft.uuid,
+            nft.address,
+            getScopeDescrip(scopeSpecAddr)?.name,
+            scopeSpecAddr,
+            lastTx?.txTimestamp?.toString() ?: "",
+            nft.scope.ownersList.map { own -> own.address }.contains(ownerAddress),
+            nft.scope.dataAccessList.contains(ownerAddress),
+            nft.scope.valueOwnerAddress == ownerAddress
+        )
+    }
+
     fun getScopeDetail(addr: String) = runBlocking {
-        metadataClient.getScopeById(addr).let {
-            val spec = getScopeDescrip(it.scope.scopeSpecIdInfo.scopeSpecAddr)
-            val attributes = async { attrClient.getAllAttributesForAddress(it.scope.scopeIdInfo.scopeAddr) }
-            ScopeDetail(
-                it.scope.scopeIdInfo.scopeUuid,
-                it.scope.scopeIdInfo.scopeAddr,
-                spec?.name,
-                it.scope.scopeSpecIdInfo.scopeSpecAddr,
-                spec?.toSpecDescrip(),
-                it.scope.scope.ownersList.toOwnerRoles(),
-                it.scope.scope.dataAccessList,
-                it.scope.scope.valueOwnerAddress,
-                attributes.await().map { attr -> attr.toResponse() }
-            )
-        }
+        val nftRecord = NftScopeRecord.findByAddr(addr)
+        val scope = nftRecord?.scope ?: metadataClient.getScopeById(addr).scope.scope
+        val scopeUuid = nftRecord?.uuid ?: scope.scopeId.toMAddress().getPrimaryUuid().toString()
+        val scopeSpecAddr = scope.specificationId.toMAddress().getPrimaryUuid().toMAddressScopeSpec().toString()
+        val spec = getScopeDescrip(scopeSpecAddr)
+        val attributes = async { attrClient.getAllAttributesForAddress(addr) }
+
+        ScopeDetail(
+            scopeUuid,
+            addr,
+            spec?.name,
+            scopeSpecAddr,
+            spec?.toSpecDescrip(),
+            scope.ownersList.toOwnerRoles(),
+            scope.dataAccessList,
+            scope.valueOwnerAddress,
+            attributes.await().map { attr -> attr.toResponse() }
+        )
     }
 
     fun getRecordsForScope(addr: String): List<ScopeRecord> = runBlocking {
@@ -191,8 +223,12 @@ class NftService(
 
     fun insertOrUpdateNft(uuid: String, address: String) = runBlocking {
         val scope = metadataClient.getScopeById(address, false, false).scope.scope
-        NftScopeRecord
-            .insertOrUpdate(uuid, address, scope)
+        NftScopeRecord.insertOrUpdate(uuid, address, scope)
+    }
+
+    fun updateNft(scopeAddr: String) = runBlocking {
+        val scope = metadataClient.getScopeById(scopeAddr, false, false).scope
+        NftScopeRecord.insertOrUpdate(scope.scopeIdInfo.scopeUuid, scopeAddr, scope.scope)
     }
 
     fun saveMAddress(md: MetadataAddress) = transaction {
@@ -238,6 +274,7 @@ class NftService(
     }
 
     fun getScopeTotalForNavEvents() = runBlocking {
+        // TODO could query for marker owned scopes and filter them out here after scope migration
         NavEventsRecord.getLatestNavEvents(
             priceDenoms = listOf(USD_LOWER),
             includeMarkers = false,

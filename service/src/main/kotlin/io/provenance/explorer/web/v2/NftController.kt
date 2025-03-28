@@ -2,6 +2,7 @@ package io.provenance.explorer.web.v2
 
 import io.provenance.explorer.domain.annotation.HiddenApi
 import io.provenance.explorer.service.NftService
+import io.provenance.metadata.v1.PartyType
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Schema
@@ -44,6 +45,22 @@ class NftController(private val nftService: NftService) {
         count: Int
     ) = nftService.getScopesForOwningAddress(address, page, count)
 
+    @Operation(summary = "Returns NFTs for the owning address and type e.g. PARTY_TYPE_ORIGINATOR")
+    @GetMapping("/scope/owner/{address}/{type}")
+    fun getNftsByOwningAddressAndType(
+        @Parameter(description = "The standard account address for the chain.") @PathVariable address: String,
+        @Parameter(description = "The party type") @PathVariable type: PartyType,
+        @Parameter(schema = Schema(defaultValue = "1"), required = false)
+        @RequestParam(defaultValue = "1")
+        @Min(1)
+        page: Int,
+        @Parameter(description = "Record count between 1 and 200", schema = Schema(defaultValue = "10"), required = false)
+        @RequestParam(defaultValue = "10")
+        @Min(1)
+        @Max(200)
+        count: Int
+    ) = nftService.getScopesForOwnerAndType(address, type, page, count)
+
     @Operation(summary = "Returns MetadataAddress obj for bech32 addr")
     @GetMapping("/address/{addr}")
     @HiddenApi
@@ -78,4 +95,9 @@ class NftController(private val nftService: NftService) {
         @PathVariable
         recordSpec: String
     ) = nftService.getRecordSpecJson(recordSpec)
+
+    @Operation(summary = "Returns the owner addresses for a scope for a given type e.g. PARTY_TYPE_ORIGINATOR")
+    @GetMapping("/scope/{addr}/owners/{type}")
+    fun getNftOwnersByType(@PathVariable addr: String, @PathVariable type: PartyType) =
+        nftService.getScopeOwnersByPartyType(addr, type)
 }

@@ -2,6 +2,8 @@ package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.extensions.execAndMap
+import io.provenance.explorer.domain.models.explorer.NftData
 import io.provenance.explorer.domain.models.explorer.NftVOTransferObj
 import io.provenance.metadata.v1.Scope
 import org.jetbrains.exposed.dao.IntEntity
@@ -12,6 +14,7 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.sql.ResultSet
 
 object NftScopeTable : IntIdTable(name = "nft_scope") {
     val uuid = varchar("uuid", 128)
@@ -29,6 +32,51 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findByAddr(addr: String) = transaction {
             NftScopeRecord.find { NftScopeTable.address eq addr }.firstOrNull()
+        }
+
+        // returns scopes that have the given address as the value owner or one of the owners
+        fun findAllByOwner(
+            address: String,
+            limit: Int? = null,
+            offset: Int? = null
+        ) = transaction {
+            var query = """
+                SELECT * FROM nft_scope
+                WHERE scope ->> 'value_owner_address' = '$address'
+                OR scope->'owners' @> '[{"address": "$address"}]'
+                ORDER BY id DESC
+            """.trimIndent()
+
+            limit?.let { query += " LIMIT $it" }
+            offset?.let { query += " OFFSET $it" }
+
+            query.execAndMap { it.toNftData() }
+        }
+
+        fun findByValueOwner(address: String, limit: Int? = null, offset: Int? = null) = transaction {
+            var query = """
+                SELECT * FROM nft_scope
+                WHERE scope ->> 'value_owner_address' = '$address'
+                ORDER BY id DESC
+            """.trimIndent()
+
+            limit?.let { query += " LIMIT $it" }
+            offset?.let { query += " OFFSET $it" }
+
+            query.execAndMap { it.toNftData() }
+        }
+
+        fun findByOwnerAndType(address: String, partyType: String, limit: Int? = null, offset: Int? = null) = transaction {
+            var query = """
+                SELECT * FROM nft_scope
+                WHERE OR scope->'owners' @> '[{"role": "$partyType", "address": "$address"}]'
+                ORDER BY id DESC
+            """.trimIndent()
+
+            limit?.let { query += " LIMIT $it" }
+            offset?.let { query += " OFFSET $it" }
+
+            query.execAndMap { it.toNftData() }
         }
 
         fun findWithMissingScope() = transaction {
@@ -56,6 +104,12 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
     var deleted by NftScopeTable.deleted
     var scope by NftScopeTable.scope
 }
+
+fun ResultSet.toNftData() = NftData(
+    uuid = getString("uuid"),
+    address = getString("address"),
+    scope = OBJECT_MAPPER.readValue(getString("scope"), Scope::class.java)
+)
 
 object NftScopeSpecTable : IntIdTable(name = "nft_scope_spec") {
     val uuid = varchar("uuid", 128)

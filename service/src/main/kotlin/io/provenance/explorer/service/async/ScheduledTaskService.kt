@@ -401,7 +401,8 @@ class ScheduledTaskService(
         pulseMetricService.refreshCache()
     }
 
-    @Scheduled(initialDelay = 0L, fixedDelay = 1L, timeUnit = TimeUnit.DAYS)
+    // hopefully a one time thing
+    @Scheduled(initialDelay = 0L, fixedDelay = 7L, timeUnit = TimeUnit.DAYS)
     fun populateScopes() {
         nftService.populateScopes()
     }
