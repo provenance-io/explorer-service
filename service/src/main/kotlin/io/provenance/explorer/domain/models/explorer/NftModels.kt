@@ -19,6 +19,8 @@ fun RecordOutput.toDataObject(name: String) = RecordInputOutput(name, this.hash,
 
 fun ScopeWrapper.toNftData() = NftData(scopeIdInfo.scopeUuid, scopeIdInfo.scopeAddr, scope)
 
+fun NftScopeRecord.toNftData() = NftData(uuid, address, scope ?: Scope.getDefaultInstance())
+
 data class NftVOTransferObj(
     val scope: NftScopeRecord,
     val address: String,

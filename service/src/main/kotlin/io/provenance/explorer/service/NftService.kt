@@ -73,7 +73,13 @@ class NftService(
         return PagedResults(total.pageCountOfResults(count), scopes, total)
     }
 
-    fun getScopesForOwningAddress(ownerAddress: String) = NftScopeRecord.findAllByOwner(ownerAddress)
+    fun getScopesForOwningAddress(ownerAddress: String, valueOwnerOnly: Boolean?) =
+        when (valueOwnerOnly) {
+            true -> getScopesForValueOwningAddress(ownerAddress)
+            else -> NftScopeRecord.findAllByOwner(ownerAddress)
+        }
+
+    fun getScopesForValueOwningAddress(ownerAddress: String) = NftScopeRecord.findByValueOwner(ownerAddress)
 
     fun getScopeDetailsForOwnerAndType(ownerAddress: String, partyType: PartyType, page: Int, count: Int): PagedResults<ScopeListview> {
         val scopes = NftScopeRecord.findByOwnerAndType(ownerAddress, partyType.name, count, page.toOffset(count))
@@ -92,20 +98,7 @@ class NftService(
             ?: emptyList()
     }
 
-    private fun scopeToListview(nft: NftData, ownerAddress: String) = runBlocking {
-        val scopeSpecAddr = nft.scope.specificationId.toMAddress().getPrimaryUuid().toMAddressScopeSpec().toString()
-        val lastTx = TxNftJoinRecord.findTxByUuid(nft.uuid, 0, 1).firstOrNull()
-        ScopeListview(
-            nft.uuid,
-            nft.address,
-            getScopeDescrip(scopeSpecAddr)?.name,
-            scopeSpecAddr,
-            lastTx?.txTimestamp?.toString() ?: "",
-            nft.scope.ownersList.map { own -> own.address }.contains(ownerAddress),
-            nft.scope.dataAccessList.contains(ownerAddress),
-            nft.scope.valueOwnerAddress == ownerAddress
-        )
-    }
+    fun getScopeBasic(scopeId: String) = NftScopeRecord.findByScopeId(scopeId)?.toNftData()
 
     fun getScopeDetail(addr: String) = runBlocking {
         val nftRecord = NftScopeRecord.findByScopeId(addr)
@@ -279,5 +272,20 @@ class NftService(
         NftScopeRecord.findWithMissingScope().forEach {
             insertOrUpdateNft(it.uuid, it.address)
         }
+    }
+
+    private fun scopeToListview(nft: NftData, ownerAddress: String) = runBlocking {
+        val scopeSpecAddr = nft.scope.specificationId.toMAddress().getPrimaryUuid().toMAddressScopeSpec().toString()
+        val lastTx = TxNftJoinRecord.findTxByUuid(nft.uuid, 0, 1).firstOrNull()
+        ScopeListview(
+            nft.uuid,
+            nft.address,
+            getScopeDescrip(scopeSpecAddr)?.name,
+            scopeSpecAddr,
+            lastTx?.txTimestamp?.toString() ?: "",
+            nft.scope.ownersList.map { own -> own.address }.contains(ownerAddress),
+            nft.scope.dataAccessList.contains(ownerAddress),
+            nft.scope.valueOwnerAddress == ownerAddress
+        )
     }
 }
