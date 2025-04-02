@@ -649,6 +649,7 @@ class PulseMetricService(
                 pulseHttpClient.get {
                     url(ftsUrl("balances", atDateTime))
                 }.body<JsonNode>().let {
+                    logger.info("${ftsUrl("balances", atDateTime)} response: ${it.asText()}")
                     PulseMetric.build(
                         base = USD_UPPER,
                         amount = it["TotalBalance"].asText().toBigDecimal()
