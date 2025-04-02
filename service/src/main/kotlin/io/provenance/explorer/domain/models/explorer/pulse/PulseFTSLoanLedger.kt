@@ -9,7 +9,6 @@ data class PulseFTSLoanLedger(
     @JsonProperty("LedgerEntryType") val ledgerEntryType: String,
     @JsonProperty("PostDate") val postDate: LocalDateTime,
     @JsonProperty("EffectiveDate") val effectiveDate: LocalDateTime,
-    @JsonProperty("Bucket") val bucket: String,
     @JsonProperty("EntryAmount") val entryAmount: Double,
     @JsonProperty("PrinApplied") val prinApplied: Double,
     @JsonProperty("PrinBalance") val prinBalance: Double,
