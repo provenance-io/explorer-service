@@ -907,6 +907,7 @@ class PulseMetricService(
      */
     fun refreshCache() = transaction {
         val threadName = Thread.currentThread().name
+        logger.info("Refreshing pulse cache for thread $threadName")
         PulseCacheType.entries.filter {
             it != PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC &&
                     it != PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
@@ -916,6 +917,8 @@ class PulseMetricService(
             }
 
         pulseAssetSummaries()
+
+        logger.info("Pulse cache refreshed for thread $threadName")
     }
 
     /**
