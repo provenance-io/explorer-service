@@ -32,6 +32,7 @@ import io.provenance.explorer.domain.models.explorer.pulse.TransactionSummary
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.ExchangeGrpcClient
 import io.provenance.explorer.model.ValidatorState.ACTIVE
+import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.USD_LOWER
 import io.provenance.explorer.model.base.USD_UPPER
@@ -59,8 +60,8 @@ import kotlin.math.pow
 class PulseMetricService(
     private val tokenService: TokenService,
     private val validatorService: ValidatorService,
-    private val pricingService: PricingService,
     private val assetService: AssetService,
+    private val explorerService: ExplorerService,
     private val exchangeGrpcClient: ExchangeGrpcClient,
     private val accountGrpcClient: AccountGrpcClient,
     private val pulseProperties: PulseProperties,
@@ -94,6 +95,7 @@ class PulseMetricService(
     val quote = USD_UPPER
 
     private val count = "COUNT"
+    private val percentage = "PERCENTAGE"
 
     private fun nowUTC() = LocalDateTime.now(ZoneOffset.UTC)
     private fun endOfDay(time: LocalDateTime) =
@@ -236,7 +238,7 @@ class PulseMetricService(
     ) =
         if (atDateTime != null) {
             val height = BlockCacheRecord.getLastBlockBeforeTime(atDateTime)
-            assetService.getCurrentSupplyAtHeight(denom, height.toString())
+            assetService.getCurrentSupplyAtHeight(denom, height)
                 .toBigDecimal()
         } else {
             denomCurrentSupplyCache.get(denom) {
@@ -258,7 +260,11 @@ class PulseMetricService(
 
     /**
      * Returns the current hash market cap metric comparing the previous range market cap
-     * to the current day's market cap
+     * to the current day's market cap.
+     *
+     * The total market value of a cryptocurrency's circulating supply.
+     * It is analogous to the free-float capitalization in the stock market.
+     * Market cap = Current price x Circulating supply
      */
     private fun hashMarketCapMetric(
         range: MetricRangeType = MetricRangeType.DAY,
@@ -276,47 +282,94 @@ class PulseMetricService(
                 )
                     .firstOrNull { it.quote[quote] != null }
                     ?.let {
-                        it.quote[quote]?.market_cap?.let { marketCap ->
-                            PulseMetric.build(
-                                base = USD_UPPER,
-                                amount = marketCap.roundWhole(),
-                            )
+                        it.quote[quote]?.let { quote ->
+                            val height =
+                                BlockCacheRecord.getLastBlockBeforeTime(
+                                    atDateTime
+                                )
+                            val supply = tokenService
+                                .circulatingSupply(
+                                    pulseProperties.hashHoldersExcludedFromCirculatingSupply,
+                                    height
+                                )
+                            Pair(supply, quote.close)
                         }
                     }
             } else {
                 tokenService.getTokenLatest()
                     ?.takeIf { it.quote[quote] != null }
                     ?.let {
-                        it.quote[quote]?.market_cap_by_total_supply?.let { marketCap ->
-                            PulseMetric.build(
-                                base = USD_UPPER,
-                                amount = marketCap.roundWhole(),
-                            )
+                        it.quote[quote]?.let { quote ->
+                            val supply = tokenService
+                                .circulatingSupply(
+                                    pulseProperties.hashHoldersExcludedFromCirculatingSupply
+                                )
+                            Pair(supply, quote.price)
                         }
                     }
-            } ?: throw ResourceNotFoundException("No quote found for $quote")
+            }?.let {
+                val supply = it.first
+                val price = it.second
+                val marketCap = price.times(supply)
+                    .times(
+                        inversePowerOfTen(
+                            UTILITY_TOKEN_BASE_MULTIPLIER.toInt()
+                        )
+                    )
+                PulseMetric.build(
+                    base = USD_UPPER,
+                    amount = marketCap.roundWhole(),
+                )
+            } ?: PulseMetric.build(
+                base = USD_UPPER,
+                amount = BigDecimal.ZERO,
+            )
         }
 
-    /**
-     * Returns global market cap aka total AUM
-     */
-    private fun pulseMarketCap(
+    private fun pulseTVL(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
     ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PULSE_MARKET_CAP_METRIC,
+            type = PulseCacheType.PULSE_TVL_METRIC,
             range = range,
             atDateTime = atDateTime
         ) {
-            // TODO refactor to TVL calculated as: scope NAVs + exchange committed assets values
-            // TODO add atDateTime via NavEventsRecord.getNavEvents?
-            pricingService.getTotalAum().let {
-                PulseMetric.build(
-                    base = USD_UPPER,
-                    amount = it
-                )
-            }
+            val committedValue = this.exchangeCommittedAssetsValue(
+                range = range,
+                atDateTime = atDateTime
+            )
+            val navValue = this.totalMetadataNavs(
+                range = range,
+                atDateTime = atDateTime
+            )
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = committedValue.amount.add(navValue.amount)
+            )
+        }
+
+    private fun pulseTradingTVL(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_TRADING_TVL_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            val committedValue = this.exchangeCommittedAssetsValue(
+                range = range,
+                atDateTime = atDateTime
+            )
+            val tradedValue = this.pulseTradeValueSettled(
+                range = range,
+                atDateTime = atDateTime
+            )
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = committedValue.amount.add(tradedValue.amount)
+            )
         }
 
     /**
@@ -354,7 +407,8 @@ class PulseMetricService(
      */
     private fun pulseTradeValueSettled(
         range: MetricRangeType = MetricRangeType.DAY,
-        atDateTime: LocalDateTime? = null
+        atDateTime: LocalDateTime? = null,
+        denom: String? = null
     ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
             type = PulseCacheType.PULSE_TRADE_VALUE_SETTLED_METRIC,
@@ -364,11 +418,13 @@ class PulseMetricService(
             if (atDateTime != null) {
                 NavEventsRecord.getNavEvents(
                     fromDate = atDateTime.startOfDay(),
-                    toDate = endOfDay(atDateTime)
+                    toDate = endOfDay(atDateTime),
+                    denom = denom
                 )
             } else {
                 NavEventsRecord.getNavEvents(
-                    fromDate = nowUTC().startOfDay()
+                    fromDate = nowUTC().startOfDay(),
+                    denom = denom
                 )
             }.filter {
                 it.source.startsWith("x/exchange") &&
@@ -415,42 +471,6 @@ class PulseMetricService(
                     it.scopeId
                 }
                 .sumOf { it.priceAmount!! }.toBigDecimal().let {
-                    PulseMetric.build(
-                        base = USD_UPPER,
-                        amount = it.times(scopeNAVDecimal)
-                    )
-                }
-        }
-
-    private fun dailyNavDecrease(
-        range: MetricRangeType = MetricRangeType.DAY,
-        atDateTime: LocalDateTime? = null
-    ): PulseMetric =
-        fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PULSE_NAV_DECREASE_METRIC,
-            range = range,
-            atDateTime = atDateTime
-        ) {
-            if (atDateTime != null) {
-                NavEventsRecord.navPricesBetweenDays(
-                    startDateTime = atDateTime.startOfDay().minusDays(1),
-                    endDateTime = atDateTime
-                )
-            } else {
-                val today = nowUTC().startOfDay()
-                NavEventsRecord.navPricesBetweenDays(
-                    startDateTime = today.minusDays(1),
-                    endDateTime = today
-                )
-            }.map {
-                val currentAmount = BigDecimal(it["current_amount"].toString())
-                val previousAmount =
-                    BigDecimal(it["previous_amount"].toString())
-                val changeAmount = previousAmount.minus(currentAmount)
-
-                Triple(currentAmount, previousAmount, changeAmount)
-            }.filter { it.third >= BigDecimal.ZERO }
-                .sumOf { it.third }.let {
                     PulseMetric.build(
                         base = USD_UPPER,
                         amount = it.times(scopeNAVDecimal)
@@ -551,7 +571,7 @@ class PulseMetricService(
             atDateTime = atDateTime
         ) {
             val height = if (atDateTime != null) {
-                BlockCacheRecord.getLastBlockBeforeTime(atDateTime).toString()
+                BlockCacheRecord.getLastBlockBeforeTime(atDateTime)
             } else {
                 null
             }
@@ -596,6 +616,33 @@ class PulseMetricService(
                         amount = it
                     )
                 }
+        }
+
+    private fun pulseChainFees(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_CHAIN_FEES_VALUE_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            val atStart = (atDateTime ?: nowUTC()).startOfDay()
+            val atEnd = endOfDay(atStart)
+
+            val hashFees = explorerService.getGasVolume(
+                atStart,
+                atEnd,
+                DateTruncGranularity.DAY
+            ).sumOf { it.feeAmount }
+                .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+
+            val feePrice = hashFees.times(hashPriceAtDate(atDateTime))
+
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = feePrice
+            )
         }
 
     /**
@@ -649,7 +696,14 @@ class PulseMetricService(
                 pulseHttpClient.get {
                     url(ftsUrl("balances", atDateTime))
                 }.body<JsonNode>().let {
-                    logger.info("${ftsUrl("balances", atDateTime)} response: ${it.asText()}")
+                    logger.info(
+                        "${
+                            ftsUrl(
+                                "balances",
+                                atDateTime
+                            )
+                        } response: ${it.asText()}"
+                    )
                     PulseMetric.build(
                         base = USD_UPPER,
                         amount = it["TotalBalance"].asText().toBigDecimal()
@@ -826,7 +880,7 @@ class PulseMetricService(
     private fun committedAssetTotals(atDateTime: LocalDateTime? = null) =
         runBlocking {
             if (atDateTime != null) {
-                BlockCacheRecord.getLastBlockBeforeTime(atDateTime).toString()
+                BlockCacheRecord.getLastBlockBeforeTime(atDateTime)
             } else {
                 null
             }.let {
@@ -834,11 +888,16 @@ class PulseMetricService(
             }
         }
 
-    private fun todoPulse(): PulseMetric =
-        PulseMetric.build(
-            base = UTILITY_TOKEN,
-            amount = BigDecimal.ZERO
-        )
+    private fun hashPriceAtDate(atDateTime: LocalDateTime?) =
+        if (atDateTime != null) {
+            tokenService.getTokenHistorical(atDateTime, atDateTime)
+                .firstOrNull { it.quote[USD_UPPER] != null }
+                ?.let {
+                    it.quote[USD_UPPER]?.close
+                }
+        } else {
+            tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price
+        } ?: BigDecimal.ZERO
 
     /**
      * Periodically refreshes the pulse cache
@@ -872,46 +931,48 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val hashPriceAtDate = if (atDateTime != null) {
-                tokenService.getTokenHistorical(atDateTime, atDateTime)
-                    .firstOrNull { it.quote[USD_UPPER] != null }
-                    ?.let {
-                        it.quote[USD_UPPER]?.close
-                    }
+            val height = if (atDateTime != null) {
+                BlockCacheRecord.getLastBlockBeforeTime(atDateTime)
             } else {
-                tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price
-            } ?: BigDecimal.ZERO
+                null
+            }
+
+            val hashPriceAtDate = hashPriceAtDate(atDateTime)
 
             when (type) {
                 PulseCacheType.HASH_STAKED_METRIC -> {
-                    val staked = (
+                    val staked =
                         if (atDateTime != null) {
-                        val height =
-                            BlockCacheRecord.getLastBlockBeforeTime(atDateTime)
-                        runBlocking {
-                            accountGrpcClient.getTotalValidatorDelegations(
-                                height.toString()
-                            )
+                            runBlocking {
+                                accountGrpcClient.getTotalValidatorDelegations(
+                                    height
+                                )
+                            }
+                        } else {
+                            // I bet you're thinking "why not use the grpc client?", me too and i wrote this
+                            validatorService.getStakingValidators(ACTIVE)
+                                .sumOf { it.tokenCount }
                         }
-                    } else {
-                        // i bet you're thinking "why not use the grpc client?", me too and i wrote this
-                        validatorService.getStakingValidators(ACTIVE)
-                            .sumOf { it.tokenCount }
-                    }
-                    ).divide(UTILITY_TOKEN_BASE_MULTIPLIER).roundWhole()
+                            .divide(UTILITY_TOKEN_BASE_MULTIPLIER).roundWhole()
+
+                    val supply = tokenService.maxSupply()
+                        .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+
+                    val percentageStaked = staked.divide(supply)
+                        .multiply(BigDecimal(100))
 
                     PulseMetric.build(
-                        base = UTILITY_TOKEN,
-                        amount = staked,
-                        quote = USD_UPPER,
-                        quoteAmount = hashPriceAtDate.times(staked)
+                        base = percentage,
+                        amount = percentageStaked
                     )
                 }
 
                 PulseCacheType.HASH_CIRCULATING_METRIC -> {
-                    val tokenSupply = tokenService.totalSupply()
-                        .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
-                        .roundWhole()
+                    val tokenSupply =
+                        tokenService.circulatingSupply(pulseProperties.hashHoldersExcludedFromCirculatingSupply)
+                            .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+                            .roundWhole()
+
                     PulseMetric.build(
                         base = UTILITY_TOKEN,
                         amount = tokenSupply,
@@ -927,6 +988,29 @@ class PulseMetricService(
                     PulseMetric.build(
                         base = UTILITY_TOKEN,
                         amount = tokenSupply
+                    )
+                }
+
+                PulseCacheType.HASH_VOLUME_METRIC -> {
+                    this.pulseTradeValueSettled(
+                        range,
+                        atDateTime,
+                        UTILITY_TOKEN
+                    )
+                }
+
+                PulseCacheType.HASH_FDV_METRIC -> {
+                    /*
+                    The market cap if the max supply was in circulation.
+                    Fully-diluted value (FDV) = price x max supply.
+                     */
+                    val tokenSupply = tokenService.maxSupply(height)
+                        .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+                        .roundWhole()
+                    val fdv = hashPriceAtDate.times(tokenSupply)
+                    PulseMetric.build(
+                        base = USD_UPPER,
+                        amount = fdv
                     )
                 }
 
@@ -967,7 +1051,29 @@ class PulseMetricService(
                 atDateTime = atDateTime
             )
 
-            PulseCacheType.PULSE_MARKET_CAP_METRIC -> pulseMarketCap(
+            PulseCacheType.HASH_VOLUME_METRIC -> hashMetric(
+                range = range,
+                type = type,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.HASH_FDV_METRIC -> hashMetric(
+                range = range,
+                type = type,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.PULSE_TVL_METRIC -> pulseTVL(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.PULSE_TRADING_TVL_METRIC -> pulseTradingTVL(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            PulseCacheType.PULSE_CHAIN_FEES_VALUE_METRIC -> pulseChainFees(
                 range = range,
                 atDateTime = atDateTime
             )
@@ -978,11 +1084,6 @@ class PulseMetricService(
             )
 
             PulseCacheType.PULSE_TODAYS_NAV_METRIC -> pulseTodaysNavs(
-                range = range,
-                atDateTime = atDateTime
-            )
-
-            PulseCacheType.PULSE_NAV_DECREASE_METRIC -> dailyNavDecrease(
                 range = range,
                 atDateTime = atDateTime
             )
@@ -1016,10 +1117,6 @@ class PulseMetricService(
                 range = range,
                 atDateTime = atDateTime
             )
-
-            PulseCacheType.PULSE_DEMOCRATIZED_PRIME_POOLS_METRIC -> todoPulse()
-            PulseCacheType.PULSE_MARGIN_LOANS_METRIC -> todoPulse()
-            PulseCacheType.PULSE_FEES_AUCTIONS_METRIC -> todoPulse()
 
             PulseCacheType.FTS_LOAN_PAYMENTS_METRIC -> ftsLoanPayments(
                 range = range,

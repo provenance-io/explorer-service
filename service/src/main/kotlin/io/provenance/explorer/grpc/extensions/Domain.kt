@@ -43,10 +43,22 @@ import java.time.LocalDateTime
 
 const val BLOCK_HEIGHT = "x-cosmos-block-height"
 
-fun <S : AbstractStub<S>> S.addBlockHeightToQuery(blockHeight: String): S =
-    Metadata()
-        .also { it.put(Metadata.Key.of(BLOCK_HEIGHT, Metadata.ASCII_STRING_MARSHALLER), blockHeight) }
-        .let { MetadataUtils.attachHeaders(this, it) }
+fun <S : AbstractStub<S>> S.addBlockHeightToQuery(blockHeight: Int?): S =
+    if (blockHeight == null) {
+        this
+    } else {
+        Metadata()
+            .also {
+                it.put(
+                    Metadata.Key.of(
+                        BLOCK_HEIGHT,
+                        Metadata.ASCII_STRING_MARSHALLER
+                    ),
+                    blockHeight.toString()
+                )
+            }
+            .let { MetadataUtils.attachHeaders(this, it) }
+    }
 
 fun getPagination(offset: Int, limit: Int) =
     pageRequest {
@@ -68,22 +80,26 @@ fun Any.toMarker(): MarkerAccount =
         }
     }
 
-fun MarkerAccount.isMintable() = this.accessControlList.any { it.permissionsList.contains(Access.ACCESS_MINT) }
+fun MarkerAccount.isMintable() =
+    this.accessControlList.any { it.permissionsList.contains(Access.ACCESS_MINT) }
 
 fun Array<Access>.filterRoles() = this.filter { it.roleFilter() }
 fun List<Access>.filterRoles() = this.filter { it.roleFilter() }
-fun Access.roleFilter() = this != Access.UNRECOGNIZED && this != Access.ACCESS_UNSPECIFIED
+fun Access.roleFilter() =
+    this != Access.UNRECOGNIZED && this != Access.ACCESS_UNSPECIFIED
 
 fun MarkerAccount.getManagingAccounts(): MutableMap<String, List<String>> {
     val managers = this.accessControlList.associate { addr ->
-        addr.address to addr.permissionsList.filterRoles().map { it.name.prettyRole() }
+        addr.address to addr.permissionsList.filterRoles()
+            .map { it.name.prettyRole() }
     }.toMutableMap()
 
     return when {
         this.status.number >= MarkerStatus.MARKER_STATUS_ACTIVE.number -> managers
         else -> {
             if (this.manager.isNotBlank()) {
-                managers[this.manager] = Access.values().filterRoles().map { it.name.prettyRole() }
+                managers[this.manager] =
+                    Access.values().filterRoles().map { it.name.prettyRole() }
             }
             managers
         }
@@ -96,10 +112,18 @@ fun MarkerAccount.getManagingAccounts(): MutableMap<String, List<String>> {
 fun Any.toModuleAccount() = this.unpack(ModuleAccount::class.java)
 fun Any.toBaseAccount() = this.unpack(Auth.BaseAccount::class.java)
 fun Any.toMarkerAccount() = this.unpack(MarkerAccount::class.java)
-fun Any.toContinuousVestingAccount() = this.unpack(Vesting.ContinuousVestingAccount::class.java)
-fun Any.toDelayedVestingAccount() = this.unpack(Vesting.DelayedVestingAccount::class.java)
-fun Any.toPeriodicVestingAccount() = this.unpack(Vesting.PeriodicVestingAccount::class.java)
-fun Any.toPermanentLockedAccount() = this.unpack(Vesting.PermanentLockedAccount::class.java)
+fun Any.toContinuousVestingAccount() =
+    this.unpack(Vesting.ContinuousVestingAccount::class.java)
+
+fun Any.toDelayedVestingAccount() =
+    this.unpack(Vesting.DelayedVestingAccount::class.java)
+
+fun Any.toPeriodicVestingAccount() =
+    this.unpack(Vesting.PeriodicVestingAccount::class.java)
+
+fun Any.toPermanentLockedAccount() =
+    this.unpack(Vesting.PermanentLockedAccount::class.java)
+
 fun Any.toInterchainAccount() = this.unpack(InterchainAccount::class.java)
 
 fun Any.getModuleAccName() =
@@ -111,11 +135,15 @@ fun Any.getModuleAccName() =
 
 fun String.isStandardAddress() =
     this.startsWith(PROV_ACC_PREFIX) && !this.startsWith(PROV_VAL_OPER_PREFIX)
+
 fun String.isValidatorAddress() = this.startsWith(PROV_VAL_OPER_PREFIX)
 
 // Ref https://docs.cosmos.network/master/modules/auth/05_vesting.html#continuousvestingaccount
 // for info on how the periods are calced
-fun Any.toVestingData(initialDate: LocalDateTime?, continuousPeriod: PeriodInSeconds): AccountVestingInfo {
+fun Any.toVestingData(
+    initialDate: LocalDateTime?,
+    continuousPeriod: PeriodInSeconds
+): AccountVestingInfo {
     val now = Instant.now().epochSecond
     when (this.typeUrl.getTypeShortName()) {
         Vesting.ContinuousVestingAccount::class.java.simpleName ->
@@ -123,28 +151,38 @@ fun Any.toVestingData(initialDate: LocalDateTime?, continuousPeriod: PeriodInSec
             // of the given period. Continuous technically vests every second, but that can be cumbersome to fetch.
             this.toContinuousVestingAccount().let { acc ->
                 val totalTime = acc.baseVestingAccount.endTime - acc.startTime
-                var runningTime = acc.startTime // returns the actual vestingTime
-                var prevCoins = emptyList<CoinStr>() // reset for every period with the latest percentage amounts
-                val periods = (acc.startTime until acc.baseVestingAccount.endTime)
-                    .chunked(continuousPeriod.seconds)
-                    .mapNotNull { list ->
-                        if (list.last() == acc.startTime) return@mapNotNull null
-                        runningTime += list.size // Updated to show the actual vestingTime for the period
-                        val elapsedTime = runningTime - acc.startTime // elapsed time up to the vestingTime
-                        // Calcs the total percentage up to the current vestingTime of vested coins
-                        val newCoin = acc.baseVestingAccount.originalVestingList.map { it.toPercentage(elapsedTime, totalTime) }
+                var runningTime =
+                    acc.startTime // returns the actual vestingTime
+                var prevCoins =
+                    emptyList<CoinStr>() // reset for every period with the latest percentage amounts
+                val periods =
+                    (acc.startTime until acc.baseVestingAccount.endTime)
+                        .chunked(continuousPeriod.seconds)
+                        .mapNotNull { list ->
+                            if (list.last() == acc.startTime) return@mapNotNull null
+                            runningTime += list.size // Updated to show the actual vestingTime for the period
+                            val elapsedTime =
+                                runningTime - acc.startTime // elapsed time up to the vestingTime
+                            // Calcs the total percentage up to the current vestingTime of vested coins
+                            val newCoin =
+                                acc.baseVestingAccount.originalVestingList.map {
+                                    it.toPercentage(
+                                        elapsedTime,
+                                        totalTime
+                                    )
+                                }
 
-                        PeriodicVestingInfo(
-                            // How long the period is in seconds
-                            list.size.toLong(),
-                            // diffs the old percentages with the new percentages to get the period's values
-                            prevCoins.diff(newCoin),
-                            // vestingTime for the period
-                            runningTime.toDateTime(),
-                            // compared to NOW, is it vested
-                            runningTime <= now
-                        ).also { prevCoins = newCoin }
-                    }
+                            PeriodicVestingInfo(
+                                // How long the period is in seconds
+                                list.size.toLong(),
+                                // diffs the old percentages with the new percentages to get the period's values
+                                prevCoins.diff(newCoin),
+                                // vestingTime for the period
+                                runningTime.toDateTime(),
+                                // compared to NOW, is it vested
+                                runningTime <= now
+                            ).also { prevCoins = newCoin }
+                        }
                 return AccountVestingInfo(
                     now.toDateTime(),
                     acc.baseVestingAccount.endTime.toDateTime(),
@@ -153,6 +191,7 @@ fun Any.toVestingData(initialDate: LocalDateTime?, continuousPeriod: PeriodInSec
                     periods
                 )
             }
+
         Vesting.DelayedVestingAccount::class.java.simpleName ->
             // Delayed is a one and done period, timed to the endTime
             this.toDelayedVestingAccount().let {
@@ -170,6 +209,7 @@ fun Any.toVestingData(initialDate: LocalDateTime?, continuousPeriod: PeriodInSec
                     listOf(period)
                 )
             }
+
         Vesting.PeriodicVestingAccount::class.java.simpleName ->
             // Periodic repackages the given Period objects
             this.toPeriodicVestingAccount().let { acc ->
@@ -192,6 +232,7 @@ fun Any.toVestingData(initialDate: LocalDateTime?, continuousPeriod: PeriodInSec
                     periods
                 )
             }
+
         Vesting.PermanentLockedAccount::class.java.simpleName ->
             this.toPermanentLockedAccount().let {
                 return AccountVestingInfo(
@@ -208,11 +249,12 @@ fun Any.toVestingData(initialDate: LocalDateTime?, continuousPeriod: PeriodInSec
 
 fun Any.isVesting() =
     this.typeUrl.getTypeShortName() == Vesting.ContinuousVestingAccount::class.java.simpleName ||
-        this.typeUrl.getTypeShortName() == Vesting.DelayedVestingAccount::class.java.simpleName ||
-        this.typeUrl.getTypeShortName() == Vesting.PeriodicVestingAccount::class.java.simpleName ||
-        this.typeUrl.getTypeShortName() == Vesting.PermanentLockedAccount::class.java.simpleName
+            this.typeUrl.getTypeShortName() == Vesting.DelayedVestingAccount::class.java.simpleName ||
+            this.typeUrl.getTypeShortName() == Vesting.PeriodicVestingAccount::class.java.simpleName ||
+            this.typeUrl.getTypeShortName() == Vesting.PermanentLockedAccount::class.java.simpleName
 
-fun Any.isIca() = this.typeUrl.getTypeShortName() == InterchainAccount::class.java.simpleName
+fun Any.isIca() =
+    this.typeUrl.getTypeShortName() == InterchainAccount::class.java.simpleName
 
 //endregion
 
@@ -249,6 +291,7 @@ fun Slashing.Params.toDto() = SlashingParams(
     this.slashFractionDowntime.toString(Charsets.UTF_8).toPercentageOld()
 )
 
-fun MsgFee.toDto() = MsgBasedFee(this.msgTypeUrl, this.additionalFee.toCoinStr())
+fun MsgFee.toDto() =
+    MsgBasedFee(this.msgTypeUrl, this.additionalFee.toCoinStr())
 
 //endregion

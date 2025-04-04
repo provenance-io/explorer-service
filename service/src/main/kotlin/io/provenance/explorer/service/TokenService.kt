@@ -173,54 +173,76 @@ class TokenService(
     }
 
     fun nhashMarkerAddr() = MarkerCacheRecord.findByDenom(UTILITY_TOKEN)?.markerAddress!!
-    fun burnedSupply() =
-        runBlocking { accountClient.getMarkerBalance(nhashMarkerAddr(), UTILITY_TOKEN).toBigDecimal().roundWhole() }
+    fun burnedSupply(height: Int? = null) =
+        runBlocking { accountClient.getMarkerBalance(nhashMarkerAddr(), UTILITY_TOKEN, height).toBigDecimal().roundWhole() }
 
     fun moduleAccounts() = AccountRecord.findAccountsByType(listOf(Auth.ModuleAccount::class.java.simpleName))
     fun zeroSeqAccounts() = AccountRecord.findZeroSequenceAccounts()
     fun vestingAccounts() = AccountRecord.findAccountsByType(vestingAccountTypes)
     fun contractAccounts() = AccountRecord.findContractAccounts()
     fun allAccounts() = transaction { AccountRecord.all().toMutableList() }
-    fun communityPoolSupply() =
-        runBlocking { accountClient.getCommunityPoolAmount(UTILITY_TOKEN).toBigDecimal().roundWhole() }
+    fun communityPoolSupply(height: Int? = null) =
+        runBlocking {
+            accountClient
+                .getCommunityPoolAmount(UTILITY_TOKEN, height)
+                .toBigDecimal()
+                .roundWhole()
+        }
 
     fun richListAccounts() =
         allAccounts().addressList() - zeroSeqAccounts().toSet() - moduleAccounts().addressList() - contractAccounts().addressList() - setOf(nhashMarkerAddr())
 
-    fun totalBalanceForList(addresses: Set<String>) = runBlocking {
-        TokenDistributionPaginatedResultsRecord.findByAddresses(addresses).asFlow()
-            .map { it.data.count.toBigDecimal() }
-            .toList()
-            .sumOf { it }
+    fun totalBalanceForList(addresses: Set<String>, height: Int? = null) = runBlocking {
+        if (height != null) {
+            addresses.map {
+                accountClient.getAccountBalanceForDenomAtHeight(
+                    it,
+                    UTILITY_TOKEN,
+                    height
+                )
+            }.map {
+                CoinStr(it.amount, it.denom)
+            }.map {
+                it.amount.toBigDecimal()
+            }.sumOf { it }
+        } else {
+            TokenDistributionPaginatedResultsRecord.findByAddresses(addresses).asFlow()
+                .map { it.data.count.toBigDecimal() }
+                .toList()
+                .sumOf { it }
+        }
     }
 
-    fun totalSpendableBalanceForList(addresses: Set<String>) = runBlocking {
+    fun totalSpendableBalanceForList(addresses: Set<String>, height: Int? = null) = runBlocking {
         addresses.asFlow()
-            .map { accountClient.getSpendableBalanceDenom(it, UTILITY_TOKEN)!!.amount.toBigDecimal() }
+            .map {
+                accountClient.getSpendableBalanceDenom(it, UTILITY_TOKEN, height)!!.amount.toBigDecimal()
+            }
             .toList()
             .sumOf { it }
     }
 
     // non-spendable = total - spendable
-    fun totalNonspendableBalanceForList(addresses: Set<String>) = transaction {
-        val total = totalBalanceForList(addresses)
-        val spendable = totalSpendableBalanceForList(addresses)
+    fun totalNonspendableBalanceForList(addresses: Set<String>, height: Int? = null) = transaction {
+        val total = totalBalanceForList(addresses, height)
+        val spendable = totalSpendableBalanceForList(addresses, height)
         total - spendable
     }
 
     // max supply = supply from bank module
-    fun maxSupply() = runBlocking { accountClient.getCurrentSupply(UTILITY_TOKEN).amount.toBigDecimal() }
+    fun maxSupply(height: Int? = null) = runBlocking { accountClient.getCurrentSupply(UTILITY_TOKEN, height).amount.toBigDecimal() }
 
     // total supply = max - burned -> comes from the nhash marker address
-    fun totalSupply() = maxSupply() - burnedSupply().roundWhole()
+    fun totalSupply(height: Int? = null) = maxSupply() - burnedSupply(height).roundWhole()
 
     // circulating supply = max - burned - modules - zero seq - pool - nonspendable
-    fun circulatingSupply() =
+    fun circulatingSupply(excludedAddresses: List<String> = emptyList(), height: Int? = null) =
         maxSupply() // max
-            .minus(burnedSupply()) // burned
-            .minus(totalBalanceForList(zeroSeqAccounts().toSet() + moduleAccounts().addressList())) // modules/zero seq
-            .minus(communityPoolSupply()) // pool
-            .minus(totalNonspendableBalanceForList(vestingAccounts().addressList())) // nonSpendable
+            .minus(burnedSupply(height)) // burned
+            .minus(totalBalanceForList(zeroSeqAccounts().toSet() + moduleAccounts().addressList())) // modules/zero seq, no height because of size
+            .minus(totalBalanceForList(excludedAddresses.toSet(), height))
+            .minus(communityPoolSupply(height)) // pool
+            .minus(totalNonspendableBalanceForList(vestingAccounts().addressList(), height)) // nonSpendable
             .roundWhole()
 
     // rich list = all accounts - nhash marker - zero seq - modules - contracts ->>>>>>>>> out of total
@@ -308,7 +330,7 @@ class TokenService(
     }
 
     fun updateAndSaveLatestTokenData(startDate: LocalDateTime, today: LocalDateTime) {
-        val list = fetchHistoricalPriceData(startDate)?.sortedBy { it.time }
+        val list = fetchHistoricalPriceData(startDate).sortedBy { it.time }
         list?.let {
             val latestData = processLatestTokenData(it, today)
             latestData?.let { data ->

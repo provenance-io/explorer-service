@@ -68,12 +68,6 @@ class AccountGrpcClient(channelUri: URI) {
         distClient = DistGrpc.QueryCoroutineStub(channel)
         mintClient = MintGrpc.QueryCoroutineStub(channel)
     }
-    private fun heightMetadata(height: String?) =
-        Metadata().apply {
-            if (height != null) {
-                this.put(Metadata.Key.of("x-cosmos-block-height", Metadata.ASCII_STRING_MARSHALLER), height)
-            }
-        }
 
     suspend fun getAccountInfo(address: String) =
         try {
@@ -129,7 +123,7 @@ class AccountGrpcClient(channelUri: URI) {
 
         val results =
             bankClient
-                .addBlockHeightToQuery(height.toString())
+                .addBlockHeightToQuery(height)
                 .allBalances(
                     queryAllBalancesRequest {
                         this.address = address
@@ -143,7 +137,7 @@ class AccountGrpcClient(channelUri: URI) {
         while (balances.count() < total) {
             offset += limit
             bankClient
-                .addBlockHeightToQuery(height.toString())
+                .addBlockHeightToQuery(height)
                 .allBalances(
                     queryAllBalancesRequest {
                         this.address = address
@@ -156,7 +150,7 @@ class AccountGrpcClient(channelUri: URI) {
 
     suspend fun getAccountBalanceForDenomAtHeight(address: String, denom: String, height: Int) =
         bankClient
-            .addBlockHeightToQuery(height.toString())
+            .addBlockHeightToQuery(height)
             .balance(
                 queryBalanceRequest {
                     this.address = address
@@ -190,21 +184,24 @@ class AccountGrpcClient(channelUri: URI) {
         return balances
     }
 
-    suspend fun getSpendableBalanceDenom(address: String, denom: String): CoinOuterClass.Coin? =
-        bankClient.spendableBalanceByDenom(
+    suspend fun getSpendableBalanceDenom(address: String, denom: String, height: Int? = null): CoinOuterClass.Coin? =
+        bankClient
+            .addBlockHeightToQuery(height)
+            .spendableBalanceByDenom(
             querySpendableBalanceByDenomRequest {
                 this.address = address
                 this.denom = denom
             }
         ).balance
 
-    suspend fun getCurrentSupply(denom: String): CoinOuterClass.Coin =
-        bankClient.supplyOf(querySupplyOfRequest { this.denom = denom }).amount
+    suspend fun getCurrentSupply(denom: String, height: Int? = null): CoinOuterClass.Coin =
+        bankClient.addBlockHeightToQuery(height).supplyOf(querySupplyOfRequest { this.denom = denom }).amount
 
-    suspend fun getCurrentSupplyAtHeight(denom: String, height: String): CoinOuterClass.Coin =
-        bankClient.supplyOf(
-            querySupplyOfRequest { this.denom = denom },
-            heightMetadata(height)
+    suspend fun getCurrentSupplyAtHeight(denom: String, height: Int): CoinOuterClass.Coin =
+        bankClient
+            .addBlockHeightToQuery(height)
+            .supplyOf(
+            querySupplyOfRequest { this.denom = denom }
         ).amount
 
     suspend fun getDenomMetadata(denom: String) =
@@ -264,12 +261,18 @@ class AccountGrpcClient(channelUri: URI) {
     suspend fun getRewards(delAddr: String) =
         distClient.delegationTotalRewards(queryDelegationTotalRewardsRequest { this.delegatorAddress = delAddr })
 
-    suspend fun getCommunityPoolAmount(denom: String): String =
-        distClient.communityPool(QueryOuterClass.QueryCommunityPoolRequest.newBuilder().build()).poolList
+    suspend fun getCommunityPoolAmount(denom: String, height: Int? = null): String =
+        distClient
+            .addBlockHeightToQuery(height)
+            .communityPool(
+            QueryOuterClass.QueryCommunityPoolRequest.newBuilder().build()
+        ).poolList
             .filter { it.denom == denom }[0]?.amount!!.toDecimalStringOld()
 
-    suspend fun getMarkerBalance(address: String, denom: String): String =
-        bankClient.balance(
+    suspend fun getMarkerBalance(address: String, denom: String, height: Int? = null): String =
+        bankClient
+            .addBlockHeightToQuery(height)
+            .balance(
             queryBalanceRequest {
                 this.address = address
                 this.denom = denom
@@ -290,20 +293,22 @@ class AccountGrpcClient(channelUri: URI) {
             }
         )
 
-    suspend fun getTotalValidatorDelegations(height: String? = null) =
-        stakingClient.validators(
+    suspend fun getTotalValidatorDelegations(height: Int? = null) =
+        stakingClient
+            .addBlockHeightToQuery(height)
+            .validators(
             queryValidatorsRequest {
                 this.pagination = getPagination(0, 1000)
-            },
-            heightMetadata(height)
+            }
         ).validatorsList.filter { !it.jailed }.map {
-            stakingClient.validatorDelegations(
+            stakingClient
+                .addBlockHeightToQuery(height)
+                .validatorDelegations(
                 queryValidatorDelegationsRequest {
                     this.validatorAddr = it.operatorAddress
                     // TODO paginate properly
                     this.pagination = getPagination(0, 10000)
-                },
-                heightMetadata(height)
+                }
             ).delegationResponsesList.sumOf { delegation ->
                 delegation.balance.amount.toBigDecimal()
             }

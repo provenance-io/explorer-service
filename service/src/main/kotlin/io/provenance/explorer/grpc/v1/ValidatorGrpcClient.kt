@@ -94,7 +94,7 @@ class ValidatorGrpcClient(channelUri: URI) {
     fun getStakingValidator(address: String, height: Int? = null): Staking.Validator {
         val client = stakingClient
         if (height != null) {
-            client.addBlockHeightToQuery(height.toString())
+            client.addBlockHeightToQuery(height)
         }
         return client.validator(queryValidatorRequest { validatorAddr = address }).validator
     }
@@ -103,7 +103,7 @@ class ValidatorGrpcClient(channelUri: URI) {
         try {
             val client = stakingClient
             if (height != null) {
-                client.addBlockHeightToQuery(height.toString())
+                client.addBlockHeightToQuery(height)
             }
             client.validator(queryValidatorRequest { validatorAddr = address }).validator
         } catch (e: Exception) {

@@ -211,7 +211,7 @@ class AssetService(
 
     fun getCurrentSupply(denom: String) = runBlocking { accountClient.getCurrentSupply(denom).amount }
 
-    fun getCurrentSupplyAtHeight(denom: String, height: String) = runBlocking {
+    fun getCurrentSupplyAtHeight(denom: String, height: Int) = runBlocking {
         accountClient.getCurrentSupplyAtHeight(denom, height).amount
     }
 

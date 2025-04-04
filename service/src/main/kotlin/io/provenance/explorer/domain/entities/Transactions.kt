@@ -39,6 +39,7 @@ import io.provenance.explorer.model.TxAssociatedValues
 import io.provenance.explorer.model.TxFeepayer
 import io.provenance.explorer.model.TxGasVolume
 import io.provenance.explorer.model.TxStatus
+import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.stringfy
 import io.provenance.explorer.service.AssetService
@@ -767,6 +768,20 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                         it.getBigDecimal("fee_amount")
                     )
                 }.toList()
+        }
+
+        fun getTotalGasFees(toDate: LocalDateTime) = transaction {
+            val tblName = "tx_gas_fee_volume_${DateTruncGranularity.DAY.name.lowercase()}"
+            val query = """
+                SELECT sum($tblName.fee_amount) as total_fee
+                FROM $tblName
+                WHERE $tblName.tx_timestamp <= ?
+            """.trimMargin()
+
+            val arguments = listOf<Pair<ColumnType, LocalDateTime>>(
+                Pair(JavaLocalDateTimeColumnType(), toDate)
+            )
+            query.exec(arguments).getBigDecimal("total_fee")
         }
 
         fun updateGasFeeVolume(): Unit = transaction {

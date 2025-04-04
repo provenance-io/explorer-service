@@ -42,7 +42,7 @@ class GroupGrpcClient(channelUri: URI) {
     suspend fun getGroupByIdAtHeight(id: Long, height: Int) =
         try {
             groupClient
-                .addBlockHeightToQuery(height.toString())
+                .addBlockHeightToQuery(height)
                 .groupInfo(queryGroupInfoRequest { this.groupId = id })
         } catch (e: Exception) {
             null
@@ -55,7 +55,7 @@ class GroupGrpcClient(channelUri: URI) {
 
             do {
                 groupClient
-                    .addBlockHeightToQuery(height.toString())
+                    .addBlockHeightToQuery(height)
                     .groupMembers(
                         queryGroupMembersRequest {
                             this.groupId = id
@@ -77,7 +77,7 @@ class GroupGrpcClient(channelUri: URI) {
     suspend fun getPolicyByAddrAtHeight(policyAddr: String, height: Int) =
         try {
             groupClient
-                .addBlockHeightToQuery(height.toString())
+                .addBlockHeightToQuery(height)
                 .groupPolicyInfo(queryGroupPolicyInfoRequest { this.address = policyAddr })
         } catch (e: Exception) {
             null
@@ -86,7 +86,7 @@ class GroupGrpcClient(channelUri: URI) {
     suspend fun getProposalTallyAtHeight(proposalId: Long, height: Int) =
         try {
             groupClient
-                .addBlockHeightToQuery(height.toString())
+                .addBlockHeightToQuery(height)
                 .tallyResult(queryTallyResultRequest { this.proposalId = proposalId })
         } catch (e: Exception) {
             null
@@ -95,7 +95,7 @@ class GroupGrpcClient(channelUri: URI) {
     suspend fun getProposalAtHeight(proposalId: Long, height: Int) =
         try {
             groupClient
-                .addBlockHeightToQuery(height.toString())
+                .addBlockHeightToQuery(height)
                 .proposal(queryProposalRequest { this.proposalId = proposalId })
         } catch (e: Exception) {
             null
