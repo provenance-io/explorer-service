@@ -132,7 +132,6 @@ class PulseMetricService(
                 }
             }
             pulseMetricCache.put(Triple(date, type, subtype), it)
-            logger.info("Saved pulse metric to cache for $date $type $subtype")
         }
 
     /**
@@ -150,9 +149,6 @@ class PulseMetricService(
                 subtype
             )
         ) { PulseCacheRecord.findByDateAndType(date, type, subtype)?.data }
-            .also {
-                logger.info("From cached pulse metric for $date $type $subtype: $it")
-            }
 
     private fun backInTime(range: MetricRangeType) =
         nowUTC().minusDays(
@@ -188,7 +184,6 @@ class PulseMetricService(
         )?.data == null
 
         if (todayCache == null || bustCache || isBackFillAndMissing) {
-            logger.info("Building pulse metric for $today $type $subtype - todayCache: $todayCache, bustCache: $bustCache, isBackFillAndMissing: $isBackFillAndMissing")
             val metric = dataSourceFn()
             val previousMetricDate = if (atDateTime != null) {
                 atDateTime.minusDays(1).toLocalDate()
@@ -212,7 +207,6 @@ class PulseMetricService(
                         series = metric.series,
                         subtype = subtype
                     )
-            logger.info("Previous metric for $today $type $subtype: $previousMetric")
 
             buildAndSavePulseMetric(
                 date = today,
@@ -242,7 +236,6 @@ class PulseMetricService(
                 series = it.series
             )
         } else {
-            logger.info("Returning cached pulse metric for atDate $atDateTime $type $subtype: $it")
             it
         }
     }
@@ -299,8 +292,8 @@ class PulseMetricService(
         ) {
             if (atDateTime != null) {
                 tokenService.getTokenHistorical(
-                    fromDate = atDateTime.startOfDay(),
-                    toDate = endOfDay(atDateTime)
+                    fromDate = atDateTime,
+                    toDate = atDateTime
                 )
                     .firstOrNull { it.quote[quote] != null }
                     ?.let {
@@ -330,17 +323,13 @@ class PulseMetricService(
                         }
                     }
             }?.let {
-                val supply = it.first
+                val supply = it.first.divide(UTILITY_TOKEN_BASE_MULTIPLIER)
                 val price = it.second
                 val marketCap = price.times(supply)
-                    .times(
-                        inversePowerOfTen(
-                            UTILITY_TOKEN_BASE_MULTIPLIER.toInt()
-                        )
-                    )
+
                 PulseMetric.build(
                     base = USD_UPPER,
-                    amount = marketCap.roundWhole(),
+                    amount = marketCap
                 )
             } ?: PulseMetric.build(
                 base = USD_UPPER,
@@ -690,9 +679,7 @@ class PulseMetricService(
                 ftsUrl(endpoint, atDateTime).let {
                     pulseHttpClient.get {
                         url(it)
-                    }.body<List<PulseFTSLoanLedger>>().also {
-                        logger.info("$endpoint atDate $atDateTime returned ${it.size} records")
-                    }
+                    }.body<List<PulseFTSLoanLedger>>()
                 }
             } catch (e: Exception) {
                 logger.error("Failed to fetch FTS loan ledger data: ${e.message}")
@@ -720,14 +707,6 @@ class PulseMetricService(
                 pulseHttpClient.get {
                     url(ftsUrl("balances", atDateTime))
                 }.body<JsonNode>().let {
-                    logger.info(
-                        "${
-                            ftsUrl(
-                                "balances",
-                                atDateTime
-                            )
-                        } response: ${it.asText()}"
-                    )
                     PulseMetric.build(
                         base = USD_UPPER,
                         amount = it["TotalBalance"].asText().toBigDecimal()
@@ -928,7 +907,6 @@ class PulseMetricService(
      */
     fun refreshCache() = transaction {
         val threadName = Thread.currentThread().name
-        logger.info("Refreshing pulse cache for thread $threadName")
         PulseCacheType.entries.filter {
             it != PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC &&
                     it != PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
@@ -938,8 +916,6 @@ class PulseMetricService(
             }
 
         pulseAssetSummaries()
-
-        logger.info("Pulse cache refreshed for thread $threadName")
     }
 
     /**
@@ -993,7 +969,7 @@ class PulseMetricService(
 
                 PulseCacheType.HASH_CIRCULATING_METRIC -> {
                     val tokenSupply =
-                        tokenService.circulatingSupply(pulseProperties.hashHoldersExcludedFromCirculatingSupply)
+                        tokenService.circulatingSupply(pulseProperties.hashHoldersExcludedFromCirculatingSupply, height)
                             .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
                             .roundWhole()
 
