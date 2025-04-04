@@ -51,6 +51,7 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.pow
 
 /**
@@ -67,6 +68,10 @@ class PulseMetricService(
     private val pulseProperties: PulseProperties,
     @Qualifier("pulseHttpClient") private val pulseHttpClient: HttpClient
 ) {
+    companion object {
+        private val isBackfillInProgress = AtomicBoolean(false)
+    }
+
     protected val logger = logger(PulseMetricService::class)
 
     private val pulseMetricCache: Cache<Triple<LocalDate, PulseCacheType, String?>, PulseMetric> =
@@ -127,6 +132,7 @@ class PulseMetricService(
                 }
             }
             pulseMetricCache.put(Triple(date, type, subtype), it)
+            logger.info("Saved pulse metric to cache for $date $type $subtype")
         }
 
     /**
@@ -144,6 +150,9 @@ class PulseMetricService(
                 subtype
             )
         ) { PulseCacheRecord.findByDateAndType(date, type, subtype)?.data }
+            .also {
+                logger.info("From cached pulse metric for $date $type $subtype: $it")
+            }
 
     private fun backInTime(range: MetricRangeType) =
         nowUTC().minusDays(
@@ -171,17 +180,29 @@ class PulseMetricService(
         val todayCache = fromPulseMetricCache(today, type, subtype)
         // if this is a scheduled task, bust the cache
         val bustCache = isScheduledTask()
+        val isBackFillAndMissing = isBackfillInProgress.get()
+                && PulseCacheRecord.findByDateAndType(
+            today,
+            type,
+            subtype
+        )?.data == null
 
-        if (todayCache == null || bustCache) {
+        if (todayCache == null || bustCache || isBackFillAndMissing) {
+            logger.info("Building pulse metric for $today $type $subtype - todayCache: $todayCache, bustCache: $bustCache, isBackFillAndMissing: $isBackFillAndMissing")
             val metric = dataSourceFn()
+            val previousMetricDate = if (atDateTime != null) {
+                atDateTime.minusDays(1).toLocalDate()
+            } else {
+                backInTime(range).toLocalDate()
+            }
             val previousMetric =
                 fromPulseMetricCache(
-                    backInTime(range).toLocalDate(),
+                    previousMetricDate,
                     type,
                     subtype
                 )
                     ?: buildAndSavePulseMetric(
-                        date = backInTime(range).toLocalDate(),
+                        date = previousMetricDate,
                         type = type,
                         previous = metric.amount,
                         current = metric.amount,
@@ -191,6 +212,7 @@ class PulseMetricService(
                         series = metric.series,
                         subtype = subtype
                     )
+            logger.info("Previous metric for $today $type $subtype: $previousMetric")
 
             buildAndSavePulseMetric(
                 date = today,
@@ -211,7 +233,6 @@ class PulseMetricService(
                 type,
                 subtype
             )?.amount ?: BigDecimal.ZERO
-
             PulseMetric.build(
                 previous = previous,
                 current = it.amount,
@@ -221,6 +242,7 @@ class PulseMetricService(
                 series = it.series
             )
         } else {
+            logger.info("Returning cached pulse metric for atDate $atDateTime $type $subtype: $it")
             it
         }
     }
@@ -668,7 +690,9 @@ class PulseMetricService(
                 ftsUrl(endpoint, atDateTime).let {
                     pulseHttpClient.get {
                         url(it)
-                    }.body<List<PulseFTSLoanLedger>>()
+                    }.body<List<PulseFTSLoanLedger>>().also {
+                        logger.info("$endpoint atDate $atDateTime returned ${it.size} records")
+                    }
                 }
             } catch (e: Exception) {
                 logger.error("Failed to fetch FTS loan ledger data: ${e.message}")
@@ -1344,29 +1368,37 @@ class PulseMetricService(
         toDate: LocalDate,
         types: List<PulseCacheType>
     ) {
-        val days = fromDate.until(toDate, ChronoUnit.DAYS)
-        for (i in 0..days) {
-            val d = fromDate.plusDays(i).atStartOfDay()
-            for (type in types) {
-                try {
-                    logger.info("Backfilling $type for $d")
-                    if (type == PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC ||
-                        type == PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC
-                    ) {
-                        pulseAssetSummaries(d) // first to set prices
-                    } else {
-                        pulseMetric(
-                            type = type,
-                            atDateTime = d
-                        )
+        if (isBackfillInProgress.compareAndSet(false, true)) {
+            try {
+                val days = fromDate.until(toDate, ChronoUnit.DAYS)
+                for (i in 0..days) {
+                    val d = fromDate.plusDays(i).atStartOfDay()
+                    for (type in types) {
+                        try {
+                            logger.info("Backfilling $type for $d")
+                            if (type == PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC ||
+                                type == PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC
+                            ) {
+                                pulseAssetSummaries(d) // first to set prices
+                            } else {
+                                pulseMetric(
+                                    type = type,
+                                    atDateTime = d
+                                )
+                            }
+                        } catch (e: Exception) {
+                            logger.warn(
+                                "Failed to backfill $type for $d: ${e.message}",
+                                e
+                            )
+                        }
                     }
-                } catch (e: Exception) {
-                    logger.warn(
-                        "Failed to backfill $type for $d: ${e.message}",
-                        e
-                    )
                 }
+            } finally {
+                isBackfillInProgress.set(false)
             }
+        } else {
+            logger.warn("Backfill already in progress, skipping")
         }
     }
 }
