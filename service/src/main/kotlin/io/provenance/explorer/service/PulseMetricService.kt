@@ -1068,11 +1068,6 @@ class PulseMetricService(
                 atDateTime = atDateTime
             )
 
-            PulseCacheType.PULSE_TRADING_TVL_METRIC -> pulseTradingTVL(
-                range = range,
-                atDateTime = atDateTime
-            )
-
             PulseCacheType.PULSE_CHAIN_FEES_VALUE_METRIC -> pulseChainFees(
                 range = range,
                 atDateTime = atDateTime
@@ -1114,6 +1109,14 @@ class PulseMetricService(
             )
 
             PulseCacheType.PULSE_COMMITTED_ASSETS_VALUE_METRIC -> exchangeCommittedAssetsValue(
+                range = range,
+                atDateTime = atDateTime
+            )
+
+            /* Order of this kind of matters since it depends on
+             * the committed assets value metric
+             */
+            PulseCacheType.PULSE_TRADING_TVL_METRIC -> pulseTradingTVL(
                 range = range,
                 atDateTime = atDateTime
             )
