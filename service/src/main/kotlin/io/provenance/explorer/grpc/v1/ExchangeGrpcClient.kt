@@ -10,6 +10,7 @@ import io.provenance.exchange.v1.QueryGetMarketCommitmentsRequest
 import io.provenance.exchange.v1.QueryGetMarketRequest
 import io.provenance.exchange.v1.QueryGrpcKt
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
+import io.provenance.explorer.grpc.extensions.addBlockHeightToQuery
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -54,7 +55,9 @@ class ExchangeGrpcClient(channelUri: URI) {
         } != null
     }
 
-    suspend fun getMarketCommitments(marketId: Int): List<AccountAmount> = exchangeClient.getMarketCommitments(
+    suspend fun getMarketCommitments(marketId: Int, height: Int? = null): List<AccountAmount> = exchangeClient
+        .addBlockHeightToQuery(height)
+        .getMarketCommitments(
         QueryGetMarketCommitmentsRequest.newBuilder().apply {
             this.marketId = marketId
             // TODO cripes this is going to need paging
@@ -64,14 +67,18 @@ class ExchangeGrpcClient(channelUri: URI) {
         }.build()
     ).commitmentsList
 
-    suspend fun totalCommitmentCount() = exchangeClient.getAllMarkets(
-        QueryGetAllMarketsRequest.newBuilder().build()
-    ).marketsList.sumOf { getMarketCommitments(it.marketId).size }
+    suspend fun totalCommitmentCount(height: Int? = null) = exchangeClient
+        .addBlockHeightToQuery(height)
+        .getAllMarkets(
+        QueryGetAllMarketsRequest.newBuilder().build(),
+    ).marketsList.sumOf { getMarketCommitments(it.marketId, height).size }
 
-    suspend fun totalCommittedAssetTotals() = exchangeClient.getAllMarkets(
+    suspend fun totalCommittedAssetTotals(height: Int? = null) = exchangeClient
+        .addBlockHeightToQuery(height)
+        .getAllMarkets(
         QueryGetAllMarketsRequest.newBuilder().build()
     ).marketsList.flatMap {
-        getMarketCommitments(it.marketId).map { commitment ->
+        getMarketCommitments(it.marketId, height).map { commitment ->
             commitment.amountList.map { amount ->
                 amount.denom to amount.amount.toBigDecimal()
             }

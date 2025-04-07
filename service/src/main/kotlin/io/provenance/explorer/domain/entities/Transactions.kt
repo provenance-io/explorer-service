@@ -39,6 +39,7 @@ import io.provenance.explorer.model.TxAssociatedValues
 import io.provenance.explorer.model.TxFeepayer
 import io.provenance.explorer.model.TxGasVolume
 import io.provenance.explorer.model.TxStatus
+import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.stringfy
 import io.provenance.explorer.service.AssetService
@@ -128,6 +129,10 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             TxCacheTable.selectAll().count().toBigInteger()
         }
 
+        fun getTotalTxCountToDate(toDate: LocalDateTime) = transaction {
+            TxCacheTable.select { TxCacheTable.txTimestamp lessEq toDate }.count().toBigInteger()
+        }
+
         fun findByQueryForResults(txQueryParams: TxQueryParams) = transaction {
             val columns = TxCacheTable.columns.toMutableList()
             val query = findByQueryParams(txQueryParams, columns)
@@ -208,12 +213,16 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
             query
         }
 
-        fun countForDates(daysPrior: Int): List<Pair<LocalDate, Long>> = transaction {
+        fun countForDates(daysPrior: Int, atDateTime: LocalDateTime? = null): List<Pair<LocalDate, Long>> = transaction {
+            val atDateQuery = atDateTime?.let {
+                "tx_timestamp between '${atDateTime.minusDays(daysPrior.toLong()).toLocalDate()}' and '${atDateTime.toLocalDate()}'"
+            } ?: "tx_timestamp > current_timestamp - interval '$daysPrior days'"
+
             val query = """
                 select sum(daily_tx_cnt.cnt) as count, ds
                 from (select count(*) cnt, tx_timestamp ts, date_trunc('day', tx_timestamp) ds
                       from tx_cache
-                      where tx_timestamp > current_timestamp - interval '$daysPrior days'
+                      where $atDateQuery
                       group by ts, ds) as daily_tx_cnt
                 group by ds
                 order by ds;
@@ -249,7 +258,7 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                              substring(rec from '[0-9]+(.*)${'$'}')     AS denom,
                              substring(rec from '^[0-9]+')::bigint AS value
                       FROM tx_msg_event_attr attr
-                               CROSS JOIN LATERAL unnest(string_to_array(attr.attr_value, ',')) AS rec
+                               CROSS JOIN LATERAL unnest(string_to_array(replace(attr.attr_value,'"',''), ',')) AS rec
                            where attr.attr_key = 'amount') as attr_denom_value
                      on attr_denom_value.tx_msg_event_id = tme.id
                 where tme.tx_msg_type_id IN
@@ -575,10 +584,22 @@ object TxEventsTable : IntIdTable(name = "tx_msg_event") {
 class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TxEventRecord>(TxEventsTable) {
 
-        fun buildInsert(blockHeight: Int, txHash: String, type: String, msgTypeId: Int) =
-            listOf(0, blockHeight, 0, txHash, 0, type, msgTypeId).toProcedureObject()
+        fun buildInsert(
+            blockHeight: Int,
+            txHash: String,
+            type: String,
+            msgTypeId: Int
+        ) =
+            listOf(
+                0,
+                blockHeight,
+                0,
+                txHash,
+                0,
+                type,
+                msgTypeId
+            ).toProcedureObject()
     }
-
     var blockHeight by TxEventsTable.blockHeight
     var txHash by TxEventsTable.txHash
     var txHashId by TxEventsTable.txHashId
@@ -747,6 +768,20 @@ class TxGasCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                         it.getBigDecimal("fee_amount")
                     )
                 }.toList()
+        }
+
+        fun getTotalGasFees(toDate: LocalDateTime) = transaction {
+            val tblName = "tx_gas_fee_volume_${DateTruncGranularity.DAY.name.lowercase()}"
+            val query = """
+                SELECT sum($tblName.fee_amount) as total_fee
+                FROM $tblName
+                WHERE $tblName.tx_timestamp <= ?
+            """.trimMargin()
+
+            val arguments = listOf<Pair<ColumnType, LocalDateTime>>(
+                Pair(JavaLocalDateTimeColumnType(), toDate)
+            )
+            query.exec(arguments).getBigDecimal("total_fee")
         }
 
         fun updateGasFeeVolume(): Unit = transaction {
