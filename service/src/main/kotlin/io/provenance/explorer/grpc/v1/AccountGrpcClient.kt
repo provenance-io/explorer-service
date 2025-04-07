@@ -20,7 +20,10 @@ import cosmos.staking.v1beta1.queryDelegatorDelegationsResponse
 import cosmos.staking.v1beta1.queryDelegatorUnbondingDelegationsRequest
 import cosmos.staking.v1beta1.queryPoolRequest
 import cosmos.staking.v1beta1.queryRedelegationsRequest
+import cosmos.staking.v1beta1.queryValidatorDelegationsRequest
+import cosmos.staking.v1beta1.queryValidatorsRequest
 import io.grpc.ManagedChannelBuilder
+import io.grpc.Metadata
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.extensions.toDecimalStringOld
 import io.provenance.explorer.grpc.extensions.addBlockHeightToQuery
@@ -120,7 +123,7 @@ class AccountGrpcClient(channelUri: URI) {
 
         val results =
             bankClient
-                .addBlockHeightToQuery(height.toString())
+                .addBlockHeightToQuery(height)
                 .allBalances(
                     queryAllBalancesRequest {
                         this.address = address
@@ -134,7 +137,7 @@ class AccountGrpcClient(channelUri: URI) {
         while (balances.count() < total) {
             offset += limit
             bankClient
-                .addBlockHeightToQuery(height.toString())
+                .addBlockHeightToQuery(height)
                 .allBalances(
                     queryAllBalancesRequest {
                         this.address = address
@@ -147,7 +150,7 @@ class AccountGrpcClient(channelUri: URI) {
 
     suspend fun getAccountBalanceForDenomAtHeight(address: String, denom: String, height: Int) =
         bankClient
-            .addBlockHeightToQuery(height.toString())
+            .addBlockHeightToQuery(height)
             .balance(
                 queryBalanceRequest {
                     this.address = address
@@ -181,16 +184,25 @@ class AccountGrpcClient(channelUri: URI) {
         return balances
     }
 
-    suspend fun getSpendableBalanceDenom(address: String, denom: String): CoinOuterClass.Coin? =
-        bankClient.spendableBalanceByDenom(
+    suspend fun getSpendableBalanceDenom(address: String, denom: String, height: Int? = null): CoinOuterClass.Coin? =
+        bankClient
+            .addBlockHeightToQuery(height)
+            .spendableBalanceByDenom(
             querySpendableBalanceByDenomRequest {
                 this.address = address
                 this.denom = denom
             }
         ).balance
 
-    suspend fun getCurrentSupply(denom: String) =
-        bankClient.supplyOf(querySupplyOfRequest { this.denom = denom }).amount
+    suspend fun getCurrentSupply(denom: String, height: Int? = null): CoinOuterClass.Coin =
+        bankClient.addBlockHeightToQuery(height).supplyOf(querySupplyOfRequest { this.denom = denom }).amount
+
+    suspend fun getCurrentSupplyAtHeight(denom: String, height: Int): CoinOuterClass.Coin =
+        bankClient
+            .addBlockHeightToQuery(height)
+            .supplyOf(
+            querySupplyOfRequest { this.denom = denom }
+        ).amount
 
     suspend fun getDenomMetadata(denom: String) =
         try {
@@ -249,12 +261,18 @@ class AccountGrpcClient(channelUri: URI) {
     suspend fun getRewards(delAddr: String) =
         distClient.delegationTotalRewards(queryDelegationTotalRewardsRequest { this.delegatorAddress = delAddr })
 
-    suspend fun getCommunityPoolAmount(denom: String): String =
-        distClient.communityPool(QueryOuterClass.QueryCommunityPoolRequest.newBuilder().build()).poolList
+    suspend fun getCommunityPoolAmount(denom: String, height: Int? = null): String =
+        distClient
+            .addBlockHeightToQuery(height)
+            .communityPool(
+            QueryOuterClass.QueryCommunityPoolRequest.newBuilder().build()
+        ).poolList
             .filter { it.denom == denom }[0]?.amount!!.toDecimalStringOld()
 
-    suspend fun getMarkerBalance(address: String, denom: String): String =
-        bankClient.balance(
+    suspend fun getMarkerBalance(address: String, denom: String, height: Int? = null): String =
+        bankClient
+            .addBlockHeightToQuery(height)
+            .balance(
             queryBalanceRequest {
                 this.address = address
                 this.denom = denom
@@ -274,4 +292,25 @@ class AccountGrpcClient(channelUri: URI) {
                 this.pagination = getPagination(offset, count)
             }
         )
+
+    suspend fun getTotalValidatorDelegations(height: Int? = null) =
+        stakingClient
+            .addBlockHeightToQuery(height)
+            .validators(
+            queryValidatorsRequest {
+                this.pagination = getPagination(0, 1000)
+            }
+        ).validatorsList.filter { !it.jailed }.map {
+            stakingClient
+                .addBlockHeightToQuery(height)
+                .validatorDelegations(
+                queryValidatorDelegationsRequest {
+                    this.validatorAddr = it.operatorAddress
+                    // TODO paginate properly
+                    this.pagination = getPagination(0, 10000)
+                }
+            ).delegationResponsesList.sumOf { delegation ->
+                delegation.balance.amount.toBigDecimal()
+            }
+        }.sumOf { it }
 }

@@ -222,15 +222,26 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             }
         }
 
-        fun totalMetadataNavs() = transaction {
+        fun totalMetadataNavs(toDate: LocalDateTime? = null) = transaction {
+            val fromDateQuery = toDate?.let { "AND block_time <= ?" } ?: ""
+
             val query = """
                 select sum(price_amount)
                 from (select scope_id, price_amount, row_number() over (partition by scope_id order by block_height desc) as r
-                      from nav_events where source = 'metadata' and price_amount > 0) s
+                      from nav_events where source = 'metadata' and price_amount > 0 $fromDateQuery ) s
                 where r = 1
             """.trimIndent()
-            query.execAndMap {
-                BigDecimal(it.getString(1))
+
+            if (toDate != null) {
+                query.execAndMap(
+                    listOf(Pair(JavaLocalDateTimeColumnType(), toDate))
+                ) {
+                    BigDecimal(it.getString(1))
+                }
+            } else {
+                query.execAndMap {
+                    BigDecimal(it.getString(1))
+                }
             }.firstOrNull() ?: BigDecimal.ZERO
         }
     }

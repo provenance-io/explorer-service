@@ -32,6 +32,7 @@ import org.jetbrains.exposed.sql.update
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 object ValidatorMarketRateStatsTable : IntIdTable(name = "validator_market_rate_stats") {
@@ -328,11 +329,11 @@ class PulseCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         fun upsert(date: LocalDate, type: PulseCacheType, data: PulseMetric, subtype: String? = null) = transaction {
             findByDateAndType(date, type, subtype)?.apply {
                 this.data = data
-                this.updatedTimestamp = LocalDateTime.now()
+                this.updatedTimestamp = LocalDateTime.now(ZoneOffset.UTC)
             } ?:
             PulseCacheTable.insertIgnore {
                 it[this.cacheDate] = date
-                it[this.updatedTimestamp] = LocalDateTime.now()
+                it[this.updatedTimestamp] = LocalDateTime.now(ZoneOffset.UTC)
                 it[this.type] = type
                 it[this.subtype] = subtype
                 it[this.data] = data

@@ -47,7 +47,7 @@ class MsgFeeGrpcClient(channelUri: URI) {
     fun getMsgFeesAtHeight(height: Int, offset: Int = 0, limit: Int = 100) = runBlocking {
         try {
             msgFeeClient
-                .addBlockHeightToQuery(height.toString())
+                .addBlockHeightToQuery(height)
                 .queryAllMsgFees(
                     queryAllMsgFeesRequest {
                         this.pagination = getPagination(offset, limit)
@@ -63,7 +63,7 @@ class MsgFeeGrpcClient(channelUri: URI) {
     fun getFloorGasPriceAtHeight(height: Int) = runBlocking {
         try {
             msgFeeClient
-                .addBlockHeightToQuery(height.toString())
+                .addBlockHeightToQuery(height)
                 .params(io.provenance.msgfees.v1.queryParamsRequest { })
                 .params.floorGasPrice.amount.toLong()
         } catch (e: Exception) {

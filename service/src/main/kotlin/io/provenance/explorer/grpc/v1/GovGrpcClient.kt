@@ -58,7 +58,7 @@ class GovGrpcClient(channelUri: URI) {
     suspend fun getParamsAtHeight(param: GovParamType, height: Int) =
         try {
             govClient
-                .addBlockHeightToQuery(height.toString())
+                .addBlockHeightToQuery(height)
                 .params(queryParamsRequest { this.paramsType = param.name })
         } catch (e: Exception) {
             null
