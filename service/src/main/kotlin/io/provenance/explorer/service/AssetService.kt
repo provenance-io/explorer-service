@@ -246,9 +246,6 @@ class AssetService(
 
     fun updateAssetPricingFromLatestNav() = runBlocking {
         val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC)
-        if (assetPricinglastRun == null) {
-            assetPricinglastRun = AssetPricingRecord.getLastUpdatedTime()?.atOffset(ZoneOffset.UTC)
-        }
 
         logger.info("Updating asset pricing, last run at: $assetPricinglastRun")
 
