@@ -6,7 +6,7 @@ import org.springframework.validation.annotation.Validated
 @ConfigurationProperties(prefix = "pulse")
 @Validated
 class PulseProperties(
-    val ftsLoanDataUrl: String,
+    val loanLedgerDataUrl: String,
     /*
     Locked hash addresses are used to filter out locked hash transactions from
     circulating supply and market cap metrics. Hash held in these address are
