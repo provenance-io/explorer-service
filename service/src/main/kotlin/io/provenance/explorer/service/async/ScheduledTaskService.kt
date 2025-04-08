@@ -43,6 +43,7 @@ import io.provenance.explorer.service.CacheService
 import io.provenance.explorer.service.ExplorerService
 import io.provenance.explorer.service.GovService
 import io.provenance.explorer.service.MetricsService
+import io.provenance.explorer.service.NftService
 import io.provenance.explorer.service.PulseMetricService
 import io.provenance.explorer.service.TokenService
 import io.provenance.explorer.service.ValidatorService
@@ -80,7 +81,8 @@ class ScheduledTaskService(
     private val valService: ValidatorService,
     private val metricsService: MetricsService,
     private val assetService: AssetService,
-    private val pulseMetricService: PulseMetricService
+    private val pulseMetricService: PulseMetricService,
+    private val nftService: NftService
 ) {
 
     protected val logger = logger(ScheduledTaskService::class)
@@ -397,5 +399,11 @@ class ScheduledTaskService(
     @Scheduled(initialDelay = 1L, fixedDelay = 5L, timeUnit = TimeUnit.MINUTES)
     fun refreshPulseMetricCache() {
         pulseMetricService.refreshCache()
+    }
+
+    // hopefully a one time thing
+    @Scheduled(initialDelay = 0L, fixedDelay = 7L, timeUnit = TimeUnit.DAYS)
+    fun populateScopes() {
+        nftService.populateScopes()
     }
 }

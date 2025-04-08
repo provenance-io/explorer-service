@@ -13,6 +13,7 @@ import io.provenance.metadata.v1.recordSpecificationRequest
 import io.provenance.metadata.v1.recordSpecificationsForContractSpecificationRequest
 import io.provenance.metadata.v1.scopeRequest
 import io.provenance.metadata.v1.scopeSpecificationRequest
+import io.provenance.metadata.v1.valueOwnershipRequest
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import org.springframework.stereotype.Component
@@ -42,6 +43,42 @@ class MetadataGrpcClient(channelUri: URI, private val semaphore: Semaphore) {
 
         metadataClient = QueryCoroutineStub(channel)
     }
+
+    suspend fun getScopesByValueOwner(address: String, offset: Int = 0, limit: Int = 10) =
+        semaphore.withPermit {
+            metadataClient.valueOwnership(
+                valueOwnershipRequest {
+                    this.address = address
+                    this.pagination = getPagination(offset, limit)
+                }
+            )
+        }
+
+    suspend fun getScopesByValueOwnerTotal(address: String) =
+        semaphore.withPermit {
+            val limit = 300
+            var nextKey = "".toByteString()
+            var count = 0
+
+            do {
+                metadataClient.valueOwnership(
+                    valueOwnershipRequest {
+                        this.address = address
+                        this.pagination = pageRequest {
+                            this.limit = limit.toLong()
+                            if (nextKey.toStringUtf8().isNotBlank()) {
+                                this.key = nextKey
+                            }
+                        }
+                    }
+                ).let {
+                    nextKey = it.pagination.nextKey
+                    count += it.scopeUuidsCount
+                }
+            } while (nextKey.toStringUtf8().isNotBlank())
+
+            count
+        }
 
     suspend fun getScopesByOwner(address: String, offset: Int = 0, limit: Int = 10) =
         semaphore.withPermit {
