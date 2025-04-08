@@ -3,8 +3,8 @@ package io.provenance.explorer.domain.entities
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
 import io.provenance.explorer.domain.extensions.execAndMap
-import io.provenance.explorer.domain.models.explorer.NftData
 import io.provenance.explorer.domain.models.explorer.NftVOTransferObj
+import io.provenance.explorer.domain.models.explorer.toNftData
 import io.provenance.metadata.v1.Scope
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
@@ -15,7 +15,6 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.sql.ResultSet
 
 object NftScopeTable : IntIdTable(name = "nft_scope") {
     val uuid = varchar("uuid", 128)
@@ -111,12 +110,6 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
     var deleted by NftScopeTable.deleted
     var scope by NftScopeTable.scope
 }
-
-fun ResultSet.toNftData() = NftData(
-    uuid = getString("uuid"),
-    address = getString("address"),
-    scope = OBJECT_MAPPER.readValue(getString("scope"), Scope::class.java)
-)
 
 object NftScopeSpecTable : IntIdTable(name = "nft_scope_spec") {
     val uuid = varchar("uuid", 128)

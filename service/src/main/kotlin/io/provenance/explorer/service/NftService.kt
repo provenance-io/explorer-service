@@ -275,17 +275,17 @@ class NftService(
     }
 
     private fun scopeToListview(nft: NftData, ownerAddress: String) = runBlocking {
-        val scopeSpecAddr = nft.scope.specificationId.toMAddress().getPrimaryUuid().toMAddressScopeSpec().toString()
-        val lastTx = TxNftJoinRecord.findTxByUuid(nft.uuid, 0, 1).firstOrNull()
+        val scopeSpecAddr = nft.specAddr
+        val lastTx = TxNftJoinRecord.findTxByUuid(nft.scopeUuid, 0, 1).firstOrNull()
         ScopeListview(
-            nft.uuid,
-            nft.address,
+            nft.scopeUuid,
+            nft.scopeAddr,
             getScopeDescrip(scopeSpecAddr)?.name,
             scopeSpecAddr,
             lastTx?.txTimestamp?.toString() ?: "",
-            nft.scope.ownersList.map { own -> own.address }.contains(ownerAddress),
-            nft.scope.dataAccessList.contains(ownerAddress),
-            nft.scope.valueOwnerAddress == ownerAddress
+            nft.owners.map { own -> own.party }.contains(ownerAddress),
+            nft.dataAccess.contains(ownerAddress),
+            nft.valueOwner == ownerAddress
         )
     }
 }
