@@ -1420,6 +1420,7 @@ class PulseMetricService(
         val ftsValue = this.loanLedgerTotalBalance(MetricRangeType.DAY)
         entityLedgeredAssetList.add(
             EntityLedgeredAsset(
+                id = UUID.randomUUID().toString(), // TODO use blockchain account or UUID
                 name = "Figure",
                 type = "Loans",
                 amount = ftsValue.amount,
