@@ -435,7 +435,6 @@ class PulseMetricService(
     private fun pulseTradeValueSettled(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null,
-        denom: String? = null
     ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
             type = PulseCacheType.PULSE_TRADE_VALUE_SETTLED_METRIC,
@@ -445,13 +444,11 @@ class PulseMetricService(
             if (atDateTime != null) {
                 NavEventsRecord.getNavEvents(
                     fromDate = atDateTime.startOfDay(),
-                    toDate = endOfDay(atDateTime),
-                    denom = denom
+                    toDate = endOfDay(atDateTime)
                 )
             } else {
                 NavEventsRecord.getNavEvents(
-                    fromDate = nowUTC().startOfDay(),
-                    denom = denom
+                    fromDate = nowUTC().startOfDay()
                 )
             }.filter {
                 it.source.startsWith("x/exchange") &&
@@ -1017,11 +1014,26 @@ class PulseMetricService(
                 }
 
                 PulseCacheType.HASH_VOLUME_METRIC -> {
-                    this.pulseTradeValueSettled(
-                        range,
-                        atDateTime,
-                        UTILITY_TOKEN
-                    )
+                    if (atDateTime != null) {
+                        NavEventsRecord.getNavEvents(
+                            fromDate = atDateTime.startOfDay(),
+                            toDate = endOfDay(atDateTime),
+                            denom = UTILITY_TOKEN
+                        )
+                    } else {
+                        NavEventsRecord.getNavEvents(
+                            fromDate = nowUTC().startOfDay(),
+                            denom = UTILITY_TOKEN
+                        )
+                    }.filter {
+                        it.source.startsWith("x/exchange") &&
+                                it.priceDenom?.startsWith("u$USD_LOWER") == true
+                    }.sumOf { it.priceAmount!! }.toBigDecimal().let {
+                            PulseMetric.build(
+                                base = USD_UPPER,
+                                amount = it.divide(1000000.toBigDecimal())
+                            )
+                        }
                 }
 
                 PulseCacheType.HASH_FDV_METRIC -> {
