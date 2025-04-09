@@ -21,12 +21,13 @@ import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.extensions.roundWhole
 import io.provenance.explorer.domain.extensions.startOfDay
+import io.provenance.explorer.domain.models.explorer.pulse.EntityLedgeredAsset
 import io.provenance.explorer.domain.models.explorer.pulse.ExchangeSummary
 import io.provenance.explorer.domain.models.explorer.pulse.MetricRangeType
 import io.provenance.explorer.domain.models.explorer.pulse.MetricSeries
 import io.provenance.explorer.domain.models.explorer.pulse.PulseAssetSummary
 import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
-import io.provenance.explorer.domain.models.explorer.pulse.PulseFTSLoanLedger
+import io.provenance.explorer.domain.models.explorer.pulse.PulseLoanLedger
 import io.provenance.explorer.domain.models.explorer.pulse.PulseMetric
 import io.provenance.explorer.domain.models.explorer.pulse.TransactionSummary
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
@@ -261,17 +262,32 @@ class PulseMetricService(
             }
         } ?: BigDecimal.ZERO
 
-    private fun pulseAssetPrice(
+    private fun pulseLastTradedAssetPrice(
         denom: String,
         atDate: LocalDate = nowUTC().startOfDay().toLocalDate()
-    ) =
+    ): BigDecimal =
         fromPulseMetricCache(
             atDate,
             PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC, denom
-        )?.amount ?: fromPulseMetricCache(
-            atDate.minusDays(1),
-            PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC, denom
-        )?.amount ?: BigDecimal.ZERO
+        ).let {
+            if (it?.amount != null && it.amount > BigDecimal.ZERO) {
+                it.amount
+            } else {
+                // find latest cached price
+                var giveUp = 1L
+                while (giveUp++ < 15L) {
+                    val amt = fromPulseMetricCache(
+                        atDate.minusDays(giveUp),
+                        PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC, denom
+                    )?.amount
+                    if (amt != null && amt > BigDecimal.ZERO) {
+                        return@let amt
+                    }
+                }
+                logger.warn("Failed to find price for $denom on $atDate looking back $giveUp days")
+                return@let BigDecimal.ZERO
+            }
+        }
 
     /**
      * Returns the current hash market cap metric comparing the previous range market cap
@@ -619,7 +635,10 @@ class PulseMetricService(
                     Pair(it.key, it.value.times(inversePowerOfTen(dE)))
                 }.map {
                     // get price of the asset
-                    Pair(it.first, it.second.times(pulseAssetPrice(it.first)))
+                    Pair(
+                        it.first,
+                        it.second.times(pulseLastTradedAssetPrice(it.first))
+                    )
                 }.sumOf { it.second }
                 .let {
                     PulseMetric.build(
@@ -657,55 +676,55 @@ class PulseMetricService(
         }
 
     /**
-     * FTS Loan-based Metrics
+     * Loan-based Metrics
      */
-    private fun ftsUrl(endpoint: String, atDateTime: LocalDateTime? = null) =
+    private fun loanLedgerUrl(endpoint: String, atDateTime: LocalDateTime? = null) =
         if (atDateTime != null) {
-            "${pulseProperties.ftsLoanDataUrl}/$endpoint?atDate=${
+            "${pulseProperties.loanLedgerDataUrl}/$endpoint?atDate=${
                 atDateTime.toLocalDate().format(
                     DateTimeFormatter.ISO_LOCAL_DATE
                 )
             }"
         } else {
-            "${pulseProperties.ftsLoanDataUrl}/$endpoint"
+            "${pulseProperties.loanLedgerDataUrl}/$endpoint"
         }
 
-    private fun ftsGetLoanLedger(
+    private fun getLoanLedger(
         endpoint: String,
         atDateTime: LocalDateTime? = null
     ) =
         runBlocking {
             try {
-                ftsUrl(endpoint, atDateTime).let {
+                loanLedgerUrl(endpoint, atDateTime).let {
                     pulseHttpClient.get {
                         url(it)
-                    }.body<List<PulseFTSLoanLedger>>()
+                    }.body<List<PulseLoanLedger>>()
                 }
             } catch (e: Exception) {
-                logger.error("Failed to fetch FTS loan ledger data: ${e.message}")
+                logger.error("Failed to fetch loan ledger data: ${e.message}")
                 emptyList()
             }
         }
 
-    private fun ftsEffectiveDateFilter(atDateTime: LocalDateTime? = null) =
+    private fun loanLedgerEffectiveDateFilter(atDateTime: LocalDateTime? = null) =
         if (atDateTime != null) {
             atDateTime.startOfDay()
         } else {
             nowUTC().startOfDay()
         }
 
-    private fun ftsLoanTotalBalance(
+    private fun loanLedgerTotalBalance(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
     ) =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.FTS_LOAN_TOTAL_BALANCE_METRIC,
+            type = PulseCacheType.LOAN_LEDGER_TOTAL_BALANCE_METRIC,
             range = range,
             atDateTime = atDateTime
         ) {
             runBlocking {
                 pulseHttpClient.get {
-                    url(ftsUrl("balances", atDateTime))
+                    url(loanLedgerUrl("balances", atDateTime))
                 }.body<JsonNode>().let {
                     PulseMetric.build(
                         base = USD_UPPER,
@@ -715,18 +734,18 @@ class PulseMetricService(
             }
         }
 
-    private fun ftsLoanTotalCount(
+    private fun loanLedgerTotalCount(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
     ) =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.FTS_LOAN_TOTAL_COUNT_METRIC,
+            type = PulseCacheType.LOAN_LEDGER_TOTAL_COUNT_METRIC,
             range = range,
             atDateTime = atDateTime
         ) {
             runBlocking {
                 pulseHttpClient.get {
-                    url(ftsUrl("balances", atDateTime))
+                    url(loanLedgerUrl("balances", atDateTime))
                 }.body<JsonNode>().let {
                     PulseMetric.build(
                         base = count,
@@ -736,18 +755,18 @@ class PulseMetricService(
             }
         }
 
-    private fun ftsLoanPayments(
+    private fun loanLedgerPayments(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
     ) =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.FTS_LOAN_PAYMENTS_METRIC,
+            type = PulseCacheType.LOAN_LEDGER_PAYMENTS_METRIC,
             range = range,
             atDateTime = atDateTime
         ) {
-            ftsGetLoanLedger("payments", atDateTime)
+            getLoanLedger("payments", atDateTime)
                 .filter {
-                    it.effectiveDate.startOfDay() == ftsEffectiveDateFilter(
+                    it.effectiveDate.startOfDay() == loanLedgerEffectiveDateFilter(
                         atDateTime
                     )
                 }
@@ -759,17 +778,17 @@ class PulseMetricService(
                 }
         }
 
-    private fun ftsLoanTotalPayments(
+    private fun loanLedgerTotalPayments(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
     ) =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.FTS_LOAN_TOTAL_PAYMENTS_METRIC,
+            type = PulseCacheType.LOAN_LEDGER_TOTAL_PAYMENTS_METRIC,
             range = range,
             atDateTime = atDateTime
         ) {
-            ftsGetLoanLedger("payments", atDateTime).count {
-                it.effectiveDate.startOfDay() == ftsEffectiveDateFilter(
+            getLoanLedger("payments", atDateTime).count {
+                it.effectiveDate.startOfDay() == loanLedgerEffectiveDateFilter(
                     atDateTime
                 )
             }.let {
@@ -780,18 +799,18 @@ class PulseMetricService(
             }
         }
 
-    private fun ftsLoanDisbursements(
+    private fun loanLedgerDisbursements(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
     ) =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.FTS_LOAN_DISBURSEMENTS_METRIC,
+            type = PulseCacheType.LOAN_LEDGER_DISBURSEMENTS_METRIC,
             range = range,
             atDateTime = atDateTime
         ) {
-            ftsGetLoanLedger("disbursements", atDateTime)
+            getLoanLedger("disbursements", atDateTime)
                 .filter {
-                    it.effectiveDate.startOfDay() == ftsEffectiveDateFilter(
+                    it.effectiveDate.startOfDay() == loanLedgerEffectiveDateFilter(
                         atDateTime
                     )
                 }
@@ -803,18 +822,18 @@ class PulseMetricService(
                 }
         }
 
-    private fun ftsLoanDisbursementCount(
+    private fun loanLedgerDisbursementCount(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
     ) =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.FTS_LOAN_DISBURSEMENT_COUNT_METRIC,
+            type = PulseCacheType.LOAN_LEDGER_DISBURSEMENT_COUNT_METRIC,
             range = range,
             atDateTime = atDateTime
         ) {
-            ftsGetLoanLedger("disbursements", atDateTime)
+            getLoanLedger("disbursements", atDateTime)
                 .count {
-                    it.effectiveDate.startOfDay() == ftsEffectiveDateFilter(
+                    it.effectiveDate.startOfDay() == loanLedgerEffectiveDateFilter(
                         atDateTime
                     )
                 }.let {
@@ -972,7 +991,10 @@ class PulseMetricService(
 
                 PulseCacheType.HASH_CIRCULATING_METRIC -> {
                     val tokenSupply =
-                        tokenService.circulatingSupply(pulseProperties.hashHoldersExcludedFromCirculatingSupply, height)
+                        tokenService.circulatingSupply(
+                            pulseProperties.hashHoldersExcludedFromCirculatingSupply,
+                            height
+                        )
                             .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
                             .roundWhole()
 
@@ -1124,32 +1146,32 @@ class PulseMetricService(
                 atDateTime = atDateTime
             )
 
-            PulseCacheType.FTS_LOAN_PAYMENTS_METRIC -> ftsLoanPayments(
+            PulseCacheType.LOAN_LEDGER_PAYMENTS_METRIC -> loanLedgerPayments(
                 range = range,
                 atDateTime = atDateTime
             )
 
-            PulseCacheType.FTS_LOAN_TOTAL_PAYMENTS_METRIC -> ftsLoanTotalPayments(
+            PulseCacheType.LOAN_LEDGER_TOTAL_PAYMENTS_METRIC -> loanLedgerTotalPayments(
                 range = range,
                 atDateTime = atDateTime
             )
 
-            PulseCacheType.FTS_LOAN_TOTAL_BALANCE_METRIC -> ftsLoanTotalBalance(
+            PulseCacheType.LOAN_LEDGER_TOTAL_BALANCE_METRIC -> loanLedgerTotalBalance(
                 range = range,
                 atDateTime = atDateTime
             )
 
-            PulseCacheType.FTS_LOAN_TOTAL_COUNT_METRIC -> ftsLoanTotalCount(
+            PulseCacheType.LOAN_LEDGER_TOTAL_COUNT_METRIC -> loanLedgerTotalCount(
                 range = range,
                 atDateTime = atDateTime
             )
 
-            PulseCacheType.FTS_LOAN_DISBURSEMENTS_METRIC -> ftsLoanDisbursements(
+            PulseCacheType.LOAN_LEDGER_DISBURSEMENTS_METRIC -> loanLedgerDisbursements(
                 range = range,
                 atDateTime = atDateTime
             )
 
-            PulseCacheType.FTS_LOAN_DISBURSEMENT_COUNT_METRIC -> ftsLoanDisbursementCount(
+            PulseCacheType.LOAN_LEDGER_DISBURSEMENT_COUNT_METRIC -> loanLedgerDisbursementCount(
                 range = range,
                 atDateTime = atDateTime
             )
@@ -1309,7 +1331,7 @@ class PulseMetricService(
             val denomMetadata = pulseAssetDenomMetadata(denom)
             val denomExp = denomExponent(denomMetadata) ?: 1
             val denomPow = inversePowerOfTen(denomExp)
-            val denomPrice = pulseAssetPrice(denom)
+            val denomPrice = pulseLastTradedAssetPrice(denom)
 
             PagedResults(
                 pages = pr.pages,
@@ -1379,5 +1401,39 @@ class PulseMetricService(
         } else {
             logger.warn("Backfill already in progress, skipping")
         }
+    }
+
+    /* **********************
+     * Ledger Based Services
+     * **********************/
+    fun ledgeredAssetsByEntity(
+        count: Int,
+        page: Int,
+        sort: List<SortOrder>,
+        sortColumn: List<String>
+
+    ): PagedResults<EntityLedgeredAsset> {
+        // TODO this will be replaced when new NFT / ledger modules ship
+
+        val entityLedgeredAssetList = mutableListOf<EntityLedgeredAsset>()
+        // Step 1 - FTS loans
+        val ftsValue = this.loanLedgerTotalBalance(MetricRangeType.DAY)
+        entityLedgeredAssetList.add(
+            EntityLedgeredAsset(
+                // TODO use blockchain account or UUID
+                id = UUID.randomUUID().toString(),
+                name = "Figure",
+                type = "Loans",
+                amount = ftsValue.amount,
+                base = USD_UPPER,
+                trend = ftsValue.trend
+            )
+        )
+
+        return PagedResults(
+            pages = 1,
+            results = entityLedgeredAssetList,
+            total = entityLedgeredAssetList.size.toLong()
+        )
     }
 }

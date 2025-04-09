@@ -1,5 +1,6 @@
 package io.provenance.explorer.web.pulse
 
+import io.provenance.explorer.domain.models.explorer.pulse.EntityLedgeredAsset
 import io.provenance.explorer.domain.models.explorer.pulse.ExchangeSummary
 import io.provenance.explorer.domain.models.explorer.pulse.PulseAssetSummary
 import io.provenance.explorer.domain.models.explorer.pulse.TransactionSummary
@@ -91,4 +92,14 @@ class PulseAssetController(private val pulseMetricService: PulseMetricService) {
                                    @RequestParam(required = false) sortColumn: List<String>?
     ): PagedResults<TransactionSummary> =
         pulseMetricService.transactionSummaries(denom, count, page, sortOrder.orEmpty(), sortColumn.orEmpty())
+
+    @Operation(summary = "Ledgered assets by entity")
+    @GetMapping("/ledgered/by/entity")
+    fun getLedgeredAssetsByEntity(
+        @RequestParam(required = false) page: Int = 0,
+        @RequestParam(required = false) count: Int = 10,
+        @RequestParam(required = false) sortOrder: List<SortOrder>?,
+        @RequestParam(required = false) sortColumn: List<String>?
+    ): PagedResults<EntityLedgeredAsset> =
+        pulseMetricService.ledgeredAssetsByEntity(count, page, sortOrder.orEmpty(), sortColumn.orEmpty())
 }

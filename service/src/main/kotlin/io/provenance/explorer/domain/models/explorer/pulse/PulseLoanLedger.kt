@@ -3,7 +3,7 @@ package io.provenance.explorer.domain.models.explorer.pulse
 import com.fasterxml.jackson.annotation.JsonProperty
 import java.time.LocalDateTime
 
-data class PulseFTSLoanLedger(
+data class PulseLoanLedger(
     @JsonProperty("AssetUUID") val assetUUID: String,
     @JsonProperty("LedgerUUID") val ledgerUUID: String,
     @JsonProperty("LedgerEntryType") val ledgerEntryType: String,
