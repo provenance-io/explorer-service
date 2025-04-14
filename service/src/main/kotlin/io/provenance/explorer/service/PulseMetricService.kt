@@ -1512,7 +1512,14 @@ class PulseMetricService(
             try {
                 val days = fromDate.until(toDate, ChronoUnit.DAYS)
                 for (i in 0..days) {
-                    val d = fromDate.plusDays(i).atStartOfDay()
+                    /*
+                     Pulse works on the principal that the metric for a given
+                     is the aggregation of all events for that date. So we need to
+                     set the backfill date the end of the day to ensure that we
+                     capture all events for that date.
+                     */
+                    //
+                    val d = endOfDay(fromDate.plusDays(i).atStartOfDay())
                     for (type in types) {
                         try {
                             logger.info("Backfilling $type for $d")
