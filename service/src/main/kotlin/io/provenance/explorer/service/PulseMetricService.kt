@@ -1518,7 +1518,6 @@ class PulseMetricService(
                      set the backfill date the end of the day to ensure that we
                      capture all events for that date.
                      */
-                    //
                     val d = endOfDay(fromDate.plusDays(i).atStartOfDay())
                     for (type in types) {
                         try {
