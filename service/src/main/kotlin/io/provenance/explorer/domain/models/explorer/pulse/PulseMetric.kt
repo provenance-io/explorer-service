@@ -21,14 +21,16 @@ data class PulseMetric(
             base: String,
             quote: String? = null,
             quoteAmount: BigDecimal? = null,
-            series: MetricSeries? = null
+            series: MetricSeries? = null,
+            progress: MetricProgress? = null
         ) = PulseMetric(
             id = UUID.randomUUID(),
             base = base,
             amount = amount,
             quote = quote,
             quoteAmount = quoteAmount,
-            series = series
+            series = series,
+            progress = progress
         )
 
         fun build(
@@ -37,7 +39,8 @@ data class PulseMetric(
             base: String,
             quote: String? = null,
             quoteAmount: BigDecimal? = null,
-            series: MetricSeries? = null
+            series: MetricSeries? = null,
+            progress: MetricProgress? = null
         ) =
             PulseMetric(
                 id = UUID.randomUUID(),
@@ -53,7 +56,8 @@ data class PulseMetric(
                     type = current.minus(previous).calculatePulseMetricTrend(),
                     period = MetricTrendPeriod.DAY
                 ),
-                series = series
+                series = series,
+                progress = progress
             )
 
         // create a function called build
