@@ -1060,20 +1060,24 @@ class PulseMetricService(
     /**
      * Periodically refreshes the pulse cache
      */
-    fun refreshCache() = transaction {
-        val threadName = Thread.currentThread().name
-        logger.info("Refreshing pulse cache for thread $threadName")
-        PulseCacheType.entries.filter {
-            it != PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC &&
-                    it != PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
-        }
-            .forEach { type ->
-                pulseMetric(type = type)
+    fun refreshCache() = if (isBackfillInProgress.get()) {
+        logger.info("Skipping refreshing pulse cache because backfill is in progress.")
+    } else {
+        transaction {
+            val threadName = Thread.currentThread().name
+            logger.info("Refreshing pulse cache for thread $threadName")
+            PulseCacheType.entries.filter {
+                it != PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC &&
+                        it != PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
             }
+                .forEach { type ->
+                    pulseMetric(type = type)
+                }
 
-        pulseAssetSummaries()
+            pulseAssetSummaries()
 
-        logger.info("Pulse cache refreshed for thread $threadName")
+            logger.info("Pulse cache refreshed for thread $threadName")
+        }
     }
 
     /**
