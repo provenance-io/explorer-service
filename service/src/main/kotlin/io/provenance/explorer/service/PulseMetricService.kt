@@ -23,6 +23,7 @@ import io.provenance.explorer.domain.extensions.roundWhole
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.explorer.pulse.EntityLedgeredAsset
 import io.provenance.explorer.domain.models.explorer.pulse.ExchangeSummary
+import io.provenance.explorer.domain.models.explorer.pulse.MetricProgress
 import io.provenance.explorer.domain.models.explorer.pulse.MetricRangeType
 import io.provenance.explorer.domain.models.explorer.pulse.MetricSeries
 import io.provenance.explorer.domain.models.explorer.pulse.PulseAssetSummary
@@ -67,7 +68,8 @@ class PulseMetricService(
     private val exchangeGrpcClient: ExchangeGrpcClient,
     private val accountGrpcClient: AccountGrpcClient,
     private val pulseProperties: PulseProperties,
-    @Qualifier("pulseHttpClient") private val pulseHttpClient: HttpClient
+    @Qualifier("pulseHttpClient") private val pulseHttpClient: HttpClient,
+    private val pricingService: PricingService
 ) {
     companion object {
         private val isBackfillInProgress = AtomicBoolean(false)
@@ -117,6 +119,7 @@ class PulseMetricService(
         quote: String? = null,
         quoteAmount: BigDecimal? = null,
         series: MetricSeries? = null,
+        progress: MetricProgress? = null,
         subtype: String? = null
     ) =
         PulseMetric.build(
@@ -125,7 +128,8 @@ class PulseMetricService(
             base = base,
             quote = quote,
             quoteAmount = quoteAmount,
-            series = series
+            series = series,
+            progress = progress,
         ).also {
             PulseCacheRecord.upsert(date, type, it, subtype).also { p ->
                 if (p is org.jetbrains.exposed.sql.statements.InsertStatement<*> && p.insertedCount == 0) {
@@ -151,15 +155,16 @@ class PulseMetricService(
             )
         ) { PulseCacheRecord.findByDateAndType(date, type, subtype)?.data }
 
+    private fun rangeToDays(range: MetricRangeType) =
+        when (range) {
+            MetricRangeType.DAY -> 1
+            MetricRangeType.WEEK -> 7
+            MetricRangeType.MONTH -> 30
+            MetricRangeType.YEAR -> 365
+        }.toLong()
+
     private fun backInTime(range: MetricRangeType) =
-        nowUTC().minusDays(
-            when (range) {
-                MetricRangeType.DAY -> 1
-                MetricRangeType.WEEK -> 7
-                MetricRangeType.MONTH -> 30
-                MetricRangeType.YEAR -> 365
-            }
-        )
+        nowUTC().minusDays(rangeToDays(range))
 
     /**
      * Creates a cache record for the given type if it does not exist, or fetches the cache record.
@@ -206,6 +211,7 @@ class PulseMetricService(
                         quote = metric.quote,
                         quoteAmount = metric.quoteAmount,
                         series = metric.series,
+                        progress = metric.progress,
                         subtype = subtype
                     )
 
@@ -218,6 +224,7 @@ class PulseMetricService(
                 quote = metric.quote,
                 quoteAmount = metric.quoteAmount,
                 series = metric.series,
+                progress = metric.progress,
                 subtype = subtype
             )
         } else todayCache
@@ -370,9 +377,17 @@ class PulseMetricService(
                 range = range,
                 atDateTime = atDateTime
             )
+            val privateEquityValue = this.pulseProperties.privateEquityTvlDenoms.sumOf {
+                this.denomSupplyCache(it, atDateTime)
+                    .times(
+                        pricingService.getPricingInfoSingle(it)
+                            ?: BigDecimal.ZERO
+                    )
+            }
             PulseMetric.build(
                 base = USD_UPPER,
                 amount = committedValue.amount.add(navValue.amount)
+                    .add(privateEquityValue)
             )
         }
 
@@ -561,6 +576,53 @@ class PulseMetricService(
         }
 
     /**
+     * Compute the transaction volume over a range instead of the
+     * total transactions up to a date (like transactionVolume does).
+     */
+    private fun transactionVolumeOverRange(
+        range: MetricRangeType = MetricRangeType.DAY,
+        type: PulseCacheType,
+        atDateTime: LocalDateTime? = null
+    ) = if (atDateTime != null || isScheduledTask()) {
+        transactionVolume(
+            range = range,
+            atDateTime = atDateTime
+        )
+    } else {
+        val spans = rangeOverRangeSpans(
+            range = range,
+            type = type
+        )
+
+        /* Daily transactions are the total transactions to that date
+           so to get the sum over a range we must subtract the range's
+           end value from its start value.
+           This is also why we don't short circuit when the range is
+           a DAY like we do for fees.
+         */
+        val rangeOverAmount = if (spans.first.size == 1) {
+            spans.first.last().trend?.changeQuantity ?: BigDecimal.ZERO
+        } else {
+            spans.first.last().amount.minus(spans.first.first().amount)
+        }
+        val rangeAmount = if (spans.second.size == 1) {
+            spans.second.last().trend?.changeQuantity ?: BigDecimal.ZERO
+        } else {
+            spans.second.last().amount.minus(spans.second.first().amount)
+        }
+
+        PulseMetric.build(
+            previous = rangeOverAmount,
+            current = rangeAmount,
+            base = spans.second.first().base,
+            quote = spans.second.first().quote,
+            quoteAmount = spans.second.first().quoteAmount,
+            series = spans.second.last().series,
+            progress = spans.second.last().progress
+        )
+    }
+
+    /**
      * Total ecosystem participants based on active accounts
      */
     private fun totalParticipants(
@@ -645,7 +707,51 @@ class PulseMetricService(
                 }
         }
 
-    private fun pulseChainFees(
+    private fun rangeSpanFromCache(
+        startDate: LocalDate,
+        type: PulseCacheType,
+        range: MetricRangeType,
+        daySpan: Long
+    ) =
+        mutableListOf<PulseMetric>().apply {
+            for (i in 0..daySpan) {
+                fromPulseMetricCache(startDate.plusDays(i), type)?.let {
+                    this.add(it)
+                } ?: throw ResourceNotFoundException(
+                    "Creating $range range failed to find pulse cache record for $startDate $type."
+                )
+            }
+        }
+
+    /**
+     * Binds the range to Range-over-Range span of time. For example,
+     * given a MONTH range the metric is calculated as the sum of the last 30 days
+     * values compared to the sum of the previous 30 days.
+     * Or, April's amounts versus May's amounts.
+     *
+     * Returns a pair of prior span, current span
+     */
+    private fun rangeOverRangeSpans(
+        range: MetricRangeType = MetricRangeType.DAY,
+        type: PulseCacheType
+    ): Pair<List<PulseMetric>, List<PulseMetric>> {
+        val days = if (range == MetricRangeType.DAY) {
+            // by default daily metrics contain curr/prev span
+            0
+        } else {
+            rangeToDays(range)
+        }
+        val startDate = nowUTC().minusDays(days).toLocalDate()
+        val rangeOverStartDate = startDate.minusDays(days + 1)
+
+        val rangeSpan = rangeSpanFromCache(startDate, type, range, days)
+        val rangeOverSpan =
+            rangeSpanFromCache(rangeOverStartDate, type, range, days)
+
+        return Pair(rangeOverSpan, rangeSpan)
+    }
+
+    private fun pulseChainFeesFromCache(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
     ): PulseMetric =
@@ -673,9 +779,42 @@ class PulseMetricService(
         }
 
     /**
+     * Compute fee metrics over a range rather than from the
+     * default 1 day cache
+     */
+    private fun pulseChainFeesOverRange(
+        range: MetricRangeType,
+        type: PulseCacheType,
+        atDateTime: LocalDateTime?
+    ) =
+        if (atDateTime != null || isScheduledTask() || range == MetricRangeType.DAY) {
+            pulseChainFeesFromCache(range, atDateTime)
+        } else {
+            val spans = rangeOverRangeSpans(
+                range = range,
+                type = type
+            )
+            val rangeOverAmount = spans.first.sumOf { it.amount }
+            val rangeAmount = spans.second.sumOf { it.amount }
+
+            PulseMetric.build(
+                previous = rangeOverAmount,
+                current = rangeAmount,
+                base = spans.second.first().base,
+                quote = spans.second.first().quote,
+                quoteAmount = spans.second.first().quoteAmount,
+                series = spans.second.last().series,
+                progress = spans.second.last().progress
+            )
+        }
+
+    /**
      * Loan-based Metrics
      */
-    private fun loanLedgerUrl(endpoint: String, atDateTime: LocalDateTime? = null) =
+    private fun loanLedgerUrl(
+        endpoint: String,
+        atDateTime: LocalDateTime? = null
+    ) =
         if (atDateTime != null) {
             "${pulseProperties.loanLedgerDataUrl}/$endpoint?atDate=${
                 atDateTime.toLocalDate().format(
@@ -994,12 +1133,21 @@ class PulseMetricService(
                         )
                             .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
                             .roundWhole()
+                    val maxSupply = tokenService.maxSupply()
+                        .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+
+                    val progress = MetricProgress(
+                        percentage = tokenSupply.divide(maxSupply)
+                            .multiply(BigDecimal(100)),
+                        description = "in Circulation"
+                    )
 
                     PulseMetric.build(
                         base = UTILITY_TOKEN,
                         amount = tokenSupply,
                         quote = USD_UPPER,
-                        quoteAmount = hashPriceAtDate.times(tokenSupply)
+                        quoteAmount = hashPriceAtDate.times(tokenSupply),
+                        progress = progress
                     )
                 }
 
@@ -1029,11 +1177,11 @@ class PulseMetricService(
                         it.source.startsWith("x/exchange") &&
                                 it.priceDenom?.startsWith("u$USD_LOWER") == true
                     }.sumOf { it.priceAmount!! }.toBigDecimal().let {
-                            PulseMetric.build(
-                                base = USD_UPPER,
-                                amount = it.divide(1000000.toBigDecimal())
-                            )
-                        }
+                        PulseMetric.build(
+                            base = USD_UPPER,
+                            amount = it.divide(1000000.toBigDecimal())
+                        )
+                    }
                 }
 
                 PulseCacheType.HASH_FDV_METRIC -> {
@@ -1048,6 +1196,13 @@ class PulseMetricService(
                     PulseMetric.build(
                         base = USD_UPPER,
                         amount = fdv
+                    )
+                }
+
+                PulseCacheType.HASH_PRICE_METRIC -> {
+                    PulseMetric.build(
+                        base = USD_UPPER,
+                        amount = hashPriceAtDate
                     )
                 }
 
@@ -1066,126 +1221,98 @@ class PulseMetricService(
     ): PulseMetric {
         return when (type) {
             PulseCacheType.HASH_MARKET_CAP_METRIC -> hashMarketCapMetric(
-                range = range,
-                atDateTime = atDateTime
+                range,
+                atDateTime
             )
 
-            PulseCacheType.HASH_STAKED_METRIC -> hashMetric(
-                range = range,
-                type = type,
-                atDateTime = atDateTime
-            )
-
-            PulseCacheType.HASH_CIRCULATING_METRIC -> hashMetric(
-                range = range,
-                type = type,
-                atDateTime = atDateTime
-            )
-
-            PulseCacheType.HASH_SUPPLY_METRIC -> hashMetric(
-                range = range,
-                type = type,
-                atDateTime = atDateTime
-            )
-
-            PulseCacheType.HASH_VOLUME_METRIC -> hashMetric(
-                range = range,
-                type = type,
-                atDateTime = atDateTime
-            )
-
+            PulseCacheType.HASH_STAKED_METRIC,
+            PulseCacheType.HASH_CIRCULATING_METRIC,
+            PulseCacheType.HASH_SUPPLY_METRIC,
+            PulseCacheType.HASH_VOLUME_METRIC,
+            PulseCacheType.HASH_PRICE_METRIC,
             PulseCacheType.HASH_FDV_METRIC -> hashMetric(
                 range = range,
                 type = type,
                 atDateTime = atDateTime
             )
 
-            PulseCacheType.PULSE_TVL_METRIC -> pulseTVL(
-                range = range,
-                atDateTime = atDateTime
-            )
+            PulseCacheType.PULSE_TVL_METRIC -> pulseTVL(range, atDateTime)
+            PulseCacheType.PULSE_CHAIN_FEES_VALUE_METRIC ->
+                pulseChainFeesOverRange(range, type, atDateTime)
 
-            PulseCacheType.PULSE_CHAIN_FEES_VALUE_METRIC -> pulseChainFees(
-                range = range,
-                atDateTime = atDateTime
-            )
-
-            PulseCacheType.PULSE_TRANSACTION_VOLUME_METRIC -> transactionVolume(
-                range = range,
-                atDateTime = atDateTime
-            )
+            PulseCacheType.PULSE_TRANSACTION_VOLUME_METRIC ->
+                transactionVolumeOverRange(range, type, atDateTime)
 
             PulseCacheType.PULSE_TODAYS_NAV_METRIC -> pulseTodaysNavs(
-                range = range,
-                atDateTime = atDateTime
+                range,
+                atDateTime
             )
 
             PulseCacheType.PULSE_TOTAL_NAV_METRIC -> totalMetadataNavs(
-                range = range,
-                atDateTime = atDateTime
+                range,
+                atDateTime
             )
 
             PulseCacheType.PULSE_TRADE_SETTLEMENT_METRIC -> pulseTradesSettled(
-                range = range,
-                atDateTime = atDateTime
+                range,
+                atDateTime
             )
 
             PulseCacheType.PULSE_TRADE_VALUE_SETTLED_METRIC -> pulseTradeValueSettled(
-                range = range,
-                atDateTime = atDateTime
+                range,
+                atDateTime
             )
 
             PulseCacheType.PULSE_PARTICIPANTS_METRIC -> totalParticipants(
-                range = range,
-                atDateTime = atDateTime
+                range,
+                atDateTime
             )
 
             PulseCacheType.PULSE_COMMITTED_ASSETS_METRIC -> exchangeCommittedAssetCount(
-                range = range,
-                atDateTime = atDateTime
+                range,
+                atDateTime
             )
 
             PulseCacheType.PULSE_COMMITTED_ASSETS_VALUE_METRIC -> exchangeCommittedAssetsValue(
-                range = range,
-                atDateTime = atDateTime
+                range,
+                atDateTime
             )
-
             /* Order of this kind of matters since it depends on
              * the committed assets value metric
              */
             PulseCacheType.PULSE_TRADING_TVL_METRIC -> pulseTradingTVL(
-                range = range,
-                atDateTime = atDateTime
+                range,
+                atDateTime
             )
 
             PulseCacheType.LOAN_LEDGER_PAYMENTS_METRIC -> loanLedgerPayments(
-                range = range,
-                atDateTime = atDateTime
+                range,
+                atDateTime
             )
 
             PulseCacheType.LOAN_LEDGER_TOTAL_PAYMENTS_METRIC -> loanLedgerTotalPayments(
-                range = range,
-                atDateTime = atDateTime
+                range,
+                atDateTime
             )
 
             PulseCacheType.LOAN_LEDGER_TOTAL_BALANCE_METRIC -> loanLedgerTotalBalance(
-                range = range,
-                atDateTime = atDateTime
+                range,
+                atDateTime
             )
 
             PulseCacheType.LOAN_LEDGER_TOTAL_COUNT_METRIC -> loanLedgerTotalCount(
-                range = range,
-                atDateTime = atDateTime
+                range,
+                atDateTime
             )
 
             PulseCacheType.LOAN_LEDGER_DISBURSEMENTS_METRIC -> loanLedgerDisbursements(
-                range = range,
-                atDateTime = atDateTime
+                range,
+                atDateTime
             )
 
             PulseCacheType.LOAN_LEDGER_DISBURSEMENT_COUNT_METRIC -> loanLedgerDisbursementCount(
-                range = range,
-                atDateTime = atDateTime
+                range,
+                atDateTime
             )
 
             else -> throw ResourceNotFoundException("Invalid pulse metric request for type $type")
