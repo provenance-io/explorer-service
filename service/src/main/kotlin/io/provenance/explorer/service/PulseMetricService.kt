@@ -1194,20 +1194,24 @@ class PulseMetricService(
     /**
      * Periodically refreshes the pulse cache
      */
-    fun refreshCache() = transaction {
-        val threadName = Thread.currentThread().name
-        logger.info("Refreshing pulse cache for thread $threadName")
-        PulseCacheType.entries.filter {
-            it != PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC &&
-                    it != PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
-        }
-            .forEach { type ->
-                pulseMetric(type = type)
+    fun refreshCache() = if (isBackfillInProgress.get()) {
+        logger.info("Skipping refreshing pulse cache because backfill is in progress.")
+    } else {
+        transaction {
+            val threadName = Thread.currentThread().name
+            logger.info("Refreshing pulse cache for thread $threadName")
+            PulseCacheType.entries.filter {
+                it != PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC &&
+                        it != PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
             }
+                .forEach { type ->
+                    pulseMetric(type = type)
+                }
 
-        pulseAssetSummaries()
+            pulseAssetSummaries()
 
-        logger.info("Pulse cache refreshed for thread $threadName")
+            logger.info("Pulse cache refreshed for thread $threadName")
+        }
     }
 
     /**
@@ -1656,7 +1660,13 @@ class PulseMetricService(
             try {
                 val days = fromDate.until(toDate, ChronoUnit.DAYS)
                 for (i in 0..days) {
-                    val d = fromDate.plusDays(i).atStartOfDay()
+                    /*
+                     Pulse works on the principal that the metric for a given
+                     is the aggregation of all events for that date. So we need to
+                     set the backfill date the end of the day to ensure that we
+                     capture all events for that date.
+                     */
+                    val d = endOfDay(fromDate.plusDays(i).atStartOfDay())
                     for (type in types) {
                         try {
                             logger.info("Backfilling $type for $d")
