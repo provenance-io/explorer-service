@@ -28,6 +28,7 @@ enum class MetricRangeType(val range: String) {
 enum class PulseCacheType {
     HASH_MARKET_CAP_METRIC,
     HASH_VOLUME_METRIC,
+    HASH_PRICE_METRIC,
     HASH_FDV_METRIC,
     HASH_SUPPLY_METRIC,
     HASH_STAKED_METRIC,

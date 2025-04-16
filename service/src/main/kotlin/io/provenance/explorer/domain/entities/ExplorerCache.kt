@@ -348,6 +348,17 @@ class PulseCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                             (if (subtype != null) PulseCacheTable.subtype eq subtype else PulseCacheTable.subtype.isNull())
                 }.firstOrNull()
             }
+
+        fun findByDateSpanAndType(startDate: LocalDate, endDate: LocalDate, type: PulseCacheType, subtype: String? = null) =
+            transaction {
+                PulseCacheRecord.find {
+                    (PulseCacheTable.cacheDate greaterEq startDate) and
+                            (PulseCacheTable.cacheDate lessEq endDate) and
+                            (PulseCacheTable.type eq type) and
+                            (if (subtype != null) PulseCacheTable.subtype eq subtype else PulseCacheTable.subtype.isNull())
+                }.orderBy(Pair(PulseCacheTable.cacheDate, SortOrder.ASC))
+                .toList()
+            }
     }
 
     var type by PulseCacheTable.type
