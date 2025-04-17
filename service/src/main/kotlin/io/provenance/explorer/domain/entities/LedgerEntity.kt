@@ -43,7 +43,6 @@ class LedgerEntityRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun getAllPaginated(offset: Int, limit: Int) = transaction {
             LedgerEntityRecord.all()
-                // .orderBy(Pair(GovProposalTable.proposalId, SortOrder.DESC))
                 .limit(limit, offset.toLong())
                 .toList()
         }

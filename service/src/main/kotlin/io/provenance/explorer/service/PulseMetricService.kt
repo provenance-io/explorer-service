@@ -987,7 +987,9 @@ class PulseMetricService(
 
     /**
      * nav metrics for known entities
+     * waterfalls to calc for totals across all entities, totals by entity type, and finally by individual entity
      */
+
     private fun entityNavTotalBalance(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null,
@@ -997,9 +999,8 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime,
         ) {
-            LedgerEntityRecord.all().sumOf { entity ->
-                NavEventsRecord.latestScopeNavsByOwner(entity.address, entity.ownerType, atDateTime)
-                    .sumOf { it.priceAmount.toBigDecimal().times(inversePowerOfTen(entity.usdPricingExponent)) }
+            EntityType.entries.sumOf {
+                navTotalBalanceByEntityType(range, it, atDateTime).amount
             }.let {
                 PulseMetric.build(
                     base = USD_UPPER,
@@ -1017,12 +1018,54 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime,
         ) {
-            LedgerEntityRecord.all().map {
-                NavEventsRecord.latestScopeNavsByOwner(it.address, it.ownerType, atDateTime)
+            EntityType.entries.sumOf {
+                navTotalCountByEntityType(range, it, atDateTime).amount
             }.let {
                 PulseMetric.build(
                     base = count,
-                    amount = it.size.toBigDecimal()
+                    amount = it
+                )
+            }
+        }
+
+    private fun navTotalBalanceByEntityType(
+        range: MetricRangeType = MetricRangeType.DAY,
+        type: EntityType,
+        atDateTime: LocalDateTime? = null,
+    ) =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.ENTITY_NAV_TOTAL_BALANCE_METRIC,
+            range = range,
+            atDateTime = atDateTime,
+            subtype = type.name,
+        ) {
+            LedgerEntityRecord.findByType(type).sumOf {
+                navTotalBalanceByEntity(range, it, atDateTime).amount
+            }.let {
+                PulseMetric.build(
+                    base = USD_UPPER,
+                    amount = it
+                )
+            }
+        }
+
+    private fun navTotalCountByEntityType(
+        range: MetricRangeType = MetricRangeType.DAY,
+        type: EntityType,
+        atDateTime: LocalDateTime? = null,
+    ) =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.ENTITY_NAV_TOTAL_COUNT_METRIC,
+            range = range,
+            atDateTime = atDateTime,
+            subtype = type.name,
+        ) {
+            LedgerEntityRecord.findByType(type).sumOf {
+                navTotalCountByEntity(range, it, atDateTime).amount
+            }.let {
+                PulseMetric.build(
+                    base = count,
+                    amount = it
                 )
             }
         }
@@ -1038,15 +1081,23 @@ class PulseMetricService(
             atDateTime = atDateTime,
             subtype = entity.uuid,
         ) {
-            // TODO works for now but will need nft module to check the type on these scopes
-            NavEventsRecord.latestScopeNavsByOwner(entity.address, entity.ownerType, atDateTime)
-                .sumOf { it.priceAmount.toBigDecimal().times(inversePowerOfTen(entity.usdPricingExponent)) }
-                .let {
-                   PulseMetric.build(
-                        base = USD_UPPER,
-                        amount = it
-                    )
+            // TODO this will be replaced when new NFT / ledger modules ship
+            // TODO handle all entity types e.g., crypto, securities, etc
+            when (entity.type) {
+                EntityType.LOANS ->
+                    // TODO handle other loan originators
+                    loanLedgerTotalBalance(MetricRangeType.DAY)
+                else -> {
+                    getNavScopesForEntity(entity, atDateTime)
+                        .sumOf { it.priceAmount.toBigDecimal().times(inversePowerOfTen(entity.usdPricingExponent)) }
+                        .let {
+                            PulseMetric.build(
+                                base = USD_UPPER,
+                                amount = it
+                            )
+                        }
                 }
+            }
         }
 
     private fun navTotalCountByEntity(
@@ -1060,8 +1111,7 @@ class PulseMetricService(
             atDateTime = atDateTime,
             subtype = entity.uuid,
         ) {
-            // TODO works for now but will need nft module to check the type on these scopes
-            NavEventsRecord.latestScopeNavsByOwner(entity.address, entity.ownerType, atDateTime)
+            getNavScopesForEntity(entity, atDateTime)
                 .let {
                     PulseMetric.build(
                         base = count,
@@ -1070,48 +1120,16 @@ class PulseMetricService(
                 }
         }
 
-    private fun navTotalBalanceByEntityType(
-        range: MetricRangeType = MetricRangeType.DAY,
-        type: EntityType,
+    // TODO works for now but will need nft module to ensure the type on these scopes matches the type on the entity
+    private fun getNavScopesForEntity(
+        entity: LedgerEntityRecord,
         atDateTime: LocalDateTime? = null,
-    ) =
-        fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.ENTITY_NAV_TOTAL_BALANCE_METRIC,
-            range = range,
-            atDateTime = atDateTime,
-            subtype = type.name,
-        ) {
-            LedgerEntityRecord.findByType(type).map {
-                navTotalBalanceByEntity(range, it, atDateTime)
-            }.sumOf { it.amount }
-                .let {
-                    PulseMetric.build(
-                        base = USD_UPPER,
-                        amount = it
-                    )
-                }
-        }
-
-    private fun navTotalCountByEntityType(
-        range: MetricRangeType = MetricRangeType.DAY,
-        type: EntityType,
-        atDateTime: LocalDateTime? = null,
-    ) =
-        fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.ENTITY_NAV_TOTAL_COUNT_METRIC,
-            range = range,
-            atDateTime = atDateTime,
-            subtype = type.name,
-        ) {
-            LedgerEntityRecord.findByType(type).map {
-                navTotalCountByEntity(range, it, atDateTime)
-            }.sumOf { it.amount }
-                .let {
-                    PulseMetric.build(
-                        base = count,
-                        amount = it
-                    )
-                }
+    ) = NavEventsRecord.latestScopeNavsByOwner(entity.address, entity.ownerType, atDateTime)
+        .filter {
+            when (entity.type) {
+                EntityType.REGISTRATIONS -> it.markerDenom == null
+                else -> true
+            }
         }
 
     /**
@@ -1711,7 +1729,7 @@ class PulseMetricService(
         sortColumn: List<String>,
     ): PagedResults<EntityLedgeredAsset> {
         val entityLedgeredAssetList = LedgerEntityRecord.getAllPaginated(page.toOffset(count), count)
-            .mapNotNull { it.toEntityLedgeredAsset() }
+            .map { it.toEntityLedgeredAsset() }
 
         val totalEntities = LedgerEntityRecord.all().count()
         return PagedResults(
@@ -1755,20 +1773,8 @@ class PulseMetricService(
         )
     }
 
-    fun LedgerEntityRecord.toEntityLedgeredAsset(): EntityLedgeredAsset? {
-        // TODO this will be replaced when new NFT / ledger modules ship
-        // TODO handle all entity types e.g. registrations, crypto, securities, etc
-        val entityValue = when (type) {
-            EntityType.LOANS ->
-                // TODO handle other loan originators
-                loanLedgerTotalBalance(MetricRangeType.DAY)
-            EntityType.INSURANCE_POLICIES ->
-                navTotalBalanceByEntity(MetricRangeType.DAY, this)
-            else -> {
-                logger.warn("Skipping unhandled Entity Type: $type")
-                return null
-            }
-        }
+    fun LedgerEntityRecord.toEntityLedgeredAsset(): EntityLedgeredAsset {
+        val entityValue = navTotalBalanceByEntity(MetricRangeType.DAY, this)
 
         return EntityLedgeredAsset(
             id = uuid,
