@@ -12,6 +12,9 @@ fun io.provenance.explorer.domain.entities.NavEvent.calculateUsdPricePerUnit(): 
     return calculateUsdPrice(this.priceDenom, this.priceAmount, this.volume)
 }
 
+fun io.provenance.explorer.domain.entities.EntityNavEvent.calculateUsdPricePerUnit() =
+    calculateUsdPrice(this.priceDenom, this.priceAmount, this.volume)
+
 val usdPriceDenoms = listOf(USD_LOWER, "uusd.trading", "uusdc.figure.se", "uusdt.figure.se")
 
 /**

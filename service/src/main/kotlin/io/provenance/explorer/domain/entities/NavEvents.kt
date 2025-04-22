@@ -2,7 +2,7 @@ package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.domain.core.sql.toDbQueryList
 import io.provenance.explorer.domain.extensions.execAndMap
-import io.provenance.metadata.v1.PartyType
+import io.provenance.explorer.domain.models.explorer.pulse.EntityType
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -218,21 +218,70 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             }.firstOrNull() ?: BigDecimal.ZERO
         }
 
-        fun latestScopeNavsByOwner(
-            ownerAddress: String,
-            partyType: PartyType,
+        fun latestScopeNavsByEntity(
+            entity: LedgerEntityRecord,
+            specificationIds: List<String>,
             fromDate: LocalDateTime? = null,
             limit: Int? = null,
             offset: Int? = null
         ) = transaction {
             var query = """
             SELECT DISTINCT ON (ne.scope_id)
-                ne.scope_id, ne.price_amount, ns.scope->>'value_owner_address' as value_owner, mc.denom as marker_denom
+                ne.scope_id, ne.price_amount, ne.price_denom, ne.volume,
+                ns.scope->>'value_owner_address' as value_owner, mc.denom as marker_denom
             FROM nav_events ne
                 join nft_scope ns on ne.scope_id = ns.address
                 left join marker_cache mc on ns.scope->>'value_owner_address' = mc.marker_address
-            WHERE ns.scope->'owners' @> '[{"role": "${partyType.name}", "address": "$ownerAddress"}]'
-            AND ne.source = 'metadata' AND ne.price_denom = 'usd' AND ne.price_amount is not null;
+            WHERE ns.scope->'owners' @> '[{"role": "${entity.ownerType.name}", "address": "${entity.address}"}]'
+            AND ne.source = 'metadata' AND ne.price_denom = 'usd' AND ne.price_amount IS NOT NULL
+            """.trimIndent()
+
+            val args = mutableListOf<Pair<ColumnType, *>>()
+
+            if (specificationIds.isNotEmpty()) {
+                val placeholders = specificationIds.joinToString(", ") { "?" }
+                query += " AND ns.scope->>'specification_id' IN ($placeholders)"
+                specificationIds.forEach {
+                    args.add(Pair(VarCharColumnType(), it))
+                }
+            }
+
+            fromDate?.let {
+                query += " AND ne.block_time >= ?"
+                args.add(Pair(JavaLocalDateTimeColumnType(), it))
+            }
+
+            // Registrations are scopes that are not owned by a Marker Account
+            if (entity.type == EntityType.REGISTRATIONS)
+                query += " AND mc.denom IS NULL"
+
+            query += " ORDER BY ne.denom, ne.scope_id, ne.block_height DESC, ne.event_order DESC"
+
+            limit?.let { query += " LIMIT $it" }
+            offset?.let { query += " OFFSET $it" }
+
+            query.execAndMap(args) {
+                EntityNavEvent(
+                    scopeId = it.getString("scope_id"),
+                    priceAmount = it.getLong("price_amount"),
+                    priceDenom = it.getString("price_denom"),
+                    volume = it.getLong("volume"),
+                    valueOwnerAddress = it.getString("value_owner"),
+                    markerDenom = it.getString("marker_denom"),
+                )
+            }
+        }
+
+        fun latestExchangeNavs(
+            fromDate: LocalDateTime? = null,
+            limit: Int? = null,
+            offset: Int? = null
+        ) = transaction {
+            var query = """
+            SELECT DISTINCT ON (denom)
+                denom, price_amount, price_denom, volume
+            FROM nav_events
+            WHERE denom IS NOT NULL AND source = 'x/exchange market 1' AND price_amount IS NOT NULL
             """.trimIndent()
 
             val args = mutableListOf<Pair<ColumnType, *>>()
@@ -248,11 +297,11 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             offset?.let { query += " OFFSET $it" }
 
             query.execAndMap(args) {
-                MetadataScopeNavEvent(
-                    it.getString("scope_id"),
-                    it.getLong("price_amount"),
-                    it.getString("value_owner"),
-                    it.getString("marker_denom"),
+                EntityNavEvent(
+                    denom = it.getString("denom"),
+                    priceAmount = it.getLong("price_amount"),
+                    priceDenom = it.getString("price_denom"),
+                    volume = it.getLong("volume")
                 )
             }
         }
@@ -355,9 +404,12 @@ data class NavEvent(
     )
 }
 
-data class MetadataScopeNavEvent(
-    val scopeId: String,
+data class EntityNavEvent(
+    val scopeId: String? = null,
+    val denom: String? = null,
     val priceAmount: Long,
-    val valueOwnerAddress: String,
-    val markerDenom: String?,
+    val priceDenom: String,
+    val volume: Long,
+    val valueOwnerAddress: String? = null,
+    val markerDenom: String? = null,
 )

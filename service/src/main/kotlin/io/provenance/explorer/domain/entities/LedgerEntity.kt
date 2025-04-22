@@ -55,3 +55,21 @@ class LedgerEntityRecord(id: EntityID<Int>) : IntEntity(id) {
     var ownerType by LedgerEntityTable.ownerType
     var usdPricingExponent by LedgerEntityTable.usdPricingExponent
 }
+
+object LedgerEntitySpecTable : IntIdTable(name = "ledger_entity_spec") {
+    val type: Column<EntityType> = enumerationByName("type", 128, EntityType::class)
+    val specificationId = varchar("specification_id", 128)
+}
+
+class LedgerEntitySpecRecord(id: EntityID<Int>) : IntEntity(id) {
+    companion object : IntEntityClass<LedgerEntitySpecRecord>(
+        LedgerEntitySpecTable
+    ) {
+        fun findByType(type: EntityType) = transaction {
+            LedgerEntitySpecRecord.find { LedgerEntitySpecTable.type eq type }.toList()
+        }
+    }
+
+    var type by LedgerEntitySpecTable.type
+    var specificationId by LedgerEntitySpecTable.specificationId
+}
