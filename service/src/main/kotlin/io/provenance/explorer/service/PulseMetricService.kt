@@ -15,11 +15,14 @@ import io.provenance.explorer.config.pulse.PulseProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.BlockCacheRecord
+import io.provenance.explorer.domain.entities.EntityNavEvent
 import io.provenance.explorer.domain.entities.LedgerEntityRecord
+import io.provenance.explorer.domain.entities.LedgerEntitySpecRecord
 import io.provenance.explorer.domain.entities.NavEvent
 import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
+import io.provenance.explorer.domain.extensions.calculateUsdPricePerUnit
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.roundWhole
 import io.provenance.explorer.domain.extensions.startOfDay
@@ -1082,21 +1085,16 @@ class PulseMetricService(
             subtype = entity.uuid,
         ) {
             // TODO this will be replaced when new NFT / ledger modules ship
-            // TODO handle all entity types e.g., crypto, securities, etc
             when (entity.type) {
-                EntityType.LOANS ->
-                    // TODO handle other loan originators
-                    loanLedgerTotalBalance(MetricRangeType.DAY)
-                else -> {
-                    getNavScopesForEntity(entity, atDateTime)
-                        .sumOf { it.priceAmount.toBigDecimal().times(inversePowerOfTen(entity.usdPricingExponent)) }
-                        .let {
-                            PulseMetric.build(
-                                base = USD_UPPER,
-                                amount = it
-                            )
-                        }
-                }
+                // TODO handle other loan originators
+                EntityType.LOANS -> loanLedgerTotalBalance(MetricRangeType.DAY)
+                else -> getNavEventsForEntity(entity, atDateTime).sumOf { it.calculatePrice(entity.usdPricingExponent) }
+                    .let {
+                        PulseMetric.build(
+                            base = USD_UPPER,
+                            amount = it
+                        )
+                    }
             }
         }
 
@@ -1111,26 +1109,40 @@ class PulseMetricService(
             atDateTime = atDateTime,
             subtype = entity.uuid,
         ) {
-            getNavScopesForEntity(entity, atDateTime)
-                .let {
-                    PulseMetric.build(
-                        base = count,
-                        amount = it.size.toBigDecimal()
-                    )
-                }
-        }
-
-    // TODO works for now but will need nft module to ensure the type on these scopes matches the type on the entity
-    private fun getNavScopesForEntity(
-        entity: LedgerEntityRecord,
-        atDateTime: LocalDateTime? = null,
-    ) = NavEventsRecord.latestScopeNavsByOwner(entity.address, entity.ownerType, atDateTime)
-        .filter {
-            when (entity.type) {
-                EntityType.REGISTRATIONS -> it.markerDenom == null
-                else -> true
+            getNavEventsForEntity(entity).let {
+                PulseMetric.build(
+                    base = count,
+                    amount = it.size.toBigDecimal()
+                )
             }
         }
+
+    private fun getNavEventsForEntity(
+        entity: LedgerEntityRecord,
+        atDateTime: LocalDateTime? = null,
+        limit: Int? = null,
+        offset: Int? = null
+    ) =
+        when (entity.type) {
+            EntityType.LOANS, EntityType.INSURANCE_POLICIES, EntityType.REGISTRATIONS ->
+                NavEventsRecord.latestScopeNavsByEntity(
+                    entity = entity,
+                    specificationIds = LedgerEntitySpecRecord.findByType(entity.type).map { it.specificationId },
+                    fromDate = atDateTime,
+                    limit = limit,
+                    offset = offset
+                )
+
+            EntityType.CRYPTO, EntityType.SECURITIES ->
+                NavEventsRecord.latestExchangeNavs(atDateTime, limit, offset)
+        }
+
+    private fun EntityNavEvent.calculatePrice(pricingExponent: Int): BigDecimal {
+        return if (scopeId != null)
+            priceAmount.toBigDecimal().times(inversePowerOfTen(pricingExponent))
+        else
+            calculateUsdPricePerUnit()
+    }
 
     /**
      * Asset denom  metadata from chain
@@ -1749,27 +1761,22 @@ class PulseMetricService(
         val entity = LedgerEntityRecord.findByEntityId(entityId)
             ?: throw ResourceNotFoundException("Entity not found for id: $entityId")
 
-        val scopeNavs = NavEventsRecord.latestScopeNavsByOwner(
-            ownerAddress = entity.address,
-            partyType = entity.ownerType,
-            limit = count,
-            offset = page.toOffset(count),
-        ).map {
+        val entityAssets = getNavEventsForEntity(entity = entity, limit = count, offset = page.toOffset(count)).map {
             EntityLedgeredAssetDetail(
-                it.scopeId,
-                it.priceAmount.toBigDecimal().times(inversePowerOfTen(entity.usdPricingExponent)),
-                USD_UPPER,
-                it.valueOwnerAddress,
-                it.markerDenom
+                scopeId = it.scopeId,
+                marker = it.denom,
+                amount = it.calculatePrice(entity.usdPricingExponent),
+                base = USD_UPPER,
+                valueOwnerAddress = it.valueOwnerAddress,
+                valueOwnerDenom = it.markerDenom
             )
         }
 
-        val totalScopeNavsForOwner = NavEventsRecord.latestScopeNavsByOwner(entity.address, entity.ownerType)
-            .count().toLong()
+        val totalNavsForEntity = getNavEventsForEntity(entity).count().toLong()
         return PagedResults(
-            pages = totalScopeNavsForOwner.pageCountOfResults(count),
-            results = scopeNavs,
-            total = totalScopeNavsForOwner
+            pages = totalNavsForEntity.pageCountOfResults(count),
+            results = entityAssets,
+            total = totalNavsForEntity
         )
     }
 

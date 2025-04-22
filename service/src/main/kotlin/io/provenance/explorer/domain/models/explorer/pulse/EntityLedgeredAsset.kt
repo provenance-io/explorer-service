@@ -13,9 +13,10 @@ data class EntityLedgeredAsset(
 )
 
 data class EntityLedgeredAssetDetail(
-    val scopeId: String,
+    val scopeId: String? = null,
+    val marker: String? = null,
     val amount: BigDecimal,
     val base: String,
-    val valueOwnerAddress: String,
-    val markerDenom: String?
+    val valueOwnerAddress: String? = null,
+    val valueOwnerDenom: String? = null
 )
