@@ -14,9 +14,10 @@ object LedgerEntityTable : IntIdTable(name = "ledger_entity") {
     val uuid = varchar("uuid", 128)
     val address = varchar("address", 128)
     val name = varchar("name", 128)
+    val dataSource = varchar("data_source", 128)
     val type: Column<EntityType> = enumerationByName("type", 128, EntityType::class)
-    val ownerType: Column<PartyType> = enumerationByName("owner_type", 128, PartyType::class)
-    val usdPricingExponent = integer("usd_pricing_exponent")
+    val ownerType: Column<PartyType?> = enumerationByName("owner_type", 128, PartyType::class).nullable()
+    val usdPricingExponent = integer("usd_pricing_exponent").nullable()
 }
 
 class LedgerEntityRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -52,6 +53,7 @@ class LedgerEntityRecord(id: EntityID<Int>) : IntEntity(id) {
     var address by LedgerEntityTable.address
     var name by LedgerEntityTable.name
     var type by LedgerEntityTable.type
+    var dataSource by LedgerEntityTable.dataSource
     var ownerType by LedgerEntityTable.ownerType
     var usdPricingExponent by LedgerEntityTable.usdPricingExponent
 }
