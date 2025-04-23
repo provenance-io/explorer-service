@@ -232,8 +232,8 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             FROM nav_events ne
                 join nft_scope ns on ne.scope_id = ns.address
                 left join marker_cache mc on ns.scope->>'value_owner_address' = mc.marker_address
-            WHERE ns.scope->'owners' @> '[{"role": "${entity.ownerType.name}", "address": "${entity.address}"}]'
-            AND ne.source = 'metadata' AND ne.price_denom = 'usd' AND ne.price_amount IS NOT NULL
+            WHERE ns.scope->'owners' @> '[{"role": "${entity.ownerType!!.name}", "address": "${entity.address}"}]'
+            AND ne.source = '${entity.dataSource}' AND ne.price_denom = 'usd' AND ne.price_amount IS NOT NULL
             """.trimIndent()
 
             val args = mutableListOf<Pair<ColumnType, *>>()
@@ -255,7 +255,7 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             if (entity.type == EntityType.REGISTRATIONS)
                 query += " AND mc.denom IS NULL"
 
-            query += " ORDER BY ne.denom, ne.scope_id, ne.block_height DESC, ne.event_order DESC"
+            query += " ORDER BY ne.scope_id, ne.block_height DESC, ne.event_order DESC"
 
             limit?.let { query += " LIMIT $it" }
             offset?.let { query += " OFFSET $it" }
@@ -273,6 +273,7 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         fun latestExchangeNavs(
+            dataSource: String,
             fromDate: LocalDateTime? = null,
             limit: Int? = null,
             offset: Int? = null
@@ -281,7 +282,7 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             SELECT DISTINCT ON (denom)
                 denom, price_amount, price_denom, volume
             FROM nav_events
-            WHERE denom IS NOT NULL AND source = 'x/exchange market 1' AND price_amount IS NOT NULL
+            WHERE denom IS NOT NULL AND source = '$dataSource' AND price_amount IS NOT NULL
             """.trimIndent()
 
             val args = mutableListOf<Pair<ColumnType, *>>()
@@ -291,7 +292,7 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
                 args.add(Pair(JavaLocalDateTimeColumnType(), it))
             }
 
-            query += " ORDER BY denom, scope_id, block_height DESC, event_order DESC"
+            query += " ORDER BY denom, block_height DESC, event_order DESC"
 
             limit?.let { query += " LIMIT $it" }
             offset?.let { query += " OFFSET $it" }

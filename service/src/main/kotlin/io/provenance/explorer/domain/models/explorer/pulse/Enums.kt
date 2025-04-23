@@ -56,7 +56,7 @@ enum class PulseCacheType {
     LOAN_LEDGER_TOTAL_PAYMENTS_METRIC,
 
     ENTITY_NAV_TOTAL_BALANCE_METRIC,
-    ENTITY_NAV_TOTAL_COUNT_METRIC,
+    ENTITY_NAV_TOTAL_VOLUME_METRIC,
 }
 
 enum class EntityType(val displayText: String) {

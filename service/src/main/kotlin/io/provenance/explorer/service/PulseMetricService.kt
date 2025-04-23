@@ -22,7 +22,6 @@ import io.provenance.explorer.domain.entities.NavEvent
 import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
-import io.provenance.explorer.domain.extensions.calculateUsdPricePerUnit
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.roundWhole
 import io.provenance.explorer.domain.extensions.startOfDay
@@ -1012,17 +1011,17 @@ class PulseMetricService(
             }
         }
 
-    private fun entityNavTotalCount(
+    private fun entityNavTotalVolume(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null,
     ) =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.ENTITY_NAV_TOTAL_COUNT_METRIC,
+            type = PulseCacheType.ENTITY_NAV_TOTAL_VOLUME_METRIC,
             range = range,
             atDateTime = atDateTime,
         ) {
             EntityType.entries.sumOf {
-                navTotalCountByEntityType(range, it, atDateTime).amount
+                navTotalVolumeByEntityType(range, it, atDateTime).amount
             }.let {
                 PulseMetric.build(
                     base = count,
@@ -1052,19 +1051,19 @@ class PulseMetricService(
             }
         }
 
-    private fun navTotalCountByEntityType(
+    private fun navTotalVolumeByEntityType(
         range: MetricRangeType = MetricRangeType.DAY,
         type: EntityType,
         atDateTime: LocalDateTime? = null,
     ) =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.ENTITY_NAV_TOTAL_COUNT_METRIC,
+            type = PulseCacheType.ENTITY_NAV_TOTAL_VOLUME_METRIC,
             range = range,
             atDateTime = atDateTime,
             subtype = type.name,
         ) {
             LedgerEntityRecord.findByType(type).sumOf {
-                navTotalCountByEntity(range, it, atDateTime).amount
+                navTotalVolumeByEntity(range, it, atDateTime).amount
             }.let {
                 PulseMetric.build(
                     base = count,
@@ -1098,23 +1097,26 @@ class PulseMetricService(
             }
         }
 
-    private fun navTotalCountByEntity(
+    private fun navTotalVolumeByEntity(
         range: MetricRangeType = MetricRangeType.DAY,
         entity: LedgerEntityRecord,
         atDateTime: LocalDateTime? = null,
     ) =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.ENTITY_NAV_TOTAL_COUNT_METRIC,
+            type = PulseCacheType.ENTITY_NAV_TOTAL_VOLUME_METRIC,
             range = range,
             atDateTime = atDateTime,
             subtype = entity.uuid,
         ) {
-            getNavEventsForEntity(entity).let {
-                PulseMetric.build(
-                    base = count,
-                    amount = it.size.toBigDecimal()
-                )
+            getNavEventsForEntity(entity).sumOf {
+                it.calculateVolume()
             }
+                .let {
+                    PulseMetric.build(
+                        base = count,
+                        amount = it
+                    )
+                }
         }
 
     private fun getNavEventsForEntity(
@@ -1132,16 +1134,24 @@ class PulseMetricService(
                     limit = limit,
                     offset = offset
                 )
-
             EntityType.CRYPTO, EntityType.SECURITIES ->
-                NavEventsRecord.latestExchangeNavs(atDateTime, limit, offset)
+                NavEventsRecord.latestExchangeNavs(entity.dataSource, atDateTime, limit, offset)
         }
 
-    private fun EntityNavEvent.calculatePrice(pricingExponent: Int): BigDecimal {
-        return if (scopeId != null)
-            priceAmount.toBigDecimal().times(inversePowerOfTen(pricingExponent))
-        else
-            calculateUsdPricePerUnit()
+    private fun EntityNavEvent.calculatePrice(pricingExponent: Int?): BigDecimal {
+        val exponent = pricingExponent ?: 6.takeIf { priceDenom.startsWith("uusd") } ?: 0
+        return priceAmount.toBigDecimal().times(inversePowerOfTen(exponent))
+    }
+
+    private fun EntityNavEvent.calculateVolume(): BigDecimal {
+        return if (scopeId != null) {
+            volume.toBigDecimal()
+        } else {
+            val denomMetadata = pulseAssetDenomMetadata(denom!!)
+            val denomExp = denomExponent(denomMetadata) ?: 1
+            val denomPow = inversePowerOfTen(denomExp)
+            volume.toBigDecimal().times(denomPow)
+        }
     }
 
     /**
@@ -1488,7 +1498,7 @@ class PulseMetricService(
                 atDateTime = atDateTime,
             )
 
-            PulseCacheType.ENTITY_NAV_TOTAL_COUNT_METRIC -> entityNavTotalCount(
+            PulseCacheType.ENTITY_NAV_TOTAL_VOLUME_METRIC -> entityNavTotalVolume(
                 range = range,
                 atDateTime = atDateTime,
             )
