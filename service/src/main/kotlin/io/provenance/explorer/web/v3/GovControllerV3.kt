@@ -1,7 +1,6 @@
 package io.provenance.explorer.web.v3
 
 import com.google.protobuf.util.JsonFormat
-import io.provenance.explorer.config.interceptor.JwtInterceptor.Companion.X_ADDRESS
 import io.provenance.explorer.domain.extensions.toTxBody
 import io.provenance.explorer.domain.extensions.toTxMessageBody
 import io.provenance.explorer.model.GovDepositRequest
@@ -21,7 +20,6 @@ import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestAttribute
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -99,13 +97,7 @@ class GovControllerV3(private val govService: GovService, private val printer: J
         @Parameter(description = "A .wasm file type containing the WASM code; required for a StoreCode proposal type")
         @RequestPart(required = false)
         wasmFile: MultipartFile? = null,
-        @Parameter(hidden = true)
-        @RequestAttribute(name = X_ADDRESS, required = true)
-        xAddress: String
     ): TxMessageBody {
-        if (xAddress != request.submitter) {
-            throw IllegalArgumentException("Unable to process create submit proposal; connected wallet does not match request")
-        }
         return govService.createSubmitProposal(type, request, wasmFile).toTxBody().toTxMessageBody(printer)
     }
 
@@ -113,13 +105,7 @@ class GovControllerV3(private val govService: GovService, private val printer: J
     @PostMapping("/deposit")
     fun createDeposit(
         @Parameter(description = "Data used to craft the Deposit msg type") @RequestBody request: GovDepositRequest,
-        @Parameter(hidden = true)
-        @RequestAttribute(name = X_ADDRESS, required = true)
-        xAddress: String
     ): TxMessageBody {
-        if (xAddress != request.depositor) {
-            throw IllegalArgumentException("Unable to process create deposit; connected wallet does not match request")
-        }
         return govService.createDeposit(request).toTxBody().toTxMessageBody(printer)
     }
 
@@ -129,13 +115,7 @@ class GovControllerV3(private val govService: GovService, private val printer: J
         @Parameter(description = "Data used to craft the Vote and WeightedVote msg types")
         @RequestBody
         request: GovVoteRequest,
-        @Parameter(hidden = true)
-        @RequestAttribute(name = X_ADDRESS, required = true)
-        xAddress: String
     ): TxMessageBody {
-        if (xAddress != request.voter) {
-            throw IllegalArgumentException("Unable to process create vote; connected wallet does not match request")
-        }
         return govService.createVote(request).toTxBody().toTxMessageBody(printer)
     }
 }
