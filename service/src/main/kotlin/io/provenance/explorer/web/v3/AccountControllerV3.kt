@@ -1,7 +1,6 @@
 package io.provenance.explorer.web.v3
 
 import com.google.protobuf.util.JsonFormat
-import io.provenance.explorer.config.interceptor.JwtInterceptor
 import io.provenance.explorer.domain.annotation.HiddenApi
 import io.provenance.explorer.domain.extensions.toTxBody
 import io.provenance.explorer.domain.extensions.toTxMessageBody
@@ -24,7 +23,6 @@ import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestAttribute
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -46,13 +44,7 @@ class AccountControllerV3(private val accountService: AccountService, private va
         @Parameter(description = "Data used to craft the Send msg type")
         @RequestBody
         request: BankSendRequest,
-        @Parameter(hidden = true)
-        @RequestAttribute(name = JwtInterceptor.X_ADDRESS, required = true)
-        xAddress: String
     ): TxMessageBody {
-        if (xAddress != request.from) {
-            throw IllegalArgumentException("Unable to process create send; connected wallet does not match request")
-        }
         return accountService.createSend(request).toTxBody().toTxMessageBody(printer)
     }
 
