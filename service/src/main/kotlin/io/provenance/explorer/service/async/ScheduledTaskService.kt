@@ -34,6 +34,7 @@ import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.monthToQuarter
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
+import io.provenance.explorer.domain.models.explorer.rwaio.TimeSeriesInterval
 import io.provenance.explorer.grpc.extensions.getMsgSubTypes
 import io.provenance.explorer.grpc.extensions.getMsgType
 import io.provenance.explorer.service.AccountService
@@ -45,6 +46,7 @@ import io.provenance.explorer.service.GovService
 import io.provenance.explorer.service.MetricsService
 import io.provenance.explorer.service.NftService
 import io.provenance.explorer.service.PulseMetricService
+import io.provenance.explorer.service.RwaIoService
 import io.provenance.explorer.service.TokenService
 import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.service.getBlock
@@ -82,7 +84,8 @@ class ScheduledTaskService(
     private val metricsService: MetricsService,
     private val assetService: AssetService,
     private val pulseMetricService: PulseMetricService,
-    private val nftService: NftService
+    private val nftService: NftService,
+    private val rwaIoService: RwaIoService,
 ) {
 
     protected val logger = logger(ScheduledTaskService::class)
@@ -399,6 +402,18 @@ class ScheduledTaskService(
     @Scheduled(initialDelay = 1L, fixedDelay = 5L, timeUnit = TimeUnit.MINUTES)
     fun refreshPulseMetricCache() {
         pulseMetricService.refreshCache()
+    }
+
+    @Scheduled(cron = "0 0 0/1 * * ?") // At the start of every hour
+    fun addHourlyMetrics() {
+        logger.info("Refreshing rwa.io hourly metrics")
+        rwaIoService.addProjectTimeSeriesData(TimeSeriesInterval.HOURLY)
+    }
+
+    @Scheduled(cron = "0 0 0 * * *") // Beginning of every day
+    fun addDailyMetrics() {
+        logger.info("Refreshing rwa.io daily metrics")
+        rwaIoService.addProjectTimeSeriesData(TimeSeriesInterval.DAILY)
     }
 
     // hopefully a one time thing

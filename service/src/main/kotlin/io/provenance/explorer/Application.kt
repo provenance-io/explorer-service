@@ -15,7 +15,7 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.jackson.jackson
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.pulse.PulseProperties
-import io.provenance.explorer.config.rwa.RwaIoProperties
+import io.provenance.explorer.config.rwaio.RwaIoProperties
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
 import org.springframework.boot.builder.SpringApplicationBuilder

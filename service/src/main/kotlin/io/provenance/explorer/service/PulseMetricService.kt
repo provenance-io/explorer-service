@@ -139,22 +139,6 @@ class PulseMetricService(
             pulseMetricCache.put(Triple(date, type, subtype), it)
         }
 
-    /**
-     * Retrieve pulse metric from caffeine cache or DB cache
-     */
-    private fun fromPulseMetricCache(
-        date: LocalDate,
-        type: PulseCacheType,
-        subtype: String? = null
-    ): PulseMetric? =
-        pulseMetricCache.get(
-            Triple(
-                date,
-                type,
-                subtype
-            )
-        ) { PulseCacheRecord.findByDateAndType(date, type, subtype)?.data }
-
     private fun rangeToDays(range: MetricRangeType) =
         when (range) {
             MetricRangeType.DAY -> 1
@@ -357,6 +341,23 @@ class PulseMetricService(
             } ?: PulseMetric.build(
                 base = USD_UPPER,
                 amount = BigDecimal.ZERO,
+            )
+        }
+
+    private fun hashTVL(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.HASH_TVL_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            val hashCommittedAmount = exchangeSummaries(UTILITY_TOKEN).sumOf { it.committed }
+            val hashPrice = hashPriceAtDate(atDateTime)
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = hashCommittedAmount.times(hashPrice)
             )
         }
 
@@ -1058,6 +1059,22 @@ class PulseMetricService(
         } ?: BigDecimal.ZERO
 
     /**
+     * Retrieve pulse metric from caffeine cache or DB cache
+     */
+    fun fromPulseMetricCache(
+        date: LocalDate,
+        type: PulseCacheType,
+        subtype: String? = null
+    ): PulseMetric? =
+        pulseMetricCache.get(
+            Triple(
+                date,
+                type,
+                subtype
+            )
+        ) { PulseCacheRecord.findByDateAndType(date, type, subtype)?.data }
+
+    /**
      * Periodically refreshes the pulse cache
      */
     fun refreshCache() = if (isBackfillInProgress.get()) {
@@ -1228,6 +1245,8 @@ class PulseMetricService(
                 range,
                 atDateTime
             )
+
+            PulseCacheType.HASH_TVL_METRIC -> hashTVL(range, atDateTime)
 
             PulseCacheType.HASH_STAKED_METRIC,
             PulseCacheType.HASH_CIRCULATING_METRIC,
