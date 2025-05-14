@@ -367,6 +367,23 @@ class PulseMetricService(
             )
         }
 
+    private fun hashTVL(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.HASH_TVL_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            val hashCommittedAmount = exchangeSummaries(UTILITY_TOKEN).sumOf { it.committed }
+            val hashPrice = hashPriceAtDate(atDateTime)
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = hashCommittedAmount.times(hashPrice)
+            )
+        }
+
     private fun pulseTVL(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
@@ -1402,6 +1419,8 @@ class PulseMetricService(
                 range,
                 atDateTime
             )
+
+            PulseCacheType.HASH_TVL_METRIC -> hashTVL(range, atDateTime)
 
             PulseCacheType.HASH_STAKED_METRIC,
             PulseCacheType.HASH_CIRCULATING_METRIC,
