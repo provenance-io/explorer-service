@@ -606,6 +606,11 @@ class PulseMetricService(
             atDateTime = atDateTime
         )
     } else {
+        // populate current days metric if we haven't at this point
+        if (fromPulseMetricCache(nowUTC().toLocalDate(), type) == null) {
+            transactionVolume(range = range)
+        }
+
         val spans = rangeOverRangeSpans(
             range = range,
             type = type
