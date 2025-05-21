@@ -365,4 +365,5 @@ class PulseCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var data by PulseCacheTable.data
     var updatedTimestamp by PulseCacheTable.updatedTimestamp
     var subtype by PulseCacheTable.subtype
+    var cacheDate by PulseCacheTable.cacheDate
 }
