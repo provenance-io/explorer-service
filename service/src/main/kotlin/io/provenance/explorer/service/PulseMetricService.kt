@@ -1531,6 +1531,9 @@ class PulseMetricService(
         }
     }
 
+    fun pulseMetricHistory(type: PulseCacheType, fromDate: LocalDate, toDate: LocalDate) =
+        PulseCacheRecord.findByDateSpanAndType(fromDate, toDate, type).associateBy({ it.cacheDate }, { it.data })
+
     /**
      * TODO - this is problematic because it assumes all assets are USD quoted
      */

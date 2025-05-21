@@ -45,6 +45,15 @@ class PulseMetricController(private val pulseMetricService: PulseMetricService) 
     ): PulseMetric =
         pulseMetricService.pulseMetric(type = type, range = range)
 
+    @Operation(summary = "Historical metrics for the given type and date range")
+    @GetMapping("/type/{type}/history")
+    fun getPulseMetricHistoryByType(
+        @PathVariable type: PulseCacheType,
+        @RequestParam fromDate: LocalDate,
+        @RequestParam toDate: LocalDate
+    ): Map<LocalDate, PulseMetric> =
+        pulseMetricService.pulseMetricHistory(type = type, fromDate = fromDate, toDate = toDate)
+
     @Operation(summary = "Back fill all metrics to range")
     @PostMapping("/backfill")
     fun backFillAllMetrics(
