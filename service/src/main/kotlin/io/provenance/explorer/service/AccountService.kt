@@ -2,30 +2,21 @@ package io.provenance.explorer.service
 
 import com.google.protobuf.Any
 import cosmos.bank.v1beta1.msgSend
-import cosmos.vesting.v1beta1.msgCreateVestingAccount
 import io.provenance.attribute.v1.Attribute
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
-import io.provenance.explorer.domain.core.sql.toEntities
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.AccountTokenCountRecord
 import io.provenance.explorer.domain.entities.MarkerUnitRecord
 import io.provenance.explorer.domain.entities.SignatureRecord
-import io.provenance.explorer.domain.entities.TxAddressJoinTable
-import io.provenance.explorer.domain.entities.TxCacheRecord
-import io.provenance.explorer.domain.entities.TxCacheTable
 import io.provenance.explorer.domain.entities.TxHistoryDataViews
-import io.provenance.explorer.domain.entities.TxMessageTable
-import io.provenance.explorer.domain.entities.TxMessageTypeRecord
-import io.provenance.explorer.domain.entities.TxMsgTypeSubtypeTable
 import io.provenance.explorer.domain.entities.ValidatorStateRecord
 import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
 import io.provenance.explorer.domain.exceptions.requireToMessage
 import io.provenance.explorer.domain.exceptions.validate
 import io.provenance.explorer.domain.extensions.diff
-import io.provenance.explorer.domain.extensions.getType
 import io.provenance.explorer.domain.extensions.mapToProtoCoin
 import io.provenance.explorer.domain.extensions.pack
 import io.provenance.explorer.domain.extensions.pageCountOfResults
@@ -70,11 +61,6 @@ import io.provenance.explorer.model.download.TxHistoryChartData
 import jakarta.servlet.ServletOutputStream
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.innerJoin
-import org.jetbrains.exposed.sql.or
-import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
@@ -344,33 +330,8 @@ class AccountService(
             if (acc.data == null || acc.data?.isVesting() == false) {
                 throw ResourceNotFoundException("Invalid vesting account: '$address'")
             }
-            acc.data!!.toVestingData(getInitializationDate(acc), continuousPeriod)
+            acc.data!!.toVestingData(continuousPeriod)
         }
-    }
-
-    // Gets the origination dateTime for the account. Currently only applicable to vesting accounts
-    private fun getInitializationDate(account: AccountRecord) = transaction {
-        val types = listOf(msgCreateVestingAccount { }.getType())
-        val typeIds = TxMessageTypeRecord.findByProtoTypeIn(types)
-
-        TxAddressJoinTable
-            .innerJoin(TxMessageTable, { TxAddressJoinTable.txHashId }, { TxMessageTable.txHashId })
-            .innerJoin(TxMsgTypeSubtypeTable, { TxMessageTable.id }, { TxMsgTypeSubtypeTable.txMsgId })
-            .innerJoin(TxCacheTable, { TxAddressJoinTable.txHashId }, { TxCacheTable.id })
-            .slice(TxCacheTable.columns)
-            .select {
-                (
-                    (TxMsgTypeSubtypeTable.primaryType inList typeIds)
-                        or (TxMsgTypeSubtypeTable.secondaryType inList typeIds.toEntities(TxMsgTypeSubtypeTable))
-                    )
-            }
-            .andWhere { TxAddressJoinTable.addressId eq account.id.value }
-            .andWhere { TxCacheTable.errorCode.isNull() }
-            .orderBy(Pair(TxCacheTable.txTimestamp, SortOrder.ASC))
-            .limit(1)
-            .let { TxCacheRecord.wrapRows(it) }
-            .firstOrNull()
-            ?.txTimestamp
     }
 
     fun getAccountTxHistoryChartData(feepayer: String, filters: TxHistoryDataRequest): List<TxHistoryChartData> {

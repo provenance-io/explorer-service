@@ -37,7 +37,6 @@ import io.provenance.marker.v1.MarkerAccount
 import io.provenance.marker.v1.MarkerStatus
 import io.provenance.msgfees.v1.MsgFee
 import java.time.Instant
-import java.time.LocalDateTime
 
 //region GRPC query
 
@@ -141,7 +140,6 @@ fun String.isValidatorAddress() = this.startsWith(PROV_VAL_OPER_PREFIX)
 // Ref https://docs.cosmos.network/master/modules/auth/05_vesting.html#continuousvestingaccount
 // for info on how the periods are calced
 fun Any.toVestingData(
-    initialDate: LocalDateTime?,
     continuousPeriod: PeriodInSeconds
 ): AccountVestingInfo {
     val now = Instant.now().epochSecond
@@ -205,7 +203,7 @@ fun Any.toVestingData(
                     now.toDateTime(),
                     it.baseVestingAccount.endTime.toDateTime(),
                     it.baseVestingAccount.originalVestingList.toCoinStrList(),
-                    initialDate ?: now.toDateTime(),
+                    now.toDateTime(),
                     listOf(period)
                 )
             }
@@ -239,7 +237,7 @@ fun Any.toVestingData(
                     now.toDateTime(),
                     it.baseVestingAccount.endTime.toDateTime(),
                     it.baseVestingAccount.originalVestingList.toCoinStrList(),
-                    initialDate ?: now.toDateTime()
+                    now.toDateTime()
                 )
             }
 
