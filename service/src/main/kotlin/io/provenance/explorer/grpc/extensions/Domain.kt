@@ -36,6 +36,8 @@ import io.provenance.marker.v1.Access
 import io.provenance.marker.v1.MarkerAccount
 import io.provenance.marker.v1.MarkerStatus
 import io.provenance.msgfees.v1.MsgFee
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Instant
 
 //region GRPC query
@@ -145,42 +147,42 @@ fun Any.toVestingData(
     val now = Instant.now().epochSecond
     when (this.typeUrl.getTypeShortName()) {
         Vesting.ContinuousVestingAccount::class.java.simpleName ->
-            // Given the PeriodInSeconds, chunk the totalTime and calculate how much coin will be vested at the end
-            // of the given period. Continuous technically vests every second, but that can be cumbersome to fetch.
             this.toContinuousVestingAccount().let { acc ->
+                var runningTime = 0L
+                var prevCoinsVested = emptyList<CoinStr>()
                 val totalTime = acc.baseVestingAccount.endTime - acc.startTime
-                var runningTime =
-                    acc.startTime // returns the actual vestingTime
-                var prevCoins =
-                    emptyList<CoinStr>() // reset for every period with the latest percentage amounts
-                val periods =
-                    (acc.startTime until acc.baseVestingAccount.endTime)
-                        .chunked(continuousPeriod.seconds)
-                        .mapNotNull { list ->
-                            if (list.last() == acc.startTime) return@mapNotNull null
-                            runningTime += list.size // Updated to show the actual vestingTime for the period
-                            val elapsedTime =
-                                runningTime - acc.startTime // elapsed time up to the vestingTime
-                            // Calcs the total percentage up to the current vestingTime of vested coins
-                            val newCoin =
-                                acc.baseVestingAccount.originalVestingList.map {
-                                    it.toPercentage(
-                                        elapsedTime,
-                                        totalTime
-                                    )
-                                }
+                // number of total periods rounded up
+                val numberOfVestingPeriods = BigDecimal(totalTime)
+                    .divide(BigDecimal(continuousPeriod.seconds), 0, RoundingMode.UP).toInt()
+                // loop through the periods and calculate how much coin will be vested for each
+                val periods = (1..numberOfVestingPeriods).map {
+                    // calc time elapsed since vesting start and length of current vesting period
+                    // final period can be a partial so calc length based on previous vesting end
+                    val (timeElapsed, periodLength) = when (it == numberOfVestingPeriods) {
+                        true -> totalTime to (acc.baseVestingAccount.endTime - runningTime)
+                        else -> (it.toLong() * continuousPeriod.seconds) to continuousPeriod.seconds.toLong()
+                    }
+                    // Calcs the total percentage up to the current vestingTime of vested coins
+                    val newCoinsVested = acc.baseVestingAccount.originalVestingList.map { coin ->
+                        coin.toPercentage(
+                            timeElapsed,
+                            totalTime
+                        )
+                    }
 
-                            PeriodicVestingInfo(
-                                // How long the period is in seconds
-                                list.size.toLong(),
-                                // diffs the old percentages with the new percentages to get the period's values
-                                prevCoins.diff(newCoin),
-                                // vestingTime for the period
-                                runningTime.toDateTime(),
-                                // compared to NOW, is it vested
-                                runningTime <= now
-                            ).also { prevCoins = newCoin }
-                        }
+                    runningTime = acc.startTime + timeElapsed
+                    PeriodicVestingInfo(
+                        // How long the period is in seconds
+                        periodLength,
+                        // diffs the old percentages with the new percentages to get the period's values
+                        prevCoinsVested.diff(newCoinsVested),
+                        // vestingTime for the period
+                        runningTime.toDateTime(),
+                        // compared to NOW, is it vested
+                        runningTime <= now
+                    ).also { prevCoinsVested = newCoinsVested }
+                }
+
                 return AccountVestingInfo(
                     now.toDateTime(),
                     acc.baseVestingAccount.endTime.toDateTime(),
