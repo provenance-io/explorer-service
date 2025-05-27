@@ -645,22 +645,62 @@ class PulseMetricService(
     }
 
     /**
-     * Compute the transaction volume over a range instead of the
-     * total transactions up to a date (like transactionVolume does).
+     * Retrieves the participant volume for the last 30 days to build
+     * metric chart data
+     */
+    private fun participantVolume(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_PARTICIPANT_VOLUME_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            val countForDates = TxCacheRecord.countForDates(
+                daysPrior = 30,
+                atDateTime = atDateTime
+            )
+            val series = MetricSeries(
+                seriesData = countForDates.map { it.second.toBigDecimal() },
+                labels = countForDates.map {
+                    it.first.format(
+                        DateTimeFormatter.ofPattern(
+                            "MM-dd-yyyy"
+                        )
+                    )
+                }
+            )
+            val count = if (atDateTime != null) {
+                TxCacheRecord.getTotalTxCountToDate(atDateTime)
+            } else {
+                TxCacheRecord.getTotalTxCount()
+            }
+
+            PulseMetric.build(
+                base = base,
+                amount = count.toBigDecimal(),
+                quote = null,
+                series = series
+            )
+        }
+
+    /**
+     * Compute the participant volume over a range
      */
     private fun participantVolumeOverRange(
         range: MetricRangeType = MetricRangeType.DAY,
         type: PulseCacheType,
         atDateTime: LocalDateTime? = null
     ) = if (atDateTime != null || isScheduledTask()) {
-        totalParticipants(
+        participantVolume(
             range = range,
             atDateTime = atDateTime
         )
     } else {
         // populate current days metric if we haven't at this point
         if (fromPulseMetricCache(nowUTC().toLocalDate(), type) == null) {
-            totalParticipants(range = range)
+            participantVolume(range = range)
         }
 
         val spans = rangeOverRangeSpans(
@@ -668,26 +708,9 @@ class PulseMetricService(
             type = PulseCacheType.PULSE_PARTICIPANTS_METRIC
         )
 
-        /* Daily transactions are the total transactions to that date
-           so to get the sum over a range we must subtract the range's
-           end value from its start value.
-           This is also why we don't short circuit when the range is
-           a DAY like we do for fees.
-         */
-        val rangeOverAmount = if (spans.first.size == 1) {
-            spans.first.last().trend?.changeQuantity ?: BigDecimal.ZERO
-        } else {
-            spans.first.last().amount.minus(spans.first.first().amount)
-        }
-        val rangeAmount = if (spans.second.size == 1) {
-            spans.second.last().trend?.changeQuantity ?: BigDecimal.ZERO
-        } else {
-            spans.second.last().amount.minus(spans.second.first().amount)
-        }
-
         PulseMetric.build(
-            previous = rangeOverAmount,
-            current = rangeAmount,
+            previous = spans.first.first().amount,
+            current = spans.second.first().amount,
             base = spans.second.first().base,
             quote = spans.second.first().quote,
             quoteAmount = spans.second.first().quoteAmount,
