@@ -656,23 +656,24 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            // Grabbing last 30 days from cache
-            val startDate = LocalDate.now().minusDays(30)
-            val endDate = LocalDate.now()
+            val days = if (range == MetricRangeType.DAY) {
+                // by default daily metrics contain curr/prev span
+                0
+            } else {
+                rangeToDays(range)
+            }
+            val startDate = nowUTC().minusDays(days).toLocalDate()
 
-            val data = PulseCacheRecord.findByDateSpanAndType(
-                startDate = startDate,
-                endDate = endDate,
-                type = PulseCacheType.PULSE_PARTICIPANTS_METRIC
-            )
+            val rangeSpan = rangeSpanFromCache(startDate, PulseCacheType.PULSE_PARTICIPANTS_METRIC, range, days)
+            val dates = (0..days).map { startDate.plusDays(it).toString() }
 
             AccountRecord.countActiveAccounts().let {
                 PulseMetric.build(
                     base = count,
                     amount = it.toBigDecimal(),
                     series = MetricSeries(
-                        seriesData = data.map { it.data.amount },
-                        labels = data.map { it.cacheDate.toString() }
+                        seriesData = rangeSpan.map { it.amount },
+                        labels = dates
                     )
                 )
             }
