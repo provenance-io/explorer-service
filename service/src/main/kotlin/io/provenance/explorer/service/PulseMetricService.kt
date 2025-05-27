@@ -667,7 +667,7 @@ class PulseMetricService(
                     base = count,
                     amount = it.toBigDecimal(),
                     series = MetricSeries(
-                        seriesData = rangeSpan.map { it.amount },
+                        seriesData = rangeSpan.map { it.trend?.changeQuantity ?: BigDecimal.ZERO },
                         labels = dates
                     )
                 )
