@@ -656,6 +656,16 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
+            // Grabbing last 30 days from cache
+            val startDate = LocalDate.now().minusDays(30)
+            val endDate = LocalDate.now()
+
+            val data = PulseCacheRecord.findByDateSpanAndType(
+                startDate = startDate,
+                endDate = endDate,
+                type = PulseCacheType.PULSE_PARTICIPANTS_METRIC
+            )
+
             // TODO no great way to get participants by date/block
             // TODO refactor to "active" accounts - i.e. doing stuff on the network
             AccountRecord.countActiveAccounts().let {
@@ -663,20 +673,8 @@ class PulseMetricService(
                     base = count,
                     amount = it.toBigDecimal(),
                     series = MetricSeries(
-                        seriesData = listOf(
-                            1000.toBigDecimal(),
-                            1200.toBigDecimal(),
-                            1500.toBigDecimal(),
-                            1700.toBigDecimal(),
-                            2000.toBigDecimal()
-                        ),
-                        labels = listOf(
-                            "2024-06-01",
-                            "2024-06-02",
-                            "2024-06-03",
-                            "2024-06-04",
-                            "2024-06-05"
-                        )
+                        seriesData = data.map { it.data.amount },
+                        labels = data.map { it.cacheDate.toString() }
                     )
                 )
             }
