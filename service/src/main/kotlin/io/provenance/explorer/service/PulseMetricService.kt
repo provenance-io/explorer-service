@@ -645,6 +645,58 @@ class PulseMetricService(
     }
 
     /**
+     * Compute the transaction volume over a range instead of the
+     * total transactions up to a date (like transactionVolume does).
+     */
+    private fun participantVolumeOverRange(
+        range: MetricRangeType = MetricRangeType.DAY,
+        type: PulseCacheType,
+        atDateTime: LocalDateTime? = null
+    ) = if (atDateTime != null || isScheduledTask()) {
+        totalParticipants(
+            range = range,
+            atDateTime = atDateTime
+        )
+    } else {
+        // populate current days metric if we haven't at this point
+        if (fromPulseMetricCache(nowUTC().toLocalDate(), type) == null) {
+            totalParticipants(range = range)
+        }
+
+        val spans = rangeOverRangeSpans(
+            range = range,
+            type = PulseCacheType.PULSE_PARTICIPANTS_METRIC
+        )
+
+        /* Daily transactions are the total transactions to that date
+           so to get the sum over a range we must subtract the range's
+           end value from its start value.
+           This is also why we don't short circuit when the range is
+           a DAY like we do for fees.
+         */
+        val rangeOverAmount = if (spans.first.size == 1) {
+            spans.first.last().trend?.changeQuantity ?: BigDecimal.ZERO
+        } else {
+            spans.first.last().amount.minus(spans.first.first().amount)
+        }
+        val rangeAmount = if (spans.second.size == 1) {
+            spans.second.last().trend?.changeQuantity ?: BigDecimal.ZERO
+        } else {
+            spans.second.last().amount.minus(spans.second.first().amount)
+        }
+
+        PulseMetric.build(
+            previous = rangeOverAmount,
+            current = rangeAmount,
+            base = spans.second.first().base,
+            quote = spans.second.first().quote,
+            quoteAmount = spans.second.first().quoteAmount,
+            series = spans.second.last().series,
+            progress = spans.second.last().progress
+        )
+    }
+
+    /**
      * Total ecosystem participants based on active accounts
      */
     private fun totalParticipants(
@@ -1270,6 +1322,8 @@ class PulseMetricService(
 
             PulseCacheType.PULSE_TRANSACTION_VOLUME_METRIC ->
                 transactionVolumeOverRange(range, type, atDateTime)
+            PulseCacheType.PULSE_PARTICIPANT_VOLUME_METRIC ->
+                participantVolumeOverRange(range, type, atDateTime)
 
             PulseCacheType.PULSE_TODAYS_NAV_METRIC -> pulseTodaysNavs(
                 range,
