@@ -666,8 +666,6 @@ class PulseMetricService(
                 type = PulseCacheType.PULSE_PARTICIPANTS_METRIC
             )
 
-            // TODO no great way to get participants by date/block
-            // TODO refactor to "active" accounts - i.e. doing stuff on the network
             AccountRecord.countActiveAccounts().let {
                 PulseMetric.build(
                     base = count,
