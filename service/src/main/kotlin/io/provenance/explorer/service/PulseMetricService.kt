@@ -656,15 +656,10 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val days = if (range == MetricRangeType.DAY) {
-                // by default daily metrics contain curr/prev span
-                0
-            } else {
-                rangeToDays(range)
-            }
+            val days = 30.toLong()
             val startDate = nowUTC().minusDays(days).toLocalDate()
 
-            val rangeSpan = rangeSpanFromCache(startDate, PulseCacheType.PULSE_PARTICIPANTS_METRIC, range, days)
+            val rangeSpan = rangeSpanFromCache(startDate, PulseCacheType.PULSE_PARTICIPANTS_METRIC, MetricRangeType.MONTH, days)
             val dates = (0..days).map { startDate.plusDays(it).toString() }
 
             AccountRecord.countActiveAccounts().let {
