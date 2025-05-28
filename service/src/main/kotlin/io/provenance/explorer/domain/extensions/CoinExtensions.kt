@@ -7,6 +7,7 @@ import io.provenance.explorer.config.ExplorerProperties.Companion.VOTING_POWER_P
 import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.stringfy
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.math.RoundingMode
 
 fun BigDecimal.stringfyWithScale(scale: Int) = this.stripTrailingZeros().setScale(scale, RoundingMode.HALF_EVEN).toPlainString()
@@ -104,6 +105,13 @@ fun List<CoinStr>.diff(newList: List<CoinStr>) =
                     CoinStr(map[orig.denom]!!.amount.toBigInteger().minus(orig.amount.toBigInteger()).toString(), orig.denom)
                 }
             }
+    }
+
+// Grouped by denom, add all the coin amounts together
+fun List<CoinStr>.sum() = groupingBy { it.denom }
+    .fold(BigInteger.ZERO) { totalAmount, coin -> totalAmount + coin.amount.toBigInteger() }
+    .map {
+        CoinStr(amount = it.value.toString(), denom = it.key)
     }
 
 fun BigDecimal.roundWhole() = this.setScale(0, RoundingMode.HALF_EVEN)
