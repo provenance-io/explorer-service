@@ -184,11 +184,11 @@ fun Any.toVestingData(
                     ).also { prevCoinsVested = newCoinsVested }
                 }
 
-                // funds become available every second for Continuous Vesting  so calc total vested amount as of now
+                // funds become available every second for Continuous Vesting so calc total vested amount as of now
                 val currentlyVested = when (now > acc.startTime) {
                     true -> acc.baseVestingAccount.originalVestingList.map { coin ->
                         coin.toPercentage(
-                            now - acc.startTime,
+                            (now - acc.startTime).takeIf { it < totalTime } ?: totalTime,
                             totalTime
                         )
                     }
