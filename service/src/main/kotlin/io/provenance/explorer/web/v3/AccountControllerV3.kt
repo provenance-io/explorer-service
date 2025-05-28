@@ -71,8 +71,8 @@ class AccountControllerV3(private val accountService: AccountService, private va
         @Parameter(description = "The address of the account, starting with the standard account prefix")
         @PathVariable
         address: String,
-        @Parameter(description = "The period selection for a ContinuousVestingAccount", schema = Schema(defaultValue = "DAY"), required = false)
-        @RequestParam(defaultValue = "DAY")
+        @Parameter(description = "The period selection for a ContinuousVestingAccount", schema = Schema(defaultValue = "MONTH"), required = false)
+        @RequestParam(defaultValue = "MONTH")
         continuousPeriod: PeriodInSeconds
     ) = accountService.getVestingSchedule(address, continuousPeriod)
 
