@@ -55,7 +55,6 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.pow
-
 /**
  * Service handler for the Provenance Pulse application
  */
@@ -656,7 +655,7 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val days = 30.toLong()
+            val days = 30L
             val startDate = nowUTC().minusDays(days).toLocalDate()
 
             val rangeSpan = rangeSpanFromCache(startDate, PulseCacheType.PULSE_PARTICIPANTS_METRIC, MetricRangeType.MONTH, days)
