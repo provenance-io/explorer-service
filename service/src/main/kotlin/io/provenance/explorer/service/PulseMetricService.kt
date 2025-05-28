@@ -369,23 +369,11 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val days = 30L
-            val startDate = nowUTC().minusDays(days).toLocalDate()
-
-            val rangeSpan = rangeSpanFromCache(startDate, PulseCacheType.HASH_TVL_METRIC, MetricRangeType.MONTH, days)
-            val dates = (0..days).map { startDate.plusDays(it).toString() }
-
             val hashCommittedAmount = exchangeSummaries(UTILITY_TOKEN).sumOf { it.committed }
             val hashPrice = hashPriceAtDate(atDateTime)
-            val totalValue = hashCommittedAmount.times(hashPrice)
-
             PulseMetric.build(
                 base = USD_UPPER,
-                amount = totalValue,
-                series = MetricSeries(
-                    seriesData = rangeSpan.map { it.trend?.changeQuantity ?: BigDecimal.ZERO },
-                    labels = dates
-                )
+                amount = hashCommittedAmount.times(hashPrice)
             )
         }
 
