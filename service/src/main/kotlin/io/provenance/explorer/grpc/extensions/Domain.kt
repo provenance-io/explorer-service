@@ -17,6 +17,7 @@ import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFI
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_VAL_OPER_PREFIX
 import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.extensions.diff
+import io.provenance.explorer.domain.extensions.sum
 import io.provenance.explorer.domain.extensions.toCoinStrList
 import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toPercentage
@@ -183,12 +184,23 @@ fun Any.toVestingData(
                     ).also { prevCoinsVested = newCoinsVested }
                 }
 
+                // funds become available every second for Continuous Vesting  so calc total vested amount as of now
+                val currentlyVested = when (now > acc.startTime) {
+                    true -> acc.baseVestingAccount.originalVestingList.map { coin ->
+                        coin.toPercentage(
+                            now - acc.startTime,
+                            totalTime
+                        )
+                    }
+                    else -> emptyList()
+                }
                 return AccountVestingInfo(
                     now.toDateTime(),
                     acc.baseVestingAccount.endTime.toDateTime(),
                     acc.baseVestingAccount.originalVestingList.toCoinStrList(),
                     acc.startTime.toDateTime(),
-                    periods
+                    periods,
+                    currentlyVested
                 )
             }
 
@@ -224,12 +236,15 @@ fun Any.toVestingData(
                     )
                 }
 
+                // Funds become available after every period so find the vested periods and get the totals per denom
+                val currentlyVested = periods.filter { it.isVested }.flatMap { it.coins }.sum()
                 return AccountVestingInfo(
                     now.toDateTime(),
                     acc.baseVestingAccount.endTime.toDateTime(),
                     acc.baseVestingAccount.originalVestingList.toCoinStrList(),
                     acc.startTime.toDateTime(),
-                    periods
+                    periods,
+                    currentlyVested
                 )
             }
 
