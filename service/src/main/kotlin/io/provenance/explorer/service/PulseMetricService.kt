@@ -55,7 +55,6 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.pow
-
 /**
  * Service handler for the Provenance Pulse application
  */
@@ -671,12 +670,20 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            // TODO no great way to get participants by date/block
-            // TODO refactor to "active" accounts - i.e. doing stuff on the network
+            val days = THIRTY_DAYS
+            val startDate = nowUTC().minusDays(days).toLocalDate()
+
+            val rangeSpan = rangeSpanFromCache(startDate, PulseCacheType.PULSE_PARTICIPANTS_METRIC, days)
+            val dates = (0..days).map { startDate.plusDays(it).toString() }
+
             AccountRecord.countActiveAccounts().let {
                 PulseMetric.build(
                     base = count,
                     amount = it.toBigDecimal(),
+                    series = MetricSeries(
+                        seriesData = rangeSpan.map { it.trend?.changeQuantity ?: BigDecimal.ZERO },
+                        labels = dates
+                    )
                 )
             }
         }
