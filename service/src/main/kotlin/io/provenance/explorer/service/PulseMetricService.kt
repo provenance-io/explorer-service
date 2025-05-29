@@ -389,7 +389,7 @@ class PulseMetricService(
             val days = 30L
             val startDate = nowUTC().minusDays(days).toLocalDate()
 
-            val rangeSpan = rangeSpanFromCache(startDate, PulseCacheType.PULSE_TVL_METRIC, MetricRangeType.MONTH, days)
+            val rangeSpan = rangeSpanFromCache(startDate, PulseCacheType.PULSE_TVL_METRIC, days)
             val dates = (0..days).map { startDate.plusDays(it).toString() }
 
             val committedValue = this.exchangeCommittedAssetsValue(
@@ -746,7 +746,6 @@ class PulseMetricService(
     private fun rangeSpanFromCache(
         startDate: LocalDate,
         type: PulseCacheType,
-        range: MetricRangeType,
         daySpan: Long
     ) =
         mutableListOf<PulseMetric>().apply {
@@ -754,7 +753,7 @@ class PulseMetricService(
                 fromPulseMetricCache(startDate.plusDays(i), type)?.let {
                     this.add(it)
                 } ?: throw ResourceNotFoundException(
-                    "Creating $range range failed to find pulse cache record for $startDate $type."
+                    "Creating $daySpan day span failed to find pulse cache record for $startDate $type."
                 )
             }
         }
@@ -780,9 +779,9 @@ class PulseMetricService(
         val startDate = nowUTC().minusDays(days).toLocalDate()
         val rangeOverStartDate = startDate.minusDays(days + 1)
 
-        val rangeSpan = rangeSpanFromCache(startDate, type, range, days)
+        val rangeSpan = rangeSpanFromCache(startDate, type, days)
         val rangeOverSpan =
-            rangeSpanFromCache(rangeOverStartDate, type, range, days)
+            rangeSpanFromCache(rangeOverStartDate, type, days)
 
         return Pair(rangeOverSpan, rangeSpan)
     }
