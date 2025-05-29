@@ -393,6 +393,12 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
+            val days = THIRTY_DAYS
+            val startDate = nowUTC().minusDays(days).toLocalDate()
+
+            val rangeSpan = rangeSpanFromCache(startDate, PulseCacheType.PULSE_TVL_METRIC, days)
+            val dates = (0..days).map { startDate.plusDays(it).toString() }
+
             val committedValue = this.exchangeCommittedAssetsValue(
                 range = range,
                 atDateTime = atDateTime
@@ -408,10 +414,18 @@ class PulseMetricService(
                             ?: BigDecimal.ZERO
                     )
             }
+
+            val totalValue = committedValue.amount
+                .add(navValue.amount)
+                .add(privateEquityValue)
+
             PulseMetric.build(
                 base = USD_UPPER,
-                amount = committedValue.amount.add(navValue.amount)
-                    .add(privateEquityValue)
+                amount = totalValue,
+                series = MetricSeries(
+                    seriesData = rangeSpan.map { it.trend?.changeQuantity ?: BigDecimal.ZERO },
+                    labels = dates
+                )
             )
         }
 
