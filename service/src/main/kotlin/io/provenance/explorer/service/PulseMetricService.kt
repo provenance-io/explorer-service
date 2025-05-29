@@ -55,7 +55,6 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.pow
-
 /**
  * Service handler for the Provenance Pulse application
  */
@@ -73,6 +72,7 @@ class PulseMetricService(
 ) {
     companion object {
         private val isBackfillInProgress = AtomicBoolean(false)
+        private const val THIRTY_DAYS = 30L
     }
 
     protected val logger = logger(PulseMetricService::class)
@@ -565,7 +565,7 @@ class PulseMetricService(
             atDateTime = atDateTime
         ) {
             val countForDates = TxCacheRecord.countForDates(
-                daysPrior = 30,
+                daysPrior = THIRTY_DAYS.toInt(),
                 atDateTime = atDateTime
             )
             val series = MetricSeries(
@@ -656,12 +656,20 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            // TODO no great way to get participants by date/block
-            // TODO refactor to "active" accounts - i.e. doing stuff on the network
+            val days = THIRTY_DAYS
+            val startDate = nowUTC().minusDays(days).toLocalDate()
+
+            val rangeSpan = rangeSpanFromCache(startDate, PulseCacheType.PULSE_PARTICIPANTS_METRIC, days)
+            val dates = (0..days).map { startDate.plusDays(it).toString() }
+
             AccountRecord.countActiveAccounts().let {
                 PulseMetric.build(
                     base = count,
                     amount = it.toBigDecimal(),
+                    series = MetricSeries(
+                        seriesData = rangeSpan.map { it.trend?.changeQuantity ?: BigDecimal.ZERO },
+                        labels = dates
+                    )
                 )
             }
         }
@@ -732,7 +740,6 @@ class PulseMetricService(
     private fun rangeSpanFromCache(
         startDate: LocalDate,
         type: PulseCacheType,
-        range: MetricRangeType,
         daySpan: Long
     ) =
         mutableListOf<PulseMetric>().apply {
@@ -740,7 +747,7 @@ class PulseMetricService(
                 fromPulseMetricCache(startDate.plusDays(i), type)?.let {
                     this.add(it)
                 } ?: throw ResourceNotFoundException(
-                    "Creating $range range failed to find pulse cache record for $startDate $type."
+                    "Creating $daySpan day span failed to find pulse cache record for $startDate $type."
                 )
             }
         }
@@ -766,9 +773,9 @@ class PulseMetricService(
         val startDate = nowUTC().minusDays(days).toLocalDate()
         val rangeOverStartDate = startDate.minusDays(days + 1)
 
-        val rangeSpan = rangeSpanFromCache(startDate, type, range, days)
+        val rangeSpan = rangeSpanFromCache(startDate, type, days)
         val rangeOverSpan =
-            rangeSpanFromCache(rangeOverStartDate, type, range, days)
+            rangeSpanFromCache(rangeOverStartDate, type, days)
 
         return Pair(rangeOverSpan, rangeSpan)
     }
