@@ -73,6 +73,7 @@ class PulseMetricService(
 ) {
     companion object {
         private val isBackfillInProgress = AtomicBoolean(false)
+        private const val THIRTY_DAYS = 30L
     }
 
     protected val logger = logger(PulseMetricService::class)
@@ -386,7 +387,7 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val days = 30L
+            val days = THIRTY_DAYS
             val startDate = nowUTC().minusDays(days).toLocalDate()
 
             val rangeSpan = rangeSpanFromCache(startDate, PulseCacheType.PULSE_TVL_METRIC, days)
@@ -579,7 +580,7 @@ class PulseMetricService(
             atDateTime = atDateTime
         ) {
             val countForDates = TxCacheRecord.countForDates(
-                daysPrior = 30,
+                daysPrior = THIRTY_DAYS.toInt(),
                 atDateTime = atDateTime
             )
             val series = MetricSeries(
