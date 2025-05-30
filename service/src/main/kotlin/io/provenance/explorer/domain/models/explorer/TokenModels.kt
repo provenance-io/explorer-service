@@ -14,7 +14,8 @@ import java.time.format.DateTimeFormatter
 
 data class TokenDistributionPaginatedResults(
     val ownerAddress: String,
-    val data: CountStrTotal
+    val data: CountStrTotal,
+    val spendable: CountStrTotal
 )
 
 data class DlobHistBase(

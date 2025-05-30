@@ -157,27 +157,36 @@ class TokenDistributionAmountsRecord(id: EntityID<Int>) : IntEntity(id) {
 object TokenDistributionPaginatedResultsTable : IntIdTable(name = "token_distribution_paginated_results") {
     val ownerAddress = varchar("owner_address", 128)
     val data = jsonb<TokenDistributionPaginatedResultsTable, CountStrTotal>("data", OBJECT_MAPPER)
+    val spendable = jsonb<TokenDistributionPaginatedResultsTable, CountStrTotal>("spendable", OBJECT_MAPPER)
+        .nullable()
 }
 
 class TokenDistributionPaginatedResultsRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TokenDistributionPaginatedResultsRecord>(TokenDistributionPaginatedResultsTable) {
 
-        fun findByLimitOffset(addresses: Set<String>, limit: Any, offset: Int) = transaction {
-            val query = """
+        fun findByLimitOffset(addresses: Set<String>, limit: Any, offset: Int, spendable: Boolean = false) =
+            transaction {
+                var query = """
                 SELECT owner_address, data
                 FROM token_distribution_paginated_results
                 WHERE owner_address IN (${addresses.toDbQueryList()})
-                ORDER BY (data ->> 'count')::double precision DESC
-                LIMIT $limit OFFSET $offset
             """.trimIndent()
 
-            query.execAndMap {
-                TokenDistributionPaginatedResults(
-                    it.getString("owner_address"),
-                    OBJECT_MAPPER.readValue(it.getString("data"), CountStrTotal::class.java)
-                )
+                query += when (spendable) {
+                    true -> " ORDER BY (spendable ->> 'count')::double precision DESC NULLS LAST"
+                    else -> " ORDER BY (data ->> 'count')::double precision DESC NULLS LAST"
+                }
+
+                query += " LIMIT $limit OFFSET $offset"
+
+                query.execAndMap {
+                    TokenDistributionPaginatedResults(
+                        it.getString("owner_address"),
+                        OBJECT_MAPPER.readValue(it.getString("data"), CountStrTotal::class.java),
+                        OBJECT_MAPPER.readValue(it.getString("spendable"), CountStrTotal::class.java)
+                    )
+                }
             }
-        }
 
         fun findByAddresses(addresses: Set<String>) = transaction {
             TokenDistributionPaginatedResultsRecord
@@ -189,7 +198,8 @@ class TokenDistributionPaginatedResultsRecord(id: EntityID<Int>) : IntEntity(id)
             val paginatedResults = assetHolders.map {
                 TokenDistributionPaginatedResults(
                     ownerAddress = it.ownerAddress,
-                    data = it.balance
+                    data = it.balance,
+                    spendable = it.spendableBalance
                 )
             }
             batchUpsert(paginatedResults)
@@ -202,12 +212,14 @@ class TokenDistributionPaginatedResultsRecord(id: EntityID<Int>) : IntEntity(id)
                 .batchUpsert(paginatedResults, listOf(ownerAddress), listOf(data)) { batch, paginatedResult ->
                     batch[ownerAddress] = paginatedResult.ownerAddress
                     batch[data] = paginatedResult.data
+                    batch[spendable] = paginatedResult.spendable
                 }
         }
     }
 
     var ownerAddress by TokenDistributionPaginatedResultsTable.ownerAddress
     var data by TokenDistributionPaginatedResultsTable.data
+    var spendable by TokenDistributionPaginatedResultsTable.spendable
 }
 
 object AssetPricingTable : IdTable<Int>(name = "asset_pricing") {

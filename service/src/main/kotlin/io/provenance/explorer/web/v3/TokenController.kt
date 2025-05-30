@@ -51,8 +51,11 @@ class TokenController(private val tokenService: TokenService) {
         @RequestParam(defaultValue = "100")
         @Min(1)
         @Max(1000)
-        limit: Int
-    ) = tokenService.richList(limit)
+        limit: Int,
+        @Parameter(description = "true to return top accounts by spendable nhash, default false")
+        @RequestParam(required = false, defaultValue = "false")
+        spendable: Boolean
+    ) = tokenService.richList(limit, spendable)
 
     @Operation(summary = "Returns max supply of `nhash` = max")
     @GetMapping("/max_supply")

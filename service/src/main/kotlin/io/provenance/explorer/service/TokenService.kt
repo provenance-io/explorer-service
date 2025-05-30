@@ -103,6 +103,23 @@ class TokenService(
         calculateTokenDistributionStats()
     }
 
+    fun getAssetHolders(denom: String, page: Int, count: Int) = runBlocking {
+        val unit = MarkerUnitRecord.findByUnit(denom)?.marker ?: denom
+        val supply = maxSupply().toString()
+        val res = accountClient.getDenomHolders(unit, page.toOffset(count), count)
+        val totalSpendable = totalSpendableBalanceForList(res.denomOwnersList.map { it.address }.toSet()).toString()
+        val list = res.denomOwnersList.asFlow().map { bal ->
+            val spendableAmount = accountClient.getSpendableBalanceDenom(bal.address, unit)?.amount
+                ?: BigDecimal.ZERO.toString()
+            AssetHolder(
+                bal.address,
+                CountStrTotal(bal.balance.amount, supply, unit),
+                CountStrTotal(spendableAmount, totalSpendable, unit)
+            )
+        }.toList().sortedWith(compareBy { it.balance.count.toBigDecimal() }).asReversed()
+        PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
+    }
+
     // 1st requests that take longer than expected result in a
     // DEADLINE_EXCEEDED error. Add retry functionality to give
     // a chance to succeed.
@@ -122,16 +139,6 @@ class TokenService(
         }
 
         return assetHolders!!
-    }
-
-    private fun getAssetHolders(denom: String, page: Int, count: Int) = runBlocking {
-        val unit = MarkerUnitRecord.findByUnit(denom)?.marker ?: denom
-        val supply = maxSupply().toString()
-        val res = accountClient.getDenomHolders(unit, page.toOffset(count), count)
-        val list = res.denomOwnersList.asFlow().map { bal ->
-            AssetHolder(bal.address, CountStrTotal(bal.balance.amount, supply, unit))
-        }.toList().sortedWith(compareBy { it.balance.count.toBigDecimal() }).asReversed()
-        PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
     }
 
     private fun calculateTokenDistributionStats() {
@@ -246,17 +253,20 @@ class TokenService(
             .roundWhole()
 
     // rich list = all accounts - nhash marker - zero seq - modules - contracts ->>>>>>>>> out of total
-    fun richList(topCount: Int = 100) = transaction {
-        val totalSupply = totalSupply()
-        TokenDistributionPaginatedResultsRecord.findByLimitOffset(richListAccounts(), topCount, 0)
+    fun richList(topCount: Int = 100, spendable: Boolean = false) = transaction {
+        TokenDistributionPaginatedResultsRecord.findByLimitOffset(richListAccounts(), topCount, 0, spendable)
             .map {
+                val tokenData = it.data.takeIf { !spendable } ?: it.spendable
                 RichAccount(
                     it.ownerAddress,
-                    CoinStr(it.data.count, it.data.denom),
-                    it.data.count.toPercentage(BigDecimal(100), totalSupply, 4)
+                    CoinStr(tokenData.count, tokenData.denom),
+                    tokenData.total?.let { totalSupply ->
+                        tokenData.count.toPercentage(BigDecimal(100), totalSupply.toBigDecimal(), 4)
+                    } ?: ""
                 )
             }
     }
+
     fun getTokenHistorical(fromDate: LocalDateTime?, toDate: LocalDateTime?) =
         TokenHistoricalDailyRecord.findForDates(fromDate?.startOfDay(), toDate?.startOfDay())
 

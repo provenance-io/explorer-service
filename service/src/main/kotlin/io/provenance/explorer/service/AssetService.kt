@@ -28,19 +28,14 @@ import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
 import io.provenance.explorer.model.AssetDetail
-import io.provenance.explorer.model.AssetHolder
 import io.provenance.explorer.model.AssetListed
 import io.provenance.explorer.model.AssetManagement
 import io.provenance.explorer.model.TokenCounts
-import io.provenance.explorer.model.base.CountStrTotal
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.USD_LOWER
 import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.marker.v1.MarkerStatus
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -164,15 +159,7 @@ class AssetService(
             } ?: throw ResourceNotFoundException("Invalid asset: $denom")
         }
 
-    fun getAssetHolders(denom: String, page: Int, count: Int) = runBlocking {
-        val unit = MarkerUnitRecord.findByUnit(denom)?.marker ?: denom
-        val supply = getCurrentSupply(unit)
-        val res = accountClient.getDenomHolders(unit, page.toOffset(count), count)
-        val list = res.denomOwnersList.asFlow().map { bal ->
-            AssetHolder(bal.address, CountStrTotal(bal.balance.amount, supply, unit))
-        }.toList().sortedWith(compareBy { it.balance.count.toBigDecimal() }).asReversed()
-        PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
-    }
+    fun getAssetHolders(denom: String, page: Int, count: Int) = tokenService.getAssetHolders(denom, page, count)
 
     fun getMetadata(denom: String?) = getDenomMetadata(denom).map { it.toObjectNode(protoPrinter) }
 

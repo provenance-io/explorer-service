@@ -37,5 +37,6 @@ data class AssetManagement(
 
 data class AssetHolder(
     val ownerAddress: String,
-    val balance: CountStrTotal
+    val balance: CountStrTotal,
+    val spendableBalance: CountStrTotal
 )
