@@ -668,17 +668,29 @@ class PulseMetricService(
             val days = THIRTY_DAYS
             val startDate = nowUTC().minusDays(days).toLocalDate()
 
-            val rangeSpan = rangeSpanFromCache(startDate, PulseCacheType.PULSE_PARTICIPANTS_METRIC, days)
+            // Determine if today's cache is missing, so we need to use days - 1
+            val isTodayCacheMissing = fromPulseMetricCache(
+                nowUTC().toLocalDate(),
+                PulseCacheType.PULSE_PARTICIPANTS_METRIC
+            ) == null
+            val daySpan = if (isTodayCacheMissing) days - 1 else days
+
+            val rangeSpan = rangeSpanFromCache(
+                startDate,
+                PulseCacheType.PULSE_PARTICIPANTS_METRIC,
+                daySpan
+            )
             val dates = (0..days).map { startDate.plusDays(it).toString() }
+\
 
             AccountRecord.countActiveAccounts().let {
                 PulseMetric.build(
                     base = count,
                     amount = it.toBigDecimal(),
-                    series = MetricSeries(
-                        seriesData = rangeSpan.map { it.trend?.changeQuantity ?: BigDecimal.ZERO },
-                        labels = dates
-                    )
+                    series = seriesFromPriorMetrics(PulseCacheType.PULSE_PARTICIPANTS_METRIC,
+                        days = THIRTY_DAYS,
+                        valueSelector = { it.trend?.changeQuantity ?: BigDecimal.ZERO }
+                    ),
                 )
             }
         }
@@ -751,16 +763,19 @@ class PulseMetricService(
         days: Long = THIRTY_DAYS,
         valueSelector: (PulseMetric) -> BigDecimal
     ): MetricSeries {
-        val startDate = nowUTC().minusDays(days).toLocalDate()
-        val rangeSpan = rangeSpanFromCache(startDate, type, days)
-        val dates = (0..days).map { startDate.plusDays(it).toString() }
+        val today = nowUTC().toLocalDate()
+        val isTodayCached = fromPulseMetricCache(today, type) != null
+        val actualDays = if (isTodayCached) days else days - 1
+        val startDate = today.minusDays(days)
+
+        val rangeSpan = rangeSpanFromCache(startDate, type, actualDays)
+        val dates = (0..actualDays).map { startDate.plusDays(it).toString() }
 
         return MetricSeries(
             seriesData = rangeSpan.map(valueSelector),
             labels = dates
         )
     }
-
     private fun rangeSpanFromCache(
         startDate: LocalDate,
         type: PulseCacheType,
