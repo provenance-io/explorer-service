@@ -16,6 +16,7 @@ data class CountStrTotal(
     val total: String?,
     val denom: String,
     val spendable: String? = null,
+    val totalSpendable: String? = null
 )
 
 

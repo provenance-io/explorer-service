@@ -171,8 +171,8 @@ class TokenDistributionPaginatedResultsRecord(id: EntityID<Int>) : IntEntity(id)
             """.trimIndent()
 
                 query += when (spendable) {
-                    true -> " ORDER BY (data ->> 'spendable')::double precision DESC"
-                    else -> " ORDER BY (data ->> 'count')::double precision DESC"
+                    true -> " ORDER BY (data ->> 'spendable')::double precision DESC NULLS LAST"
+                    else -> " ORDER BY (data ->> 'count')::double precision DESC NULLS LAST"
                 }
 
                 query += " LIMIT $limit OFFSET $offset"

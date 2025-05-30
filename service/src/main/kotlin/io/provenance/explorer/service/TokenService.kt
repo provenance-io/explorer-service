@@ -26,7 +26,6 @@ import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toPercentage
-import io.provenance.explorer.domain.extensions.toProtoCoin
 import io.provenance.explorer.domain.extensions.toThirdDecimal
 import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.domain.models.explorer.TokenHistoricalDataRequest
@@ -129,9 +128,11 @@ class TokenService(
         val unit = MarkerUnitRecord.findByUnit(denom)?.marker ?: denom
         val supply = maxSupply().toString()
         val res = accountClient.getDenomHolders(unit, page.toOffset(count), count)
+        val totalSpendable = totalSpendableBalanceForList(res.denomOwnersList.map { it.address }.toSet()).toString()
         val list = res.denomOwnersList.asFlow().map { bal ->
-            val spendableAmount = accountClient.getSpendableBalanceDenom(bal.address, unit) ?: BigDecimal.ZERO.toProtoCoin(unit)
-            AssetHolder(bal.address, CountStrTotal(bal.balance.amount, supply, unit, spendableAmount.amount))
+            val spendableAmount = accountClient.getSpendableBalanceDenom(bal.address, unit)?.amount
+                ?: BigDecimal.ZERO.toString()
+            AssetHolder(bal.address, CountStrTotal(bal.balance.amount, supply, unit, spendableAmount, totalSpendable))
         }.toList().sortedWith(compareBy { it.balance.count.toBigDecimal() }).asReversed()
         PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
     }
