@@ -665,29 +665,12 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val days = THIRTY_DAYS
-            val startDate = nowUTC().minusDays(days).toLocalDate()
-
-            // Determine if today's cache is missing, so we need to use days - 1
-            val isTodayCacheMissing = fromPulseMetricCache(
-                nowUTC().toLocalDate(),
-                PulseCacheType.PULSE_PARTICIPANTS_METRIC
-            ) == null
-            val daySpan = if (isTodayCacheMissing) days - 1 else days
-
-            val rangeSpan = rangeSpanFromCache(
-                startDate,
-                PulseCacheType.PULSE_PARTICIPANTS_METRIC,
-                daySpan
-            )
-            val dates = (0..days).map { startDate.plusDays(it).toString() }
-\
-
             AccountRecord.countActiveAccounts().let {
                 PulseMetric.build(
                     base = count,
                     amount = it.toBigDecimal(),
-                    series = seriesFromPriorMetrics(PulseCacheType.PULSE_PARTICIPANTS_METRIC,
+                    series = seriesFromPriorMetrics(
+                        PulseCacheType.PULSE_PARTICIPANTS_METRIC,
                         days = THIRTY_DAYS,
                         valueSelector = { it.trend?.changeQuantity ?: BigDecimal.ZERO }
                     ),
