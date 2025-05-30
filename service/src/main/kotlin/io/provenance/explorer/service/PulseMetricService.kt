@@ -386,12 +386,6 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val days = THIRTY_DAYS
-            val startDate = nowUTC().minusDays(days).toLocalDate()
-
-            val rangeSpan = rangeSpanFromCache(startDate, PulseCacheType.PULSE_TVL_METRIC, days)
-            val dates = (0..days).map { startDate.plusDays(it).toString() }
-
             val committedValue = this.exchangeCommittedAssetsValue(
                 range = range,
                 atDateTime = atDateTime
@@ -415,9 +409,10 @@ class PulseMetricService(
             PulseMetric.build(
                 base = USD_UPPER,
                 amount = totalValue,
-                series = MetricSeries(
-                    seriesData = rangeSpan.map { it.trend?.changeQuantity ?: BigDecimal.ZERO },
-                    labels = dates
+                series = seriesFromPriorMetrics(
+                    type = PulseCacheType.PULSE_TVL_METRIC,
+                    days = THIRTY_DAYS,
+                    valueSelector = { it.trend?.changeQuantity ?: BigDecimal.ZERO }
                 )
             )
         }
@@ -750,6 +745,21 @@ class PulseMetricService(
                     )
                 }
         }
+
+    private fun seriesFromPriorMetrics(
+        type: PulseCacheType,
+        days: Long = THIRTY_DAYS,
+        valueSelector: (PulseMetric) -> BigDecimal
+    ): MetricSeries {
+        val startDate = nowUTC().minusDays(days).toLocalDate()
+        val rangeSpan = rangeSpanFromCache(startDate, type, days)
+        val dates = (0..days).map { startDate.plusDays(it).toString() }
+
+        return MetricSeries(
+            seriesData = rangeSpan.map(valueSelector),
+            labels = dates
+        )
+    }
 
     private fun rangeSpanFromCache(
         startDate: LocalDate,
