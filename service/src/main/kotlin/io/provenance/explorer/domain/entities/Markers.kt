@@ -11,6 +11,7 @@ import io.provenance.explorer.domain.models.explorer.TokenDistributionPaginatedR
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
 import io.provenance.explorer.model.AssetHolder
 import io.provenance.explorer.model.TokenDistribution
+import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.CountStrTotal
 import io.provenance.marker.v1.MarkerAccount
 import io.provenance.marker.v1.MarkerStatus
@@ -157,6 +158,7 @@ class TokenDistributionAmountsRecord(id: EntityID<Int>) : IntEntity(id) {
 object TokenDistributionPaginatedResultsTable : IntIdTable(name = "token_distribution_paginated_results") {
     val ownerAddress = varchar("owner_address", 128)
     val data = jsonb<TokenDistributionPaginatedResultsTable, CountStrTotal>("data", OBJECT_MAPPER)
+    val spendable = jsonb<TokenDistributionPaginatedResultsTable, CoinStr>("spendable", OBJECT_MAPPER)
 }
 
 class TokenDistributionPaginatedResultsRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -164,7 +166,7 @@ class TokenDistributionPaginatedResultsRecord(id: EntityID<Int>) : IntEntity(id)
 
         fun findByLimitOffset(addresses: Set<String>, limit: Any, offset: Int) = transaction {
             val query = """
-                SELECT owner_address, data
+                SELECT owner_address, data, spendable
                 FROM token_distribution_paginated_results
                 WHERE owner_address IN (${addresses.toDbQueryList()})
                 ORDER BY (data ->> 'count')::double precision DESC
@@ -174,7 +176,41 @@ class TokenDistributionPaginatedResultsRecord(id: EntityID<Int>) : IntEntity(id)
             query.execAndMap {
                 TokenDistributionPaginatedResults(
                     it.getString("owner_address"),
-                    OBJECT_MAPPER.readValue(it.getString("data"), CountStrTotal::class.java)
+                    OBJECT_MAPPER.readValue(it.getString("data"), CountStrTotal::class.java),
+                    OBJECT_MAPPER.readValue(it.getString("spendable"), CoinStr::class.java)
+                )
+            }
+        }
+
+        fun findRichAccountsByLimitOffset(
+            nhashAddr: String,
+            spendable: Boolean? = false,
+            limit: Any? = null,
+            offset: Int? = null
+        ) = transaction {
+            var query = """
+                SELECT owner_address, data, spendable
+                FROM token_distribution_paginated_results
+                WHERE owner_address NOT IN (
+                SELECT account_address FROM account
+                WHERE type = 'ModuleAccount' OR is_contract IS TRUE OR account_address = '$nhashAddr' OR
+                ((account.base_account -> 'sequence')::INTEGER = 0 AND type = 'BaseAccount')
+                )
+            """.trimIndent()
+
+            query += when (spendable) {
+                true -> " ORDER BY (spendable ->> 'amount')::double precision DESC"
+                else -> " ORDER BY (data ->> 'count')::double precision DESC"
+            }
+
+            limit?.let { query += " LIMIT $it" }
+            offset?.let { query += " OFFSET $it" }
+
+            query.execAndMap {
+                TokenDistributionPaginatedResults(
+                    it.getString("owner_address"),
+                    OBJECT_MAPPER.readValue(it.getString("data"), CountStrTotal::class.java),
+                    OBJECT_MAPPER.readValue(it.getString("spendable"), CoinStr::class.java)
                 )
             }
         }
@@ -189,7 +225,8 @@ class TokenDistributionPaginatedResultsRecord(id: EntityID<Int>) : IntEntity(id)
             val paginatedResults = assetHolders.map {
                 TokenDistributionPaginatedResults(
                     ownerAddress = it.ownerAddress,
-                    data = it.balance
+                    data = it.balance,
+                    spendable = it.spendableBalance
                 )
             }
             batchUpsert(paginatedResults)
@@ -198,16 +235,19 @@ class TokenDistributionPaginatedResultsRecord(id: EntityID<Int>) : IntEntity(id)
         private fun batchUpsert(paginatedResults: List<TokenDistributionPaginatedResults>) = transaction {
             val ownerAddress = TokenDistributionPaginatedResultsTable.ownerAddress
             val data = TokenDistributionPaginatedResultsTable.data
+            val spendable = TokenDistributionPaginatedResultsTable.spendable
             TokenDistributionPaginatedResultsTable
-                .batchUpsert(paginatedResults, listOf(ownerAddress), listOf(data)) { batch, paginatedResult ->
+                .batchUpsert(paginatedResults, listOf(ownerAddress), listOf(data, spendable)) { batch, paginatedResult ->
                     batch[ownerAddress] = paginatedResult.ownerAddress
                     batch[data] = paginatedResult.data
+                    batch[spendable] = paginatedResult.spendable
                 }
         }
     }
 
     var ownerAddress by TokenDistributionPaginatedResultsTable.ownerAddress
     var data by TokenDistributionPaginatedResultsTable.data
+    var spendable by TokenDistributionPaginatedResultsTable.spendable
 }
 
 object AssetPricingTable : IdTable<Int>(name = "asset_pricing") {
