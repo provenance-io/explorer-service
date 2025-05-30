@@ -26,6 +26,7 @@ import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toCoinStr
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.toPercentage
+import io.provenance.explorer.domain.extensions.toProtoCoin
 import io.provenance.explorer.domain.extensions.toThirdDecimal
 import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.domain.models.explorer.TokenHistoricalDataRequest
@@ -129,7 +130,8 @@ class TokenService(
         val supply = maxSupply().toString()
         val res = accountClient.getDenomHolders(unit, page.toOffset(count), count)
         val list = res.denomOwnersList.asFlow().map { bal ->
-            AssetHolder(bal.address, CountStrTotal(bal.balance.amount, supply, unit))
+            val spendableAmount = accountClient.getSpendableBalanceDenom(bal.address, unit) ?: BigDecimal.ZERO.toProtoCoin(unit)
+            AssetHolder(bal.address, CountStrTotal(bal.balance.amount, supply, unit, spendableAmount.amount))
         }.toList().sortedWith(compareBy { it.balance.count.toBigDecimal() }).asReversed()
         PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
     }
@@ -246,9 +248,9 @@ class TokenService(
             .roundWhole()
 
     // rich list = all accounts - nhash marker - zero seq - modules - contracts ->>>>>>>>> out of total
-    fun richList(topCount: Int = 100) = transaction {
+    fun richList(topCount: Int = 100, spendable: Boolean = false) = transaction {
         val totalSupply = totalSupply()
-        TokenDistributionPaginatedResultsRecord.findByLimitOffset(richListAccounts(), topCount, 0)
+        TokenDistributionPaginatedResultsRecord.findByLimitOffset(richListAccounts(), topCount, 0, spendable)
             .map {
                 RichAccount(
                     it.ownerAddress,
@@ -257,6 +259,7 @@ class TokenService(
                 )
             }
     }
+
     fun getTokenHistorical(fromDate: LocalDateTime?, toDate: LocalDateTime?) =
         TokenHistoricalDailyRecord.findForDates(fromDate?.startOfDay(), toDate?.startOfDay())
 

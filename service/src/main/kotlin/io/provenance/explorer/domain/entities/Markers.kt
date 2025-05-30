@@ -162,22 +162,28 @@ object TokenDistributionPaginatedResultsTable : IntIdTable(name = "token_distrib
 class TokenDistributionPaginatedResultsRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<TokenDistributionPaginatedResultsRecord>(TokenDistributionPaginatedResultsTable) {
 
-        fun findByLimitOffset(addresses: Set<String>, limit: Any, offset: Int) = transaction {
-            val query = """
+        fun findByLimitOffset(addresses: Set<String>, limit: Any, offset: Int, spendable: Boolean = false) =
+            transaction {
+                var query = """
                 SELECT owner_address, data
                 FROM token_distribution_paginated_results
                 WHERE owner_address IN (${addresses.toDbQueryList()})
-                ORDER BY (data ->> 'count')::double precision DESC
-                LIMIT $limit OFFSET $offset
             """.trimIndent()
 
-            query.execAndMap {
-                TokenDistributionPaginatedResults(
-                    it.getString("owner_address"),
-                    OBJECT_MAPPER.readValue(it.getString("data"), CountStrTotal::class.java)
-                )
+                query += when (spendable) {
+                    true -> " ORDER BY (data ->> 'spendable')::double precision DESC"
+                    else -> " ORDER BY (data ->> 'count')::double precision DESC"
+                }
+
+                query += " LIMIT $limit OFFSET $offset"
+
+                query.execAndMap {
+                    TokenDistributionPaginatedResults(
+                        it.getString("owner_address"),
+                        OBJECT_MAPPER.readValue(it.getString("data"), CountStrTotal::class.java)
+                    )
+                }
             }
-        }
 
         fun findByAddresses(addresses: Set<String>) = transaction {
             TokenDistributionPaginatedResultsRecord
