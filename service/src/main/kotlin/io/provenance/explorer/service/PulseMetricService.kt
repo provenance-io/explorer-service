@@ -389,8 +389,23 @@ class PulseMetricService(
             val days = THIRTY_DAYS
             val startDate = nowUTC().minusDays(days).toLocalDate()
 
-            val rangeSpan = rangeSpanFromCache(startDate, PulseCacheType.PULSE_TVL_METRIC, days)
+            // Determine if today's cache is missing, so we need to use days - 1
+            val isTodayCacheMissing = fromPulseMetricCache(
+                nowUTC().toLocalDate(),
+                PulseCacheType.PULSE_TVL_METRIC
+            ) == null
+            val daySpan = if (isTodayCacheMissing) days - 1 else days
+
+            val rangeSpan = rangeSpanFromCache(
+                startDate,
+                PulseCacheType.PULSE_TVL_METRIC,
+                daySpan
+            )
             val dates = (0..days).map { startDate.plusDays(it).toString() }
+            val tvlSeries = MetricSeries(
+                seriesData = rangeSpan.map { it.trend?.changeQuantity ?: BigDecimal.ZERO },
+                labels = dates
+            )
 
             val committedValue = this.exchangeCommittedAssetsValue(
                 range = range,
@@ -415,10 +430,7 @@ class PulseMetricService(
             PulseMetric.build(
                 base = USD_UPPER,
                 amount = totalValue,
-                series = MetricSeries(
-                    seriesData = rangeSpan.map { it.trend?.changeQuantity ?: BigDecimal.ZERO },
-                    labels = dates
-                )
+                series = tvlSeries
             )
         }
 
@@ -673,17 +685,29 @@ class PulseMetricService(
             val days = THIRTY_DAYS
             val startDate = nowUTC().minusDays(days).toLocalDate()
 
-            val rangeSpan = rangeSpanFromCache(startDate, PulseCacheType.PULSE_PARTICIPANTS_METRIC, days)
+            // Determine if today's cache is missing, so we need to use days - 1
+            val isTodayCacheMissing = fromPulseMetricCache(
+                nowUTC().toLocalDate(),
+                PulseCacheType.PULSE_PARTICIPANTS_METRIC
+            ) == null
+            val daySpan = if (isTodayCacheMissing) days - 1 else days
+
+            val rangeSpan = rangeSpanFromCache(
+                startDate,
+                PulseCacheType.PULSE_PARTICIPANTS_METRIC,
+                daySpan
+            )
             val dates = (0..days).map { startDate.plusDays(it).toString() }
+            val participantsSeries = MetricSeries(
+                seriesData = rangeSpan.map { it.trend?.changeQuantity ?: BigDecimal.ZERO },
+                labels = dates
+            )
 
             AccountRecord.countActiveAccounts().let {
                 PulseMetric.build(
                     base = count,
                     amount = it.toBigDecimal(),
-                    series = MetricSeries(
-                        seriesData = rangeSpan.map { it.trend?.changeQuantity ?: BigDecimal.ZERO },
-                        labels = dates
-                    )
+                    series = participantsSeries,
                 )
             }
         }
