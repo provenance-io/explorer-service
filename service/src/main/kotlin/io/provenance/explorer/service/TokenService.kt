@@ -81,11 +81,15 @@ class TokenService(
 
     fun saveResults(records: List<AssetHolder>) = runBlocking {
         records.asFlow().map {
-            AccountRecord.saveAccount(
-                it.ownerAddress,
-                PROV_ACC_PREFIX,
-                accountClient.getAccountInfo(it.ownerAddress)
-            )
+            try {
+                AccountRecord.saveAccount(
+                    it.ownerAddress,
+                    PROV_ACC_PREFIX,
+                    accountClient.getAccountInfo(it.ownerAddress)
+                )
+            } catch (e: Exception) {
+                logger.error("Unable to save account for ${it.ownerAddress}", e)
+            }
         }.collect()
         TokenDistributionPaginatedResultsRecord.savePaginatedResults(records)
     }
@@ -101,6 +105,22 @@ class TokenService(
         }
         // calculate ranks
         calculateTokenDistributionStats()
+    }
+
+    fun getAssetHolders(denom: String, page: Int, count: Int) = runBlocking {
+        val unit = MarkerUnitRecord.findByUnit(denom)?.marker ?: denom
+        val supply = maxSupply(unit).toString()
+        val res = accountClient.getDenomHolders(unit, page.toOffset(count), count)
+        val list = res.denomOwnersList.asFlow().map { bal ->
+            val spendableAmount = accountClient.getSpendableBalanceDenom(bal.address, unit)?.amount
+                ?: BigDecimal.ZERO.toString()
+            AssetHolder(
+                bal.address,
+                CountStrTotal(bal.balance.amount, supply, unit),
+                CoinStr(spendableAmount, unit)
+            )
+        }.toList().sortedWith(compareBy { it.balance.count.toBigDecimal() }).asReversed()
+        PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
     }
 
     // 1st requests that take longer than expected result in a
@@ -124,17 +144,8 @@ class TokenService(
         return assetHolders!!
     }
 
-    private fun getAssetHolders(denom: String, page: Int, count: Int) = runBlocking {
-        val unit = MarkerUnitRecord.findByUnit(denom)?.marker ?: denom
-        val supply = maxSupply().toString()
-        val res = accountClient.getDenomHolders(unit, page.toOffset(count), count)
-        val list = res.denomOwnersList.asFlow().map { bal ->
-            AssetHolder(bal.address, CountStrTotal(bal.balance.amount, supply, unit))
-        }.toList().sortedWith(compareBy { it.balance.count.toBigDecimal() }).asReversed()
-        PagedResults(res.pagination.total.pageCountOfResults(count), list, res.pagination.total)
-    }
-
     private fun calculateTokenDistributionStats() {
+        val nhashAddr = nhashMarkerAddr()
         val tokenDistributions = listOf(
             Triple(1, 0, "1"),
             Triple(1, 1, "2"),
@@ -148,7 +159,8 @@ class TokenService(
             Triple(500, 500, "501-1000"),
             Triple("ALL", 1000, "1001-")
         ).map { (limit, offset, range) ->
-            val results = TokenDistributionPaginatedResultsRecord.findByLimitOffset(richListAccounts(), limit, offset)
+            val results = TokenDistributionPaginatedResultsRecord
+                .findRichAccountsByLimitOffset(nhashAddr = nhashAddr, limit = limit, offset = offset)
             val denom = results[0].data.denom
             val totalSupply = totalSupply()
             val rangeBalance = results.sumOf { it.data.count.toBigDecimal() }
@@ -181,6 +193,7 @@ class TokenService(
     fun vestingAccounts() = AccountRecord.findAccountsByType(vestingAccountTypes)
     fun contractAccounts() = AccountRecord.findContractAccounts()
     fun allAccounts() = transaction { AccountRecord.all().toMutableList() }
+
     fun communityPoolSupply(height: Int? = null) =
         runBlocking {
             accountClient
@@ -232,6 +245,8 @@ class TokenService(
     // max supply = supply from bank module
     fun maxSupply(height: Int? = null) = runBlocking { accountClient.getCurrentSupply(UTILITY_TOKEN, height).amount.toBigDecimal() }
 
+    fun maxSupply(denom: String, height: Int? = null) = runBlocking { accountClient.getCurrentSupply(denom, height).amount.toBigDecimal() }
+
     // total supply = max - burned -> comes from the nhash marker address
     fun totalSupply(height: Int? = null) = maxSupply() - burnedSupply(height).roundWhole()
 
@@ -246,17 +261,28 @@ class TokenService(
             .roundWhole()
 
     // rich list = all accounts - nhash marker - zero seq - modules - contracts ->>>>>>>>> out of total
-    fun richList(topCount: Int = 100) = transaction {
-        val totalSupply = totalSupply()
-        TokenDistributionPaginatedResultsRecord.findByLimitOffset(richListAccounts(), topCount, 0)
-            .map {
-                RichAccount(
-                    it.ownerAddress,
-                    CoinStr(it.data.count, it.data.denom),
-                    it.data.count.toPercentage(BigDecimal(100), totalSupply, 4)
-                )
-            }
+    fun richList(topCount: Int = 100, spendable: Boolean = false) = transaction {
+        val richListAccounts = TokenDistributionPaginatedResultsRecord
+            .findRichAccountsByLimitOffset(nhashAddr = nhashMarkerAddr(), spendable = spendable)
+
+        val tokenTotal = when (spendable) {
+            true -> richListAccounts.sumOf {
+                    it.spendable.amount.toBigDecimalOrNull() ?: BigDecimal.ZERO
+                }
+            else -> totalSupply()
+        }
+
+        richListAccounts.subList(0, topCount).map {
+            val (amount, denom) = (it.spendable.amount to it.spendable.denom).takeIf { spendable }
+                ?: (it.data.count to it.data.denom)
+            RichAccount(
+                it.ownerAddress,
+                CoinStr(amount, denom),
+                amount.toPercentage(BigDecimal(100), tokenTotal, 4)
+            )
+        }
     }
+
     fun getTokenHistorical(fromDate: LocalDateTime?, toDate: LocalDateTime?) =
         TokenHistoricalDailyRecord.findForDates(fromDate?.startOfDay(), toDate?.startOfDay())
 

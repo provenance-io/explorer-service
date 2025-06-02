@@ -1,6 +1,7 @@
 package io.provenance.explorer.model
 
 import com.fasterxml.jackson.databind.node.ObjectNode
+import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.CoinStrWithPrice
 import io.provenance.explorer.model.base.CountStrTotal
 import java.math.BigInteger
@@ -37,5 +38,6 @@ data class AssetManagement(
 
 data class AssetHolder(
     val ownerAddress: String,
-    val balance: CountStrTotal
+    val balance: CountStrTotal,
+    val spendableBalance: CoinStr
 )
