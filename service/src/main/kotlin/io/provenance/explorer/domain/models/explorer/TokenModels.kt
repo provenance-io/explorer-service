@@ -4,6 +4,7 @@ import io.provenance.explorer.domain.entities.TokenHistoricalDailyRecord
 import io.provenance.explorer.domain.exceptions.requireToMessage
 import io.provenance.explorer.domain.extensions.CsvData
 import io.provenance.explorer.domain.extensions.startOfDay
+import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.CountStrTotal
 import io.provenance.explorer.model.base.DateTruncGranularity
 import java.io.ByteArrayOutputStream
@@ -14,7 +15,8 @@ import java.time.format.DateTimeFormatter
 
 data class TokenDistributionPaginatedResults(
     val ownerAddress: String,
-    val data: CountStrTotal
+    val data: CountStrTotal,
+    val spendable: CoinStr
 )
 
 data class DlobHistBase(
