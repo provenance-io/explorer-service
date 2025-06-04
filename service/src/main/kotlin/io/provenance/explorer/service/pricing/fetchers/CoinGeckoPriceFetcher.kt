@@ -5,6 +5,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.url
 import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.models.CoinGeckoHistoricalChart
 import io.provenance.explorer.domain.models.CoinGeckoMarket
 import io.provenance.explorer.domain.models.CoinGeckoOHLC
@@ -16,6 +17,7 @@ import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 class CoinGeckoPriceFetcher : HistoricalPriceFetcher {
 
@@ -36,7 +38,7 @@ class CoinGeckoPriceFetcher : HistoricalPriceFetcher {
     }
 
     private fun buildCoinGeckoHistorical(days: Int): List<HistoricalPrice> {
-        // list of open high low close
+        // list of open/high/low/close aka OHLC
         val ohlc = fetchCoinGeckoOHLC()
         // list of total volumes per day for given number of days
         return fetchCoinGeckoDailyChart(days)?.total_volumes?.map {
@@ -46,9 +48,15 @@ class CoinGeckoPriceFetcher : HistoricalPriceFetcher {
                 totalVolume = it[1]
             )
         }?.mapNotNull { totalVolumes ->
+            // start of the trading period
             val startOfDayMillis = totalVolumes.timestamp
+            // don't need to process any data relating to current day for historical
+            if (startOfDayMillis >= LocalDateTime.now().startOfDay().toInstant(ZoneOffset.UTC).toEpochMilli())
+                return@mapNotNull null
+            // start of next trading period
             val startOfNextPeriod = Instant.ofEpochMilli(startOfDayMillis)
                 .plusSeconds(PeriodInSeconds.DAY.seconds.toLong()).toEpochMilli()
+            // total volume for the day
             val volume24Hr = totalVolumes.totalVolume
             // find the first matching ohlc for the period
             val firstOhlc = ohlc.find { it.timestamp == startOfDayMillis } ?: ohlc.first()
@@ -76,8 +84,8 @@ class CoinGeckoPriceFetcher : HistoricalPriceFetcher {
             KTOR_CLIENT_JAVA.get {
                 url("https://api.coingecko.com/api/v3/coins/$hashId/ohlc?vs_currency=usd&days=30")
             }.body<List<List<BigDecimal>>>().map {
-                // open high low close is an array of arrays of numbers
-                // array of numbers by index - 0 = unix timestamp; 1 = open; 2 = high; 3 = low; 4 = close
+                // open/high/low/close is an array of arrays of numbers
+                // array of numbers by index -> 0 = unix timestamp; 1 = open; 2 = high; 3 = low; 4 = close
                 CoinGeckoOHLC(
                     timestamp = it[0].toLong(),
                     open = it[1],
