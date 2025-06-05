@@ -62,10 +62,11 @@ class CoinGeckoPriceFetcher : HistoricalPriceFetcher {
             val firstOhlc = ohlc.find { it.timestamp == startOfDayMillis } ?: ohlc.first()
             // find the matching ohlc for the start of the next period
             val firstOhlcNextPeriod = ohlc.find { it.timestamp == startOfNextPeriod } ?: return@mapNotNull null
-            // ohlc data is listed every 4 hours so collect all for the period
-            val todaysOhlcList = ohlc.subList(ohlc.indexOf(firstOhlc), ohlc.indexOf(firstOhlcNextPeriod))
-            // todays close pulled from following periods ohlc
-            val close = firstOhlcNextPeriod.close
+            // ohlc data is listed every 4 hours so collect all for the period. Add one to the indexes since
+            // each timestamp represents the end time and would be the previous 4 hours of data
+            val todaysOhlcList = ohlc.subList(ohlc.indexOf(firstOhlc) + 1, ohlc.indexOf(firstOhlcNextPeriod) + 1)
+            // close is the last close of the period
+            val close = todaysOhlcList.last().close
 
             HistoricalPrice(
                 time = startOfDayMillis.div(1000),
@@ -73,7 +74,7 @@ class CoinGeckoPriceFetcher : HistoricalPriceFetcher {
                 high = todaysOhlcList.maxOfOrNull { it.high } ?: close,
                 low = todaysOhlcList.minOfOrNull { it.low } ?: close,
                 close = close,
-                open = firstOhlc.open,
+                open = todaysOhlcList.first().open,
                 source = getSource()
             )
         } ?: emptyList()
