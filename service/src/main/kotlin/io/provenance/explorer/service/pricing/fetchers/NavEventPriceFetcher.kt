@@ -14,6 +14,7 @@ class NavEventPriceFetcher(
     override fun getSource(): String {
         return "navevent-table"
     }
+
     override fun fetchHistoricalPrice(fromDate: LocalDateTime?): List<HistoricalPrice> {
         val onChainNavEvents = NavEventsRecord.getNavEvents(denom = denom, priceDenoms = pricingDenoms, fromDate = fromDate)
         return onChainNavEvents.map { navEvent ->

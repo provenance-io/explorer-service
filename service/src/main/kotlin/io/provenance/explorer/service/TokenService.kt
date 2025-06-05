@@ -347,7 +347,7 @@ class TokenService(
     }
 
     fun updateAndSaveTokenHistoricalData(startDate: LocalDateTime, endDate: LocalDateTime) {
-        val historicalPrices = fetchHistoricalPriceData(startDate) ?: return
+        val historicalPrices = fetchHistoricalPriceData(startDate)
         val processedData = processHistoricalData(startDate, endDate, historicalPrices)
         processedData.forEach { record ->
             val source = historicalPriceFetchers.joinToString(separator = ",") { it.getSource() }
@@ -356,10 +356,8 @@ class TokenService(
     }
 
     fun updateAndSaveLatestTokenData(startDate: LocalDateTime, today: LocalDateTime) {
-        val list = fetchHistoricalPriceData(startDate).sortedBy { it.time }
-        list?.let {
-            val latestData = processLatestTokenData(it, today)
-            latestData?.let { data ->
+        fetchHistoricalPriceData(startDate).sortedBy { it.time }.let {
+            processLatestTokenData(it, today)?.let { data ->
                 cacheLatestTokenData(data)
             }
         }
@@ -368,7 +366,8 @@ class TokenService(
     fun processLatestTokenData(list: List<HistoricalPrice>, today: LocalDateTime): CmcLatestDataAbbrev? {
         val prevRecord = list.firstOrNull() ?: return null
         val price = list.last().close.toThirdDecimal()
-        val percentChg = price.percentChange(prevRecord.close.toThirdDecimal())
+        val percentChg = prevRecord.priceChangePercentage24h?.takeIf { list.size == 1 }
+            ?: price.percentChange(prevRecord.close.toThirdDecimal())
         val vol24Hr = list.sumOf { it.volume.toThirdDecimal() }.stripTrailingZeros()
         val marketCap = price.multiply(totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)).toThirdDecimal()
 
