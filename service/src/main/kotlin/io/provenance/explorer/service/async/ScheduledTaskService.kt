@@ -269,7 +269,7 @@ class ScheduledTaskService(
         tokenService.updateAndSaveTokenHistoricalData(startDate, today)
     }
 
-    @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
+    @Scheduled(initialDelay = 0L, fixedDelay = 1L, timeUnit = TimeUnit.MINUTES)
     fun updateTokenLatest() {
         val today = LocalDateTime.now()
         val startDate = today.minusDays(1)
