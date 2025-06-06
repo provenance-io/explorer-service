@@ -1408,24 +1408,12 @@ class PulseMetricService(
 
                 PulseCacheType.HASH_VOLUME_METRIC -> {
                     if (atDateTime != null) {
-                        NavEventsRecord.getNavEvents(
-                            fromDate = atDateTime.startOfDay(),
-                            toDate = endOfDay(atDateTime),
-                            denom = UTILITY_TOKEN
-                        )
+                        tokenService.getTokenHistorical(atDateTime, atDateTime)
+                            .firstOrNull()?.quote?.get(USD_UPPER)?.volume
                     } else {
-                        NavEventsRecord.getNavEvents(
-                            fromDate = nowUTC().startOfDay(),
-                            denom = UTILITY_TOKEN
-                        )
-                    }.filter {
-                        it.source.startsWith("x/exchange") &&
-                                it.priceDenom?.startsWith("u$USD_LOWER") == true
-                    }.sumOf { it.priceAmount!! }.toBigDecimal().let {
-                        PulseMetric.build(
-                            base = USD_UPPER,
-                            amount = it.divide(1000000.toBigDecimal())
-                        )
+                        tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.volume_24h
+                    }.let {
+                        PulseMetric.build(base = USD_UPPER, amount = it ?: BigDecimal.ZERO)
                     }
                 }
 
