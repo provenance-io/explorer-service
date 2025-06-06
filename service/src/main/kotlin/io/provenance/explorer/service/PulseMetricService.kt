@@ -1196,7 +1196,7 @@ class PulseMetricService(
             EntityType.LOANS, EntityType.INSURANCE_POLICIES, EntityType.REGISTRATIONS ->
                 NavEventsRecord.latestScopeNavsByEntity(
                     entity = entity,
-                    specificationIds = LedgerEntitySpecRecord.findByType(entity.type).map { it.specificationId },
+                    specificationIds = LedgerEntitySpecRecord.findByUuid(entity.uuid).map { it.specificationId },
                     fromDate = atDateTime,
                     limit = limit,
                     offset = offset
@@ -1800,9 +1800,9 @@ class PulseMetricService(
      * Ledger Based Services
      * **********************/
     fun ledgeredAssetsByEntity(
-        entityId: String,
-    ): EntityLedgeredAsset = LedgerEntityRecord.findByEntityId(entityId)?.toEntityLedgeredAsset()
-        ?: throw ResourceNotFoundException("Entity not found for id: $entityId")
+        uuid: String,
+    ): EntityLedgeredAsset = LedgerEntityRecord.findByUuid(uuid)?.toEntityLedgeredAsset()
+        ?: throw ResourceNotFoundException("Entity not found for id: $uuid")
 
     fun ledgeredAssetsByEntity(
         count: Int,
@@ -1822,14 +1822,14 @@ class PulseMetricService(
     }
 
     fun ledgeredAssetListByEntity(
-        entityId: String,
+        uuid: String,
         count: Int,
         page: Int,
         sort: List<SortOrder>,
         sortColumn: List<String>,
         ): PagedResults<EntityLedgeredAssetDetail>? {
-        val entity = LedgerEntityRecord.findByEntityId(entityId)
-            ?: throw ResourceNotFoundException("Entity not found for id: $entityId")
+        val entity = LedgerEntityRecord.findByUuid(uuid)
+            ?: throw ResourceNotFoundException("Entity not found for id: $uuid")
 
         val entityAssets = getNavEventsForEntity(entity = entity, limit = count, offset = page.toOffset(count)).map {
             EntityLedgeredAssetDetail(
@@ -1855,7 +1855,6 @@ class PulseMetricService(
 
         return EntityLedgeredAsset(
             id = uuid,
-            address = address,
             name = name,
             type = type.displayText,
             amount = entityValue.amount,

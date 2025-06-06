@@ -232,8 +232,7 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             FROM nav_events ne
                 join nft_scope ns on ne.scope_id = ns.address
                 left join marker_cache mc on ns.scope->>'value_owner_address' = mc.marker_address
-            WHERE ns.scope->'owners' @> '[{"role": "${entity.ownerType!!.name}", "address": "${entity.address}"}]'
-            AND ne.source = '${entity.dataSource}' AND ne.price_denom = 'usd' AND ne.price_amount IS NOT NULL
+            WHERE ne.source = '${entity.dataSource}' AND ne.price_denom = 'usd' AND ne.price_amount IS NOT NULL
             """.trimIndent()
 
             val args = mutableListOf<Pair<ColumnType, *>>()
@@ -296,6 +295,44 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
 
             limit?.let { query += " LIMIT $it" }
             offset?.let { query += " OFFSET $it" }
+
+            query.execAndMap(args) {
+                EntityNavEvent(
+                    denom = it.getString("denom"),
+                    priceAmount = it.getLong("price_amount"),
+                    priceDenom = it.getString("price_denom"),
+                    volume = it.getLong("volume")
+                )
+            }
+        }
+
+        fun navEventsBySpec(
+            dataSource: String,
+            specificationId: String,
+            fromDate: LocalDateTime? = null,
+            toDate: LocalDateTime? = null
+        ) = transaction {
+            var query = """
+                SELECT ne.denom, ne.price_amount, ne.price_denom, ne.volume
+                FROM nav_events ne
+                JOIN marker_cache mc ON ne.denom = mc.denom
+                JOIN nft_scope ns ON mc.marker_address = ns.scope->>'value_owner_address'
+                WHERE ne.source = '$dataSource' AND ns.scope->>'specification_id' = '$specificationId'
+            """.trimIndent()
+
+            val args = mutableListOf<Pair<ColumnType, *>>()
+
+            fromDate?.let {
+                query += " AND block_time >= ?"
+                args.add(Pair(JavaLocalDateTimeColumnType(), it))
+            }
+
+            toDate?.let {
+                query += " AND block_time <= ?"
+                args.add(Pair(JavaLocalDateTimeColumnType(), it))
+            }
+
+            query += " ORDER BY block_height DESC, event_order DESC"
 
             query.execAndMap(args) {
                 EntityNavEvent(

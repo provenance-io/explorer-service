@@ -107,20 +107,20 @@ class PulseAssetController(private val pulseMetricService: PulseMetricService) {
         pulseMetricService.ledgeredAssetsByEntity(count, page, sortOrder.orEmpty(), sortColumn.orEmpty())
 
     @Operation(summary = "Ledgered assets for a given entity")
-    @GetMapping("/ledgered/by/entity/{entityId}")
+    @GetMapping("/ledgered/by/entity/{uuid}")
     fun getLedgeredAssetsByEntity(
-        @Parameter(description = "The uuid or address for a ledger entity") @PathVariable entityId: String,
+        @Parameter(description = "The uuid for the entity") @PathVariable uuid: String,
     ): EntityLedgeredAsset =
-        pulseMetricService.ledgeredAssetsByEntity(entityId)
+        pulseMetricService.ledgeredAssetsByEntity(uuid)
 
     @Operation(summary = "Ledgered asset list by entity")
-    @GetMapping("/ledgered/by/entity/{entityId}/list")
+    @GetMapping("/ledgered/by/entity/{uuid}/list")
     fun getLedgeredAssetListByEntity(
-        @Parameter(description = "The uuid or address for a ledger entity") @PathVariable entityId: String,
+        @Parameter(description = "The uuid for the entity") @PathVariable uuid: String,
         @RequestParam(required = false) page: Int = 0,
         @RequestParam(required = false) count: Int = 10,
         @RequestParam(required = false) sortOrder: List<SortOrder>?,
         @RequestParam(required = false) sortColumn: List<String>?
     ): PagedResults<EntityLedgeredAssetDetail>? =
-        pulseMetricService.ledgeredAssetListByEntity(entityId, count, page, sortOrder.orEmpty(), sortColumn.orEmpty())
+        pulseMetricService.ledgeredAssetListByEntity(uuid, count, page, sortOrder.orEmpty(), sortColumn.orEmpty())
 }
