@@ -22,6 +22,7 @@ enum class MetricRangeType(val range: String) {
     DAY("24h"),
     WEEK("1w"),
     MONTH("1m"),
+    QUARTER("3m"),
     YEAR("1y")
 }
 
