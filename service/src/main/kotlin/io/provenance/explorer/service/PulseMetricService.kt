@@ -167,6 +167,7 @@ class PulseMetricService(
             MetricRangeType.DAY -> 1
             MetricRangeType.WEEK -> 7
             MetricRangeType.MONTH -> 30
+            MetricRangeType.QUARTER -> 90
             MetricRangeType.YEAR -> 365
         }.toLong()
 

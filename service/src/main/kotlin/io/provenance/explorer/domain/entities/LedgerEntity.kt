@@ -9,10 +9,10 @@ import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.transactions.transaction
 
 object LedgerEntityTable : IntIdTable(name = "ledger_entity") {
-    val uuid = varchar("uuid", 128)
-    val name = varchar("name", 128)
-    val dataSource = varchar("data_source", 128)
-    val type: Column<EntityType> = enumerationByName("type", 128, EntityType::class)
+    val uuid = varchar("uuid", 64)
+    val name = varchar("name", 64)
+    val dataSource = varchar("data_source", 32)
+    val type: Column<EntityType> = enumerationByName("type", 64, EntityType::class)
     val usdPricingExponent = integer("usd_pricing_exponent").nullable()
 }
 
@@ -43,8 +43,8 @@ class LedgerEntityRecord(id: EntityID<Int>) : IntEntity(id) {
 }
 
 object LedgerEntitySpecTable : IntIdTable(name = "ledger_entity_spec") {
-    val entityUuid = varchar("entity_uuid", 128)
-    val specificationId = varchar("specification_id", 128)
+    val entityUuid = varchar("entity_uuid", 64)
+    val specificationId = varchar("specification_id", 32)
 }
 
 class LedgerEntitySpecRecord(id: EntityID<Int>) : IntEntity(id) {
