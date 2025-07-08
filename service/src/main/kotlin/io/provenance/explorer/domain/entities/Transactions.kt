@@ -572,7 +572,7 @@ class TxMessageRecord(id: EntityID<Int>) : IntEntity(id) {
     var txTimestamp by TxMessageTable.txTimestamp
 }
 
-object TxEventsTable : IntIdTable(name = "tx_msg_event") {
+object TxEventsTable : LongIdTable(name = "tx_msg_event") {
     val blockHeight = integer("block_height")
     val txHash = varchar("tx_hash", 64)
     val txHashId = reference("tx_hash_id", TxCacheTable)
@@ -581,8 +581,8 @@ object TxEventsTable : IntIdTable(name = "tx_msg_event") {
     val eventType = varchar("event_type", 256)
 }
 
-class TxEventRecord(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<TxEventRecord>(TxEventsTable) {
+class TxEventRecord(id: EntityID<Long>) : LongEntity(id) {
+    companion object : LongEntityClass<TxEventRecord>(TxEventsTable) {
 
         fun buildInsert(
             blockHeight: Int,
