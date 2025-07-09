@@ -609,7 +609,7 @@ class TxEventRecord(id: EntityID<Long>) : LongEntity(id) {
 }
 
 object TxEventAttrTable : LongIdTable(name = "tx_msg_event_attr") {
-    val txMsgEventId = integer("tx_msg_event_id")
+    val txMsgEventId = long("tx_msg_event_id")
     val attrKey = varchar("attr_key", 256)
     val attrValue = text("attr_value")
     val attrIdx = integer("attr_idx")
