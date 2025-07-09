@@ -2,7 +2,6 @@ package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.domain.core.sql.toDbQueryList
 import io.provenance.explorer.domain.extensions.execAndMap
-import io.provenance.explorer.domain.models.explorer.pulse.EntityType
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -250,10 +249,6 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
                 args.add(Pair(JavaLocalDateTimeColumnType(), it))
             }
 
-            // Registrations are scopes that are not owned by a Marker Account
-            if (entity.type == EntityType.REGISTRATIONS)
-                query += " AND mc.denom IS NULL"
-
             query += " ORDER BY ne.scope_id, ne.block_height DESC, ne.event_order DESC"
 
             limit?.let { query += " LIMIT $it" }
@@ -267,41 +262,6 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
                     volume = it.getLong("volume"),
                     valueOwnerAddress = it.getString("value_owner"),
                     markerDenom = it.getString("marker_denom"),
-                )
-            }
-        }
-
-        fun latestExchangeNavs(
-            dataSource: String,
-            fromDate: LocalDateTime? = null,
-            limit: Int? = null,
-            offset: Int? = null
-        ) = transaction {
-            var query = """
-            SELECT DISTINCT ON (denom)
-                denom, price_amount, price_denom, volume
-            FROM nav_events
-            WHERE denom IS NOT NULL AND source = '$dataSource' AND price_amount IS NOT NULL
-            """.trimIndent()
-
-            val args = mutableListOf<Pair<ColumnType, *>>()
-
-            fromDate?.let {
-                query += " AND block_time >= ?"
-                args.add(Pair(JavaLocalDateTimeColumnType(), it))
-            }
-
-            query += " ORDER BY denom, block_height DESC, event_order DESC"
-
-            limit?.let { query += " LIMIT $it" }
-            offset?.let { query += " OFFSET $it" }
-
-            query.execAndMap(args) {
-                EntityNavEvent(
-                    denom = it.getString("denom"),
-                    priceAmount = it.getLong("price_amount"),
-                    priceDenom = it.getString("price_denom"),
-                    volume = it.getLong("volume")
                 )
             }
         }

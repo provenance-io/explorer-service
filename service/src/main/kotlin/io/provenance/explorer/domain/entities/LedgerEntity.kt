@@ -13,6 +13,7 @@ object LedgerEntityTable : IntIdTable(name = "ledger_entity") {
     val name = varchar("name", 64)
     val dataSource = varchar("data_source", 32)
     val type: Column<EntityType> = enumerationByName("type", 64, EntityType::class)
+    val marketId = integer("market_id").nullable()
     val usdPricingExponent = integer("usd_pricing_exponent").nullable()
 }
 
@@ -39,6 +40,7 @@ class LedgerEntityRecord(id: EntityID<Int>) : IntEntity(id) {
     var name by LedgerEntityTable.name
     var type by LedgerEntityTable.type
     var dataSource by LedgerEntityTable.dataSource
+    var marketId by LedgerEntityTable.marketId
     var usdPricingExponent by LedgerEntityTable.usdPricingExponent
 }
 

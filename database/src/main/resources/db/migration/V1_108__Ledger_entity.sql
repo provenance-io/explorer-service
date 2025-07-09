@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS ledger_entity
     name                 VARCHAR(64) NOT NULL,
     type                 VARCHAR(64) NOT NULL,
     data_source          VARCHAR(32) NOT NULL,
-    usd_pricing_exponent INT
+    market_id            INT NULL,
+    usd_pricing_exponent INT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_ledger_entity_uuid ON ledger_entity (uuid);

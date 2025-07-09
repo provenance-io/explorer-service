@@ -760,27 +760,28 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            committedAssetTotals(atDateTime)
-                .map {
-                    // convert amount to appropriate denom decimal
-                    var dE = denomExponent(it.key)
-                    if (dE == 0 && it.key.lowercase().contains(USD_LOWER)) {
-                        dE = 6
-                    }
-                    Pair(it.key, it.value.times(inversePowerOfTen(dE)))
-                }.map {
-                    // get price of the asset
-                    Pair(
-                        it.first,
-                        it.second.times(pulseLastTradedAssetPrice(it.first))
-                    )
-                }.sumOf { it.second }
-                .let {
-                    PulseMetric.build(
-                        base = USD_UPPER,
-                        amount = it
-                    )
-                }
+            committedAssetTotals(atDateTime).committedAssetsToValue()
+        }
+
+    private fun Map<String, BigDecimal>.committedAssetsToValue() = this.map {
+        // convert amount to appropriate denom decimal
+        var dE = denomExponent(it.key)
+        if (dE == 0 && it.key.lowercase().contains(USD_LOWER)) {
+            dE = 6
+        }
+        Pair(it.key, it.value.times(inversePowerOfTen(dE)))
+    }.map {
+        // get price of the asset
+        Pair(
+            it.first,
+            it.second.times(pulseLastTradedAssetPrice(it.first))
+        )
+    }.sumOf { it.second }
+        .let {
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = it
+            )
         }
 
     private fun rangeSpanFromCache(
@@ -1194,7 +1195,7 @@ class PulseMetricService(
         offset: Int? = null
     ) =
         when (entity.type) {
-            EntityType.LOANS, EntityType.INSURANCE_POLICIES, EntityType.REGISTRATIONS ->
+            EntityType.LOANS, EntityType.INSURANCE_POLICIES ->
                 NavEventsRecord.latestScopeNavsByEntity(
                     entity = entity,
                     specificationIds = LedgerEntitySpecRecord.findByUuid(entity.uuid).map { it.specificationId },
@@ -1202,7 +1203,7 @@ class PulseMetricService(
                     limit = limit,
                     offset = offset
                 )
-            EntityType.CRYPTO, EntityType.SECURITIES ->
+            EntityType.EXCHANGE ->
                 NavEventsRecord.latestExchangeNavs(entity.dataSource, atDateTime, limit, offset)
         }
 
@@ -1221,6 +1222,14 @@ class PulseMetricService(
             volume.toBigDecimal().times(denomPow)
         }
     }
+
+    private fun exchangeVolume(marketId: Int) = runBlocking {
+        exchangeGrpcClient.marketTotalCommittedAssets(marketId)
+            .flatten()
+            .groupBy { it.first }.mapValues { it.value.sumOf { v -> v.second } }
+    }
+
+    private fun exchangeTvl(marketId: Int) = exchangeVolume(marketId).committedAssetsToValue()
 
     /**
      * Asset denom  metadata from chain

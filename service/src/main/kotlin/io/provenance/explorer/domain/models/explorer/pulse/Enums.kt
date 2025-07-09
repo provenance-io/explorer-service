@@ -64,7 +64,5 @@ enum class PulseCacheType {
 enum class EntityType(val displayText: String) {
     LOANS("Loans"),
     INSURANCE_POLICIES("Insurance Policies"),
-    CRYPTO("Crypto"),
-    SECURITIES("Securities"),
-    REGISTRATIONS("Registrations"),
+    EXCHANGE("Exchange")
 }
