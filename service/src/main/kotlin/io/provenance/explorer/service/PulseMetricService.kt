@@ -307,48 +307,34 @@ class PulseMetricService(
      */
     private fun hashMarketCapMetric(
         range: MetricRangeType = MetricRangeType.DAY,
-        atDateTime: LocalDateTime? = null
+        atDateTime: LocalDateTime? = null,
+        type: PulseCacheType
     ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.HASH_MARKET_CAP_METRIC,
+            type = type,
             atDateTime = atDateTime,
             range = range
         ) {
+            var height: Int? = null
             if (atDateTime != null) {
+                height = BlockCacheRecord.getLastBlockBeforeTime(atDateTime)
                 tokenService.getTokenHistorical(
                     fromDate = atDateTime,
                     toDate = atDateTime
-                )
-                    .firstOrNull { it.quote[quote] != null }
-                    ?.let {
-                        it.quote[quote]?.let { quote ->
-                            val height =
-                                BlockCacheRecord.getLastBlockBeforeTime(
-                                    atDateTime
-                                )
-                            val supply = tokenService
-                                .circulatingSupply(
-                                    pulseProperties.hashHoldersExcludedFromCirculatingSupply,
-                                    height
-                                )
-                            Pair(supply, quote.close)
-                        }
-                    }
+                ).firstOrNull { it.quote[quote] != null }?.quote?.get(quote)?.close
             } else {
                 tokenService.getTokenLatest()
-                    ?.takeIf { it.quote[quote] != null }
-                    ?.let {
-                        it.quote[quote]?.let { quote ->
-                            val supply = tokenService
-                                .circulatingSupply(
-                                    pulseProperties.hashHoldersExcludedFromCirculatingSupply
-                                )
-                            Pair(supply, quote.price)
-                        }
-                    }
-            }?.let {
-                val supply = it.first.divide(UTILITY_TOKEN_BASE_MULTIPLIER)
-                val price = it.second
+                    ?.takeIf { it.quote[quote] != null }?.quote?.get(quote)?.price
+            }?.let { price ->
+                val supply = when (type) {
+                    PulseCacheType.HASH_FOUNDATION_MARKET_CAP_METRIC -> tokenService.totalBalanceForList(
+                        pulseProperties.hashHoldersExcludedFromCirculatingSupply.toSet(), height
+                    )
+
+                    else -> tokenService.circulatingSupply(
+                        pulseProperties.hashHoldersExcludedFromCirculatingSupply, height
+                    )
+                }.divide(UTILITY_TOKEN_BASE_MULTIPLIER)
                 val marketCap = price.times(supply)
 
                 PulseMetric.build(
@@ -1233,6 +1219,16 @@ class PulseMetricService(
                     )
                 }
 
+                PulseCacheType.HASH_FOUNDATION_SUPPLY_METRIC -> {
+                    val foundationSupply = tokenService.totalBalanceForList(
+                        pulseProperties.hashHoldersExcludedFromCirculatingSupply.toSet(), height
+                    ).divide(UTILITY_TOKEN_BASE_MULTIPLIER).roundWhole()
+                    PulseMetric.build(
+                        base = UTILITY_TOKEN,
+                        amount = foundationSupply
+                    )
+                }
+
                 PulseCacheType.HASH_VOLUME_METRIC -> {
                     if (atDateTime != null) {
                         tokenService.getTokenHistorical(atDateTime, atDateTime)
@@ -1280,9 +1276,11 @@ class PulseMetricService(
         atDateTime: LocalDateTime? = null,
     ): PulseMetric {
         return when (type) {
-            PulseCacheType.HASH_MARKET_CAP_METRIC -> hashMarketCapMetric(
+            PulseCacheType.HASH_MARKET_CAP_METRIC,
+            PulseCacheType.HASH_FOUNDATION_MARKET_CAP_METRIC -> hashMarketCapMetric(
                 range,
-                atDateTime
+                atDateTime,
+                type
             )
 
             PulseCacheType.HASH_TVL_METRIC -> hashTVL(range, atDateTime)
@@ -1290,6 +1288,7 @@ class PulseMetricService(
             PulseCacheType.HASH_STAKED_METRIC,
             PulseCacheType.HASH_CIRCULATING_METRIC,
             PulseCacheType.HASH_SUPPLY_METRIC,
+            PulseCacheType.HASH_FOUNDATION_SUPPLY_METRIC,
             PulseCacheType.HASH_VOLUME_METRIC,
             PulseCacheType.HASH_PRICE_METRIC,
             PulseCacheType.HASH_FDV_METRIC -> hashMetric(
