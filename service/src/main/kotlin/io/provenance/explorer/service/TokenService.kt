@@ -251,14 +251,17 @@ class TokenService(
     fun totalSupply(height: Int? = null) = maxSupply() - burnedSupply(height).roundWhole()
 
     // circulating supply = max - burned - modules - zero seq - pool - nonspendable
-    fun circulatingSupply(excludedAddresses: List<String> = emptyList(), height: Int? = null) =
-        maxSupply() // max
+    fun circulatingSupply(excludedAddresses: Set<String> = emptySet(), height: Int? = null): BigDecimal {
+        val zeroSeqAndModuleAccounts = zeroSeqAccounts().toSet() + moduleAccounts().addressList() - excludedAddresses
+        val vestingAccounts = vestingAccounts().addressList() - excludedAddresses
+        return maxSupply() // max
             .minus(burnedSupply(height)) // burned
-            .minus(totalBalanceForList(zeroSeqAccounts().toSet() + moduleAccounts().addressList())) // modules/zero seq, no height because of size
-            .minus(totalBalanceForList(excludedAddresses.toSet(), height))
+            .minus(totalBalanceForList(zeroSeqAndModuleAccounts)) // modules/zero seq, no height because of size
+            .minus(totalBalanceForList(excludedAddresses, height))
             .minus(communityPoolSupply(height)) // pool
-            .minus(totalNonspendableBalanceForList(vestingAccounts().addressList(), height)) // nonSpendable
+            .minus(totalNonspendableBalanceForList(vestingAccounts, height)) // nonSpendable
             .roundWhole()
+    }
 
     // rich list = all accounts - nhash marker - zero seq - modules - contracts ->>>>>>>>> out of total
     fun richList(topCount: Int = 100, spendable: Boolean = false) = transaction {
