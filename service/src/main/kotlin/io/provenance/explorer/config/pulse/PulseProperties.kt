@@ -13,7 +13,7 @@ class PulseProperties(
     not available for trading and should not be included in the circulating
     supply.
      */
-    val hashHoldersExcludedFromCirculatingSupply: List<String>,
+    val hashHoldersExcludedFromCirculatingSupply: Set<String>,
     // denoms to include as private equity in TVL calc
     val privateEquityTvlDenoms: List<String>
 )
