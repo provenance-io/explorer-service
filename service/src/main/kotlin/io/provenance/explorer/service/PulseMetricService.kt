@@ -1824,8 +1824,8 @@ class PulseMetricService(
             ?: throw ResourceNotFoundException("Entity not found for id: $uuid")
 
         val entityAssets: List<EntityLedgeredAssetDetail> = when (entity.type) {
-            EntityType.LOANS -> emptyList() // navs? ledger module?
-            EntityType.INSURANCE_POLICIES -> getNavEventsForEntity(
+            // TODO should loan details be pulled from the ledger module? Using NAV for now
+            EntityType.LOANS, EntityType.INSURANCE_POLICIES -> getNavEventsForEntity(
                 entity = entity, limit = count, offset = page.toOffset(count)
             ).map {
                 EntityLedgeredAssetDetail(
