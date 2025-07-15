@@ -11,8 +11,8 @@ import org.jetbrains.exposed.sql.transactions.transaction
 object LedgerEntityTable : IntIdTable(name = "ledger_entity") {
     val uuid = varchar("uuid", 64)
     val name = varchar("name", 64)
-    val dataSource = varchar("data_source", 32)
     val type: Column<EntityType> = enumerationByName("type", 64, EntityType::class)
+    val dataSource = varchar("data_source", 32)
     val marketId = integer("market_id").nullable()
     val usdPricingExponent = integer("usd_pricing_exponent").nullable()
 }

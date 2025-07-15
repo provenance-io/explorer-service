@@ -224,6 +224,8 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             limit: Int? = null,
             offset: Int? = null
         ) = transaction {
+            if (specificationIds.isEmpty()) return@transaction emptyList()
+
             var query = """
             SELECT DISTINCT ON (ne.scope_id)
                 ne.scope_id, ne.price_amount, ne.price_denom, ne.volume,
@@ -232,17 +234,10 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
                 join nft_scope ns on ne.scope_id = ns.address
                 left join marker_cache mc on ns.scope->>'value_owner_address' = mc.marker_address
             WHERE ne.source = '${entity.dataSource}' AND ne.price_denom = 'usd' AND ne.price_amount IS NOT NULL
+             AND ns.scope->>'specification_id' IN (${specificationIds.toSet().toDbQueryList()})
             """.trimIndent()
 
             val args = mutableListOf<Pair<ColumnType, *>>()
-
-            if (specificationIds.isNotEmpty()) {
-                val placeholders = specificationIds.joinToString(", ") { "?" }
-                query += " AND ns.scope->>'specification_id' IN ($placeholders)"
-                specificationIds.forEach {
-                    args.add(Pair(VarCharColumnType(), it))
-                }
-            }
 
             fromDate?.let {
                 query += " AND ne.block_time >= ?"

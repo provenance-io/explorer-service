@@ -759,14 +759,27 @@ class PulseMetricService(
             )
         }
 
-    private fun calcExchangeTotalValueForAsset(denom: String, total: BigDecimal): BigDecimal {
+    private fun Map<String, BigDecimal>.committedAssetsToVolume() = this.map {
+        calcExchangeTotalVolumeForAsset(it.key, it.value)
+    }.sumOf { it }
+        .let {
+            PulseMetric.build(
+                base = count,
+                amount = it
+            )
+        }
+
+    private fun calcExchangeTotalValueForAsset(denom: String, total: BigDecimal) =
+        calcExchangeTotalVolumeForAsset(denom, total).times(pulseLastTradedAssetPrice(denom))
+
+    private fun calcExchangeTotalVolumeForAsset(denom: String, total: BigDecimal): BigDecimal {
         // convert amount to appropriate denom decimal
         var dE = denomExponent(denom)
         if (dE == 0 && denom.lowercase().contains(USD_LOWER)) {
             dE = 6
         }
 
-        return total.times(inversePowerOfTen(dE)).times(pulseLastTradedAssetPrice(denom))
+        return total.times(inversePowerOfTen(dE))
     }
     private fun rangeSpanFromCache(
         startDate: LocalDate,
@@ -1166,9 +1179,7 @@ class PulseMetricService(
                 EntityType.INSURANCE_POLICIES -> getNavEventsForEntity(entity, atDateTime).size.let {
                     PulseMetric.build(base = count, amount = it.toBigDecimal())
                 }
-                EntityType.EXCHANGE -> marketCommittedAssets(entity.marketId!!).let { assets ->
-                    PulseMetric.build(base = count, amount = assets.values.sumOf { it })
-                }
+                EntityType.EXCHANGE -> marketTotalVolume(entity.marketId!!)
             }
         }
 
@@ -1197,6 +1208,8 @@ class PulseMetricService(
     }
 
     private fun marketTotalValue(marketId: Int) = marketCommittedAssets(marketId).committedAssetsToValue()
+
+    private fun marketTotalVolume(marketId: Int) = marketCommittedAssets(marketId).committedAssetsToVolume()
 
     /**
      * Asset denom  metadata from chain
@@ -1451,7 +1464,8 @@ class PulseMetricService(
 
             PulseCacheType.HASH_STAKED_METRIC,
             PulseCacheType.HASH_CIRCULATING_METRIC,
-            PulseCacheType.HASH_SUPPLY_METRIC, PulseCacheType.HASH_FOUNDATION_SUPPLY_METRIC,
+            PulseCacheType.HASH_SUPPLY_METRIC,
+            PulseCacheType.HASH_FOUNDATION_SUPPLY_METRIC,
             PulseCacheType.HASH_VOLUME_METRIC,
             PulseCacheType.HASH_PRICE_METRIC,
             PulseCacheType.HASH_FDV_METRIC -> hashMetric(
@@ -1802,7 +1816,7 @@ class PulseMetricService(
         val entityLedgeredAssetList = LedgerEntityRecord.getAllPaginated(page.toOffset(count), count)
             .map { it.toEntityLedgeredAsset() }
 
-        val totalEntities = LedgerEntityRecord.all().count()
+        val totalEntities = transaction { LedgerEntityRecord.all().count() }
         return PagedResults(
             pages = totalEntities.pageCountOfResults(count),
             results = entityLedgeredAssetList,
