@@ -226,28 +226,31 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
         ) = transaction {
             if (specificationIds.isEmpty()) return@transaction emptyList()
 
+            val fromDateQuery = fromDate?.let { "AND ne.block_time >= ?" } ?: ""
             var query = """
-            SELECT DISTINCT ON (ne.scope_id)
-                ne.scope_id, ne.price_amount, ne.price_denom, ne.volume,
-                ns.scope->>'value_owner_address' as value_owner, mc.denom as marker_denom
-            FROM nav_events ne
-                join nft_scope ns on ne.scope_id = ns.address
-                left join marker_cache mc on ns.scope->>'value_owner_address' = mc.marker_address
-            WHERE ne.source = '${entity.dataSource}' AND ne.price_denom = 'usd' AND ne.price_amount IS NOT NULL
-             AND ns.scope->>'specification_id' IN (${specificationIds.toSet().toDbQueryList()})
+                SELECT DISTINCT ON (ne.scope_id)
+                    ne.scope_id, ne.price_amount, ne.price_denom, ne.volume,
+                    ns.scope->>'value_owner_address' as value_owner, mc.denom as marker_denom
+                FROM nft_scope ns
+                JOIN LATERAL (
+                    SELECT *
+                    FROM nav_events ne
+                    WHERE ne.scope_id = ns.address::text AND ne.price_amount IS NOT NULL
+                      AND ne.source = '${entity.dataSource}' AND ne.price_denom = 'usd' $fromDateQuery
+                    ORDER BY ne.block_height DESC, ne.event_order DESC LIMIT 1
+                ) ne ON true
+                LEFT JOIN marker_cache mc ON mc.marker_address::text = ns.scope ->> 'value_owner_address'
+                WHERE ns.scope ->> 'specification_id' IN (${specificationIds.toSet().toDbQueryList()})
+                ORDER BY ne.scope_id, ne.block_height DESC, ne.event_order DESC
             """.trimIndent()
-
-            val args = mutableListOf<Pair<ColumnType, *>>()
-
-            fromDate?.let {
-                query += " AND ne.block_time >= ?"
-                args.add(Pair(JavaLocalDateTimeColumnType(), it))
-            }
-
-            query += " ORDER BY ne.scope_id, ne.block_height DESC, ne.event_order DESC"
 
             limit?.let { query += " LIMIT $it" }
             offset?.let { query += " OFFSET $it" }
+
+            val args = mutableListOf<Pair<ColumnType, *>>()
+            fromDate?.let {
+                args.add(Pair(JavaLocalDateTimeColumnType(), it))
+            }
 
             query.execAndMap(args) {
                 EntityNavEvent(
