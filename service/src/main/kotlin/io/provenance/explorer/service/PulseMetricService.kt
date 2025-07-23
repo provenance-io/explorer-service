@@ -72,7 +72,6 @@ class PulseMetricService(
 ) {
     companion object {
         private val isBackfillInProgress = AtomicBoolean(false)
-        private const val THIRTY_DAYS = 30L
     }
 
     protected val logger = logger(PulseMetricService::class)
@@ -387,7 +386,7 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val days = THIRTY_DAYS
+            val days = rangeToDays(range)
             val startDate = nowUTC().minusDays(days).toLocalDate()
 
             // Determine if today's cache is missing, so we need to use days - 1
@@ -591,8 +590,9 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
+            val days = rangeToDays(range)
             val countForDates = TxCacheRecord.countForDates(
-                daysPrior = THIRTY_DAYS.toInt(),
+                daysPrior = days.toInt(),
                 atDateTime = atDateTime
             )
             val series = MetricSeries(
@@ -683,7 +683,7 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val days = THIRTY_DAYS
+            val days = rangeToDays(range)
             val startDate = nowUTC().minusDays(days).toLocalDate()
 
             // Determine if today's cache is missing, so we need to use days - 1
@@ -813,8 +813,10 @@ class PulseMetricService(
         val rangeOverStartDate = startDate.minusDays(days + 1)
 
         val rangeSpan = rangeSpanFromCache(startDate, type, days)
+        System.out.println("Getting range span for $startDate $type: ${rangeSpan.size} records")
         val rangeOverSpan =
             rangeSpanFromCache(rangeOverStartDate, type, days)
+        System.out.println("Getting range over span for $rangeOverStartDate $type: ${rangeOverSpan.size} records")
 
         return Pair(rangeOverSpan, rangeSpan)
     }
