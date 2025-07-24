@@ -72,7 +72,6 @@ class PulseMetricService(
 ) {
     companion object {
         private val isBackfillInProgress = AtomicBoolean(false)
-        private const val THIRTY_DAYS = 30L
     }
 
     protected val logger = logger(PulseMetricService::class)
@@ -398,7 +397,7 @@ class PulseMetricService(
                 amount = totalValue,
                 series = seriesFromPriorMetrics(
                     type = PulseCacheType.PULSE_TVL_METRIC,
-                    days = THIRTY_DAYS,
+                    days = rangeToDays(range),
                     valueSelector = { it.trend?.changeQuantity ?: BigDecimal.ZERO }
                 )
             )
@@ -560,8 +559,9 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
+            val days = rangeToDays(range)
             val countForDates = TxCacheRecord.countForDates(
-                daysPrior = THIRTY_DAYS.toInt(),
+                daysPrior = days.toInt(),
                 atDateTime = atDateTime
             )
             val series = MetricSeries(
@@ -658,7 +658,7 @@ class PulseMetricService(
                     amount = it.toBigDecimal(),
                     series = seriesFromPriorMetrics(
                         PulseCacheType.PULSE_PARTICIPANTS_METRIC,
-                        days = THIRTY_DAYS,
+                        days = rangeToDays(range),
                         valueSelector = { it.trend?.changeQuantity ?: BigDecimal.ZERO }
                     ),
                 )
@@ -730,7 +730,7 @@ class PulseMetricService(
 
     private fun seriesFromPriorMetrics(
         type: PulseCacheType,
-        days: Long = THIRTY_DAYS,
+        days: Long,
         valueSelector: (PulseMetric) -> BigDecimal
     ): MetricSeries {
         val today = nowUTC().toLocalDate()
