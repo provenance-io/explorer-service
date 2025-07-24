@@ -306,48 +306,34 @@ class PulseMetricService(
      */
     private fun hashMarketCapMetric(
         range: MetricRangeType = MetricRangeType.DAY,
-        atDateTime: LocalDateTime? = null
+        atDateTime: LocalDateTime? = null,
+        type: PulseCacheType
     ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.HASH_MARKET_CAP_METRIC,
+            type = type,
             atDateTime = atDateTime,
             range = range
         ) {
+            var height: Int? = null
             if (atDateTime != null) {
+                height = BlockCacheRecord.getLastBlockBeforeTime(atDateTime)
                 tokenService.getTokenHistorical(
                     fromDate = atDateTime,
                     toDate = atDateTime
-                )
-                    .firstOrNull { it.quote[quote] != null }
-                    ?.let {
-                        it.quote[quote]?.let { quote ->
-                            val height =
-                                BlockCacheRecord.getLastBlockBeforeTime(
-                                    atDateTime
-                                )
-                            val supply = tokenService
-                                .circulatingSupply(
-                                    pulseProperties.hashHoldersExcludedFromCirculatingSupply,
-                                    height
-                                )
-                            Pair(supply, quote.close)
-                        }
-                    }
+                ).firstOrNull { it.quote[quote] != null }?.quote?.get(quote)?.close
             } else {
                 tokenService.getTokenLatest()
-                    ?.takeIf { it.quote[quote] != null }
-                    ?.let {
-                        it.quote[quote]?.let { quote ->
-                            val supply = tokenService
-                                .circulatingSupply(
-                                    pulseProperties.hashHoldersExcludedFromCirculatingSupply
-                                )
-                            Pair(supply, quote.price)
-                        }
-                    }
-            }?.let {
-                val supply = it.first.divide(UTILITY_TOKEN_BASE_MULTIPLIER)
-                val price = it.second
+                    ?.takeIf { it.quote[quote] != null }?.quote?.get(quote)?.price
+            }?.let { price ->
+                val supply = when (type) {
+                    PulseCacheType.HASH_FOUNDATION_MARKET_CAP_METRIC -> tokenService.totalBalanceForList(
+                        pulseProperties.hashHoldersExcludedFromCirculatingSupply.toSet(), height
+                    )
+
+                    else -> tokenService.circulatingSupply(
+                        pulseProperties.hashHoldersExcludedFromCirculatingSupply, height
+                    )
+                }.divide(UTILITY_TOKEN_BASE_MULTIPLIER)
                 val marketCap = price.times(supply)
 
                 PulseMetric.build(
@@ -386,27 +372,6 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val days = rangeToDays(range)
-            val startDate = nowUTC().minusDays(days).toLocalDate()
-
-            // Determine if today's cache is missing, so we need to use days - 1
-            val isTodayCacheMissing = fromPulseMetricCache(
-                nowUTC().toLocalDate(),
-                PulseCacheType.PULSE_TVL_METRIC
-            ) == null
-            val daySpan = if (isTodayCacheMissing) days - 1 else days
-
-            val rangeSpan = rangeSpanFromCache(
-                startDate,
-                PulseCacheType.PULSE_TVL_METRIC,
-                daySpan
-            )
-            val dates = (0..days).map { startDate.plusDays(it).toString() }
-            val tvlSeries = MetricSeries(
-                seriesData = rangeSpan.map { it.trend?.changeQuantity ?: BigDecimal.ZERO },
-                labels = dates
-            )
-
             val committedValue = this.exchangeCommittedAssetsValue(
                 range = range,
                 atDateTime = atDateTime
@@ -430,7 +395,11 @@ class PulseMetricService(
             PulseMetric.build(
                 base = USD_UPPER,
                 amount = totalValue,
-                series = tvlSeries
+                series = seriesFromPriorMetrics(
+                    type = PulseCacheType.PULSE_TVL_METRIC,
+                    days = rangeToDays(range),
+                    valueSelector = { it.trend?.changeQuantity ?: BigDecimal.ZERO }
+                )
             )
         }
 
@@ -683,32 +652,15 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val days = rangeToDays(range)
-            val startDate = nowUTC().minusDays(days).toLocalDate()
-
-            // Determine if today's cache is missing, so we need to use days - 1
-            val isTodayCacheMissing = fromPulseMetricCache(
-                nowUTC().toLocalDate(),
-                PulseCacheType.PULSE_PARTICIPANTS_METRIC
-            ) == null
-            val daySpan = if (isTodayCacheMissing) days - 1 else days
-
-            val rangeSpan = rangeSpanFromCache(
-                startDate,
-                PulseCacheType.PULSE_PARTICIPANTS_METRIC,
-                daySpan
-            )
-            val dates = (0..days).map { startDate.plusDays(it).toString() }
-            val participantsSeries = MetricSeries(
-                seriesData = rangeSpan.map { it.trend?.changeQuantity ?: BigDecimal.ZERO },
-                labels = dates
-            )
-
             AccountRecord.countActiveAccounts().let {
                 PulseMetric.build(
                     base = count,
                     amount = it.toBigDecimal(),
-                    series = participantsSeries,
+                    series = seriesFromPriorMetrics(
+                        PulseCacheType.PULSE_PARTICIPANTS_METRIC,
+                        days = rangeToDays(range),
+                        valueSelector = { it.trend?.changeQuantity ?: BigDecimal.ZERO }
+                    ),
                 )
             }
         }
@@ -776,6 +728,24 @@ class PulseMetricService(
                 }
         }
 
+    private fun seriesFromPriorMetrics(
+        type: PulseCacheType,
+        days: Long,
+        valueSelector: (PulseMetric) -> BigDecimal
+    ): MetricSeries {
+        val today = nowUTC().toLocalDate()
+        val isTodayCached = fromPulseMetricCache(today, type) != null
+        val actualDays = if (isTodayCached) days else days - 1
+        val startDate = today.minusDays(days)
+
+        val rangeSpan = rangeSpanFromCache(startDate, type, actualDays)
+        val dates = (0..actualDays).map { startDate.plusDays(it).toString() }
+
+        return MetricSeries(
+            seriesData = rangeSpan.map(valueSelector),
+            labels = dates
+        )
+    }
     private fun rangeSpanFromCache(
         startDate: LocalDate,
         type: PulseCacheType,
@@ -813,10 +783,8 @@ class PulseMetricService(
         val rangeOverStartDate = startDate.minusDays(days + 1)
 
         val rangeSpan = rangeSpanFromCache(startDate, type, days)
-        System.out.println("Getting range span for $startDate $type: ${rangeSpan.size} records")
         val rangeOverSpan =
             rangeSpanFromCache(rangeOverStartDate, type, days)
-        System.out.println("Getting range over span for $rangeOverStartDate $type: ${rangeOverSpan.size} records")
 
         return Pair(rangeOverSpan, rangeSpan)
     }
@@ -1235,6 +1203,16 @@ class PulseMetricService(
                     )
                 }
 
+                PulseCacheType.HASH_FOUNDATION_SUPPLY_METRIC -> {
+                    val foundationSupply = tokenService.totalBalanceForList(
+                        pulseProperties.hashHoldersExcludedFromCirculatingSupply.toSet(), height
+                    ).divide(UTILITY_TOKEN_BASE_MULTIPLIER).roundWhole()
+                    PulseMetric.build(
+                        base = UTILITY_TOKEN,
+                        amount = foundationSupply
+                    )
+                }
+
                 PulseCacheType.HASH_VOLUME_METRIC -> {
                     if (atDateTime != null) {
                         tokenService.getTokenHistorical(atDateTime, atDateTime)
@@ -1282,9 +1260,11 @@ class PulseMetricService(
         atDateTime: LocalDateTime? = null,
     ): PulseMetric {
         return when (type) {
-            PulseCacheType.HASH_MARKET_CAP_METRIC -> hashMarketCapMetric(
+            PulseCacheType.HASH_MARKET_CAP_METRIC,
+            PulseCacheType.HASH_FOUNDATION_MARKET_CAP_METRIC -> hashMarketCapMetric(
                 range,
-                atDateTime
+                atDateTime,
+                type
             )
 
             PulseCacheType.HASH_TVL_METRIC -> hashTVL(range, atDateTime)
@@ -1292,6 +1272,7 @@ class PulseMetricService(
             PulseCacheType.HASH_STAKED_METRIC,
             PulseCacheType.HASH_CIRCULATING_METRIC,
             PulseCacheType.HASH_SUPPLY_METRIC,
+            PulseCacheType.HASH_FOUNDATION_SUPPLY_METRIC,
             PulseCacheType.HASH_VOLUME_METRIC,
             PulseCacheType.HASH_PRICE_METRIC,
             PulseCacheType.HASH_FDV_METRIC -> hashMetric(
