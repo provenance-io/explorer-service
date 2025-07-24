@@ -669,13 +669,27 @@ class PulseMetricService(
             spans.second.last().amount.minus(spans.second.first().amount)
         }
 
+        // Filter the series data to only include the first rangeToDays(range) entries
+        val originalSeries = spans.second.last().series
+        val days = rangeToDays(range).toInt()
+        val filteredSeries = originalSeries?.let { series ->
+            if (series.seriesData.size > days) {
+                val startIdx = series.seriesData.size - days
+                series.copy(
+                    seriesData = series.seriesData.drop(startIdx),
+                    labels = series.labels.drop(startIdx)
+                )
+            } else {
+                series
+            }
+        }
         PulseMetric.build(
             previous = rangeOverAmount,
             current = rangeAmount,
             base = spans.second.first().base,
             quote = spans.second.first().quote,
             quoteAmount = spans.second.first().quoteAmount,
-            series = spans.second.last().series,
+            series = filteredSeries,
             progress = spans.second.last().progress
         )
     }
