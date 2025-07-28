@@ -246,11 +246,11 @@ class TokenService(
     }
 
     // total amount unvested = original amount - vested amount
-    fun vestingAccountsUnvestedSupply() = vestingAccounts().filter {
+    fun vestingAccountsUnvestedSupply(atDateTime: LocalDateTime? = null) = vestingAccounts().filter {
         it.data != null && it.data?.isVesting() == true
     }.map {
         // using PeriodInSeconds.YEAR since it will be more performant and doesn't impact data used for calc
-        val vestingData = it.data!!.toVestingData(PeriodInSeconds.YEAR)
+        val vestingData = it.data!!.toVestingData(PeriodInSeconds.YEAR, atDateTime)
         val originalAmount = vestingData.originalVestingList.find { it.denom == UTILITY_TOKEN }?.amount?.toBigDecimal()
             ?: BigDecimal.ZERO
         val vestedAmount = vestingData.currentlyVested.find { it.denom == UTILITY_TOKEN }?.amount?.toBigDecimal()
@@ -268,9 +268,9 @@ class TokenService(
     fun totalSupply(height: Int? = null) = maxSupply() - burnedSupply(height).roundWhole()
 
     // circulating supply = total supply - unvested supply held in vesting accounts
-    fun circulatingSupply(height: Int? = null): BigDecimal {
+    fun circulatingSupply(height: Int? = null, atDateTime: LocalDateTime? = null): BigDecimal {
         return totalSupply(height)
-            .minus(vestingAccountsUnvestedSupply())
+            .minus(vestingAccountsUnvestedSupply(atDateTime))
             .roundWhole()
     }
 

@@ -371,7 +371,7 @@ class PulseMetricService(
                         pulseProperties.hashHoldersExcludedFromCirculatingSupply.toSet(), height
                     )
 
-                    else -> tokenService.circulatingSupply(height)
+                    else -> tokenService.circulatingSupply(height, atDateTime)
                 }.divide(UTILITY_TOKEN_BASE_MULTIPLIER)
                 val marketCap = price.times(supply)
 
@@ -1221,7 +1221,7 @@ class PulseMetricService(
 
                 PulseCacheType.HASH_CIRCULATING_METRIC -> {
                     val tokenSupply =
-                        tokenService.circulatingSupply(height)
+                        tokenService.circulatingSupply(height, atDateTime)
                             .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
                             .roundWhole()
                     val maxSupply = tokenService.maxSupply()
