@@ -79,7 +79,6 @@ class PulseMetricService(
 ) {
     companion object {
         private val isBackfillInProgress = AtomicBoolean(false)
-        private const val THIRTY_DAYS = 30L
     }
 
     protected val logger = logger(PulseMetricService::class)
@@ -111,6 +110,7 @@ class PulseMetricService(
 
     private val count = "COUNT"
     private val percentage = "PERCENTAGE"
+    private val longest_range = 90L
 
     private fun nowUTC() = LocalDateTime.now(ZoneOffset.UTC)
     private fun endOfDay(time: LocalDateTime) =
@@ -243,16 +243,56 @@ class PulseMetricService(
                 type,
                 subtype
             )?.amount ?: BigDecimal.ZERO
+            // Trim series data to only include data within the range
+            val trimmedSeries =
+                it.series?.let { series ->
+                    val seriesSize = series.seriesData.size
+                    val days = rangeToDays(range).toInt()
+                    if (seriesSize > days) {
+                        val startIdx = seriesSize - days
+                        MetricSeries(
+                            seriesData =
+                                series.seriesData.subList(
+                                    startIdx,
+                                    seriesSize
+                                ),
+                            labels =
+                                series.labels.subList(
+                                    startIdx,
+                                    seriesSize
+                                )
+                        )
+                    } else {
+                        series
+                    }
+                }
             PulseMetric.build(
                 previous = previous,
                 current = it.amount,
                 base = it.base,
                 quote = it.quote,
                 quoteAmount = it.quoteAmount,
-                series = it.series
+                series = trimmedSeries
             )
         } else {
-            it
+            val previous = fromPulseMetricCache(
+                backInTime(range).toLocalDate(),
+                type,
+                subtype
+            )?.amount ?: BigDecimal.ZERO
+            // If 24h (MetricRangeType.DAY), set series to null
+            if (it.series != null) {
+                PulseMetric.build(
+                    previous = previous,
+                    current = it.amount,
+                    base = it.base,
+                    quote = it.quote,
+                    quoteAmount = it.quoteAmount,
+                    series = null
+                )
+            } else {
+                it
+            }
         }
     }
 
@@ -338,9 +378,7 @@ class PulseMetricService(
                         pulseProperties.hashHoldersExcludedFromCirculatingSupply.toSet(), height
                     )
 
-                    else -> tokenService.circulatingSupply(
-                        pulseProperties.hashHoldersExcludedFromCirculatingSupply, height
-                    )
+                    else -> tokenService.circulatingSupply(height, atDateTime)
                 }.divide(UTILITY_TOKEN_BASE_MULTIPLIER)
                 val marketCap = price.times(supply)
 
@@ -380,27 +418,6 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val days = THIRTY_DAYS
-            val startDate = nowUTC().minusDays(days).toLocalDate()
-
-            // Determine if today's cache is missing, so we need to use days - 1
-            val isTodayCacheMissing = fromPulseMetricCache(
-                nowUTC().toLocalDate(),
-                PulseCacheType.PULSE_TVL_METRIC
-            ) == null
-            val daySpan = if (isTodayCacheMissing) days - 1 else days
-
-            val rangeSpan = rangeSpanFromCache(
-                startDate,
-                PulseCacheType.PULSE_TVL_METRIC,
-                daySpan
-            )
-            val dates = (0..days).map { startDate.plusDays(it).toString() }
-            val tvlSeries = MetricSeries(
-                seriesData = rangeSpan.map { it.trend?.changeQuantity ?: BigDecimal.ZERO },
-                labels = dates
-            )
-
             val committedValue = this.exchangeCommittedAssetsValue(
                 range = range,
                 atDateTime = atDateTime
@@ -424,7 +441,11 @@ class PulseMetricService(
             PulseMetric.build(
                 base = USD_UPPER,
                 amount = totalValue,
-                series = tvlSeries
+                series = seriesFromPriorMetrics(
+                    type = PulseCacheType.PULSE_TVL_METRIC,
+                    days = longest_range,
+                    valueSelector = { it.trend?.changeQuantity ?: BigDecimal.ZERO }
+                )
             )
         }
 
@@ -585,7 +606,7 @@ class PulseMetricService(
             atDateTime = atDateTime
         ) {
             val countForDates = TxCacheRecord.countForDates(
-                daysPrior = THIRTY_DAYS.toInt(),
+                daysPrior = longest_range.toInt(),
                 atDateTime = atDateTime
             )
             val series = MetricSeries(
@@ -653,13 +674,27 @@ class PulseMetricService(
             spans.second.last().amount.minus(spans.second.first().amount)
         }
 
+        // Filter the series data to only include the first rangeToDays(range) entries
+        val originalSeries = spans.second.last().series
+        val days = rangeToDays(range).toInt()
+        val filteredSeries = originalSeries?.let { series ->
+            if (series.seriesData.size > days) {
+                val startIdx = series.seriesData.size - days
+                series.copy(
+                    seriesData = series.seriesData.drop(startIdx),
+                    labels = series.labels.drop(startIdx)
+                )
+            } else {
+                series
+            }
+        }
         PulseMetric.build(
             previous = rangeOverAmount,
             current = rangeAmount,
             base = spans.second.first().base,
             quote = spans.second.first().quote,
             quoteAmount = spans.second.first().quoteAmount,
-            series = spans.second.last().series,
+            series = filteredSeries,
             progress = spans.second.last().progress
         )
     }
@@ -676,32 +711,15 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val days = THIRTY_DAYS
-            val startDate = nowUTC().minusDays(days).toLocalDate()
-
-            // Determine if today's cache is missing, so we need to use days - 1
-            val isTodayCacheMissing = fromPulseMetricCache(
-                nowUTC().toLocalDate(),
-                PulseCacheType.PULSE_PARTICIPANTS_METRIC
-            ) == null
-            val daySpan = if (isTodayCacheMissing) days - 1 else days
-
-            val rangeSpan = rangeSpanFromCache(
-                startDate,
-                PulseCacheType.PULSE_PARTICIPANTS_METRIC,
-                daySpan
-            )
-            val dates = (0..days).map { startDate.plusDays(it).toString() }
-            val participantsSeries = MetricSeries(
-                seriesData = rangeSpan.map { it.trend?.changeQuantity ?: BigDecimal.ZERO },
-                labels = dates
-            )
-
             AccountRecord.countActiveAccounts().let {
                 PulseMetric.build(
                     base = count,
                     amount = it.toBigDecimal(),
-                    series = participantsSeries,
+                    series = seriesFromPriorMetrics(
+                        PulseCacheType.PULSE_PARTICIPANTS_METRIC,
+                        days = longest_range,
+                        valueSelector = { it.trend?.changeQuantity ?: BigDecimal.ZERO }
+                    ),
                 )
             }
         }
@@ -781,6 +799,26 @@ class PulseMetricService(
 
         return total.times(inversePowerOfTen(dE))
     }
+
+    private fun seriesFromPriorMetrics(
+        type: PulseCacheType,
+        days: Long,
+        valueSelector: (PulseMetric) -> BigDecimal
+    ): MetricSeries {
+        val today = nowUTC().toLocalDate()
+        val isTodayCached = fromPulseMetricCache(today, type) != null
+        val actualDays = if (isTodayCached) days else days - 1
+        val startDate = today.minusDays(days)
+
+        val rangeSpan = rangeSpanFromCache(startDate, type, actualDays)
+        val dates = (0..actualDays).map { startDate.plusDays(it).toString() }
+
+        return MetricSeries(
+            seriesData = rangeSpan.map(valueSelector),
+            labels = dates
+        )
+    }
+
     private fun rangeSpanFromCache(
         startDate: LocalDate,
         type: PulseCacheType,
@@ -1362,10 +1400,7 @@ class PulseMetricService(
 
                 PulseCacheType.HASH_CIRCULATING_METRIC -> {
                     val tokenSupply =
-                        tokenService.circulatingSupply(
-                            pulseProperties.hashHoldersExcludedFromCirculatingSupply,
-                            height
-                        )
+                        tokenService.circulatingSupply(height, atDateTime)
                             .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
                             .roundWhole()
                     val maxSupply = tokenService.maxSupply()

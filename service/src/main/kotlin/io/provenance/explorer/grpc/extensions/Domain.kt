@@ -40,6 +40,8 @@ import io.provenance.msgfees.v1.MsgFee
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 //region GRPC query
 
@@ -143,9 +145,10 @@ fun String.isValidatorAddress() = this.startsWith(PROV_VAL_OPER_PREFIX)
 // Ref https://docs.cosmos.network/master/modules/auth/05_vesting.html#continuousvestingaccount
 // for info on how the periods are calced
 fun Any.toVestingData(
-    continuousPeriod: PeriodInSeconds
+    continuousPeriod: PeriodInSeconds,
+    atDateTime: LocalDateTime? = null
 ): AccountVestingInfo {
-    val now = Instant.now().epochSecond
+    val now = atDateTime?.atZone(ZoneId.of("UTC"))?.toEpochSecond() ?: Instant.now().epochSecond
     when (this.typeUrl.getTypeShortName()) {
         Vesting.ContinuousVestingAccount::class.java.simpleName ->
             this.toContinuousVestingAccount().let { acc ->

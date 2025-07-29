@@ -30,6 +30,8 @@ import io.provenance.explorer.domain.extensions.toThirdDecimal
 import io.provenance.explorer.domain.models.HistoricalPrice
 import io.provenance.explorer.domain.models.explorer.TokenHistoricalDataRequest
 import io.provenance.explorer.domain.models.toCsv
+import io.provenance.explorer.grpc.extensions.isVesting
+import io.provenance.explorer.grpc.extensions.toVestingData
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.model.AssetHolder
 import io.provenance.explorer.model.CmcHistoricalQuote
@@ -43,6 +45,7 @@ import io.provenance.explorer.model.TokenSupply
 import io.provenance.explorer.model.base.CoinStr
 import io.provenance.explorer.model.base.CountStrTotal
 import io.provenance.explorer.model.base.PagedResults
+import io.provenance.explorer.model.base.PeriodInSeconds
 import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.explorer.service.pricing.fetchers.HistoricalPriceFetcher
 import io.provenance.explorer.service.pricing.fetchers.HistoricalPriceFetcherFactory
@@ -242,6 +245,20 @@ class TokenService(
         total - spendable
     }
 
+    // total amount unvested = original amount - vested amount
+    fun vestingAccountsUnvestedSupply(atDateTime: LocalDateTime? = null) = vestingAccounts().filter {
+        it.data != null && it.data?.isVesting() == true
+    }.map {
+        // using PeriodInSeconds.YEAR since it will be more performant and doesn't impact data used for calc
+        val vestingData = it.data!!.toVestingData(PeriodInSeconds.YEAR, atDateTime)
+        val originalAmount = vestingData.originalVestingList.find { it.denom == UTILITY_TOKEN }?.amount?.toBigDecimal()
+            ?: BigDecimal.ZERO
+        val vestedAmount = vestingData.currentlyVested.find { it.denom == UTILITY_TOKEN }?.amount?.toBigDecimal()
+            ?: BigDecimal.ZERO
+
+        originalAmount.minus(vestedAmount)
+    }.sumOf { it }
+
     // max supply = supply from bank module
     fun maxSupply(height: Int? = null) = runBlocking { accountClient.getCurrentSupply(UTILITY_TOKEN, height).amount.toBigDecimal() }
 
@@ -250,16 +267,10 @@ class TokenService(
     // total supply = max - burned -> comes from the nhash marker address
     fun totalSupply(height: Int? = null) = maxSupply() - burnedSupply(height).roundWhole()
 
-    // circulating supply = max - burned - modules - zero seq - pool - nonspendable
-    fun circulatingSupply(excludedAddresses: Set<String> = emptySet(), height: Int? = null): BigDecimal {
-        val zeroSeqAndModuleAccounts = zeroSeqAccounts().toSet() + moduleAccounts().addressList() - excludedAddresses
-        val vestingAccounts = vestingAccounts().addressList() - excludedAddresses
-        return maxSupply() // max
-            .minus(burnedSupply(height)) // burned
-            .minus(totalBalanceForList(zeroSeqAndModuleAccounts)) // modules/zero seq, no height because of size
-            .minus(totalBalanceForList(excludedAddresses, height))
-            .minus(communityPoolSupply(height)) // pool
-            .minus(totalNonspendableBalanceForList(vestingAccounts, height)) // nonSpendable
+    // circulating supply = total supply - unvested supply held in vesting accounts
+    fun circulatingSupply(height: Int? = null, atDateTime: LocalDateTime? = null): BigDecimal {
+        return totalSupply(height)
+            .minus(vestingAccountsUnvestedSupply(atDateTime))
             .roundWhole()
     }
 
