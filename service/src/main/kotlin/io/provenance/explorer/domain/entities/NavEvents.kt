@@ -116,21 +116,7 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
 
             query += " ORDER BY block_height DESC, event_order DESC"
 
-            query.execAndMap(args) {
-                NavEvent(
-                    it.getInt("block_height"),
-                    it.getTimestamp("block_time").toLocalDateTime(),
-                    it.getString("tx_hash"),
-                    it.getInt("event_order"),
-                    it.getString("event_type"),
-                    it.getString("scope_id"),
-                    it.getString("denom"),
-                    it.getLong("price_amount"),
-                    it.getString("price_denom"),
-                    it.getLong("volume"),
-                    it.getString("source")
-                )
-            }
+            query.execAndMap(args) { it.toNavEvent() }
         }
 
         fun getLatestNavEvents(priceDenom: String, includeMarkers: Boolean, includeScopes: Boolean, fromDate: LocalDateTime? = null) =
@@ -168,21 +154,7 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
 
             query += " ORDER BY denom, scope_id, block_height DESC, event_order DESC"
 
-            query.execAndMap(args) {
-                NavEvent(
-                    it.getInt("block_height"),
-                    it.getTimestamp("block_time").toLocalDateTime(),
-                    it.getString("tx_hash"),
-                    it.getInt("event_order"),
-                    it.getString("event_type"),
-                    it.getString("scope_id"),
-                    it.getString("denom"),
-                    it.getLong("price_amount"),
-                    it.getString("price_denom"),
-                    it.getLong("volume"),
-                    it.getString("source")
-                )
-            }
+            query.execAndMap(args) { it.toNavEvent() }
         }
 
         fun navPricesBetweenDays(
@@ -244,6 +216,53 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
                 }
             }.firstOrNull() ?: BigDecimal.ZERO
         }
+
+        fun latestScopeNavsByEntity(
+            entity: LedgerEntityRecord,
+            specificationIds: List<String>,
+            fromDate: LocalDateTime? = null,
+            limit: Int? = null,
+            offset: Int? = null
+        ) = transaction {
+            if (specificationIds.isEmpty()) return@transaction emptyList()
+
+            val fromDateQuery = fromDate?.let { "AND ne.block_time >= ?" } ?: ""
+            var query = """
+                SELECT DISTINCT ON (ne.scope_id)
+                    ne.scope_id, ne.price_amount, ne.price_denom, ne.volume,
+                    ns.scope->>'value_owner_address' as value_owner, mc.denom as marker_denom
+                FROM nft_scope ns
+                JOIN LATERAL (
+                    SELECT *
+                    FROM nav_events ne
+                    WHERE ne.scope_id = ns.address::text AND ne.price_amount IS NOT NULL
+                      AND ne.source = '${entity.dataSource}' AND ne.price_denom = 'usd' $fromDateQuery
+                    ORDER BY ne.block_height DESC, ne.event_order DESC LIMIT 1
+                ) ne ON true
+                LEFT JOIN marker_cache mc ON mc.marker_address::text = ns.scope ->> 'value_owner_address'
+                WHERE ns.scope ->> 'specification_id' IN (${specificationIds.toSet().toDbQueryList()})
+                ORDER BY ne.scope_id, ne.block_height DESC, ne.event_order DESC
+            """.trimIndent()
+
+            limit?.let { query += " LIMIT $it" }
+            offset?.let { query += " OFFSET $it" }
+
+            val args = mutableListOf<Pair<ColumnType, *>>()
+            fromDate?.let {
+                args.add(Pair(JavaLocalDateTimeColumnType(), it))
+            }
+
+            query.execAndMap(args) {
+                EntityNavEvent(
+                    scopeId = it.getString("scope_id"),
+                    priceAmount = it.getLong("price_amount"),
+                    priceDenom = it.getString("price_denom"),
+                    volume = it.getLong("volume"),
+                    valueOwnerAddress = it.getString("value_owner"),
+                    markerDenom = it.getString("marker_denom"),
+                )
+            }
+        }
     }
 
     var blockHeight by NavEventsTable.blockHeight
@@ -258,6 +277,20 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
     var volume by NavEventsTable.volume
     var source by NavEventsTable.dataSource
 }
+
+private fun ResultSet.toNavEvent() = NavEvent(
+    getInt("block_height"),
+    getTimestamp("block_time").toLocalDateTime(),
+    getString("tx_hash"),
+    getInt("event_order"),
+    getString("event_type"),
+    getString("scope_id"),
+    getString("denom"),
+    getLong("price_amount"),
+    getString("price_denom"),
+    getLong("volume"),
+    getString("source")
+)
 
 data class NavPrice(
     val blockHeight: Int,
@@ -328,3 +361,13 @@ data class NavEvent(
         record.source
     )
 }
+
+data class EntityNavEvent(
+    val scopeId: String? = null,
+    val denom: String? = null,
+    val priceAmount: Long,
+    val priceDenom: String,
+    val volume: Long,
+    val valueOwnerAddress: String? = null,
+    val markerDenom: String? = null,
+)

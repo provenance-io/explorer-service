@@ -15,13 +15,20 @@ import io.provenance.explorer.config.pulse.PulseProperties
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
 import io.provenance.explorer.domain.entities.BlockCacheRecord
+import io.provenance.explorer.domain.entities.EntityNavEvent
+import io.provenance.explorer.domain.entities.LedgerEntityRecord
+import io.provenance.explorer.domain.entities.LedgerEntitySpecRecord
 import io.provenance.explorer.domain.entities.NavEvent
 import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
+import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.roundWhole
 import io.provenance.explorer.domain.extensions.startOfDay
+import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.models.explorer.pulse.EntityLedgeredAsset
+import io.provenance.explorer.domain.models.explorer.pulse.EntityLedgeredAssetDetail
+import io.provenance.explorer.domain.models.explorer.pulse.EntityType
 import io.provenance.explorer.domain.models.explorer.pulse.ExchangeSummary
 import io.provenance.explorer.domain.models.explorer.pulse.MetricProgress
 import io.provenance.explorer.domain.models.explorer.pulse.MetricRangeType
@@ -757,28 +764,41 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            committedAssetTotals(atDateTime)
-                .map {
-                    // convert amount to appropriate denom decimal
-                    var dE = denomExponent(it.key)
-                    if (dE == 0 && it.key.lowercase().contains(USD_LOWER)) {
-                        dE = 6
-                    }
-                    Pair(it.key, it.value.times(inversePowerOfTen(dE)))
-                }.map {
-                    // get price of the asset
-                    Pair(
-                        it.first,
-                        it.second.times(pulseLastTradedAssetPrice(it.first))
-                    )
-                }.sumOf { it.second }
-                .let {
-                    PulseMetric.build(
-                        base = USD_UPPER,
-                        amount = it
-                    )
-                }
+            committedAssetTotals(atDateTime).committedAssetsToValue()
         }
+
+    private fun Map<String, BigDecimal>.committedAssetsToValue() = this.map {
+        calcExchangeTotalValueForAsset(it.key, it.value)
+    }.sumOf { it }
+        .let {
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = it
+            )
+        }
+
+    private fun Map<String, BigDecimal>.committedAssetsToVolume() = this.map {
+        calcExchangeTotalVolumeForAsset(it.key, it.value)
+    }.sumOf { it }
+        .let {
+            PulseMetric.build(
+                base = count,
+                amount = it
+            )
+        }
+
+    private fun calcExchangeTotalValueForAsset(denom: String, total: BigDecimal) =
+        calcExchangeTotalVolumeForAsset(denom, total).times(pulseLastTradedAssetPrice(denom))
+
+    private fun calcExchangeTotalVolumeForAsset(denom: String, total: BigDecimal): BigDecimal {
+        // convert amount to appropriate denom decimal
+        var dE = denomExponent(denom)
+        if (dE == 0 && denom.lowercase().contains(USD_LOWER)) {
+            dE = 6
+        }
+
+        return total.times(inversePowerOfTen(dE))
+    }
 
     private fun seriesFromPriorMetrics(
         type: PulseCacheType,
@@ -798,6 +818,7 @@ class PulseMetricService(
             labels = dates
         )
     }
+
     private fun rangeSpanFromCache(
         startDate: LocalDate,
         type: PulseCacheType,
@@ -1069,6 +1090,164 @@ class PulseMetricService(
                     )
                 }
         }
+
+    /**
+     * metrics for known entities
+     * waterfalls to calc for totals across all entities, totals by entity type, and finally by individual entity
+     */
+
+    private fun entityTotalBalance(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null,
+    ) =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.ENTITY_TOTAL_BALANCE_METRIC,
+            range = range,
+            atDateTime = atDateTime,
+        ) {
+            EntityType.entries.sumOf {
+                totalBalanceByEntityType(range, it, atDateTime).amount
+            }.let {
+                PulseMetric.build(
+                    base = USD_UPPER,
+                    amount = it
+                )
+            }
+        }
+
+    private fun entityTotalAssets(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null,
+    ) =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.ENTITY_TOTAL_ASSETS_METRIC,
+            range = range,
+            atDateTime = atDateTime,
+        ) {
+            EntityType.entries.sumOf {
+                totalAssetsByEntityType(range, it, atDateTime).amount
+            }.let {
+                PulseMetric.build(
+                    base = count,
+                    amount = it
+                )
+            }
+        }
+
+    private fun totalBalanceByEntityType(
+        range: MetricRangeType = MetricRangeType.DAY,
+        type: EntityType,
+        atDateTime: LocalDateTime? = null,
+    ) =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.ENTITY_TOTAL_BALANCE_METRIC,
+            range = range,
+            atDateTime = atDateTime,
+            subtype = type.name,
+        ) {
+            LedgerEntityRecord.findByType(type).sumOf {
+                totalBalanceByEntity(range, it, atDateTime).amount
+            }.let {
+                PulseMetric.build(
+                    base = USD_UPPER,
+                    amount = it
+                )
+            }
+        }
+
+    private fun totalAssetsByEntityType(
+        range: MetricRangeType = MetricRangeType.DAY,
+        type: EntityType,
+        atDateTime: LocalDateTime? = null,
+    ) =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.ENTITY_TOTAL_ASSETS_METRIC,
+            range = range,
+            atDateTime = atDateTime,
+            subtype = type.name,
+        ) {
+            LedgerEntityRecord.findByType(type).sumOf {
+                totalAssetsByEntity(range, it, atDateTime).amount
+            }.let {
+                PulseMetric.build(
+                    base = count,
+                    amount = it
+                )
+            }
+        }
+
+    private fun totalBalanceByEntity(
+        range: MetricRangeType = MetricRangeType.DAY,
+        entity: LedgerEntityRecord,
+        atDateTime: LocalDateTime? = null,
+    ) =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.ENTITY_TOTAL_BALANCE_METRIC,
+            range = range,
+            atDateTime = atDateTime,
+            subtype = entity.uuid,
+        ) {
+            when (entity.type) {
+                EntityType.LOANS -> loanLedgerTotalBalance(MetricRangeType.DAY)
+                EntityType.INSURANCE_POLICIES -> getNavEventsForEntity(entity, atDateTime).sumOf {
+                    it.calculatePrice(entity.usdPricingExponent)
+                }.let {
+                    PulseMetric.build(
+                        base = USD_UPPER,
+                        amount = it
+                    )
+                }
+                EntityType.EXCHANGE -> marketTotalValue(entity.marketId!!)
+            }
+        }
+
+    private fun totalAssetsByEntity(
+        range: MetricRangeType = MetricRangeType.DAY,
+        entity: LedgerEntityRecord,
+        atDateTime: LocalDateTime? = null,
+    ) =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.ENTITY_TOTAL_ASSETS_METRIC,
+            range = range,
+            atDateTime = atDateTime,
+            subtype = entity.uuid,
+        ) {
+            when (entity.type) {
+                EntityType.LOANS -> loanLedgerTotalCount(MetricRangeType.DAY)
+                EntityType.INSURANCE_POLICIES -> getNavEventsForEntity(entity, atDateTime).size.let {
+                    PulseMetric.build(base = count, amount = it.toBigDecimal())
+                }
+                EntityType.EXCHANGE -> marketTotalVolume(entity.marketId!!)
+            }
+        }
+
+    private fun getNavEventsForEntity(
+        entity: LedgerEntityRecord,
+        atDateTime: LocalDateTime? = null,
+        limit: Int? = null,
+        offset: Int? = null
+    ) = NavEventsRecord.latestScopeNavsByEntity(
+        entity = entity,
+        specificationIds = LedgerEntitySpecRecord.findByUuid(entity.uuid).map { it.specificationId },
+        fromDate = atDateTime,
+        limit = limit,
+        offset = offset
+    )
+
+    private fun EntityNavEvent.calculatePrice(pricingExponent: Int?): BigDecimal {
+        val exponent = pricingExponent ?: 6.takeIf { priceDenom.startsWith("uusd") } ?: 0
+        return priceAmount.toBigDecimal().times(inversePowerOfTen(exponent))
+    }
+
+    private fun marketCommittedAssets(marketId: Int) = runBlocking {
+        exchangeGrpcClient.marketTotalCommittedAssets(marketId)
+            .flatten()
+            .groupBy { it.first }.mapValues { it.value.sumOf { v -> v.second } }
+    }
+
+    private fun marketTotalValue(marketId: Int) = marketCommittedAssets(marketId).committedAssetsToValue()
+
+    private fun marketTotalVolume(marketId: Int) = marketCommittedAssets(marketId).committedAssetsToVolume()
 
     /**
      * Asset denom  metadata from chain
@@ -1409,6 +1588,16 @@ class PulseMetricService(
                 atDateTime
             )
 
+            PulseCacheType.ENTITY_TOTAL_BALANCE_METRIC -> entityTotalBalance(
+                range = range,
+                atDateTime = atDateTime,
+            )
+
+            PulseCacheType.ENTITY_TOTAL_ASSETS_METRIC -> entityTotalAssets(
+                range = range,
+                atDateTime = atDateTime,
+            )
+
             else -> throw ResourceNotFoundException("Invalid pulse metric request for type $type")
         }
     }
@@ -1649,33 +1838,78 @@ class PulseMetricService(
      * Ledger Based Services
      * **********************/
     fun ledgeredAssetsByEntity(
+        uuid: String,
+    ): EntityLedgeredAsset = LedgerEntityRecord.findByUuid(uuid)?.toEntityLedgeredAsset()
+        ?: throw ResourceNotFoundException("Entity not found for id: $uuid")
+
+    fun ledgeredAssetsByEntity(
         count: Int,
         page: Int,
         sort: List<SortOrder>,
-        sortColumn: List<String>
-
+        sortColumn: List<String>,
     ): PagedResults<EntityLedgeredAsset> {
-        // TODO this will be replaced when new NFT / ledger modules ship
+        val entityLedgeredAssetList = LedgerEntityRecord.getAllPaginated(page.toOffset(count), count)
+            .map { it.toEntityLedgeredAsset() }
 
-        val entityLedgeredAssetList = mutableListOf<EntityLedgeredAsset>()
-        // Step 1 - FTS loans
-        val ftsValue = this.loanLedgerTotalBalance(MetricRangeType.DAY)
-        entityLedgeredAssetList.add(
-            EntityLedgeredAsset(
-                // TODO use blockchain account or UUID
-                id = UUID.randomUUID().toString(),
-                name = "Figure",
-                type = "Loans",
-                amount = ftsValue.amount,
-                base = USD_UPPER,
-                trend = ftsValue.trend
-            )
-        )
-
+        val totalEntities = transaction { LedgerEntityRecord.all().count() }
         return PagedResults(
-            pages = 1,
+            pages = totalEntities.pageCountOfResults(count),
             results = entityLedgeredAssetList,
-            total = entityLedgeredAssetList.size.toLong()
+            total = totalEntities
+        )
+    }
+
+    fun ledgeredAssetListByEntity(
+        uuid: String,
+        count: Int,
+        page: Int,
+        sort: List<SortOrder>,
+        sortColumn: List<String>,
+        ): PagedResults<EntityLedgeredAssetDetail>? {
+        val entity = LedgerEntityRecord.findByUuid(uuid)
+            ?: throw ResourceNotFoundException("Entity not found for id: $uuid")
+
+        val entityAssets: List<EntityLedgeredAssetDetail> = when (entity.type) {
+            // TODO should loan details be pulled from the ledger module? Using NAV for now
+            EntityType.LOANS, EntityType.INSURANCE_POLICIES -> getNavEventsForEntity(
+                entity = entity, limit = count, offset = page.toOffset(count)
+            ).map {
+                EntityLedgeredAssetDetail(
+                    scopeId = it.scopeId,
+                    denom = it.denom,
+                    amount = it.calculatePrice(entity.usdPricingExponent),
+                    base = USD_UPPER,
+                    valueOwnerAddress = it.valueOwnerAddress,
+                    valueOwnerDenom = it.markerDenom
+                )
+            }
+            EntityType.EXCHANGE -> marketCommittedAssets(entity.marketId!!).map {
+                EntityLedgeredAssetDetail(
+                    denom = it.key,
+                    amount = calcExchangeTotalValueForAsset(it.key, it.value),
+                    base = USD_UPPER
+                )
+            }
+        }
+
+        val totalNavsForEntity = getNavEventsForEntity(entity).count().toLong()
+        return PagedResults(
+            pages = totalNavsForEntity.pageCountOfResults(count),
+            results = entityAssets,
+            total = totalNavsForEntity
+        )
+    }
+
+    fun LedgerEntityRecord.toEntityLedgeredAsset(): EntityLedgeredAsset {
+        val entityValue = totalBalanceByEntity(MetricRangeType.DAY, this)
+
+        return EntityLedgeredAsset(
+            id = uuid,
+            name = name,
+            type = type.displayText,
+            amount = entityValue.amount,
+            base = USD_UPPER,
+            trend = entityValue.trend
         )
     }
 }

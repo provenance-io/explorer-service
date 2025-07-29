@@ -1,16 +1,21 @@
 package io.provenance.explorer.web.pulse
 
 import io.provenance.explorer.domain.models.explorer.pulse.EntityLedgeredAsset
+import io.provenance.explorer.domain.models.explorer.pulse.EntityLedgeredAssetDetail
 import io.provenance.explorer.domain.models.explorer.pulse.ExchangeSummary
 import io.provenance.explorer.domain.models.explorer.pulse.PulseAssetSummary
 import io.provenance.explorer.domain.models.explorer.pulse.TransactionSummary
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.service.PulseMetricService
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Min
 import org.jetbrains.exposed.sql.SortOrder
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -96,10 +101,28 @@ class PulseAssetController(private val pulseMetricService: PulseMetricService) {
     @Operation(summary = "Ledgered assets by entity")
     @GetMapping("/ledgered/by/entity")
     fun getLedgeredAssetsByEntity(
-        @RequestParam(required = false) page: Int = 0,
-        @RequestParam(required = false) count: Int = 10,
+        @RequestParam(required = false) @Min(1) page: Int = 1,
+        @RequestParam(required = false) @Min(1) @Max(200) count: Int = 10,
         @RequestParam(required = false) sortOrder: List<SortOrder>?,
         @RequestParam(required = false) sortColumn: List<String>?
     ): PagedResults<EntityLedgeredAsset> =
         pulseMetricService.ledgeredAssetsByEntity(count, page, sortOrder.orEmpty(), sortColumn.orEmpty())
+
+    @Operation(summary = "Ledgered assets for a given entity")
+    @GetMapping("/ledgered/by/entity/{uuid}")
+    fun getLedgeredAssetsByEntity(
+        @Parameter(description = "The uuid for the entity") @PathVariable uuid: String,
+    ): EntityLedgeredAsset =
+        pulseMetricService.ledgeredAssetsByEntity(uuid)
+
+    @Operation(summary = "Ledgered asset list by entity")
+    @GetMapping("/ledgered/by/entity/{uuid}/list")
+    fun getLedgeredAssetListByEntity(
+        @Parameter(description = "The uuid for the entity") @PathVariable uuid: String,
+        @RequestParam(required = false) @Min(1) page: Int = 1,
+        @RequestParam(required = false) @Min(1) @Max(200) count: Int = 10,
+        @RequestParam(required = false) sortOrder: List<SortOrder>?,
+        @RequestParam(required = false) sortColumn: List<String>?
+    ): PagedResults<EntityLedgeredAssetDetail>? =
+        pulseMetricService.ledgeredAssetListByEntity(uuid, count, page, sortOrder.orEmpty(), sortColumn.orEmpty())
 }

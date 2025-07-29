@@ -78,11 +78,14 @@ class ExchangeGrpcClient(channelUri: URI) {
         .getAllMarkets(
         QueryGetAllMarketsRequest.newBuilder().build()
     ).marketsList.flatMap {
-        getMarketCommitments(it.marketId, height).map { commitment ->
+        marketTotalCommittedAssets(it.marketId, height)
+    }.flatten()
+        .groupBy { it.first }.mapValues { it.value.sumOf { v -> v.second } }
+
+    suspend fun marketTotalCommittedAssets(marketId: Int, height: Int? = null) = getMarketCommitments(marketId, height)
+        .map { commitment ->
             commitment.amountList.map { amount ->
                 amount.denom to amount.amount.toBigDecimal()
             }
         }
-    }.flatten()
-        .groupBy { it.first }.mapValues { it.value.sumOf { v -> v.second } }
 }
