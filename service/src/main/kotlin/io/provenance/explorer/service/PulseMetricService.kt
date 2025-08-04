@@ -1001,6 +1001,7 @@ class PulseMetricService(
                 }
             }
         }
+
     private fun loanLedgerPaymentsOverRange(
         range: MetricRangeType,
         type: PulseCacheType = PulseCacheType.LOAN_LEDGER_PAYMENTS_METRIC,
@@ -1031,6 +1032,7 @@ class PulseMetricService(
                 progress = spans.second.last().progress
             )
         }
+
     private fun loanLedgerPayments(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
@@ -1053,6 +1055,7 @@ class PulseMetricService(
                     )
                 }
         }
+
     private fun loanLedgerTotalPaymentsOverRange(
         range: MetricRangeType,
         type: PulseCacheType = PulseCacheType.LOAN_LEDGER_TOTAL_PAYMENTS_METRIC,
@@ -1107,6 +1110,7 @@ class PulseMetricService(
                 )
             }
         }
+
     private fun loanLedgerDisbursementsOverRange(
         range: MetricRangeType,
         type: PulseCacheType = PulseCacheType.LOAN_LEDGER_DISBURSEMENTS_METRIC,
@@ -1163,6 +1167,7 @@ class PulseMetricService(
                     )
                 }
         }
+
     private fun loanLedgerDisbursementCountOverRange(
         range: MetricRangeType,
         type: PulseCacheType = PulseCacheType.LOAN_LEDGER_DISBURSEMENT_COUNT_METRIC,
