@@ -1002,6 +1002,37 @@ class PulseMetricService(
             }
         }
 
+    private fun loanLedgerPaymentsOverRange(
+        range: MetricRangeType,
+        type: PulseCacheType = PulseCacheType.LOAN_LEDGER_PAYMENTS_METRIC,
+        atDateTime: LocalDateTime? = null
+    ) =
+        if (atDateTime != null || isScheduledTask() || range == MetricRangeType.DAY) {
+            // For specific dates, scheduled tasks, or daily range, use the original function
+            loanLedgerPayments(range, atDateTime)
+        } else {
+            // For range comparisons, populate current day's metric if missing
+            if (fromPulseMetricCache(nowUTC().toLocalDate(), type) == null) {
+                loanLedgerPayments(range = range)
+            }
+
+            val spans = rangeOverRangeSpans(range = range, type = type)
+
+            // Calculate the sum over each range period
+            val rangeOverAmount = spans.first.sumOf { it.amount }
+            val rangeAmount = spans.second.sumOf { it.amount }
+
+            PulseMetric.build(
+                previous = rangeOverAmount,
+                current = rangeAmount,
+                base = spans.second.first().base,
+                quote = spans.second.first().quote,
+                quoteAmount = spans.second.first().quoteAmount,
+                series = spans.second.last().series,
+                progress = spans.second.last().progress
+            )
+        }
+
     private fun loanLedgerPayments(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
@@ -1025,6 +1056,40 @@ class PulseMetricService(
                 }
         }
 
+    private fun loanLedgerTotalPaymentsOverRange(
+        range: MetricRangeType,
+        type: PulseCacheType = PulseCacheType.LOAN_LEDGER_TOTAL_PAYMENTS_METRIC,
+        atDateTime: LocalDateTime? = null
+    ) =
+        if (atDateTime != null || isScheduledTask() || range == MetricRangeType.DAY) {
+            // For specific dates, scheduled tasks, or daily range, use the original function
+            loanLedgerTotalPayments(range, atDateTime)
+        } else {
+            // For range comparisons, populate current day's metric if missing
+            if (fromPulseMetricCache(nowUTC().toLocalDate(), type) == null) {
+                loanLedgerTotalPayments(range = range)
+            }
+
+            val spans = rangeOverRangeSpans(
+                range = range,
+                type = type
+            )
+
+            // Calculate the sum of payment counts over each range period
+            val rangeOverAmount = spans.first.sumOf { it.amount }
+            val rangeAmount = spans.second.sumOf { it.amount }
+
+            PulseMetric.build(
+                previous = rangeOverAmount,
+                current = rangeAmount,
+                base = spans.second.first().base,
+                quote = spans.second.first().quote,
+                quoteAmount = spans.second.first().quoteAmount,
+                series = spans.second.last().series,
+                progress = spans.second.last().progress
+            )
+        }
+
     private fun loanLedgerTotalPayments(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
@@ -1044,6 +1109,40 @@ class PulseMetricService(
                     amount = it.toBigDecimal()
                 )
             }
+        }
+
+    private fun loanLedgerDisbursementsOverRange(
+        range: MetricRangeType,
+        type: PulseCacheType = PulseCacheType.LOAN_LEDGER_DISBURSEMENTS_METRIC,
+        atDateTime: LocalDateTime? = null
+    ) =
+        if (atDateTime != null || isScheduledTask() || range == MetricRangeType.DAY) {
+            // For specific dates, scheduled tasks, or daily range, use the original function
+            loanLedgerDisbursements(range, atDateTime)
+        } else {
+            // For range comparisons, populate current day's metric if missing
+            if (fromPulseMetricCache(nowUTC().toLocalDate(), type) == null) {
+                loanLedgerDisbursements(range = range)
+            }
+
+            val spans = rangeOverRangeSpans(
+                range = range,
+                type = type
+            )
+
+            // Calculate the sum of disbursement amounts over each range period
+            val rangeOverAmount = spans.first.sumOf { it.amount }
+            val rangeAmount = spans.second.sumOf { it.amount }
+
+            PulseMetric.build(
+                previous = rangeOverAmount,
+                current = rangeAmount,
+                base = spans.second.first().base,
+                quote = spans.second.first().quote,
+                quoteAmount = spans.second.first().quoteAmount,
+                series = spans.second.last().series,
+                progress = spans.second.last().progress
+            )
         }
 
     private fun loanLedgerDisbursements(
@@ -1069,6 +1168,39 @@ class PulseMetricService(
                 }
         }
 
+    private fun loanLedgerDisbursementCountOverRange(
+        range: MetricRangeType,
+        type: PulseCacheType = PulseCacheType.LOAN_LEDGER_DISBURSEMENT_COUNT_METRIC,
+        atDateTime: LocalDateTime? = null
+    ) =
+        if (atDateTime != null || isScheduledTask() || range == MetricRangeType.DAY) {
+            // For specific dates, scheduled tasks, or daily range, use the original function
+            loanLedgerDisbursementCount(range, atDateTime)
+        } else {
+            // For range comparisons, populate current day's metric if missing
+            if (fromPulseMetricCache(nowUTC().toLocalDate(), type) == null) {
+                loanLedgerDisbursementCount(range = range)
+            }
+
+            val spans = rangeOverRangeSpans(
+                range = range,
+                type = type
+            )
+
+            // Calculate the sum of disbursement counts over each range period
+            val rangeOverAmount = spans.first.sumOf { it.amount }
+            val rangeAmount = spans.second.sumOf { it.amount }
+
+            PulseMetric.build(
+                previous = rangeOverAmount,
+                current = rangeAmount,
+                base = spans.second.first().base,
+                quote = spans.second.first().quote,
+                quoteAmount = spans.second.first().quoteAmount,
+                series = spans.second.last().series,
+                progress = spans.second.last().progress
+            )
+        }
     private fun loanLedgerDisbursementCount(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
@@ -1558,13 +1690,15 @@ class PulseMetricService(
                 atDateTime
             )
 
-            PulseCacheType.LOAN_LEDGER_PAYMENTS_METRIC -> loanLedgerPayments(
+            PulseCacheType.LOAN_LEDGER_PAYMENTS_METRIC -> loanLedgerPaymentsOverRange(
                 range,
+                type,
                 atDateTime
             )
 
-            PulseCacheType.LOAN_LEDGER_TOTAL_PAYMENTS_METRIC -> loanLedgerTotalPayments(
+            PulseCacheType.LOAN_LEDGER_TOTAL_PAYMENTS_METRIC -> loanLedgerTotalPaymentsOverRange(
                 range,
+                type,
                 atDateTime
             )
 
@@ -1578,13 +1712,15 @@ class PulseMetricService(
                 atDateTime
             )
 
-            PulseCacheType.LOAN_LEDGER_DISBURSEMENTS_METRIC -> loanLedgerDisbursements(
+            PulseCacheType.LOAN_LEDGER_DISBURSEMENTS_METRIC -> loanLedgerDisbursementsOverRange(
                 range,
+                type,
                 atDateTime
             )
 
-            PulseCacheType.LOAN_LEDGER_DISBURSEMENT_COUNT_METRIC -> loanLedgerDisbursementCount(
+            PulseCacheType.LOAN_LEDGER_DISBURSEMENT_COUNT_METRIC -> loanLedgerDisbursementCountOverRange(
                 range,
+                type,
                 atDateTime
             )
 
