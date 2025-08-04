@@ -219,7 +219,7 @@ class ScheduledTaskService(
 
     @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun retryBlockTxs() {
-        logger.info("Retrying block/tx records")
+        logger.debug("Retrying block/tx records")
         BlockTxRetryRecord.getRecordsToRetry().map { height ->
             logger.info("Retrying block/tx record at $height.")
             var retryException: Exception? = null
