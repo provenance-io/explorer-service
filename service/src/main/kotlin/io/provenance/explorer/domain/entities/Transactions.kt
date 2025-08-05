@@ -260,7 +260,7 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                   and tx.error_code is null
                   and tx.codespace is null
                   and denom.denom = ?
-                  and event_type = 'coin_spent'
+                  and tme.event_type = 'coin_spent'
                   and ne.denom = ?
                 group by tx_id, tx.hash, tx.height, tx.tx_timestamp, mtype.type, ne.denom
             """.trimIndent()
