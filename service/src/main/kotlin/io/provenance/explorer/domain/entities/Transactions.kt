@@ -261,12 +261,14 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                   and tx.codespace is null
                   and denom.denom = ?
                   and tme.event_type = 'coin_spent'
+                  and ne.block_time > ?
                   and ne.denom = ?
                 group by tx_id, tx.hash, tx.height, tx.tx_timestamp, mtype.type, ne.denom
             """.trimIndent()
             val arguments = mutableListOf<Pair<ColumnType, *>>(
                 Pair(JavaLocalDateTimeColumnType(), afterDateTime),
                 Pair(TextColumnType(), denom),
+                Pair(JavaLocalDateTimeColumnType(), afterDateTime),
                 Pair(TextColumnType(), denom),
             )
 
