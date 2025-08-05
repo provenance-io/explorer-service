@@ -351,7 +351,7 @@ class TokenService(
                             close = close,
                             volume = usdVolume,
                             market_cap = close.multiply(
-                                totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+                                circulatingSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)
                             ).toThirdDecimal(),
                             timestamp = closeDate
                         )
