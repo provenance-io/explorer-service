@@ -247,20 +247,13 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                        tx.height,
                        tx.tx_timestamp,
                        mtype.type,
-                       attr_denom_value.denom as denom,
-                       sum(attr_denom_value.value) as denom_total
+                       ne.denom,
+                       sum(ne.volume) as denom_total
                 from tx_cache tx
                          join tx_msg_event as tme on tx.id = tme.tx_hash_id
                          join tx_message_type as mtype on mtype.id = tme.tx_msg_type_id
                          join tx_marker_join as denom on denom.tx_hash_id = tx.id
-                         join
-                     (SELECT attr.tx_msg_event_id,
-                             substring(rec from '[0-9]+(.*)${'$'}')     AS denom,
-                             substring(rec from '^[0-9]+')::bigint AS value
-                      FROM tx_msg_event_attr attr
-                               CROSS JOIN LATERAL unnest(string_to_array(replace(attr.attr_value,'"',''), ',')) AS rec
-                           where attr.attr_key = 'amount') as attr_denom_value
-                     on attr_denom_value.tx_msg_event_id = tme.id
+                         join nav_events ne on ne.tx_hash = tx.hash
                 where tme.tx_msg_type_id IN
                       (select id from tx_message_type where module in ('exchange', 'bank'))
                   and tx.tx_timestamp > ?
@@ -268,8 +261,8 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                   and tx.codespace is null
                   and denom.denom = ?
                   and event_type = 'coin_spent'
-                  and attr_denom_value.denom = ?
-                group by tx_id, tx.hash, tx.height, tx.tx_timestamp, mtype.type, attr_denom_value.denom                
+                  and ne.denom = ?
+                group by tx_id, tx.hash, tx.height, tx.tx_timestamp, mtype.type, ne.denom
             """.trimIndent()
             val arguments = mutableListOf<Pair<ColumnType, *>>(
                 Pair(JavaLocalDateTimeColumnType(), afterDateTime),
