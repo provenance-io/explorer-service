@@ -17,7 +17,7 @@ Bleeding edge is tagged as `1.0-SNAPSHOT`.
 To reach the snapshot, you need to use the snapshot repository
 ```groovy
 repositories {
-    maven { url = project.uri("https://oss.sonatype.org/content/repositories/snapshots") }
+    maven { url = project.uri("https://central.sonatype.com/repository/maven-snapshots/") }
 }
 ```
 
