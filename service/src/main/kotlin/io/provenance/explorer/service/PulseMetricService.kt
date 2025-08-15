@@ -444,7 +444,7 @@ class PulseMetricService(
                 series = seriesFromPriorMetrics(
                     type = PulseCacheType.PULSE_TVL_METRIC,
                     days = longest_range,
-                    valueSelector = { it.trend?.changeQuantity ?: BigDecimal.ZERO }
+                    valueSelector = { it.amount }
                 )
             )
         }
