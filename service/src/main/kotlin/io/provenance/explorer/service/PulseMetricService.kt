@@ -1,6 +1,7 @@
 package io.provenance.explorer.service
 
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import cosmos.bank.v1beta1.Bank
@@ -8,6 +9,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.url
+import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
 import io.provenance.explorer.config.ResourceNotFoundException
@@ -38,8 +40,10 @@ import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
 import io.provenance.explorer.domain.models.explorer.pulse.PulseLoanLedger
 import io.provenance.explorer.domain.models.explorer.pulse.PulseMetric
 import io.provenance.explorer.domain.models.explorer.pulse.TransactionSummary
+import io.provenance.explorer.domain.models.explorer.pulse.UpbToken
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.ExchangeGrpcClient
+import io.provenance.explorer.grpc.v1.MetadataGrpcClient
 import io.provenance.explorer.model.ValidatorState.ACTIVE
 import io.provenance.explorer.model.base.DateTruncGranularity
 import io.provenance.explorer.model.base.PagedResults
@@ -75,7 +79,8 @@ class PulseMetricService(
     private val accountGrpcClient: AccountGrpcClient,
     private val pulseProperties: PulseProperties,
     @Qualifier("pulseHttpClient") private val pulseHttpClient: HttpClient,
-    private val pricingService: PricingService
+    private val pricingService: PricingService,
+    private val metadataGrpcClient: MetadataGrpcClient,
 ) {
     companion object {
         private val isBackfillInProgress = AtomicBoolean(false)
@@ -1224,10 +1229,48 @@ class PulseMetricService(
         }
 
     /**
+     * Figure Heloc UPB Token Metrics
+     */
+    fun figureHelocTokenMetric(
+        type: PulseCacheType,
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ) =
+        fetchOrBuildCacheFromDataSource(
+            type = type,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            when (type) {
+                PulseCacheType.FIGR_HELOC_CIRCULATING_METRIC -> {
+                    val figureHelocScopeId = "scope1qrm5d0wjzamyywvjuws6774ljmrqu8kh9x"
+                    val scope = runBlocking {
+                        metadataGrpcClient.getScopeById(uuid = figureHelocScopeId, includeRecords = true)
+                    }
+
+                    // supply is the number of Figure Heloc UPB tokens in circulation.
+                    // Each token represents a dollar of Figure Loan UPB. All values are milli
+                    val supply = scope.recordsList.firstOrNull {
+                        it.record.name == "token"
+                    }?.record?.outputsList?.first()?.hash?.let {
+                        VANILLA_MAPPER.readValue<UpbToken>(it).supply.divide(1000.toBigDecimal())
+                    } ?: BigDecimal.ZERO
+
+                    PulseMetric.build(
+                        base = count,
+                        amount = supply,
+                        quote = USD_UPPER,
+                        quoteAmount = supply
+                    )
+                }
+                else -> throw ResourceNotFoundException("Invalid figure heloc metric request for type $type")
+            }
+        }
+
+    /**
      * metrics for known entities
      * waterfalls to calc for totals across all entities, totals by entity type, and finally by individual entity
      */
-
     private fun entityTotalBalance(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null,
@@ -1733,6 +1776,8 @@ class PulseMetricService(
                 range = range,
                 atDateTime = atDateTime,
             )
+
+            PulseCacheType.FIGR_HELOC_CIRCULATING_METRIC -> figureHelocTokenMetric(type, range, atDateTime)
 
             else -> throw ResourceNotFoundException("Invalid pulse metric request for type $type")
         }

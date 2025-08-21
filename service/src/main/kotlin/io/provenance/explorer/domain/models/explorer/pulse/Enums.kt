@@ -61,6 +61,8 @@ enum class PulseCacheType {
 
     ENTITY_TOTAL_BALANCE_METRIC,
     ENTITY_TOTAL_ASSETS_METRIC,
+
+    FIGR_HELOC_CIRCULATING_METRIC,
 }
 
 enum class EntityType(val displayText: String) {
