@@ -14,7 +14,9 @@ import io.provenance.explorer.domain.entities.BaseDenomType
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.MarkerUnitRecord
 import io.provenance.explorer.domain.entities.NavEventsRecord
+import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
+import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
 import io.provenance.explorer.domain.extensions.calculateUsdPricePerUnit
 import io.provenance.explorer.domain.extensions.pageCountOfResults
@@ -23,6 +25,7 @@ import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.usdPriceDenoms
 import io.provenance.explorer.domain.models.explorer.TxData
+import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.domain.models.explorer.TxUpdate
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
 import io.provenance.explorer.grpc.extensions.getManagingAccounts
@@ -30,6 +33,7 @@ import io.provenance.explorer.grpc.extensions.isMintable
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
+import io.provenance.explorer.model.AssetByRole
 import io.provenance.explorer.model.AssetDetail
 import io.provenance.explorer.model.AssetListed
 import io.provenance.explorer.model.AssetManagement
@@ -165,6 +169,55 @@ class AssetService(
     fun getAssetHolders(denom: String, page: Int, count: Int) = tokenService.getAssetHolders(denom, page, count)
 
     fun getMetadata(denom: String?) = getDenomMetadata(denom).map { it.toObjectNode(protoPrinter) }
+
+    fun getAssetsByRole(role: String, address: String): List<AssetByRole> = runBlocking {
+        transaction {
+            // Query tx_cache for MsgGrantRole transactions
+            val grantRoleTxs = TxCacheRecord.findByQueryForResults(
+                TxQueryParams(
+                    msgTypes = listOf(TxMessageTypeRecord.findByProtoType("/provenance.registry.v1.MsgGrantRole")?.id?.value ?: -1),
+                    count = Int.MAX_VALUE,
+                    offset = 0
+                )
+            )
+
+            // Extract asset-class-id/nft-id pairs from grant role transactions that match the requested role and address
+            val assetPairs = mutableSetOf<AssetByRole>()
+
+            grantRoleTxs.forEach { txRecord ->
+                txRecord.txV2?.tx?.body?.messagesList?.forEach { message ->
+                    if (message.typeUrl == "/provenance.registry.v1.MsgGrantRole") {
+                        try {
+                            // Parse the protobuf message using project conventions
+                            val messageObj = message.toObjectNode(protoPrinter)
+
+                            // Extract the role and addresses from the MsgGrantRole message
+                            val msgRole = messageObj.get("role")?.asText()
+                            val msgAddresses = messageObj.get("addresses")?.asText()
+
+                            // Check if this grant matches our criteria
+                            if (msgRole == role && msgAddresses?.contains(address) == true) {
+                                // Extract both asset_class_id and nft_id from the key field
+                                val key = messageObj.get("key")
+                                if (key != null) {
+                                    val assetClassId = key.get("asset_class_id")?.asText()
+                                    val nftId = key.get("nft_id")?.asText()
+
+                                    if (assetClassId != null && nftId != null) {
+                                        assetPairs.add(AssetByRole(assetClassId, nftId))
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            logger.warn("Failed to parse MsgGrantRole message: ${e.message}")
+                        }
+                    }
+                }
+            }
+
+            assetPairs.toList()
+        }
+    }
 
     // Updates the Marker cache
     fun updateAssets(denoms: Set<String>, txTime: Timestamp) =
