@@ -169,52 +169,64 @@ class AssetService(
 
     fun getAssetsByRole(role: String, address: String): List<AssetByRole> = runBlocking {
         transaction {
-            // Query tx_cache for MsgGrantRole transactions
-            // TODO: Check if roles are revocable. If so, make sure to
-            // filter out those that have been revoked.
-            val grantRoleTxs = TxCacheRecord.findByQueryForResults(
+            // Gather both grant and revoke role transactions so we can process chronology
+            val grantTypeId = TxMessageTypeRecord.findByProtoType("/provenance.registry.v1.MsgGrantRole")?.id?.value
+            val revokeTypeId = TxMessageTypeRecord.findByProtoType("/provenance.registry.v1.MsgRevokeRole")?.id?.value
+            val msgTypeIds = listOfNotNull(grantTypeId, revokeTypeId)
+
+            if (msgTypeIds.isEmpty()) return@transaction emptyList<AssetByRole>()
+
+            val roleTxs = TxCacheRecord.findByQueryForResults(
                 TxQueryParams(
-                    msgTypes = listOf(TxMessageTypeRecord.findByProtoType("/provenance.registry.v1.MsgGrantRole")?.id?.value ?: -1),
+                    msgTypes = msgTypeIds,
                     count = Int.MAX_VALUE,
                     offset = 0
                 )
             )
+                // Process oldest to newest to respect revokes and re-grants
+                .sortedWith(compareBy({ it.txTimestamp }, { it.id.value }))
 
-            // Extract asset-class-id/nft-id pairs from grant role transactions that match the requested role and address
-            val assetPairs = mutableSetOf<AssetByRole>()
+            val activePairs = mutableSetOf<AssetByRole>()
 
-            grantRoleTxs.forEach { txRecord ->
-                txRecord.txV2?.tx?.body?.messagesList?.forEach { message ->
-                    if (message.typeUrl == "/provenance.registry.v1.MsgGrantRole") {
-                        try {
-                            // Parse the protobuf message using project conventions
-                            val messageObj = message.toObjectNode(protoPrinter)
+            roleTxs.forEach { txRecord ->
+                val messages = txRecord.txV2?.tx?.body?.messagesList ?: emptyList()
+                messages.forEach { message ->
+                    val isGrant = message.typeUrl == "/provenance.registry.v1.MsgGrantRole"
+                    val isRevoke = message.typeUrl == "/provenance.registry.v1.MsgRevokeRole"
+                    if (!isGrant && !isRevoke) return@forEach
+                    try {
+                        val messageObj = message.toObjectNode(protoPrinter)
 
-                            // Extract the role and addresses from the MsgGrantRole message
-                            val msgRole = messageObj.get("role")?.asText()
-                            val msgAddresses = messageObj.get("addresses")?.asText()
+                        val msgRole = messageObj.get("role")?.asText()
+                        if (msgRole != role) return@forEach
 
-                            // Check if this grant matches our criteria
-                            if (msgRole == role && msgAddresses?.contains(address) == true) {
-                                // Extract both asset_class_id and nft_id from the key field
-                                val key = messageObj.get("key")
-                                if (key != null) {
-                                    val assetClassId = key.get("asset_class_id")?.asText()
-                                    val nftId = key.get("nft_id")?.asText()
-
-                                    if (assetClassId != null && nftId != null) {
-                                        assetPairs.add(AssetByRole(assetClassId, nftId))
-                                    }
-                                }
-                            }
-                        } catch (e: Exception) {
-                            logger.warn("Failed to parse MsgGrantRole message: ${e.message}")
+                        // addresses is a repeated string; parse robustly
+                        val addressesNode = messageObj.get("addresses")
+                        val addressMatch = when {
+                            addressesNode == null -> false
+                            addressesNode.isArray -> addressesNode.any { it.asText() == address }
+                            else -> addressesNode.asText() == address || addressesNode.asText().contains(address)
                         }
+                        if (!addressMatch) return@forEach
+
+                        val key = messageObj.get("key")
+                        val assetClassId = key?.get("asset_class_id")?.asText()
+                        val nftId = key?.get("nft_id")?.asText()
+                        if (assetClassId.isNullOrBlank() || nftId.isNullOrBlank()) return@forEach
+
+                        val pair = AssetByRole(assetClassId, nftId)
+                        if (isGrant) {
+                            activePairs.add(pair)
+                        } else if (isRevoke) {
+                            activePairs.remove(pair)
+                        }
+                    } catch (e: Exception) {
+                        logger.warn("Failed to parse registry role message: ${e.message}")
                     }
                 }
             }
 
-            assetPairs.toList()
+            activePairs.toList()
         }
     }
 
