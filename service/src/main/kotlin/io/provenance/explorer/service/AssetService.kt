@@ -3,7 +3,6 @@ package io.provenance.explorer.service
 import com.google.protobuf.Timestamp
 import com.google.protobuf.util.JsonFormat
 import cosmos.bank.v1beta1.denomUnit
-import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.explorer.config.ExplorerProperties
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ResourceNotFoundException
@@ -24,9 +23,7 @@ import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.usdPriceDenoms
-import io.provenance.explorer.domain.models.explorer.TxData
 import io.provenance.explorer.domain.models.explorer.TxQueryParams
-import io.provenance.explorer.domain.models.explorer.TxUpdate
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
 import io.provenance.explorer.grpc.extensions.getManagingAccounts
 import io.provenance.explorer.grpc.extensions.isMintable
@@ -343,11 +340,6 @@ class AssetService(
         }
 
         assetPricinglastRun = now
-    }
-
-    fun saveAssets(txInfo: TxData, tx: ServiceOuterClass.GetTxResponse, txUpdate: TxUpdate) {
-        logger.info("TODO: saveAssets implementation - Hello World")
-        println("TODO: saveAssets implementation - Hello World")
     }
 }
 

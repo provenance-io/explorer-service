@@ -115,10 +115,8 @@ import io.provenance.explorer.service.BlockService
 import io.provenance.explorer.service.GovService
 import io.provenance.explorer.service.GroupService
 import io.provenance.explorer.service.IbcService
-import io.provenance.explorer.service.LedgerService
 import io.provenance.explorer.service.NavService
 import io.provenance.explorer.service.NftService
-import io.provenance.explorer.service.RegistryService
 import io.provenance.explorer.service.SmartContractService
 import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.service.splitChildParent
@@ -144,9 +142,7 @@ class BlockAndTxProcessor(
     private val props: ExplorerProperties,
     private val msgFeeClient: MsgFeeGrpcClient,
     private val groupService: GroupService,
-    private val navService: NavService,
-    private val ledgerService: LedgerService,
-    private val registryService: RegistryService
+    private val navService: NavService
 
 ) {
 
@@ -313,11 +309,6 @@ class BlockAndTxProcessor(
         groupService.saveGroups(res, txInfo, txUpdate)
         navService.saveNavs(res, txInfo, txUpdate)
         saveSignaturesTx(res, txInfo, txUpdate)
-
-        // Call the new stubbed functions
-        assetService.saveAssets(txInfo, res, txUpdate)
-        ledgerService.saveLedger(txInfo, res, txUpdate)
-        registryService.saveRegistry(txInfo, res, txUpdate)
 
         return TxUpdatedItems(addrs, markers, txUpdate)
     }
