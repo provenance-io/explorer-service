@@ -170,6 +170,8 @@ class AssetService(
     fun getAssetsByRole(role: String, address: String): List<AssetByRole> = runBlocking {
         transaction {
             // Query tx_cache for MsgGrantRole transactions
+            // TODO: Check if roles are revocable. If so, make sure to
+            // filter out those that have been revoked.
             val grantRoleTxs = TxCacheRecord.findByQueryForResults(
                 TxQueryParams(
                     msgTypes = listOf(TxMessageTypeRecord.findByProtoType("/provenance.registry.v1.MsgGrantRole")?.id?.value ?: -1),
