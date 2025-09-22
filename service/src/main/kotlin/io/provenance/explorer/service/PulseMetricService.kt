@@ -1389,7 +1389,7 @@ class PulseMetricService(
                         amount = it
                     )
                 }
-                EntityType.EXCHANGE -> marketTotalValue(entity.marketId!!)
+                EntityType.EXCHANGE, EntityType.CBL -> marketTotalValue(entity.marketId!!)
             }
         }
 
@@ -1409,7 +1409,7 @@ class PulseMetricService(
                 EntityType.INSURANCE_POLICIES -> getNavEventsForEntity(entity, atDateTime).size.let {
                     PulseMetric.build(base = count, amount = it.toBigDecimal())
                 }
-                EntityType.EXCHANGE -> marketTotalVolume(entity.marketId!!)
+                EntityType.EXCHANGE, EntityType.CBL -> marketTotalVolume(entity.marketId!!)
             }
         }
 
@@ -2127,7 +2127,7 @@ class PulseMetricService(
                     valueOwnerDenom = it.markerDenom
                 )
             }
-            EntityType.EXCHANGE -> marketCommittedAssets(entity.marketId!!).map {
+            EntityType.EXCHANGE, EntityType.CBL -> marketCommittedAssets(entity.marketId!!).map {
                 EntityLedgeredAssetDetail(
                     denom = it.key,
                     amount = calcExchangeTotalValueForAsset(it.key, it.value),
