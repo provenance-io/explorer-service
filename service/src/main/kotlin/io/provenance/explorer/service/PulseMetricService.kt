@@ -1276,7 +1276,7 @@ class PulseMetricService(
         runBlocking {
             try {
                 pulseHttpClient.get {
-                    url("${pulseProperties.hftExchangeUrl}/markets/$denom-$quoteDenom")
+                    url("${pulseProperties.hftExchangeApi}/v1/markets/$denom-$quoteDenom")
                 }.body<HftMarket>()
             } catch (e: Exception) {
                 logger.error("Failed to fetch hft exchange data for $denom-$quoteDenom: ${e.message}")
