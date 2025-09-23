@@ -5,7 +5,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.java.Java
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.jackson.jackson
-import io.provenance.explorer.OBJECT_MAPPER
+import io.provenance.explorer.configureProvenance
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -18,7 +18,7 @@ class PulseConfig {
             install(ContentNegotiation) {
                 jackson {
                     registerModules(JavaTimeModule())
-                    OBJECT_MAPPER
+                    this.configureProvenance()
                 }
             }
         }

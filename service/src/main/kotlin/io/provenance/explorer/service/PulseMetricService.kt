@@ -1905,7 +1905,7 @@ class PulseMetricService(
                 )
             }
 
-            it.plus(
+            it.add(
                 PulseAssetSummary(
                     id = UUID.randomUUID(),
                     name = "Figure Heloc",
