@@ -1910,7 +1910,7 @@ class PulseMetricService(
                     id = UUID.randomUUID(),
                     name = "Figure Heloc",
                     description = "Figure Heloc",
-                    symbol = figure_heloc_denom,
+                    symbol = "figure",
                     display = figure_heloc_denom,
                     base = figure_heloc_denom,
                     quote = USD_UPPER,
