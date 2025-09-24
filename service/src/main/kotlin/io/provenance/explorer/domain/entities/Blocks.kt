@@ -267,7 +267,7 @@ class BlockCacheHourlyTxCountsRecord(id: EntityID<LocalDateTime>) : Entity<Local
 
         fun getTotalTxCount() = transaction {
             val txSum = Sum(BlockCacheHourlyTxCountsTable.txCount, IntegerColumnType())
-            BlockCacheHourlyTxCountsTable.slice(txSum).selectAll().map { it[txSum] }.first()!!
+            BlockCacheHourlyTxCountsTable.slice(txSum).selectAll().map { it[txSum] ?: 0 }.first()!!
         }
 
         fun getTxCountsForParams(fromDate: LocalDateTime, toDate: LocalDateTime, granularity: DateTruncGranularity) =
