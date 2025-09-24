@@ -32,6 +32,7 @@ import io.provenance.explorer.domain.models.explorer.pulse.EntityLedgeredAsset
 import io.provenance.explorer.domain.models.explorer.pulse.EntityLedgeredAssetDetail
 import io.provenance.explorer.domain.models.explorer.pulse.EntityType
 import io.provenance.explorer.domain.models.explorer.pulse.ExchangeSummary
+import io.provenance.explorer.domain.models.explorer.pulse.HftMarket
 import io.provenance.explorer.domain.models.explorer.pulse.MetricProgress
 import io.provenance.explorer.domain.models.explorer.pulse.MetricRangeType
 import io.provenance.explorer.domain.models.explorer.pulse.MetricSeries
@@ -116,6 +117,7 @@ class PulseMetricService(
     private val count = "COUNT"
     private val percentage = "PERCENTAGE"
     private val longest_range = 90L
+    private val figure_heloc_denom = "FIGR_HELOC"
 
     private fun nowUTC() = LocalDateTime.now(ZoneOffset.UTC)
     private fun endOfDay(time: LocalDateTime) =
@@ -1268,6 +1270,21 @@ class PulseMetricService(
         }
 
     /**
+     * HFT Exchange Market Metrics
+     */
+    fun fetchHftMarket(denom: String, quoteDenom: String) =
+        runBlocking {
+            try {
+                pulseHttpClient.get {
+                    url("${pulseProperties.hftExchangeApi}/v1/markets/$denom-$quoteDenom")
+                }.body<HftMarket>()
+            } catch (e: Exception) {
+                logger.error("Failed to fetch hft exchange data for $denom-$quoteDenom: ${e.message}")
+                null
+            }
+        }
+
+    /**
      * metrics for known entities
      * waterfalls to calc for totals across all entities, totals by entity type, and finally by individual entity
      */
@@ -1858,12 +1875,58 @@ class PulseMetricService(
                 priceTrend = priceMetric.trend,
                 volumeTrend = volumeMetric.trend
             )
-        }.sortedWith(
-            compareBy(
-                { it.symbol.isEmpty() },
-                { it.symbol }
+        }.toMutableList().also {
+            // add FIGR_HELOC supply/price/volume to pulse assets
+            val figrHelocSupply = figureHelocTokenMetric(
+                type = PulseCacheType.FIGR_HELOC_CIRCULATING_METRIC,
+                atDateTime = atDateTime
+            ).amount
+
+            val figrHelocHftMarket = fetchHftMarket(figure_heloc_denom, USD_UPPER)
+            val figrHelocPrice = fetchOrBuildCacheFromDataSource(
+                type = PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC,
+                subtype = figure_heloc_denom,
+                atDateTime = atDateTime
+            ) {
+                PulseMetric.build(
+                    base = USD_UPPER,
+                    amount = figrHelocHftMarket?.lastTradedPrice ?: BigDecimal.ZERO,
+                )
+            }
+
+            val figrHelocVolume = fetchOrBuildCacheFromDataSource(
+                type = PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC,
+                subtype = figure_heloc_denom,
+                atDateTime = atDateTime
+            ) {
+                PulseMetric.build(
+                    base = USD_UPPER,
+                    amount = figrHelocHftMarket?.volume24h ?: BigDecimal.ZERO
+                )
+            }
+
+            it.add(
+                PulseAssetSummary(
+                    id = UUID.randomUUID(),
+                    name = "Figure Heloc",
+                    description = "Figure Heloc",
+                    symbol = "figure",
+                    display = figure_heloc_denom,
+                    base = figure_heloc_denom,
+                    quote = USD_UPPER,
+                    marketCap = figrHelocSupply.times(figrHelocPrice.amount),
+                    supply = figrHelocSupply,
+                    priceTrend = figrHelocPrice.trend,
+                    volumeTrend = figrHelocVolume.trend
+                )
             )
-        ) // empties to the bottom
+        }
+            .sortedWith(
+                compareBy(
+                    { it.symbol.isEmpty() },
+                    { it.symbol }
+                )
+            ) // empties to the bottom
 
     fun exchangeSummaries(denom: String): List<ExchangeSummary> = runBlocking {
         exchangeGrpcClient.getMarketBriefsByDenom(denom)
