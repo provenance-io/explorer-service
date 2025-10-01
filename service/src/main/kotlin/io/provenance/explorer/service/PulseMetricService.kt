@@ -33,6 +33,7 @@ import io.provenance.explorer.domain.models.explorer.pulse.EntityLedgeredAssetDe
 import io.provenance.explorer.domain.models.explorer.pulse.EntityType
 import io.provenance.explorer.domain.models.explorer.pulse.ExchangeSummary
 import io.provenance.explorer.domain.models.explorer.pulse.HftMarket
+import io.provenance.explorer.domain.models.explorer.pulse.HftTrades
 import io.provenance.explorer.domain.models.explorer.pulse.MetricProgress
 import io.provenance.explorer.domain.models.explorer.pulse.MetricRangeType
 import io.provenance.explorer.domain.models.explorer.pulse.MetricSeries
@@ -1285,6 +1286,21 @@ class PulseMetricService(
         }
 
     /**
+     * HFT Exchange Trade Data
+     */
+    fun fetchHftTrades(denom: String, quoteDenom: String) =
+        runBlocking {
+            try {
+                pulseHttpClient.get {
+                    url("${pulseProperties.hftExchangeApi}/v1/trades/$denom-$quoteDenom")
+                }.body<HftTrades>()
+            } catch (e: Exception) {
+                logger.error("Failed to fetch hft trade data for $denom-$quoteDenom: ${e.message}")
+                null
+            }
+        }
+
+    /**
      * metrics for known entities
      * waterfalls to calc for totals across all entities, totals by entity type, and finally by individual entity
      */
@@ -1910,7 +1926,7 @@ class PulseMetricService(
                     id = UUID.randomUUID(),
                     name = "Figure Heloc",
                     description = "Figure Heloc",
-                    symbol = "figure",
+                    symbol = figure_heloc_denom,
                     display = figure_heloc_denom,
                     base = figure_heloc_denom,
                     quote = USD_UPPER,
@@ -1988,8 +2004,30 @@ class PulseMetricService(
         page: Int,
         sort: List<SortOrder>,
         sortColumn: List<String>
-    ): PagedResults<TransactionSummary> =
-        TxCacheRecord.pulseTransactionsWithValue(
+    ): PagedResults<TransactionSummary> = when (denom) {
+        figure_heloc_denom -> {
+            val figrHelocTransactions = fetchHftTrades(denom, USD_UPPER)?.matches?.map {
+                TransactionSummary(
+                    txHash = it.id,
+                    block = 0,
+                    time = it.created,
+                    type = "Market Commitment Settle",
+                    value = it.quantity,
+                    quoteValue = it.quantity.times(it.price),
+                    quoteDenom = USD_UPPER,
+                    details = emptyList()
+                )
+            }
+            val total = figrHelocTransactions?.size ?: 0
+            val fromIndex = page * count
+            val toIndex = (fromIndex + count).takeIf { it <= total } ?: total
+            PagedResults(
+                pages = total.div(count),
+                total = total.toLong(),
+                results = figrHelocTransactions?.subList(fromIndex, toIndex) ?: emptyList()
+            )
+        }
+        else -> TxCacheRecord.pulseTransactionsWithValue(
             denom,
             nowUTC().minusDays(1).startOfDay(),
             page,
@@ -2029,6 +2067,7 @@ class PulseMetricService(
 
             )
         }
+    }
 
     /**
      * Fill in the pulse cache for a date range for a list of cache types
