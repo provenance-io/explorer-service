@@ -837,10 +837,11 @@ class PulseMetricService(
     ) =
         mutableListOf<PulseMetric>().apply {
             for (i in 0..daySpan) {
-                fromPulseMetricCache(startDate.plusDays(i), type)?.let {
+                val date = startDate.plusDays(i)
+                fromPulseMetricCache(date, type)?.let {
                     this.add(it)
                 } ?: throw ResourceNotFoundException(
-                    "Creating $daySpan day span failed to find pulse cache record for $startDate $type."
+                    "Creating $daySpan day span failed to find pulse cache record for $date $type."
                 )
             }
         }
