@@ -452,6 +452,7 @@ class PulseMetricService(
                 series = seriesFromPriorMetrics(
                     type = PulseCacheType.PULSE_TVL_METRIC,
                     days = longest_range,
+                    atDateTime = atDateTime,
                     valueSelector = { it.amount }
                 )
             )
@@ -726,6 +727,7 @@ class PulseMetricService(
                     series = seriesFromPriorMetrics(
                         PulseCacheType.PULSE_PARTICIPANTS_METRIC,
                         days = longest_range,
+                        atDateTime = atDateTime,
                         valueSelector = { it.trend?.changeQuantity ?: BigDecimal.ZERO }
                     ),
                 )
@@ -811,9 +813,10 @@ class PulseMetricService(
     private fun seriesFromPriorMetrics(
         type: PulseCacheType,
         days: Long,
+        atDateTime: LocalDateTime? = null,
         valueSelector: (PulseMetric) -> BigDecimal
     ): MetricSeries {
-        val today = nowUTC().toLocalDate()
+        val today = atDateTime?.toLocalDate() ?: nowUTC().toLocalDate()
         val isTodayCached = fromPulseMetricCache(today, type) != null
         val actualDays = if (isTodayCached) days else days - 1
         val startDate = today.minusDays(days)
@@ -834,10 +837,11 @@ class PulseMetricService(
     ) =
         mutableListOf<PulseMetric>().apply {
             for (i in 0..daySpan) {
-                fromPulseMetricCache(startDate.plusDays(i), type)?.let {
+                val date = startDate.plusDays(i)
+                fromPulseMetricCache(date, type)?.let {
                     this.add(it)
                 } ?: throw ResourceNotFoundException(
-                    "Creating $daySpan day span failed to find pulse cache record for $startDate $type."
+                    "Creating $daySpan day span failed to find pulse cache record for $date $type."
                 )
             }
         }
