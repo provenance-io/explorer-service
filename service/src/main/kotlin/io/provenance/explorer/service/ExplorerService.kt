@@ -173,7 +173,7 @@ class ExplorerService(
             avgBlockTime = BlockProposerRecord.findAvgBlockCreation(100),
             bondedTokens = CountStrTotal(it.first.toString(), it.second, UTILITY_TOKEN),
             totalTxCount = BlockCacheHourlyTxCountsRecord.getTotalTxCount().toBigInteger(),
-            totalAum = pricingService.getTotalAum().toCoinStr(USD_UPPER)
+            totalAum = (getLatestChainAumRecord()?.amount ?: pricingService.getTotalAum()).toCoinStr(USD_UPPER)
         )
     }.let { cacheService.updateSpotlight(it) }
 
@@ -408,6 +408,10 @@ class ExplorerService(
         val date = LocalDateTime.now().truncatedTo(ChronoUnit.HOURS)
         val amount = pricingService.getTotalAum()
         ChainAumHourlyRecord.insertIgnore(date, amount, USD_UPPER)
+    }
+
+    fun getLatestChainAumRecord() = transaction {
+        ChainAumHourlyRecord.getLatestAumRecord()?.toDto()
     }
 
     fun getChainAumRecords(from: LocalDateTime?, to: LocalDateTime?, dayCount: Int) = transaction {
