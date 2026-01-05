@@ -189,10 +189,18 @@ object ChainAumHourlyTable : IntIdTable(name = "chain_aum_hourly") {
 
 class ChainAumHourlyRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<ChainAumHourlyRecord>(ChainAumHourlyTable) {
+        fun getLatestAumRecord() = transaction {
+            ChainAumHourlyRecord
+                .all()
+                .orderBy(Pair(ChainAumHourlyTable.id, SortOrder.DESC))
+                .limit(1)
+                .firstOrNull()
+        }
+
         fun getAumForPeriod(fromDate: LocalDateTime, toDate: LocalDateTime) = transaction {
             ChainAumHourlyRecord.find {
                 (ChainAumHourlyTable.datetime greaterEq fromDate) and
-                    (ChainAumHourlyTable.datetime lessEq toDate.plusDays(1))
+                        (ChainAumHourlyTable.datetime lessEq toDate.plusDays(1))
             }
                 .orderBy(Pair(ChainAumHourlyTable.datetime, SortOrder.ASC))
                 .toList()
