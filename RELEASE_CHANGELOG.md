@@ -1,7 +1,6 @@
-## [v7.0.5](https://github.com/provenance-io/explorer-service/releases/tag/v7.0.5) - 2025-03-20
+## [v7.0.6](https://github.com/provenance-io/explorer-service/releases/tag/v7.0.6) - 2025-03-20
 
-### Bug Fixes
+### Features
 
-Version 7.0.5 of the Explorer Service fixes a Postgresql sequence integer overflow
-issue in the tx_msg_event_attr table. The number of rows exceeded 2.17B, the max
-integer value. Table primary key and sequence were updated to BIGINT.
+Version 7.0.6 Introduces two new tables that will be used to track loan receivable data 
+for ledgering on-chain
