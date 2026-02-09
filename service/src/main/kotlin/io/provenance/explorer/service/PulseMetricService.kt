@@ -788,7 +788,7 @@ class PulseMetricService(
         }
 
     private fun Map<String, BigDecimal>.committedAssetsToVolume() = this.map {
-        calcExchangeTotalVolumeForAsset(it.key, it.value)
+        convertDenomToDisplayUnits(it.key, it.value)
     }.sumOf { it }
         .let {
             PulseMetric.build(
@@ -798,9 +798,9 @@ class PulseMetricService(
         }
 
     private fun calcExchangeTotalValueForAsset(denom: String, total: BigDecimal) =
-        calcExchangeTotalVolumeForAsset(denom, total).times(pulseLastTradedAssetPrice(denom))
+        convertDenomToDisplayUnits(denom, total).times(pulseLastTradedAssetPrice(denom))
 
-    private fun calcExchangeTotalVolumeForAsset(denom: String, total: BigDecimal): BigDecimal {
+    private fun convertDenomToDisplayUnits(denom: String, total: BigDecimal): BigDecimal {
         // convert amount to appropriate denom decimal
         var dE = denomExponent(denom)
         if (dE == 0 && denom.lowercase().contains(USD_LOWER)) {
@@ -1826,8 +1826,9 @@ class PulseMetricService(
     /**
      * TODO - this is problematic because it assumes all assets are USD quoted
      */
-    fun pulseAssetSummaries(atDateTime: LocalDateTime? = null): List<PulseAssetSummary> =
-        committedAssetTotals(atDateTime).keys.distinct().map { denom ->
+    fun pulseAssetSummaries(atDateTime: LocalDateTime? = null): List<PulseAssetSummary> {
+        val committedTotals = committedAssetTotals(atDateTime)
+        return committedTotals.keys.distinct().map { denom ->
             val denomMetadata = pulseAssetDenomMetadata(denom)
             val denomExp = denomExponent(denomMetadata) ?: 1
             val denomPow = inversePowerOfTen(denomExp)
@@ -1881,6 +1882,11 @@ class PulseMetricService(
             val marketCap = supply
                 .times(priceMetric.amount)
 
+            // Calculate committed amount for this asset
+            val committedAmount = committedTotals[denom]?.let { totalCommitted ->
+                convertDenomToDisplayUnits(denom, totalCommitted)
+            }
+
             // TODO a gross assumption using USD_UPPER but will suffice for now
             PulseAssetSummary(
                 id = UUID.randomUUID(),
@@ -1892,6 +1898,7 @@ class PulseMetricService(
                 quote = USD_UPPER,
                 marketCap = marketCap,
                 supply = supply,
+                committedAmount = committedAmount,
                 priceTrend = priceMetric.trend,
                 volumeTrend = volumeMetric.trend
             )
@@ -1936,6 +1943,7 @@ class PulseMetricService(
                     quote = USD_UPPER,
                     marketCap = figrHelocSupply.times(figrHelocPrice.amount),
                     supply = figrHelocSupply,
+                    committedAmount = null,
                     priceTrend = figrHelocPrice.trend,
                     volumeTrend = figrHelocVolume.trend
                 )
@@ -1947,6 +1955,7 @@ class PulseMetricService(
                     { it.symbol }
                 )
             ) // empties to the bottom
+    }
 
     fun exchangeSummaries(denom: String): List<ExchangeSummary> = runBlocking {
         exchangeGrpcClient.getMarketBriefsByDenom(denom)
