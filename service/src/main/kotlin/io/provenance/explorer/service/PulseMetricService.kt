@@ -534,7 +534,7 @@ class PulseMetricService(
                 )
             }.filter {
                 it.source.startsWith("x/exchange") &&
-                        it.priceDenom?.startsWith("u$USD_LOWER") == true
+                        (it.priceDenom?.startsWith("u$USD_LOWER") == true || it.priceDenom == "uylds.fcc")
             } // gross, but all uusd is micro
                 .sumOf { it.priceAmount!! }.toBigDecimal().let {
                     PulseMetric.build(
@@ -1509,8 +1509,10 @@ class PulseMetricService(
             )
         }.filter { e ->
             (source != null || e.source.startsWith("x/exchange")) &&
-                    e.priceDenom?.lowercase()
-                        ?.startsWith("u$USD_LOWER") == true
+                    (
+                        e.priceDenom?.lowercase()
+                        ?.startsWith("u$USD_LOWER") == true || e.priceDenom == "uylds.fcc"
+                    )
         }
 
     /**
