@@ -16,5 +16,6 @@ data class ExchangeSummary(
     val quote: String,
     val committed: BigDecimal,
     val settlement: BigDecimal,
-    val volume: BigDecimal
+    val volume: BigDecimal,
+    val priceSeries3Month: MetricSeries? = null
 )
