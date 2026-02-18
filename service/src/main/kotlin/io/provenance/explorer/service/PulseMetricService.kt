@@ -858,20 +858,22 @@ class PulseMetricService(
         val days = rangeToDays(range)
         val startDate = today.minusDays(days)
 
+        // get all cache records for the date range
+        val cacheRecords = PulseCacheRecord.findByDateSpanAndType(
+            startDate,
+            today,
+            PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC,
+            denom
+        )
+
         val seriesData = mutableListOf<BigDecimal>()
         val labels = mutableListOf<String>()
 
-        for (i in 0..days) {
-            val date = startDate.plusDays(i)
-            fromPulseMetricCache(
-                date,
-                PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC,
-                denom
-            )?.let { metric ->
-                if (metric.amount > BigDecimal.ZERO) {
-                    seriesData.add(metric.amount)
-                    labels.add(date.toString())
-                }
+        cacheRecords.forEach { record ->
+            val metric = record.data
+            if (metric.amount > BigDecimal.ZERO) {
+                seriesData.add(metric.amount)
+                labels.add(record.cacheDate.toString())
             }
         }
 
