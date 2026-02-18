@@ -78,6 +78,15 @@ class PulseAssetController(private val pulseMetricService: PulseMetricService) {
      * Note that `denom` is a required request param instead of a path variable
      * because denoms like `nft/blahblahblah` exist and are not valid path variables.
      */
+    @Operation(summary = "Single asset summary by denom")
+    @GetMapping("/summary")
+    fun getPulseAssetSummary(@RequestParam(required = true) denom: String): PulseAssetSummary =
+        pulseMetricService.pulseAssetSummary(denom)
+
+    /**
+     * Note that `denom` is a required request param instead of a path variable
+     * because denoms like `nft/blahblahblah` exist and are not valid path variables.
+     */
     @Operation(summary = "Asset exchange module-based details")
     @GetMapping("/exchange/summary")
     fun getAssetExchangeSummary(@RequestParam(required = true) denom: String): List<ExchangeSummary> =
