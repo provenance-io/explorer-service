@@ -13,7 +13,7 @@ data class PulseAssetSummary(
     val quote: String,
     val marketCap: BigDecimal,
     val supply: BigDecimal,
-    val committedAmount: BigDecimal?,
     val priceTrend: MetricTrend?,
     val volumeTrend: MetricTrend?,
+    val priceSeries3Month: MetricSeries? = null
 )

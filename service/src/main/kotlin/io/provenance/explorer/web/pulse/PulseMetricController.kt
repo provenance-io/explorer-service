@@ -59,7 +59,8 @@ class PulseMetricController(private val pulseMetricService: PulseMetricService) 
     fun backFillAllMetrics(
         @RequestParam fromDate: LocalDate,
                            @RequestParam toDate: LocalDate,
-                           @RequestParam types: List<PulseCacheType>
+                           @RequestParam types: List<PulseCacheType>,
+                           @RequestParam(required = false) denom: String?
     ) =
-        pulseMetricService.backFillAllMetrics(fromDate, toDate, types)
+        pulseMetricService.backFillAllMetrics(fromDate, toDate, types, denom)
 }

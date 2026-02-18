@@ -1908,7 +1908,6 @@ class PulseMetricService(
             quote = USD_UPPER,
             marketCap = figrHelocSupply.times(figrHelocPrice.amount),
             supply = figrHelocSupply,
-            committedAmount = null,
             priceTrend = figrHelocPrice.trend,
             volumeTrend = figrHelocVolume.trend
         )
@@ -1919,7 +1918,6 @@ class PulseMetricService(
      */
     private fun buildAssetSummaryForDenom(
         denom: String,
-        committedTotals: Map<String, BigDecimal>,
         atDateTime: LocalDateTime? = null
     ): PulseAssetSummary {
         val denomMetadata = pulseAssetDenomMetadata(denom)
@@ -1975,10 +1973,8 @@ class PulseMetricService(
         val marketCap = supply
             .times(priceMetric.amount)
 
-        // Calculate committed amount for this asset
-        val committedAmount = committedTotals[denom]?.let { totalCommitted ->
-            convertDenomToDisplayUnits(denom, totalCommitted)
-        }
+        // Calculate 3-month price series
+        val priceSeries3Month = buildPriceSeries(denom, MetricRangeType.QUARTER, atDateTime)
 
         // TODO a gross assumption using USD_UPPER but will suffice for now
         return PulseAssetSummary(
@@ -1991,9 +1987,9 @@ class PulseMetricService(
             quote = USD_UPPER,
             marketCap = marketCap,
             supply = supply,
-            committedAmount = committedAmount,
             priceTrend = priceMetric.trend,
-            volumeTrend = volumeMetric.trend
+            volumeTrend = volumeMetric.trend,
+            priceSeries3Month = priceSeries3Month
         )
     }
 
@@ -2013,9 +2009,7 @@ class PulseMetricService(
             throw ResourceNotFoundException("Asset not found for denom: $denom", e)
         }
 
-        val committedTotals = committedAssetTotals(atDateTime)
-        // Build summary even if not in committedTotals (committedAmount will be null)
-        return buildAssetSummaryForDenom(denom, committedTotals, atDateTime)
+        return buildAssetSummaryForDenom(denom, atDateTime)
     }
 
     /**
@@ -2024,7 +2018,7 @@ class PulseMetricService(
     fun pulseAssetSummaries(atDateTime: LocalDateTime? = null): List<PulseAssetSummary> {
         val committedTotals = committedAssetTotals(atDateTime)
         return committedTotals.keys.distinct().map { denom ->
-            buildAssetSummaryForDenom(denom, committedTotals, atDateTime)
+            buildAssetSummaryForDenom(denom, atDateTime)
         }.toMutableList().also {
             // add FIGR_HELOC supply/price/volume to pulse assets
             it.add(buildFigureHelocAssetSummary(atDateTime))
@@ -2070,9 +2064,6 @@ class PulseMetricService(
             .toBigDecimal()
             .times(inversePowerOfTen(6))
 
-        // Calculate 3-month price series
-        val priceSeries3Month = buildPriceSeries(denom, MetricRangeType.QUARTER)
-
         // TODO probably need to use this instead of hard code USD_UPPER: market.intermediaryDenom,
         ExchangeSummary(
             id = UUID.randomUUID(),
@@ -2087,8 +2078,7 @@ class PulseMetricService(
             quote = USD_UPPER,
             committed = denomCommittedAmount,
             volume = volume,
-            settlement = settlement,
-            priceSeries3Month = priceSeries3Month
+            settlement = settlement
         )
     }
 
@@ -2173,7 +2163,8 @@ class PulseMetricService(
     fun backFillAllMetrics(
         fromDate: LocalDate,
         toDate: LocalDate,
-        types: List<PulseCacheType>
+        types: List<PulseCacheType>,
+        denom: String? = null
     ) {
         if (isBackfillInProgress.compareAndSet(false, true)) {
             try {
@@ -2192,7 +2183,13 @@ class PulseMetricService(
                             if (type == PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC ||
                                 type == PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC
                             ) {
-                                pulseAssetSummaries(d) // first to set prices
+                                if (denom != null) {
+                                    // Backfill specific denom's price/volume metrics
+                                    pulseAssetSummary(denom, d)
+                                } else {
+                                    // Backfill all assets
+                                    pulseAssetSummaries(d)
+                                }
                             } else {
                                 pulseMetric(
                                     type = type,
