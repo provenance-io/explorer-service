@@ -847,6 +847,45 @@ class PulseMetricService(
         }
 
     /**
+     * Builds a price series for the specified range
+     */
+    private fun buildPriceSeries(
+        denom: String,
+        range: MetricRangeType,
+        atDateTime: LocalDateTime? = null
+    ): MetricSeries? {
+        val today = atDateTime?.toLocalDate() ?: nowUTC().toLocalDate()
+        val days = rangeToDays(range)
+        val startDate = today.minusDays(days)
+
+        val seriesData = mutableListOf<BigDecimal>()
+        val labels = mutableListOf<String>()
+
+        for (i in 0..days) {
+            val date = startDate.plusDays(i)
+            fromPulseMetricCache(
+                date,
+                PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC,
+                denom
+            )?.let { metric ->
+                if (metric.amount > BigDecimal.ZERO) {
+                    seriesData.add(metric.amount)
+                    labels.add(date.toString())
+                }
+            }
+        }
+
+        return if (seriesData.isNotEmpty()) {
+            MetricSeries(
+                seriesData = seriesData,
+                labels = labels
+            )
+        } else {
+            null
+        }
+    }
+
+    /**
      * Binds the range to Range-over-Range span of time. For example,
      * given a MONTH range the metric is calculated as the sum of the last 30 days
      * values compared to the sum of the previous 30 days.
@@ -1989,6 +2028,10 @@ class PulseMetricService(
         val volume = events.sumOf { e -> e.priceAmount!! }
             .toBigDecimal()
             .times(inversePowerOfTen(6))
+
+        // Calculate 3-month price series
+        val priceSeries3Month = buildPriceSeries(denom, MetricRangeType.QUARTER)
+
         // TODO probably need to use this instead of hard code USD_UPPER: market.intermediaryDenom,
         ExchangeSummary(
             id = UUID.randomUUID(),
@@ -2003,7 +2046,8 @@ class PulseMetricService(
             quote = USD_UPPER,
             committed = denomCommittedAmount,
             volume = volume,
-            settlement = settlement
+            settlement = settlement,
+            priceSeries3Month = priceSeries3Month
         )
     }
 
