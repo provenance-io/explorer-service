@@ -1826,130 +1826,167 @@ class PulseMetricService(
         PulseCacheRecord.findByDateSpanAndType(fromDate, toDate, type).associateBy({ it.cacheDate }, { it.data })
 
     /**
+     * Builds the Figure Heloc asset summary
+     */
+    private fun buildFigureHelocAssetSummary(atDateTime: LocalDateTime? = null): PulseAssetSummary {
+        val figrHelocSupply = figureHelocTokenMetric(
+            type = PulseCacheType.FIGR_HELOC_CIRCULATING_METRIC,
+            atDateTime = atDateTime
+        ).amount
+
+        val figrHelocHftMarket = fetchHftMarket(figure_heloc_denom, USD_UPPER)
+        val figrHelocPrice = fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC,
+            subtype = figure_heloc_denom,
+            atDateTime = atDateTime
+        ) {
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = figrHelocHftMarket?.lastTradedPrice ?: BigDecimal.ZERO,
+            )
+        }
+
+        val figrHelocVolume = fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC,
+            subtype = figure_heloc_denom,
+            atDateTime = atDateTime
+        ) {
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = figrHelocHftMarket?.volume24h ?: BigDecimal.ZERO
+            )
+        }
+
+        return PulseAssetSummary(
+            id = UUID.randomUUID(),
+            name = "Figure Heloc",
+            description = "Figure Heloc",
+            symbol = figure_heloc_denom,
+            display = figure_heloc_denom,
+            base = figure_heloc_denom,
+            quote = USD_UPPER,
+            marketCap = figrHelocSupply.times(figrHelocPrice.amount),
+            supply = figrHelocSupply,
+            committedAmount = null,
+            priceTrend = figrHelocPrice.trend,
+            volumeTrend = figrHelocVolume.trend
+        )
+    }
+
+    /**
+     * Builds a single asset summary for the given denom
+     */
+    private fun buildAssetSummaryForDenom(
+        denom: String,
+        committedTotals: Map<String, BigDecimal>,
+        atDateTime: LocalDateTime? = null
+    ): PulseAssetSummary {
+        val denomMetadata = pulseAssetDenomMetadata(denom)
+        val denomExp = denomExponent(denomMetadata) ?: 1
+        val denomPow = inversePowerOfTen(denomExp)
+        val usdPow = inversePowerOfTen(6)
+        val priceMetric = fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC,
+            subtype = denom,
+            atDateTime = atDateTime
+        ) {
+            val events = pulseAssetSummariesForNavEvents(
+                denom = denom,
+                atDateTime = atDateTime
+            )
+            val tradeValue = events.sumOf { it.priceAmount!! }
+                .toBigDecimal()
+                .times(usdPow)
+            val tradeVolume = events.sumOf { it.volume }
+                .toBigDecimal()
+                .times(denomPow)
+            val avgTradePrice =
+                if (tradeVolume.compareTo(BigDecimal.ZERO) == 0) BigDecimal.ZERO else
+                    tradeValue.divide(tradeVolume, 6, RoundingMode.HALF_UP)
+
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = avgTradePrice,
+            )
+        }
+        val volumeMetric = fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC,
+            subtype = denom,
+            atDateTime = atDateTime
+        ) {
+            val events = pulseAssetSummariesForNavEvents(
+                denom = denom,
+                atDateTime = atDateTime
+            )
+
+            val tradeValue = events.sumOf { it.priceAmount!! }
+                .toBigDecimal()
+                .times(usdPow)
+
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = tradeValue
+            )
+        }
+        val supply =
+            denomSupplyCache(denom = denom, atDateTime = atDateTime)
+                .times(denomPow)
+        val marketCap = supply
+            .times(priceMetric.amount)
+
+        // Calculate committed amount for this asset
+        val committedAmount = committedTotals[denom]?.let { totalCommitted ->
+            convertDenomToDisplayUnits(denom, totalCommitted)
+        }
+
+        // TODO a gross assumption using USD_UPPER but will suffice for now
+        return PulseAssetSummary(
+            id = UUID.randomUUID(),
+            name = denomMetadata.name,
+            description = denomMetadata.description,
+            symbol = denomMetadata.symbol,
+            display = denomMetadata.display,
+            base = denom,
+            quote = USD_UPPER,
+            marketCap = marketCap,
+            supply = supply,
+            committedAmount = committedAmount,
+            priceTrend = priceMetric.trend,
+            volumeTrend = volumeMetric.trend
+        )
+    }
+
+    /**
+     * Returns a single asset summary for the given denom
+     */
+    fun pulseAssetSummary(denom: String, atDateTime: LocalDateTime? = null): PulseAssetSummary {
+        // Handle FIGR_HELOC special case
+        if (denom == figure_heloc_denom) {
+            return buildFigureHelocAssetSummary(atDateTime)
+        }
+
+        // Try to get asset metadata first - this will throw if denom doesn't exist
+        try {
+            pulseAssetDenomMetadata(denom)
+        } catch (e: Exception) {
+            throw ResourceNotFoundException("Asset not found for denom: $denom", e)
+        }
+
+        val committedTotals = committedAssetTotals(atDateTime)
+        // Build summary even if not in committedTotals (committedAmount will be null)
+        return buildAssetSummaryForDenom(denom, committedTotals, atDateTime)
+    }
+
+    /**
      * TODO - this is problematic because it assumes all assets are USD quoted
      */
     fun pulseAssetSummaries(atDateTime: LocalDateTime? = null): List<PulseAssetSummary> {
         val committedTotals = committedAssetTotals(atDateTime)
         return committedTotals.keys.distinct().map { denom ->
-            val denomMetadata = pulseAssetDenomMetadata(denom)
-            val denomExp = denomExponent(denomMetadata) ?: 1
-            val denomPow = inversePowerOfTen(denomExp)
-            val usdPow = inversePowerOfTen(6)
-            val priceMetric = fetchOrBuildCacheFromDataSource(
-                type = PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC,
-                subtype = denom,
-                atDateTime = atDateTime
-            ) {
-                val events = pulseAssetSummariesForNavEvents(
-                    denom = denom,
-                    atDateTime = atDateTime
-                )
-                val tradeValue = events.sumOf { it.priceAmount!! }
-                    .toBigDecimal()
-                    .times(usdPow)
-                val tradeVolume = events.sumOf { it.volume }
-                    .toBigDecimal()
-                    .times(denomPow)
-                val avgTradePrice =
-                    if (tradeVolume.compareTo(BigDecimal.ZERO) == 0) BigDecimal.ZERO else
-                        tradeValue.divide(tradeVolume, 6, RoundingMode.HALF_UP)
-
-                PulseMetric.build(
-                    base = USD_UPPER,
-                    amount = avgTradePrice,
-                )
-            }
-            val volumeMetric = fetchOrBuildCacheFromDataSource(
-                type = PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC,
-                subtype = denom,
-                atDateTime = atDateTime
-            ) {
-                val events = pulseAssetSummariesForNavEvents(
-                    denom = denom,
-                    atDateTime = atDateTime
-                )
-
-                val tradeValue = events.sumOf { it.priceAmount!! }
-                    .toBigDecimal()
-                    .times(usdPow)
-
-                PulseMetric.build(
-                    base = USD_UPPER,
-                    amount = tradeValue
-                )
-            }
-            val supply =
-                denomSupplyCache(denom = denom, atDateTime = atDateTime)
-                    .times(denomPow)
-            val marketCap = supply
-                .times(priceMetric.amount)
-
-            // Calculate committed amount for this asset
-            val committedAmount = committedTotals[denom]?.let { totalCommitted ->
-                convertDenomToDisplayUnits(denom, totalCommitted)
-            }
-
-            // TODO a gross assumption using USD_UPPER but will suffice for now
-            PulseAssetSummary(
-                id = UUID.randomUUID(),
-                name = denomMetadata.name,
-                description = denomMetadata.description,
-                symbol = denomMetadata.symbol,
-                display = denomMetadata.display,
-                base = denom,
-                quote = USD_UPPER,
-                marketCap = marketCap,
-                supply = supply,
-                committedAmount = committedAmount,
-                priceTrend = priceMetric.trend,
-                volumeTrend = volumeMetric.trend
-            )
+            buildAssetSummaryForDenom(denom, committedTotals, atDateTime)
         }.toMutableList().also {
             // add FIGR_HELOC supply/price/volume to pulse assets
-            val figrHelocSupply = figureHelocTokenMetric(
-                type = PulseCacheType.FIGR_HELOC_CIRCULATING_METRIC,
-                atDateTime = atDateTime
-            ).amount
-
-            val figrHelocHftMarket = fetchHftMarket(figure_heloc_denom, USD_UPPER)
-            val figrHelocPrice = fetchOrBuildCacheFromDataSource(
-                type = PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC,
-                subtype = figure_heloc_denom,
-                atDateTime = atDateTime
-            ) {
-                PulseMetric.build(
-                    base = USD_UPPER,
-                    amount = figrHelocHftMarket?.lastTradedPrice ?: BigDecimal.ZERO,
-                )
-            }
-
-            val figrHelocVolume = fetchOrBuildCacheFromDataSource(
-                type = PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC,
-                subtype = figure_heloc_denom,
-                atDateTime = atDateTime
-            ) {
-                PulseMetric.build(
-                    base = USD_UPPER,
-                    amount = figrHelocHftMarket?.volume24h ?: BigDecimal.ZERO
-                )
-            }
-
-            it.add(
-                PulseAssetSummary(
-                    id = UUID.randomUUID(),
-                    name = "Figure Heloc",
-                    description = "Figure Heloc",
-                    symbol = figure_heloc_denom,
-                    display = figure_heloc_denom,
-                    base = figure_heloc_denom,
-                    quote = USD_UPPER,
-                    marketCap = figrHelocSupply.times(figrHelocPrice.amount),
-                    supply = figrHelocSupply,
-                    committedAmount = null,
-                    priceTrend = figrHelocPrice.trend,
-                    volumeTrend = figrHelocVolume.trend
-                )
-            )
+            it.add(buildFigureHelocAssetSummary(atDateTime))
         }
             .sortedWith(
                 compareBy(
