@@ -55,29 +55,38 @@ fun String.safeDecodeBase64ToText(): String {
             this.matches(Regex("^[A-Za-z0-9+/=]+\$"))
         if (isBase64Encoded) {
             val decodedBytes = Base64.getDecoder().decode(this)
+
+            // Try to decode as UTF-8 using a strict decoder that will fail on malformed sequences
             val decoded = try {
-                String(decodedBytes, Charsets.UTF_8)
+                // Use UTF-8 decoder to detect malformed sequences
+                val decoder = Charsets.UTF_8.newDecoder()
+                decoder.onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                decoder.onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                decoder.decode(java.nio.ByteBuffer.wrap(decodedBytes)).toString()
             } catch (e: Exception) {
-                // Invalid UTF-8, keep original base64
+                // Invalid UTF-8 or unmappable character, keep original base64
                 return this
             }
+
             // If decoding produced the same string, it wasn't actually base64 or was binary
             if (decoded == this) {
+                return this
+            }
+
+            // Validate decoded result doesn't contain invalid control characters
+            val hasInvalidChars = decoded.any {
+                val code = it.code
+                // Control chars < 32 except tab(9), LF(10), CR(13)
+                // Also check for replacement character (U+FFFD) which indicates malformed UTF-8
+                (code < 32 && code !in listOf(9, 10, 13)) || code == 0xFFFD
+            }
+
+            if (hasInvalidChars) {
+                // Contains binary data or invalid control chars, keep original base64
                 this
             } else {
-                // Validate decoded result doesn't contain invalid control characters
-                val hasInvalidChars = decoded.any {
-                    val code = it.code
-                    // Control chars < 32 except tab(9), LF(10), CR(13)
-                    code < 32 && code !in listOf(9, 10, 13)
-                }
-                if (hasInvalidChars) {
-                    // Contains binary data, keep original base64
-                    this
-                } else {
-                    // Valid UTF-8 text, use decoded value
-                    decoded
-                }
+                // Valid UTF-8 text, use decoded value
+                decoded
             }
         } else {
             // Not base64-encoded, use as-is
