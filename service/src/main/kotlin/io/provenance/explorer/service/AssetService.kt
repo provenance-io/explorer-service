@@ -13,7 +13,9 @@ import io.provenance.explorer.domain.entities.BaseDenomType
 import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.MarkerUnitRecord
 import io.provenance.explorer.domain.entities.NavEventsRecord
+import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.entities.TxMarkerJoinRecord
+import io.provenance.explorer.domain.entities.TxMessageTypeRecord
 import io.provenance.explorer.domain.exceptions.requireNotNullToMessage
 import io.provenance.explorer.domain.extensions.calculateUsdPricePerUnit
 import io.provenance.explorer.domain.extensions.pageCountOfResults
@@ -21,12 +23,14 @@ import io.provenance.explorer.domain.extensions.toDateTime
 import io.provenance.explorer.domain.extensions.toObjectNode
 import io.provenance.explorer.domain.extensions.toOffset
 import io.provenance.explorer.domain.extensions.usdPriceDenoms
+import io.provenance.explorer.domain.models.explorer.TxQueryParams
 import io.provenance.explorer.domain.models.explorer.toCoinStrWithPrice
 import io.provenance.explorer.grpc.extensions.getManagingAccounts
 import io.provenance.explorer.grpc.extensions.isMintable
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
 import io.provenance.explorer.grpc.v1.MarkerGrpcClient
+import io.provenance.explorer.model.AssetByRole
 import io.provenance.explorer.model.AssetDetail
 import io.provenance.explorer.model.AssetListed
 import io.provenance.explorer.model.AssetManagement
@@ -162,6 +166,69 @@ class AssetService(
     fun getAssetHolders(denom: String, page: Int, count: Int) = tokenService.getAssetHolders(denom, page, count)
 
     fun getMetadata(denom: String?) = getDenomMetadata(denom).map { it.toObjectNode(protoPrinter) }
+
+    fun getAssetsByRole(role: String, address: String): List<AssetByRole> = runBlocking {
+        transaction {
+            // Gather both grant and revoke role transactions so we can process chronology
+            val grantTypeId = TxMessageTypeRecord.findByProtoType("/provenance.registry.v1.MsgGrantRole")?.id?.value
+            val revokeTypeId = TxMessageTypeRecord.findByProtoType("/provenance.registry.v1.MsgRevokeRole")?.id?.value
+            val msgTypeIds = listOfNotNull(grantTypeId, revokeTypeId)
+
+            if (msgTypeIds.isEmpty()) return@transaction emptyList<AssetByRole>()
+
+            val roleTxs = TxCacheRecord.findByQueryForResults(
+                TxQueryParams(
+                    msgTypes = msgTypeIds,
+                    count = Int.MAX_VALUE,
+                    offset = 0
+                )
+            )
+                // Process oldest to newest to respect revokes and re-grants
+                .sortedWith(compareBy({ it.txTimestamp }, { it.id.value }))
+
+            val activePairs = mutableSetOf<AssetByRole>()
+
+            roleTxs.forEach { txRecord ->
+                val messages = txRecord.txV2?.tx?.body?.messagesList ?: emptyList()
+                messages.forEach { message ->
+                    val isGrant = message.typeUrl == "/provenance.registry.v1.MsgGrantRole"
+                    val isRevoke = message.typeUrl == "/provenance.registry.v1.MsgRevokeRole"
+                    if (!isGrant && !isRevoke) return@forEach
+                    try {
+                        val messageObj = message.toObjectNode(protoPrinter)
+
+                        val msgRole = messageObj.get("role")?.asText()
+                        if (msgRole != role) return@forEach
+
+                        // addresses is a repeated string; parse robustly
+                        val addressesNode = messageObj.get("addresses")
+                        val addressMatch = when {
+                            addressesNode == null -> false
+                            addressesNode.isArray -> addressesNode.any { it.asText() == address }
+                            else -> addressesNode.asText() == address || addressesNode.asText().contains(address)
+                        }
+                        if (!addressMatch) return@forEach
+
+                        val key = messageObj.get("key")
+                        val assetClassId = key?.get("asset_class_id")?.asText()
+                        val nftId = key?.get("nft_id")?.asText()
+                        if (assetClassId.isNullOrBlank() || nftId.isNullOrBlank()) return@forEach
+
+                        val pair = AssetByRole(assetClassId, nftId)
+                        if (isGrant) {
+                            activePairs.add(pair)
+                        } else if (isRevoke) {
+                            activePairs.remove(pair)
+                        }
+                    } catch (e: Exception) {
+                        logger.warn("Failed to parse registry role message: ${e.message}")
+                    }
+                }
+            }
+
+            activePairs.toList()
+        }
+    }
 
     // Updates the Marker cache
     fun updateAssets(denoms: Set<String>, txTime: Timestamp) =
