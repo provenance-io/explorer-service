@@ -1909,7 +1909,8 @@ class PulseMetricService(
             marketCap = figrHelocSupply.times(figrHelocPrice.amount),
             supply = figrHelocSupply,
             priceTrend = figrHelocPrice.trend,
-            volumeTrend = figrHelocVolume.trend
+            volumeTrend = figrHelocVolume.trend,
+            lastTradedPrice = figrHelocHftMarket?.lastTradedPrice
         )
     }
 
@@ -1924,15 +1925,18 @@ class PulseMetricService(
         val denomExp = denomExponent(denomMetadata) ?: 1
         val denomPow = inversePowerOfTen(denomExp)
         val usdPow = inversePowerOfTen(6)
+
+        // Fetch nav events
+        val events = pulseAssetSummariesForNavEvents(
+            denom = denom,
+            atDateTime = atDateTime
+        )
+
         val priceMetric = fetchOrBuildCacheFromDataSource(
             type = PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC,
             subtype = denom,
             atDateTime = atDateTime
         ) {
-            val events = pulseAssetSummariesForNavEvents(
-                denom = denom,
-                atDateTime = atDateTime
-            )
             val tradeValue = events.sumOf { it.priceAmount!! }
                 .toBigDecimal()
                 .times(usdPow)
@@ -1953,11 +1957,6 @@ class PulseMetricService(
             subtype = denom,
             atDateTime = atDateTime
         ) {
-            val events = pulseAssetSummariesForNavEvents(
-                denom = denom,
-                atDateTime = atDateTime
-            )
-
             val tradeValue = events.sumOf { it.priceAmount!! }
                 .toBigDecimal()
                 .times(usdPow)
@@ -1976,6 +1975,21 @@ class PulseMetricService(
         // Calculate 3-month price series
         val priceSeries3Month = buildPriceSeries(denom, MetricRangeType.QUARTER, atDateTime)
 
+        // Calculate last traded price from most recent nav event
+        val lastTradedPrice = events.maxByOrNull { it.blockTime }?.let { lastEvent ->
+            if (lastEvent.priceAmount != null && lastEvent.volume > 0) {
+                val tradeValue = lastEvent.priceAmount.toBigDecimal().times(usdPow)
+                val tradeVolume = lastEvent.volume.toBigDecimal().times(denomPow)
+                if (tradeVolume.compareTo(BigDecimal.ZERO) != 0) {
+                    tradeValue.divide(tradeVolume, 6, RoundingMode.HALF_UP)
+                } else {
+                    null
+                }
+            } else {
+                null
+            }
+        }
+
         // TODO a gross assumption using USD_UPPER but will suffice for now
         return PulseAssetSummary(
             id = UUID.randomUUID(),
@@ -1989,7 +2003,8 @@ class PulseMetricService(
             supply = supply,
             priceTrend = priceMetric.trend,
             volumeTrend = volumeMetric.trend,
-            priceSeries3Month = priceSeries3Month
+            priceSeries3Month = priceSeries3Month,
+            lastTradedPrice = lastTradedPrice
         )
     }
 

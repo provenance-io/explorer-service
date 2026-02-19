@@ -15,5 +15,6 @@ data class PulseAssetSummary(
     val supply: BigDecimal,
     val priceTrend: MetricTrend?,
     val volumeTrend: MetricTrend?,
-    val priceSeries3Month: MetricSeries? = null
+    val priceSeries3Month: MetricSeries? = null,
+    val lastTradedPrice: BigDecimal? = null
 )
