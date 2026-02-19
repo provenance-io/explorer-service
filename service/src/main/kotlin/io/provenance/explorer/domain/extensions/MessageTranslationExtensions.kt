@@ -11,7 +11,6 @@ import io.provenance.explorer.JSON_NODE_FACTORY
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.model.base.isMAddress
 import tendermint.abci.Types
-import java.util.Base64
 
 val protoTypesToCheckForMetadata = listOf(
     "/provenance.metadata.v1.MsgWriteScopeRequest",
@@ -142,58 +141,6 @@ fun fromBase64ToMAddress(jsonNode: JsonNode, fieldName: String) {
 fun List<Abci.StringEvent>.msgEventsToObjectNodePrint(protoPrinter: JsonFormat.Printer) =
     this.map { OBJECT_MAPPER.readTree(protoPrinter.preservingProtoFieldNames().print(it)) }
 
-/**
- * Safely decodes a base64-encoded string to UTF-8 text.
- * If the decoded bytes are not valid UTF-8 or contain binary data (invalid control characters),
- * returns the original base64 string.
- *
- * @param base64Text The potentially base64-encoded string
- * @return The decoded UTF-8 text if valid, otherwise the original string
- */
-private fun safeDecodeBase64ToText(base64Text: String?): String? {
-    if (base64Text.isNullOrEmpty()) {
-        return base64Text
-    }
-
-    return try {
-        val isBase64Encoded = base64Text.length % 4 == 0 &&
-            base64Text.matches(Regex("^[A-Za-z0-9+/=]+\$"))
-        if (isBase64Encoded) {
-            val decodedBytes = Base64.getDecoder().decode(base64Text)
-            val decoded = try {
-                String(decodedBytes, Charsets.UTF_8)
-            } catch (e: Exception) {
-                // Invalid UTF-8, keep original base64
-                return base64Text
-            }
-            // If decoding produced the same string, it wasn't actually base64 or was binary
-            if (decoded == base64Text) {
-                base64Text
-            } else {
-                // Validate decoded result doesn't contain invalid control characters
-                val hasInvalidChars = decoded.any {
-                    val code = it.code
-                    // Control chars < 32 except tab(9), LF(10), CR(13)
-                    code < 32 && code !in listOf(9, 10, 13)
-                }
-                if (hasInvalidChars) {
-                    // Contains binary data, keep original base64
-                    base64Text
-                } else {
-                    // Valid UTF-8 text, use decoded value
-                    decoded
-                }
-            }
-        } else {
-            // Not base64-encoded, use as-is
-            base64Text
-        }
-    } catch (e: Exception) {
-        // decoding failed, keep original
-        base64Text
-    }
-}
-
 fun List<Types.Event>.txEventsToObjectNodePrint(protoPrinter: JsonFormat.Printer) =
     this.map { event ->
         event.toObjectNodePrint(protoPrinter).let { node ->
@@ -205,8 +152,8 @@ fun List<Types.Event>.txEventsToObjectNodePrint(protoPrinter: JsonFormat.Printer
                 val valueText = it.get("value")?.asText()
 
                 // Keys and values are typically base64-encoded strings that should be decoded
-                val newKey = safeDecodeBase64ToText(keyText)!!
-                val newValue = safeDecodeBase64ToText(valueText)
+                val newKey = keyText.safeDecodeBase64ToText()
+                val newValue = valueText?.safeDecodeBase64ToText()
 
                 newNode.put("key", newKey)
                 newNode.put("value", newValue)

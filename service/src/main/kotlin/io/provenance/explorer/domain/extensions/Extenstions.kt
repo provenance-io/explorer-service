@@ -37,21 +37,56 @@ fun ByteArray.toByteString() = ByteString.copyFrom(this)
 fun ByteString.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
 fun String.fromBase64() = Base64.getDecoder().decode(this).decodeToString()
 
-fun String.tryFromBase64(): String {
-    return if (isBase64(this)) {
-        try {
-            Base64.getDecoder().decode(this).decodeToString()
-        } catch (e: IllegalArgumentException) {
+/**
+ * Safely decodes a base64-encoded string to UTF-8 text.
+ * If the decoded bytes are not valid UTF-8 or contain binary data (invalid control characters),
+ * returns the original base64 string.
+ *
+ * @param base64Text The potentially base64-encoded string
+ * @return The decoded UTF-8 text if valid, otherwise the original string
+ */
+fun String.safeDecodeBase64ToText(): String {
+    if (this.isEmpty()) {
+        return this
+    }
+
+    return try {
+        val isBase64Encoded = this.length % 4 == 0 &&
+            this.matches(Regex("^[A-Za-z0-9+/=]+\$"))
+        if (isBase64Encoded) {
+            val decodedBytes = Base64.getDecoder().decode(this)
+            val decoded = try {
+                String(decodedBytes, Charsets.UTF_8)
+            } catch (e: Exception) {
+                // Invalid UTF-8, keep original base64
+                return this
+            }
+            // If decoding produced the same string, it wasn't actually base64 or was binary
+            if (decoded == this) {
+                this
+            } else {
+                // Validate decoded result doesn't contain invalid control characters
+                val hasInvalidChars = decoded.any {
+                    val code = it.code
+                    // Control chars < 32 except tab(9), LF(10), CR(13)
+                    code < 32 && code !in listOf(9, 10, 13)
+                }
+                if (hasInvalidChars) {
+                    // Contains binary data, keep original base64
+                    this
+                } else {
+                    // Valid UTF-8 text, use decoded value
+                    decoded
+                }
+            }
+        } else {
+            // Not base64-encoded, use as-is
             this
         }
-    } else {
+    } catch (e: Exception) {
+        // decoding failed, keep original
         this
     }
-}
-
-private fun isBase64(str: String): Boolean {
-    if (str.length % 4 != 0) return false
-    return str.matches(Regex("^[A-Za-z0-9+/=]+\$"))
 }
 fun String.fromBase64ToMAddress() = Base64.getDecoder().decode(this).toByteString().toMAddress()
 fun String.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())

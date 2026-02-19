@@ -31,21 +31,61 @@ class ExtensionsKtTest {
     }
 
     @Test
-    fun `test tryFromBase64 with various cases`() {
+    fun `test safeDecodeBase64ToText with various cases`() {
         val base64String = "SGVsbG8gd29ybGQ="
         val expectedDecodedString = "Hello world"
-        assertEquals(expectedDecodedString, base64String.tryFromBase64(), "Valid Base64 string should decode to 'Hello world'")
+        assertEquals(expectedDecodedString, base64String.safeDecodeBase64ToText(), "Valid Base64 string should decode to 'Hello world'")
 
         val invalidBase64String = "Hello world"
         val expectedInvalidOutput = invalidBase64String
-        assertEquals(expectedInvalidOutput, invalidBase64String.tryFromBase64(), "Invalid Base64 string should return the original string")
+        assertEquals(expectedInvalidOutput, invalidBase64String.safeDecodeBase64ToText(), "Invalid Base64 string should return the original string")
 
         val emptyString = ""
         val expectedEmptyOutput = emptyString
-        assertEquals(expectedEmptyOutput, emptyString.tryFromBase64(), "Empty string should return the original string")
+        assertEquals(expectedEmptyOutput, emptyString.safeDecodeBase64ToText(), "Empty string should return the original string")
 
         val malformedBase64String = "SGVsbG8gd29ybGQ"
         val expectedMalformedOutput = malformedBase64String
-        assertEquals(expectedMalformedOutput, malformedBase64String.tryFromBase64(), "Malformed Base64 string should return the original string")
+        assertEquals(expectedMalformedOutput, malformedBase64String.safeDecodeBase64ToText(), "Malformed Base64 string should return the original string")
+    }
+
+    @Test
+    fun `test safeDecodeBase64ToText handles binary data correctly`() {
+        // Test 1: Valid base64-encoded text should decode correctly
+        val base64Text = "cmVjZWl2ZXI=" // base64 of "receiver"
+        val decodedText = base64Text.safeDecodeBase64ToText()
+        assertEquals("receiver", decodedText, "Valid base64-encoded text should decode correctly")
+
+        // Test 2: Binary data (signature) should remain as base64
+        val base64Signature = "7fdg7Gf9At3ICCzOABRqLCCmPLVktdVzV1KMLTa6ZXACwMesljgKAj2C5Qex614pibFmqMNaIdVUQCI5CNwqiQ=="
+        val signatureResult = base64Signature.safeDecodeBase64ToText()
+        assertEquals(base64Signature, signatureResult, "Binary data (signatures) should remain as base64")
+
+        // Test 3: acc_seq field (text) should decode correctly
+        val base64AccSeq = "cGIxbGE4Z3R0eDJscHI2YWhhcmZnZDJkeDc4cHR6d3Blbmh1cDhxeDgvMjk0ODUx" // base64 of "pb1la8gttx2lpr6aharfgd2dx78ptzwpenhup8qx8/294851"
+        val accSeqResult = base64AccSeq.safeDecodeBase64ToText()
+        assertEquals("pb1la8gttx2lpr6aharfgd2dx78ptzwpenhup8qx8/294851", accSeqResult, "acc_seq should decode to valid text")
+
+        // Test 4: module field (text) should decode correctly
+        val base64Module = "ZXhjaGFuZ2U=" // base64 of "exchange"
+        val moduleResult = base64Module.safeDecodeBase64ToText()
+        assertEquals("exchange", moduleResult, "module should decode to valid text")
+
+        // Test 5: Non-base64 string should be returned as-is
+        val plainText = "receiver"
+        val plainTextResult = plainText.safeDecodeBase64ToText()
+        assertEquals("receiver", plainTextResult, "Non-base64 strings should be returned as-is")
+
+        // Test 6: Empty string should return empty string
+        val emptyResult = "".safeDecodeBase64ToText()
+        assertEquals("", emptyResult, "Empty string should return empty string")
+
+        // Test 7: Binary data with invalid control characters should remain as base64
+        // Create a base64 string that decodes to binary bytes (not valid UTF-8)
+        val binaryBytes = byteArrayOf(0x1E, 0x4D, 0x4D, 0x27, 0x7E, 0x0A) // Similar to corrupted "4M4M'~\n"
+        val base64Binary = java.util.Base64.getEncoder().encodeToString(binaryBytes)
+        val binaryResult = base64Binary.safeDecodeBase64ToText()
+        // Should keep as base64 since it contains invalid control characters
+        assertEquals(base64Binary, binaryResult, "Binary data with invalid control chars should remain as base64")
     }
 }
