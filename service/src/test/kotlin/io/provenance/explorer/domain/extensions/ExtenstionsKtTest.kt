@@ -87,5 +87,10 @@ class ExtensionsKtTest {
         val binaryResult = base64Binary.safeDecodeBase64ToText()
         // Should keep as base64 since it contains invalid control characters
         assertEquals(base64Binary, binaryResult, "Binary data with invalid control chars should remain as base64")
+
+        // Test 8: Coin amount string that looks like base64 but decodes to binary should remain as-is
+        val coinAmount = "78000000000nfgrd"
+        val coinAmountResult = coinAmount.safeDecodeBase64ToText()
+        assertEquals(coinAmount, coinAmountResult, "Coin amount string that looks like base64 but decodes to binary should remain as original")
     }
 }
