@@ -148,8 +148,13 @@ fun List<Types.Event>.txEventsToObjectNodePrint(protoPrinter: JsonFormat.Printer
             val newArray = JSON_NODE_FACTORY.arrayNode()
             oldArray.forEach {
                 val newNode = JSON_NODE_FACTORY.objectNode()
-                val newKey = it.get("key").asText().tryFromBase64()
-                val newValue = it.get("value")?.asText()?.tryFromBase64()
+                val keyText = it.get("key").asText()
+                val valueText = it.get("value")?.asText()
+
+                // Keys and values are typically base64-encoded strings that should be decoded
+                val newKey = keyText.safeDecodeBase64ToText()
+                val newValue = valueText?.safeDecodeBase64ToText()
+
                 newNode.put("key", newKey)
                 newNode.put("value", newValue)
                 newArray.add(newNode)
