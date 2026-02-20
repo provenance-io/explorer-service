@@ -662,11 +662,12 @@ class BlockAndTxProcessor(
                         else -> logger.debug("This typeUrl is not yet supported in as an ibc ledger msg: ${any.typeUrl}")
                             .let { return@forEachIndexed }
                     }
+                    val log = tx.txResponse.logsList.getOrNull(idx)
                     when (ledger.ackType) {
                         IbcAckType.ACKNOWLEDGEMENT, IbcAckType.TIMEOUT ->
                             IbcLedgerRecord.findMatchingRecord(ledger, txInfo.txHash)?.let {
                                 txUpdate.apply {
-                                    this.ibcLedgers.add(ibcService.buildIbcLedger(ledger, txInfo, it))
+                                    this.ibcLedgers.add(ibcService.buildIbcLedger(ledger, txInfo, it, log))
                                     this.ibcLedgerAcks.add(ibcService.buildIbcLedgerAck(ledger, txInfo, it.id.value))
                                 }
                             } ?: throw InvalidArgumentException(
@@ -680,7 +681,7 @@ class BlockAndTxProcessor(
                                 }
                             } ?: if (ledger.changesEffected) {
                                 txUpdate.apply {
-                                    this.ibcLedgers.add(ibcService.buildIbcLedger(ledger, txInfo, null))
+                                    this.ibcLedgers.add(ibcService.buildIbcLedger(ledger, txInfo, null, log))
                                 }
                                 successfulRecvHashes.add(IbcLedgerRecord.getUniqueHash(ledger))
                             } else if (successfulRecvHashes.contains(IbcLedgerRecord.getUniqueHash(ledger))) {
@@ -704,7 +705,7 @@ class BlockAndTxProcessor(
                                 )
                             }
                         IbcAckType.TRANSFER ->
-                            txUpdate.apply { this.ibcLedgers.add(ibcService.buildIbcLedger(ledger, txInfo, null)) }
+                            txUpdate.apply { this.ibcLedgers.add(ibcService.buildIbcLedger(ledger, txInfo, null, log)) }
                         else -> logger.debug("Invalid IBC ack type: ${ledger.ackType}").let { return@forEachIndexed }
                     }
                 }

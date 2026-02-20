@@ -150,7 +150,7 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
                 ?.let { IbcLedgerRecord.wrapRow(it) }
         }
 
-        fun buildInsert(ledger: LedgerInfo, txData: TxData, match: IbcLedgerRecord?) = transaction {
+        fun buildInsert(ledger: LedgerInfo, txData: TxData, match: IbcLedgerRecord?, log: Abci.ABCIMessageLog?) = transaction {
             listOf(
                 0,
                 match?.dstChainName ?: ledger.channel!!.dstChainName,
@@ -163,7 +163,7 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
                 match?.toAddress ?: ledger.toAddress,
                 match?.passThroughAddrId ?: ledger.passThroughAddress!!.id.value,
                 match?.passThroughAddr ?: ledger.passThroughAddress!!.accountAddress,
-                match?.logs ?: ledger.logs,
+                match?.logs ?: log,
                 match?.blockHeight ?: txData.blockHeight,
                 match?.txHashId ?: -1,
                 match?.txHash ?: txData.txHash,

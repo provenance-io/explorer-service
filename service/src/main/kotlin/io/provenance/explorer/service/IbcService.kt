@@ -61,8 +61,8 @@ class IbcService(
         IbcChannelRecord.getOrInsert(port, channel, channelRes.await(), client.await(), escrowAccount)
     }
 
-    fun buildIbcLedger(ledger: LedgerInfo, txData: TxData, match: IbcLedgerRecord?) =
-        IbcLedgerRecord.buildInsert(ledger, txData, match)
+    fun buildIbcLedger(ledger: LedgerInfo, txData: TxData, match: IbcLedgerRecord?, log: cosmos.base.abci.v1beta1.Abci.ABCIMessageLog?) =
+        IbcLedgerRecord.buildInsert(ledger, txData, match, log)
 
     fun buildIbcLedgerAck(ledger: LedgerInfo, txData: TxData, ledgerId: Int) =
         IbcLedgerAckRecord.buildInsert(ledger, txData, ledgerId)
