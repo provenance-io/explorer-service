@@ -9,6 +9,7 @@ import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockTxCountsCacheRecord
 import io.provenance.explorer.domain.entities.BlockTxRetryRecord
+import io.provenance.explorer.domain.entities.BlockTxRetryTable
 import io.provenance.explorer.domain.entities.CacheKeys
 import io.provenance.explorer.domain.entities.ChainMarketRateStatsRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
@@ -220,14 +221,44 @@ class ScheduledTaskService(
     @Scheduled(initialDelay = 0L, fixedDelay = 5000L)
     fun retryBlockTxs() {
         logger.debug("Retrying block/tx records")
-        BlockTxRetryRecord.getRecordsToRetry().map { height ->
-            logger.info("Retrying block/tx record at $height.")
+        val maxRetries = props.blockRetryMaxAttempts
+        val baseBackoffSeconds = props.blockRetryInitialBackoffSeconds
+        val maxBackoffSeconds = props.blockRetryMaxBackoffSeconds
+
+        BlockTxRetryRecord.getRecordsToRetry(maxRetries, baseBackoffSeconds).map { height ->
+            val retryRecord = transaction {
+                BlockTxRetryRecord.find { BlockTxRetryTable.height eq height }.firstOrNull()
+            }
+
+            if (retryRecord == null) {
+                logger.warn("Retry record for height $height not found, skipping")
+                return@map null
+            }
+
+            // Calculate exponential backoff: min(initial * 2^retryCount, maxBackoff)
+            val backoffSeconds = minOf(
+                baseBackoffSeconds * (1L shl retryRecord.retryCount),
+                maxBackoffSeconds
+            )
+
+            // Check if enough time has passed since last retry
+            val now = LocalDateTime.now()
+            val lastRetry = retryRecord.lastRetryTimestamp
+            if (lastRetry != null) {
+                val secondsSinceLastRetry = java.time.Duration.between(lastRetry, now).seconds
+                if (secondsSinceLastRetry < backoffSeconds) {
+                    logger.debug("Block $height not ready for retry yet. Last retry: $lastRetry, need to wait ${backoffSeconds - secondsSinceLastRetry} more seconds")
+                    return@map null
+                }
+            }
+
+            logger.info("Retrying block/tx record at $height (attempt ${retryRecord.retryCount + 1}/$maxRetries)")
             var retryException: Exception? = null
             val block = try {
                 blockAndTxProcessor.saveBlockEtc(blockService.getBlockAtHeightFromChain(height), Pair(true, false))!!
             } catch (e: Exception) {
                 retryException = e
-                logger.error("Error saving block $height on retry.", e)
+                logger.error("Error saving block $height on retry attempt ${retryRecord.retryCount + 1}.", e)
                 null
             }
 
@@ -242,10 +273,18 @@ class ScheduledTaskService(
                 dbTxCount == txCount
             } ?: false
 
-            logger.info("Finished retrying block/tx $height with success status: $success")
-            BlockTxRetryRecord.updateRecord(height, success, retryException)
-            height
-        }.let { if (it.isNotEmpty()) BlockTxRetryRecord.deleteRecords(it) }
+            val newRetryCount = retryRecord.retryCount + 1
+            if (success) {
+                logger.info("Successfully retried block/tx $height after $newRetryCount attempt(s)")
+            } else if (newRetryCount >= maxRetries) {
+                logger.error("Block $height failed after $maxRetries retry attempts. Giving up.")
+            } else {
+                logger.warn("Block $height retry attempt $newRetryCount failed. Will retry again after ${backoffSeconds * 2} seconds")
+            }
+
+            BlockTxRetryRecord.updateRecord(height, success, retryException, maxRetries)
+            if (success) height else null
+        }.filterNotNull().let { if (it.isNotEmpty()) BlockTxRetryRecord.deleteRecords(it) }
     }
 
     @Scheduled(initialDelay = 0L, fixedDelay = 300000L) // Every 5 minutes
