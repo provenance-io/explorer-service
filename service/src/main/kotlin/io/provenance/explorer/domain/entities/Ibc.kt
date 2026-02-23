@@ -163,7 +163,7 @@ class IbcLedgerRecord(id: EntityID<Int>) : IntEntity(id) {
                 match?.toAddress ?: ledger.toAddress,
                 match?.passThroughAddrId ?: ledger.passThroughAddress!!.id.value,
                 match?.passThroughAddr ?: ledger.passThroughAddress!!.accountAddress,
-                match?.logs ?: log,
+                match?.logs ?: (log ?: Abci.ABCIMessageLog.getDefaultInstance()),
                 match?.blockHeight ?: txData.blockHeight,
                 match?.txHashId ?: -1,
                 match?.txHash ?: txData.txHash,
