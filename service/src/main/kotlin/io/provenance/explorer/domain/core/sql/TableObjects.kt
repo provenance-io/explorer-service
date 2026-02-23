@@ -25,18 +25,25 @@ fun List<Any?>.toProcedureObject() =
         if (value == null) {
             "null"
         } else {
-            when (value) {
-                is LocalDateTime -> "'${value.toProcedureObject()}'"
-                is GeneratedMessageV3 -> "'${value.toProcedureObject()}'"
-                is Int, is Double, is BigDecimal, is Long -> value.toString()
-                is String -> "'${value.replaceSingleQuotes()}'"
-                is Boolean -> value.toString()
-                is ObjectNode -> "'$value'"
-                is Float -> value.toString()
-                is Short -> value.toString()
-                is Byte -> value.toString()
-                else -> throw IllegalArgumentException(
-                    "Unsupported type in toProcedureObject: ${value.javaClass.name}, value: $value."
+            try {
+                when (value) {
+                    is LocalDateTime -> "'${value.toProcedureObject()}'"
+                    is GeneratedMessageV3 -> "'${value.toProcedureObject()}'"
+                    is Int, is Double, is BigDecimal, is Long -> value.toString()
+                    is String -> "'${value.replaceSingleQuotes()}'"
+                    is Boolean -> value.toString()
+                    is ObjectNode -> "'$value'"
+                    is Float -> value.toString()
+                    is Short -> value.toString()
+                    is Byte -> value.toString()
+                    else -> throw IllegalArgumentException(
+                        "Unsupported type in toProcedureObject: ${value.javaClass.name}, value: ${value.toString().take(200)}."
+                    )
+                }
+            } catch (e: Exception) {
+                throw IllegalArgumentException(
+                    "Error serializing value of type ${value.javaClass.name} in toProcedureObject: ${e.message}. Value: ${value.toString().take(200)}",
+                    e
                 )
             }
         }
