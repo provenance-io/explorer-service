@@ -32,7 +32,12 @@ fun List<Any?>.toProcedureObject() =
                 is String -> "'${value.replaceSingleQuotes()}'"
                 is Boolean -> value.toString()
                 is ObjectNode -> "'$value'"
-                else -> "not a thing"
+                is Float -> value.toString()
+                is Short -> value.toString()
+                is Byte -> value.toString()
+                else -> throw IllegalArgumentException(
+                    "Unsupported type in toProcedureObject: ${value.javaClass.name}, value: $value."
+                )
             }
         }
     }
