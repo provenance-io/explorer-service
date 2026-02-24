@@ -248,7 +248,8 @@ class TxCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                        tx.tx_timestamp,
                        mtype.type,
                        ne.denom,
-                       sum(ne.volume) as denom_total
+                       sum(ne.volume) as denom_total,
+                       sum(ne.price_amount) as price_amount
                 from tx_cache tx
                          join tx_msg_event as tme on tx.id = tme.tx_hash_id
                          join tx_message_type as mtype on mtype.id = tme.tx_msg_type_id
