@@ -9,7 +9,6 @@ import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.BlockTxCountsCacheRecord
 import io.provenance.explorer.domain.entities.BlockTxRetryRecord
-import io.provenance.explorer.domain.entities.BlockTxRetryTable
 import io.provenance.explorer.domain.entities.CacheKeys
 import io.provenance.explorer.domain.entities.ChainMarketRateStatsRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
@@ -225,15 +224,8 @@ class ScheduledTaskService(
         val baseBackoffSeconds = props.blockRetryInitialBackoffSeconds
         val maxBackoffSeconds = props.blockRetryMaxBackoffSeconds
 
-        BlockTxRetryRecord.getRecordsToRetry(maxRetries, baseBackoffSeconds).map { height ->
-            val retryRecord = transaction {
-                BlockTxRetryRecord.find { BlockTxRetryTable.height eq height }.firstOrNull()
-            }
-
-            if (retryRecord == null) {
-                logger.warn("Retry record for height $height not found, skipping")
-                return@map null
-            }
+        BlockTxRetryRecord.getRecordsToRetry(maxRetries, maxBackoffSeconds).map { retryRecord ->
+            val height = retryRecord.height
 
             // Calculate exponential backoff: min(initial * 2^retryCount, maxBackoff)
             val backoffSeconds = minOf(
@@ -247,7 +239,6 @@ class ScheduledTaskService(
             if (lastRetry != null) {
                 val secondsSinceLastRetry = java.time.Duration.between(lastRetry, now).seconds
                 if (secondsSinceLastRetry < backoffSeconds) {
-                    logger.debug("Block $height not ready for retry yet. Last retry: $lastRetry, need to wait ${backoffSeconds - secondsSinceLastRetry} more seconds")
                     return@map null
                 }
             }

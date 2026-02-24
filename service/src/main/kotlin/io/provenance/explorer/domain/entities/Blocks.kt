@@ -56,6 +56,7 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import java.math.BigDecimal
 import java.sql.ResultSet
 import java.time.LocalDateTime
@@ -439,21 +440,14 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<BlockTxRetryRecord>(BlockTxRetryTable) {
 
         fun insertOrUpdate(height: Int, e: Exception) = transaction {
-            val existing = BlockTxRetryRecord.find { BlockTxRetryTable.height eq height }.firstOrNull()
-            if (existing != null) {
-                // Reset retry count if updating an existing record that was marked as retried but failed
-                if (existing.retried && !existing.success) {
-                    existing.retryCount = 0
-                    existing.retried = false
-                    existing.lastRetryTimestamp = null
-                }
-                existing.errorBlock = e.stackTraceToString()
-            } else {
+            val rowsUpdated = BlockTxRetryTable.update({ BlockTxRetryTable.height eq height }) {
+                it[this.errorBlock] = e.stackTraceToString()
+            }
+
+            if (rowsUpdated == 0) {
                 BlockTxRetryTable.insertIgnore {
                     it[this.height] = height
                     it[this.errorBlock] = e.stackTraceToString()
-                    it[this.retryCount] = 0
-                    it[this.lastRetryTimestamp] = null
                 }
             }
         }
@@ -464,8 +458,6 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
                 it[this.retried] = true
                 it[this.success] = false
                 it[this.errorBlock] = "NON BLOCKING ERROR: Logged to know what happened, but didnt stop processing.\n " + e.stackTraceToString()
-                it[this.retryCount] = 0
-                it[this.lastRetryTimestamp] = null
             }
         }
 
@@ -473,13 +465,11 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
             BlockTxRetryTable.insertIgnore {
                 it[this.height] = height
                 it[this.errorBlock] = "NON BLOCKING ERROR: Logged to know what happened, but didnt stop processing.\n " + e.stackTraceToString()
-                it[this.retryCount] = 0
-                it[this.lastRetryTimestamp] = null
             }
         }
 
-        fun getRecordsToRetry(maxRetries: Int, minBackoffSeconds: Long) = transaction {
-            val cutoffTime = LocalDateTime.now().minusSeconds(minBackoffSeconds)
+        fun getRecordsToRetry(maxRetries: Int, maxBackoffSeconds: Long) = transaction {
+            val cutoffTime = LocalDateTime.now().minusSeconds(maxBackoffSeconds)
             BlockTxRetryRecord
                 .find {
                     (BlockTxRetryTable.retried eq false) and
@@ -487,10 +477,11 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
                     (BlockTxRetryTable.retryCount less maxRetries) and
                     ((BlockTxRetryTable.lastRetryTimestamp.isNull()) or (BlockTxRetryTable.lastRetryTimestamp less cutoffTime))
                 }
+                .orderBy(Pair(BlockTxRetryTable.retryCount, SortOrder.ASC))
+                .orderBy(Pair(BlockTxRetryTable.lastRetryTimestamp, SortOrder.ASC))
                 .orderBy(Pair(BlockTxRetryTable.height, SortOrder.ASC))
                 .limit(50)
                 .toList()
-                .map { it.height }
         }
 
         fun updateRecord(height: Int, success: Boolean, e: Exception?, maxRetries: Int) = transaction {
