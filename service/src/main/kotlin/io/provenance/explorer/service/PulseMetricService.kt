@@ -2141,7 +2141,7 @@ class PulseMetricService(
             val denomMetadata = pulseAssetDenomMetadata(denom)
             val denomExp = denomExponent(denomMetadata) ?: 1
             val denomPow = inversePowerOfTen(denomExp)
-            val denomPrice = pulseLastTradedAssetPrice(denom)
+            val usdPow = inversePowerOfTen(6)
 
             PagedResults(
                 pages = pr.pages,
@@ -2154,7 +2154,13 @@ class PulseMetricService(
                         else
                             BigDecimal.ZERO
 
-                    val denomQuoteValue = denomTotal.times(denomPrice)
+                    val denomQuoteValue = if (tx["price_amount"] != null) {
+                        BigDecimal(tx["price_amount"].toString()).times(usdPow)
+                    } else {
+                        // Fallback to last traded price if NAV price is not available
+                        val pulseLastTradedPrice = pulseLastTradedAssetPrice(denom)
+                        denomTotal.times(pulseLastTradedPrice)
+                    }
                     TransactionSummary(
                         txHash = tx["hash"].toString(),
                         block = tx["height"] as Int,
