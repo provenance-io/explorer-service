@@ -51,7 +51,6 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.javatime.JavaLocalDateTimeColumnType
 import org.jetbrains.exposed.sql.javatime.datetime
-import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.sum
@@ -468,8 +467,8 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
             }
         }
 
-        fun getRecordsToRetry(maxRetries: Int, maxBackoffSeconds: Long) = transaction {
-            val cutoffTime = LocalDateTime.now().minusSeconds(maxBackoffSeconds)
+        fun getRecordsToRetry(maxRetries: Int, minBackoffSeconds: Long) = transaction {
+            val cutoffTime = LocalDateTime.now().minusSeconds(minBackoffSeconds)
             BlockTxRetryRecord
                 .find {
                     (BlockTxRetryTable.retried eq false) and

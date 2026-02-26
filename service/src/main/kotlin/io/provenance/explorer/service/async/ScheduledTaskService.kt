@@ -224,7 +224,7 @@ class ScheduledTaskService(
         val baseBackoffSeconds = props.blockRetryInitialBackoffSeconds
         val maxBackoffSeconds = props.blockRetryMaxBackoffSeconds
 
-        BlockTxRetryRecord.getRecordsToRetry(maxRetries, maxBackoffSeconds).map { retryRecord ->
+        BlockTxRetryRecord.getRecordsToRetry(maxRetries, baseBackoffSeconds).map { retryRecord ->
             val height = retryRecord.height
 
             // Calculate exponential backoff: min(initial * 2^retryCount, maxBackoff)
@@ -243,13 +243,14 @@ class ScheduledTaskService(
                 }
             }
 
-            logger.info("Retrying block/tx record at $height (attempt ${retryRecord.retryCount + 1}/$maxRetries)")
+            val newRetryCount = retryRecord.retryCount + 1
+            logger.info("Retrying block/tx record at $height (attempt $newRetryCount/$maxRetries)")
             var retryException: Exception? = null
             val block = try {
                 blockAndTxProcessor.saveBlockEtc(blockService.getBlockAtHeightFromChain(height), Pair(true, false))!!
             } catch (e: Exception) {
                 retryException = e
-                logger.error("Error saving block $height on retry attempt ${retryRecord.retryCount + 1}.", e)
+                logger.error("Error saving block $height on retry attempt $newRetryCount.", e)
                 null
             }
 
@@ -264,15 +265,7 @@ class ScheduledTaskService(
                 dbTxCount == txCount
             } ?: false
 
-            val newRetryCount = retryRecord.retryCount + 1
-            if (success) {
-                logger.info("Successfully retried block/tx $height after $newRetryCount attempt(s)")
-            } else if (newRetryCount >= maxRetries) {
-                logger.error("Block $height failed after $maxRetries retry attempts. Giving up.")
-            } else {
-                logger.warn("Block $height retry attempt $newRetryCount failed. Will retry again after ${backoffSeconds * 2} seconds")
-            }
-
+            logger.info("Finished retrying block/tx $height with success status: $success after $newRetryCount attempt(s)")
             BlockTxRetryRecord.updateRecord(height, success, retryException, maxRetries)
             if (success) height else null
         }.filterNotNull().let { if (it.isNotEmpty()) BlockTxRetryRecord.deleteRecords(it) }
