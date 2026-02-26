@@ -42,6 +42,7 @@ import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.Sum
 import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.and
@@ -50,6 +51,7 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.javatime.JavaLocalDateTimeColumnType
 import org.jetbrains.exposed.sql.javatime.datetime
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.sum
@@ -427,6 +429,8 @@ object BlockTxRetryTable : IdTable<Int>(name = "block_tx_retry") {
     val retried = bool("retried").default(false)
     val success = bool("success").default(false)
     val errorBlock = text("error_block").nullable().default(null)
+    val retryCount = integer("retry_count").default(0)
+    val lastRetryTimestamp = datetime("last_retry_timestamp").nullable().default(null)
     override val id = height.entityId()
 
     override val primaryKey = PrimaryKey(height)
@@ -464,18 +468,33 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
             }
         }
 
-        fun getRecordsToRetry() = transaction {
+        fun getRecordsToRetry(maxRetries: Int, minBackoffSeconds: Long) = transaction {
+            val cutoffTime = LocalDateTime.now().minusSeconds(minBackoffSeconds)
             BlockTxRetryRecord
-                .find { (BlockTxRetryTable.retried eq false) and (BlockTxRetryTable.success eq false) }
+                .find {
+                    (BlockTxRetryTable.retried eq false) and
+                    (BlockTxRetryTable.success eq false) and
+                    (BlockTxRetryTable.retryCount less maxRetries) and
+                    ((BlockTxRetryTable.lastRetryTimestamp.isNull()) or (BlockTxRetryTable.lastRetryTimestamp less cutoffTime))
+                }
+                .orderBy(Pair(BlockTxRetryTable.retryCount, SortOrder.ASC))
+                .orderBy(Pair(BlockTxRetryTable.lastRetryTimestamp, SortOrder.ASC))
                 .orderBy(Pair(BlockTxRetryTable.height, SortOrder.ASC))
                 .limit(50)
-                .map { it.height }
+                .toList()
         }
 
-        fun updateRecord(height: Int, success: Boolean, e: Exception?) = transaction {
-            BlockTxRetryRecord.find { BlockTxRetryTable.height eq height }.first().apply {
-                this.retried = true
-                this.success = success
+        fun updateRecord(height: Int, success: Boolean, e: Exception?, maxRetries: Int) = transaction {
+            BlockTxRetryRecord.find { BlockTxRetryTable.height eq height }.firstOrNull()?.apply {
+                this.retryCount = this.retryCount + 1
+                this.lastRetryTimestamp = LocalDateTime.now()
+
+                // Only mark as retried if we've reached max retries or succeeded
+                if (success || this.retryCount >= maxRetries) {
+                    this.retried = true
+                    this.success = success
+                }
+
                 if (e != null) {
                     this.errorBlock = e.stackTraceToString()
                 }
@@ -496,6 +515,8 @@ class BlockTxRetryRecord(id: EntityID<Int>) : IntEntity(id) {
     var retried by BlockTxRetryTable.retried
     var success by BlockTxRetryTable.success
     var errorBlock by BlockTxRetryTable.errorBlock
+    var retryCount by BlockTxRetryTable.retryCount
+    var lastRetryTimestamp by BlockTxRetryTable.lastRetryTimestamp
 }
 
 object TxProcessingFailureTable : IdTable<Int>(name = "tx_processing_failure") {

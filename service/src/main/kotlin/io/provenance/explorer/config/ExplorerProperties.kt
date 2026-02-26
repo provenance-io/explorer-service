@@ -21,7 +21,10 @@ class ExplorerProperties(
     val swaggerProtocol: String,
     val pricingUrl: String,
     // [0] is the beginning of the range, [1] is the end of the range, inclusive
-    val feeBugRangeOneEleven: List<Int>
+    val feeBugRangeOneEleven: List<Int>,
+    val blockRetryMaxAttempts: Int = 10,
+    val blockRetryInitialBackoffSeconds: Long = 30,
+    val blockRetryMaxBackoffSeconds: Long = 3600
 ) {
 
     fun initialHistoricalDays() = initialHistoricalDayCount.toInt()
