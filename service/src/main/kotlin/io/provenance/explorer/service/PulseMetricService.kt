@@ -192,7 +192,7 @@ class PulseMetricService(
         subtype: String? = null,
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null,
-        dataSourceFn: () -> PulseMetric
+        dataSourceFn: (LocalDate?) -> PulseMetric
     ): PulseMetric = transaction {
         val today = atDateTime?.toLocalDate() ?: nowUTC().toLocalDate()
         val todayCache = fromPulseMetricCache(today, type, subtype)
@@ -206,7 +206,8 @@ class PulseMetricService(
         )?.data == null
 
         if (todayCache == null || bustCache || isBackFillAndMissing) {
-            val metric = dataSourceFn()
+            // Pass the determined cache date to the data source function to ensure consistency when needed
+            val metric = dataSourceFn(today)
             val previousMetricDate = if (atDateTime != null) {
                 atDateTime.minusDays(1).toLocalDate()
             } else {
@@ -1006,11 +1007,16 @@ class PulseMetricService(
             }
         }
 
-    private fun loanLedgerEffectiveDateFilter(atDateTime: LocalDateTime? = null) =
+    private fun loanLedgerEffectiveDateFilter(
+        atDateTime: LocalDateTime? = null,
+        cacheDate: LocalDate? = null
+    ) =
         if (atDateTime != null) {
             atDateTime.startOfDay()
         } else {
-            nowUTC().startOfDay()
+            // Use the cache date if provided. This prevents timing issues where the date could change between
+            // starting the cache and filtering the data (e.g., if execution crosses midnight)
+            (cacheDate ?: nowUTC().toLocalDate()).atStartOfDay()
         }
 
     private fun loanLedgerTotalBalance(
@@ -1094,11 +1100,12 @@ class PulseMetricService(
             type = PulseCacheType.LOAN_LEDGER_PAYMENTS_METRIC,
             range = range,
             atDateTime = atDateTime
-        ) {
+        ) { cacheDate ->
             getLoanLedger("payments", atDateTime)
                 .filter {
                     it.effectiveDate.startOfDay() == loanLedgerEffectiveDateFilter(
-                        atDateTime
+                        atDateTime,
+                        cacheDate
                     )
                 }
                 .sumOf { it.entryAmount }.let {
@@ -1151,10 +1158,11 @@ class PulseMetricService(
             type = PulseCacheType.LOAN_LEDGER_TOTAL_PAYMENTS_METRIC,
             range = range,
             atDateTime = atDateTime
-        ) {
+        ) { cacheDate ->
             getLoanLedger("payments", atDateTime).count {
                 it.effectiveDate.startOfDay() == loanLedgerEffectiveDateFilter(
-                    atDateTime
+                    atDateTime,
+                    cacheDate
                 )
             }.let {
                 PulseMetric.build(
@@ -1206,11 +1214,12 @@ class PulseMetricService(
             type = PulseCacheType.LOAN_LEDGER_DISBURSEMENTS_METRIC,
             range = range,
             atDateTime = atDateTime
-        ) {
+        ) { cacheDate ->
             getLoanLedger("disbursements", atDateTime)
                 .filter {
                     it.effectiveDate.startOfDay() == loanLedgerEffectiveDateFilter(
-                        atDateTime
+                        atDateTime,
+                        cacheDate
                     )
                 }
                 .sumOf { it.entryAmount }.let {
@@ -1262,11 +1271,12 @@ class PulseMetricService(
             type = PulseCacheType.LOAN_LEDGER_DISBURSEMENT_COUNT_METRIC,
             range = range,
             atDateTime = atDateTime
-        ) {
+        ) { cacheDate ->
             getLoanLedger("disbursements", atDateTime)
                 .count {
                     it.effectiveDate.startOfDay() == loanLedgerEffectiveDateFilter(
-                        atDateTime
+                        atDateTime,
+                        cacheDate
                     )
                 }.let {
                     PulseMetric.build(
