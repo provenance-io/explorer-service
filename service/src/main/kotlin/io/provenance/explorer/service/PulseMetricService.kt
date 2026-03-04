@@ -20,8 +20,10 @@ import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.domain.entities.EntityNavEvent
 import io.provenance.explorer.domain.entities.LedgerEntityRecord
 import io.provenance.explorer.domain.entities.LedgerEntitySpecRecord
+import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.NavEvent
 import io.provenance.explorer.domain.entities.NavEventsRecord
+import io.provenance.explorer.domain.entities.NftScopeRecord
 import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.extensions.pageCountOfResults
@@ -105,6 +107,24 @@ class PulseMetricService(
         Caffeine.newBuilder().apply {
             expireAfterWrite(30, TimeUnit.MINUTES)
             maximumSize(100)
+        }.build()
+
+    /**
+     * Returns a map of marker addresses to denoms for markers that should be ignored in value calculations.
+     */
+    private val ignoredMarkersCache: Cache<String, Map<String, String>> =
+        Caffeine.newBuilder().apply {
+            expireAfterWrite(1, TimeUnit.HOURS)
+            maximumSize(1)
+        }.build()
+
+    /**
+     * Returns a set of scope addresses that should be ignored in value calculations
+     */
+    private val ignoredScopeAddressesCache: Cache<String, Set<String>> =
+        Caffeine.newBuilder().apply {
+            expireAfterWrite(1, TimeUnit.HOURS)
+            maximumSize(1)
         }.build()
 
     /* so it turns out that the `usd` in metadata nav events
@@ -593,12 +613,19 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            NavEventsRecord.totalMetadataNavs(atDateTime).let {
-                PulseMetric.build(
-                    base = USD_UPPER,
-                    amount = it.times(scopeNAVDecimal)
-                )
-            }
+            val ignoredScopeAddresses = getIgnoredScopeAddresses()
+
+            NavEventsRecord.totalMetadataNavs(atDateTime)
+                .filter { (scopeId, _) ->
+                    scopeId?.let { it !in ignoredScopeAddresses } ?: true
+                }
+                .sumOf { (_, priceAmount) -> priceAmount }
+                .let {
+                    PulseMetric.build(
+                        base = USD_UPPER,
+                        amount = it.times(scopeNAVDecimal)
+                    )
+                }
         }
 
     /**
@@ -777,15 +804,17 @@ class PulseMetricService(
             committedAssetTotals(atDateTime).committedAssetsToValue()
         }
 
-    private fun Map<String, BigDecimal>.committedAssetsToValue() = this.map {
-        calcExchangeTotalValueForAsset(it.key, it.value)
-    }.sumOf { it }
-        .let {
-            PulseMetric.build(
-                base = USD_UPPER,
-                amount = it
-            )
-        }
+    private fun Map<String, BigDecimal>.committedAssetsToValue() = this.let { committedAssets ->
+        val ignoredDenoms = getIgnoredMarkers().values
+        committedAssets.filterKeys { it !in ignoredDenoms }.map {
+            calcExchangeTotalValueForAsset(it.key, it.value)
+        }.sumOf { it }
+    }.let {
+        PulseMetric.build(
+            base = USD_UPPER,
+            amount = it
+        )
+    }
 
     private fun Map<String, BigDecimal>.committedAssetsToVolume() = this.map {
         convertDenomToDisplayUnits(it.key, it.value)
@@ -1527,6 +1556,24 @@ class PulseMetricService(
         10.0.pow(exp.toDouble() * -1).toBigDecimal()
 
     /**
+     * Returns a map of marker addresses to denoms for ignored markers
+     */
+    private fun getIgnoredMarkers(): Map<String, String> =
+        ignoredMarkersCache.get("ignored_markers") {
+            transaction {
+                MarkerCacheRecord.getIgnoredMarkers()
+            }
+        }!!
+
+    private fun getIgnoredScopeAddresses(): Set<String> =
+        ignoredScopeAddressesCache.get("ignored_scope_addresses") {
+            transaction {
+                val ignoredMarkerAddresses = getIgnoredMarkers().keys
+                NftScopeRecord.findScopeAddressesByValueOwners(ignoredMarkerAddresses)
+            }
+        }!!
+
+    /**
      * Build cache of exchange-traded asset summaries using nav events from
      * exchange module for USD-based assets
      */
@@ -2031,13 +2078,16 @@ class PulseMetricService(
      * TODO - this is problematic because it assumes all assets are USD quoted
      */
     fun pulseAssetSummaries(atDateTime: LocalDateTime? = null): List<PulseAssetSummary> {
+        val ignoredDenoms = getIgnoredMarkers().values
         val committedTotals = committedAssetTotals(atDateTime)
-        return committedTotals.keys.distinct().map { denom ->
-            buildAssetSummaryForDenom(denom, atDateTime)
-        }.toMutableList().also {
-            // add FIGR_HELOC supply/price/volume to pulse assets
-            it.add(buildFigureHelocAssetSummary(atDateTime))
-        }
+        return committedTotals.keys.distinct()
+            .filter { it !in ignoredDenoms }
+            .map { denom ->
+                buildAssetSummaryForDenom(denom, atDateTime)
+            }.toMutableList().also {
+                // add FIGR_HELOC supply/price/volume to pulse assets
+                it.add(buildFigureHelocAssetSummary(atDateTime))
+            }
             .sortedWith(
                 compareBy(
                     { it.symbol.isEmpty() },

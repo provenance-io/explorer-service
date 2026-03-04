@@ -2,6 +2,7 @@ package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.OBJECT_MAPPER
 import io.provenance.explorer.domain.core.sql.jsonb
+import io.provenance.explorer.domain.core.sql.toDbQueryList
 import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.models.explorer.NftVOTransferObj
 import io.provenance.explorer.domain.models.explorer.toNftData
@@ -87,6 +88,20 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
 
         fun findWithMissingScope() = transaction {
             NftScopeRecord.find { NftScopeTable.scope.isNull() }.toList()
+        }
+
+        /**
+         * Returns a set of scope addresses that have value_owner_address in the given set of addresses
+         */
+        fun findScopeAddressesByValueOwners(valueOwnerAddresses: Set<String>): Set<String> = transaction {
+            if (valueOwnerAddresses.isEmpty()) return@transaction emptySet()
+
+            val query = """
+                SELECT address FROM nft_scope
+                WHERE scope ->> 'value_owner_address' IN (${valueOwnerAddresses.toDbQueryList()})
+            """.trimIndent()
+
+            query.execAndMap { it.getString("address") }.toSet()
         }
 
         fun insertOrUpdate(uuid: String, address: String, scope: Scope) =

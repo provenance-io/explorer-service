@@ -2,6 +2,7 @@ package io.provenance.explorer.service
 
 import com.google.protobuf.util.JsonFormat
 import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.entities.MarkerCacheRecord
 import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.entities.NftContractSpecRecord
 import io.provenance.explorer.domain.entities.NftScopeRecord
@@ -258,15 +259,21 @@ class NftService(
         }
     }
 
-    fun getScopeTotalForNavEvents() =
-        // TODO could query for marker owned scopes and filter them out here after scope migration
+    fun getScopeTotalForNavEvents() = transaction {
+        val ignoredMarkerAddresses = MarkerCacheRecord.getIgnoredMarkers().keys
+        val ignoredScopeAddresses = NftScopeRecord.findScopeAddressesByValueOwners(ignoredMarkerAddresses)
+
         NavEventsRecord.getLatestNavEvents(
             priceDenoms = listOf(USD_LOWER),
             includeMarkers = false,
             includeScopes = true,
-        ).sumOf {
+        ).filter { navEvent ->
+            // Filter out if scope's value_owner_address points to an ignored marker
+            navEvent.scopeId?.let { it !in ignoredScopeAddresses } ?: true
+        }.sumOf {
             it.calculateUsdPricePerUnit()
         }
+    }
 
     fun populateScopes() = runBlocking {
         NftScopeRecord.findWithMissingScope().forEach {
