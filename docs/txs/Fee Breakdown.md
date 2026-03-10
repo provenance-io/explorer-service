@@ -68,6 +68,10 @@ Fee processing
 * search for tx level event `EventMsgFees` -> this holds all additional fees assessed, in `nhash`
   * This should cover all the known msg fees 
   * Will include recipient
+* **Fallback:** if no EventMsgFees (e.g. fee-grant / granter flows or flat-fee model), use tx-level attribute `additionalfee` when present so that the sum of tx_fee rows equals the actual total charged (base + additional). The chain may emit `tx` events with `basefee`, `additionalfee`, and `total` instead of or in addition to EventMsgFees.
+
+Backfill (flat-fee era txs ingested before the fallback):
+* Procedure `backfill_additionalfee_fees(from_height, to_height)` inserts missing MSG_BASED_FEE rows by reading `additionalfee` from `tx_v2.tx_response.events` (see migration V1_112). Call from SQL: `CALL backfill_additionalfee_fees(from_height, to_height);` After backfill, consider marking affected `tx_gas_cache` as unprocessed and running `update_gas_fee_volume()` so daily/hourly fee aggregates include the new rows.
 * Fetch the set MsgFees from grpc
   * This will match to the defined fees via proposal
 * search for msg level event `assess_custom_msg_fee` -> This holds the custom msg fee from SC, with receiver, can be in usd/nhash

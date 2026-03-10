@@ -964,6 +964,29 @@ class TxFeeRecord(id: EntityID<Int>) : IntEntity(id) {
                 )
                 msgToFee.add(data)
             } ?: msgToFee.addAll(tx.identifyMsgBasedFeesOld(msgFeeClient, height))
+
+            // Fallback: chain may emit tx-level basefee/additionalfee without EventMsgFees (e.g. fee grant flows).
+            // Capture additionalfee so total stored in tx_fee matches actual total charged (base + additional).
+            if (msgToFee.isEmpty() && tx.txResponse.code == 0) {
+                tx.txResponse.eventsList
+                    .firstOrNull { it.type == "tx" && it.attributesList.any { attr -> attr.key == "additionalfee" } }
+                    ?.attributesList?.firstOrNull { it.key == "additionalfee" }
+                    ?.value?.denomAmountToPair()
+                    ?.let { (amountStr, denom) ->
+                        val amount = amountStr.toBigDecimal()
+                        if (amount > BigDecimal.ZERO) {
+                            msgToFee.add(
+                                TxFeeData(
+                                    "msg_based_fee",
+                                    amount,
+                                    denom,
+                                    null,
+                                    null
+                                )
+                            )
+                        }
+                    }
+            }
             return msgToFee
         }
 
