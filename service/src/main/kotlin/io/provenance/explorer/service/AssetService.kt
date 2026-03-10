@@ -40,6 +40,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.springframework.context.annotation.DependsOn
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -47,6 +48,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
 @Service
+@DependsOn("databaseConnect")
 class AssetService(
     private val markerClient: MarkerGrpcClient,
     private val attrClient: AttributeGrpcClient,
