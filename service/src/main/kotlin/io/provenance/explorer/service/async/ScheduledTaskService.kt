@@ -247,7 +247,7 @@ class ScheduledTaskService(
             logger.info("Retrying block/tx record at $height (attempt $newRetryCount/$maxRetries)")
             var retryException: Exception? = null
             val block = try {
-                blockAndTxProcessor.saveBlockEtc(blockService.getBlockAtHeightFromChain(height), Pair(true, false))!!
+                blockAndTxProcessor.saveBlockEtc(blockService.getBlockAtHeightFromChain(height), Pair(true, false))
             } catch (e: Exception) {
                 retryException = e
                 logger.error("Error saving block $height on retry attempt $newRetryCount.", e)
