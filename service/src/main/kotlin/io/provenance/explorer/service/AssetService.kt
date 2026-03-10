@@ -35,6 +35,7 @@ import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.USD_LOWER
 import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.marker.v1.MarkerStatus
+import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.dao.id.EntityID
@@ -57,6 +58,16 @@ class AssetService(
     protected val logger = logger(AssetService::class)
 
     private var assetPricinglastRun: OffsetDateTime? = null
+
+    @PostConstruct
+    fun initializeAssetPricingLastRun() {
+        assetPricinglastRun = transaction {
+            AssetPricingRecord.getLastUpdatedTime()?.let {
+                OffsetDateTime.of(it, ZoneOffset.UTC)
+            }
+        }
+        logger.info("Initialized assetPricinglastRun from database: $assetPricinglastRun")
+    }
 
     fun validateDenom(denom: String) =
         requireNotNullToMessage(MarkerCacheRecord.findByDenom(denom)) { "Denom $denom does not exist." }
@@ -236,6 +247,10 @@ class AssetService(
 
         logger.info("Updating asset pricing, last run at: $assetPricinglastRun")
 
+        val ignoredDenoms = transaction {
+            MarkerCacheRecord.getIgnoredMarkers().values
+        }
+
         val latestPrices = NavEventsRecord.getLatestNavEvents(
             priceDenoms = usdPriceDenoms,
             includeMarkers = true,
@@ -243,7 +258,10 @@ class AssetService(
             fromDate = assetPricinglastRun?.toDateTime()
         )
 
-        latestPrices.filter { it.denom !in usdPriceDenoms }.forEach { price ->
+        latestPrices.filter {
+            it.denom !in usdPriceDenoms &&
+            it.denom !in ignoredDenoms
+        }.forEach { price ->
             if (price.denom != UTILITY_TOKEN) {
                 val marker = getAssetRaw(price.denom!!)
 

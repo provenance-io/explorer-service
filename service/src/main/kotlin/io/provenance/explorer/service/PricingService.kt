@@ -23,7 +23,8 @@ class PricingService(
         val baseMap = transaction {
             MarkerCacheRecord.find {
                 (MarkerCacheTable.status eq MarkerStatus.MARKER_STATUS_ACTIVE.name) and
-                    (MarkerCacheTable.supply greater BigDecimal.ZERO)
+                    (MarkerCacheTable.supply greater BigDecimal.ZERO) and
+                    (MarkerCacheTable.ignoreInValueCalculations eq false)
             }.filterNot {
                 // excluding portfolio manager pools in favor of scope navs
                 // we may be able to remove this after scope data migration

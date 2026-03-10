@@ -42,6 +42,7 @@ object MarkerCacheTable : IntIdTable(name = "marker_cache") {
     val supply = decimal("supply", 100, 10)
     val lastTx = datetime("last_tx_timestamp").nullable()
     val data = jsonb<MarkerCacheTable, MarkerAccount>("data", OBJECT_MAPPER).nullable()
+    val ignoreInValueCalculations = bool("ignore_in_value_calculations").default(false)
 }
 
 enum class BaseDenomType { DENOM, IBC_DENOM }
@@ -109,6 +110,19 @@ class MarkerCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         fun findCountByIbc() = transaction {
             MarkerCacheRecord.find { MarkerCacheTable.markerType eq BaseDenomType.IBC_DENOM.name }.count()
         }
+
+        /**
+         * Returns a map of marker addresses to denoms for markers that should be ignored in value calculations
+         */
+        fun getIgnoredMarkers(): Map<String, String> = transaction {
+            MarkerCacheRecord.find { MarkerCacheTable.ignoreInValueCalculations eq true }
+                .mapNotNull { record ->
+                    record.markerAddress?.let { address ->
+                        address to record.denom
+                    }
+                }
+                .toMap()
+        }
     }
 
     fun toCoinStrWithPrice(price: BigDecimal?) =
@@ -121,6 +135,7 @@ class MarkerCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var supply by MarkerCacheTable.supply
     var lastTx by MarkerCacheTable.lastTx
     var data by MarkerCacheTable.data
+    var ignoreInValueCalculations by MarkerCacheTable.ignoreInValueCalculations
 }
 
 object TokenDistributionAmountsTable : IntIdTable(name = "token_distribution_amounts") {

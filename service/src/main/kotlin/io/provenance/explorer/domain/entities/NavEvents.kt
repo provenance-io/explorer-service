@@ -198,7 +198,7 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
             val fromDateQuery = toDate?.let { "AND block_time <= ?" } ?: ""
 
             val query = """
-                select sum(price_amount)
+                select scope_id, price_amount
                 from (select scope_id, price_amount, row_number() over (partition by scope_id order by block_height desc) as r
                       from nav_events where source = 'metadata' and price_amount > 0 $fromDateQuery ) s
                 where r = 1
@@ -208,13 +208,13 @@ class NavEventsRecord(id: EntityID<Int>) : IntEntity(id) {
                 query.execAndMap(
                     listOf(Pair(JavaLocalDateTimeColumnType(), toDate))
                 ) {
-                    BigDecimal(it.getString(1))
+                    Pair(it.getString("scope_id"), BigDecimal(it.getString("price_amount")))
                 }
             } else {
                 query.execAndMap {
-                    BigDecimal(it.getString(1))
+                    Pair(it.getString("scope_id"), BigDecimal(it.getString("price_amount")))
                 }
-            }.firstOrNull() ?: BigDecimal.ZERO
+            }
         }
 
         fun latestScopeNavsByEntity(
