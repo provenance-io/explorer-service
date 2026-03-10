@@ -35,12 +35,10 @@ import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.USD_LOWER
 import io.provenance.explorer.model.base.USD_UPPER
 import io.provenance.marker.v1.MarkerStatus
-import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.springframework.context.annotation.DependsOn
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -48,7 +46,6 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
 @Service
-@DependsOn("databaseConnect")
 class AssetService(
     private val markerClient: MarkerGrpcClient,
     private val attrClient: AttributeGrpcClient,
@@ -60,16 +57,6 @@ class AssetService(
     protected val logger = logger(AssetService::class)
 
     private var assetPricinglastRun: OffsetDateTime? = null
-
-    @PostConstruct
-    fun initializeAssetPricingLastRun() {
-        assetPricinglastRun = transaction {
-            AssetPricingRecord.getLastUpdatedTime()?.let {
-                OffsetDateTime.of(it, ZoneOffset.UTC)
-            }
-        }
-        logger.info("Initialized assetPricinglastRun from database: $assetPricinglastRun")
-    }
 
     fun validateDenom(denom: String) =
         requireNotNullToMessage(MarkerCacheRecord.findByDenom(denom)) { "Denom $denom does not exist." }
@@ -245,6 +232,15 @@ class AssetService(
     }
 
     fun updateAssetPricingFromLatestNav() = runBlocking {
+        if (assetPricinglastRun == null) {
+            assetPricinglastRun = transaction {
+                AssetPricingRecord.getLastUpdatedTime()?.let {
+                    OffsetDateTime.of(it, ZoneOffset.UTC)
+                }
+            }
+            logger.info("Initialized assetPricinglastRun from database: $assetPricinglastRun")
+        }
+
         val now = OffsetDateTime.now().withOffsetSameInstant(ZoneOffset.UTC)
 
         logger.info("Updating asset pricing, last run at: $assetPricinglastRun")
