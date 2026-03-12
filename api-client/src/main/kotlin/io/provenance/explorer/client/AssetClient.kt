@@ -5,6 +5,7 @@ import feign.Headers
 import feign.Param
 import feign.RequestLine
 import io.provenance.explorer.client.BaseRoutes.PAGE_PARAMETERS
+import io.provenance.explorer.model.AssetByRole
 import io.provenance.explorer.model.AssetDetail
 import io.provenance.explorer.model.AssetHolder
 import io.provenance.explorer.model.AssetListed
@@ -20,6 +21,7 @@ object AssetRoutes {
     const val DETAIL_IBC = "$ASSETS_V3/ibc/{hash}"
     const val HOLDERS = "$ASSETS_V3/{denom}/holders"
     const val METADATA = "$ASSETS_V3/metadata"
+    const val BY_ROLE = "$ASSETS_V3/by-role/{role}/{address}"
 }
 
 @Headers(BaseClient.CT_JSON)
@@ -47,4 +49,10 @@ interface AssetClient : BaseClient {
 
     @RequestLine("GET ${AssetRoutes.METADATA}?denom={denom}")
     fun metadata(@Param("denom") denom: String? = null): List<ObjectNode>
+
+    @RequestLine("GET ${AssetRoutes.BY_ROLE}")
+    fun assetsByRole(
+        @Param("role") role: String,
+        @Param("address") address: String
+    ): List<AssetByRole>
 }

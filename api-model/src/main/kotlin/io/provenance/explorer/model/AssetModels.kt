@@ -41,3 +41,8 @@ data class AssetHolder(
     val balance: CountStrTotal,
     val spendableBalance: CoinStr
 )
+
+data class AssetByRole(
+    val assetClassId: String,
+    val nftId: String
+)
