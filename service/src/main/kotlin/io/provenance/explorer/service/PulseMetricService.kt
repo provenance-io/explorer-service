@@ -847,12 +847,10 @@ class PulseMetricService(
         valueSelector: (PulseMetric) -> BigDecimal
     ): MetricSeries {
         val today = atDateTime?.toLocalDate() ?: nowUTC().toLocalDate()
-        val isTodayCached = fromPulseMetricCache(today, type) != null
-        val actualDays = if (isTodayCached) days else days - 1
         val startDate = today.minusDays(days)
 
-        val rangeSpan = rangeSpanFromCache(startDate, type, actualDays)
-        val dates = (0..actualDays).map { startDate.plusDays(it).toString() }
+        val rangeSpan = rangeSpanFromCache(startDate, type, days)
+        val dates = (0L until days).map { startDate.plusDays(it).toString() }
 
         return MetricSeries(
             seriesData = rangeSpan.map(valueSelector),
@@ -860,19 +858,32 @@ class PulseMetricService(
         )
     }
 
+    /**
+     * Loads exactly [daySpan] consecutive days from cache starting at [startDate].
+     * When [daySpan] is 0, loads the single day at [startDate] (used for DAY range-over-range).
+     */
     private fun rangeSpanFromCache(
         startDate: LocalDate,
         type: PulseCacheType,
         daySpan: Long
     ) =
         mutableListOf<PulseMetric>().apply {
-            for (i in 0..daySpan) {
-                val date = startDate.plusDays(i)
+            if (daySpan == 0L) {
+                val date = startDate
                 fromPulseMetricCache(date, type)?.let {
-                    this.add(it)
+                    add(it)
                 } ?: throw ResourceNotFoundException(
                     "Creating $daySpan day span failed to find pulse cache record for $date $type."
                 )
+            } else {
+                for (i in 0L until daySpan) {
+                    val date = startDate.plusDays(i)
+                    fromPulseMetricCache(date, type)?.let {
+                        add(it)
+                    } ?: throw ResourceNotFoundException(
+                        "Creating $daySpan day span failed to find pulse cache record for $date $type."
+                    )
+                }
             }
         }
 
@@ -886,12 +897,13 @@ class PulseMetricService(
     ): MetricSeries? {
         val today = atDateTime?.toLocalDate() ?: nowUTC().toLocalDate()
         val days = rangeToDays(range)
-        val startDate = today.minusDays(days)
+        val endDate = today.minusDays(1)
+        val startDate = endDate.minusDays(days - 1)
 
-        // get all cache records for the date range
+        // get all cache records for the date range (completed UTC days only; excludes today)
         val cacheRecords = PulseCacheRecord.findByDateSpanAndType(
             startDate,
-            today,
+            endDate,
             PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC,
             denom
         )
@@ -919,9 +931,8 @@ class PulseMetricService(
 
     /**
      * Binds the range to Range-over-Range span of time. For example,
-     * given a MONTH range the metric is calculated as the sum of the last 30 days
-     * values compared to the sum of the previous 30 days.
-     * Or, April's amounts versus May's amounts.
+     * given a MONTH range the metric is the sum of the last 30 **complete** UTC days
+     * (yesterday and earlier, excluding today) compared to the sum of the previous 30 complete days.
      *
      * Returns a pair of prior span, current span
      */
@@ -935,12 +946,22 @@ class PulseMetricService(
         } else {
             rangeToDays(range)
         }
-        val startDate = nowUTC().minusDays(days).toLocalDate()
-        val rangeOverStartDate = startDate.minusDays(days + 1)
-
-        val rangeSpan = rangeSpanFromCache(startDate, type, days)
-        val rangeOverSpan =
-            rangeSpanFromCache(rangeOverStartDate, type, days)
+        val todayUtc = nowUTC().toLocalDate()
+        val rangeOverSpan: List<PulseMetric>
+        val rangeSpan: List<PulseMetric>
+        if (days == 0L) {
+            val startDate = todayUtc
+            val rangeOverStartDate = startDate.minusDays(1)
+            rangeOverSpan = rangeSpanFromCache(rangeOverStartDate, type, days)
+            rangeSpan = rangeSpanFromCache(startDate, type, days)
+        } else {
+            val currentPeriodEnd = todayUtc.minusDays(1)
+            val startDate = currentPeriodEnd.minusDays(days - 1)
+            val rangeOverEndDate = startDate.minusDays(1)
+            val rangeOverStartDate = rangeOverEndDate.minusDays(days - 1)
+            rangeOverSpan = rangeSpanFromCache(rangeOverStartDate, type, days)
+            rangeSpan = rangeSpanFromCache(startDate, type, days)
+        }
 
         return Pair(rangeOverSpan, rangeSpan)
     }
