@@ -13,12 +13,15 @@ import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.format.annotation.DateTimeFormat
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ResponseStatusException
+import java.math.BigDecimal
 import java.time.LocalDate
 
 @Validated
@@ -31,6 +34,19 @@ import java.time.LocalDate
 class TokenController(private val tokenService: TokenService) {
     @Autowired
     lateinit var mapper: ObjectMapper
+
+    private fun supplyInRequestedUnit(baseAmount: BigDecimal, unit: String?): BigDecimal {
+        val u = unit?.trim()?.takeIf { it.isNotEmpty() }
+        val wantHash = u?.equals("hash", ignoreCase = true) == true
+        val wantBase = u == null || u.equals(UTILITY_TOKEN, ignoreCase = true)
+        if (!wantHash && !wantBase) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "unit must be '${UTILITY_TOKEN}' or 'hash'"
+            )
+        }
+        return if (wantHash) tokenService.utilityTokenBaseToHash(baseAmount) else baseAmount
+    }
 
     @Operation(summary = "Returns token statistics for the chain, ie circulation, community pool")
     @GetMapping("/stats")
@@ -57,17 +73,29 @@ class TokenController(private val tokenService: TokenService) {
         spendable: Boolean
     ) = tokenService.richList(limit, spendable)
 
-    @Operation(summary = "Returns max supply of `nhash` = max")
+    @Operation(summary = "Returns max supply of `nhash` = max (optional `unit=hash` for HASH display units)")
     @GetMapping("/max_supply")
-    fun getMaxSupply() = tokenService.maxSupply()
+    fun getMaxSupply(
+        @Parameter(description = "`nhash` (default, matches explorer utility-token denom) or `hash` (base ÷ 10^decimals)")
+        @RequestParam(required = false)
+        unit: String?
+    ) = supplyInRequestedUnit(tokenService.maxSupply(), unit)
 
-    @Operation(summary = "Returns total supply of `nhash` = max - burned ")
+    @Operation(summary = "Returns total supply of `nhash` = max - burned (optional `unit=hash` for HASH display units)")
     @GetMapping("/total_supply")
-    fun getTotalSupply() = tokenService.totalSupply()
+    fun getTotalSupply(
+        @Parameter(description = "`nhash` (default, matches explorer utility-token denom) or `hash` (base ÷ 10^decimals)")
+        @RequestParam(required = false)
+        unit: String?
+    ) = supplyInRequestedUnit(tokenService.totalSupply(), unit)
 
-    @Operation(summary = "Returns circulating supply of `nhash` = max - burned - modules - zeroSeq - pool - nonspendable ")
+    @Operation(summary = "Returns circulating supply of `nhash` = max - burned - modules - zeroSeq - pool - nonspendable (optional `unit=hash` for HASH display units)")
     @GetMapping("/circulating_supply")
-    fun getCirculatingSupply() = tokenService.circulatingSupply()
+    fun getCirculatingSupply(
+        @Parameter(description = "`nhash` (default, matches explorer utility-token denom) or `hash` (base ÷ 10^decimals)")
+        @RequestParam(required = false)
+        unit: String?
+    ) = supplyInRequestedUnit(tokenService.circulatingSupply(), unit)
 
     @Operation(summary = "Returns CoinMarketCap historical token pricing for the given dates inclusive")
     @GetMapping("/historical_pricing")
