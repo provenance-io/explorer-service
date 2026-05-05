@@ -1722,7 +1722,7 @@ class PulseMetricService(
                     val supply = tokenService.maxSupply()
                         .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
 
-                    val percentageStaked = staked.divide(supply)
+                    val percentageStaked = staked.divide(supply, 18, RoundingMode.HALF_UP)
                         .multiply(BigDecimal(100))
 
                     PulseMetric.build(
@@ -1740,7 +1740,7 @@ class PulseMetricService(
                         .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
 
                     val progress = MetricProgress(
-                        percentage = tokenSupply.divide(maxSupply)
+                        percentage = tokenSupply.divide(maxSupply, 18, RoundingMode.HALF_UP)
                             .multiply(BigDecimal(100)),
                         description = "in Circulation"
                     )
