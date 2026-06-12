@@ -455,17 +455,9 @@ class PulseMetricService(
                 range = range,
                 atDateTime = atDateTime
             )
-            val privateEquityValue = this.pulseProperties.privateEquityTvlDenoms.sumOf {
-                this.denomSupplyCache(it, atDateTime)
-                    .times(
-                        pricingService.getPricingInfoSingle(it)
-                            ?: BigDecimal.ZERO
-                    )
-            }
 
             val totalValue = committedValue.amount
                 .add(navValue.amount)
-                .add(privateEquityValue)
 
             PulseMetric.build(
                 base = USD_UPPER,
