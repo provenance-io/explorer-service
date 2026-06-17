@@ -6,6 +6,8 @@ import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Column
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 
 object LedgerEntityTable : IntIdTable(name = "ledger_entity") {
@@ -36,9 +38,9 @@ class LedgerEntityRecord(id: EntityID<Int>) : IntEntity(id) {
             LedgerEntityRecord.find { LedgerEntityTable.type eq type }.toList()
         }
 
-        fun findActiveByType(type: EntityType) = transaction {
+        fun findActiveByType(entityType: EntityType) = transaction {
             LedgerEntityRecord.find {
-                (LedgerEntityTable.type eq type) and (LedgerEntityTable.active eq true)
+                (LedgerEntityTable.type eq entityType) and (LedgerEntityTable.active eq true)
             }.toList()
         }
 
