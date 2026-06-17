@@ -1450,7 +1450,7 @@ class PulseMetricService(
             atDateTime = atDateTime,
             subtype = type.name,
         ) {
-            LedgerEntityRecord.findByType(type).sumOf {
+            LedgerEntityRecord.findActiveByType(type).sumOf {
                 totalBalanceByEntity(range, it, atDateTime).amount
             }.let {
                 PulseMetric.build(
@@ -1471,7 +1471,7 @@ class PulseMetricService(
             atDateTime = atDateTime,
             subtype = type.name,
         ) {
-            LedgerEntityRecord.findByType(type).sumOf {
+            LedgerEntityRecord.findActiveByType(type).sumOf {
                 totalAssetsByEntity(range, it, atDateTime).amount
             }.let {
                 PulseMetric.build(
@@ -2311,7 +2311,7 @@ class PulseMetricService(
      * **********************/
     fun ledgeredAssetsByEntity(
         uuid: String,
-    ): EntityLedgeredAsset = LedgerEntityRecord.findByUuid(uuid)?.toEntityLedgeredAsset()
+    ): EntityLedgeredAsset = LedgerEntityRecord.findActiveByUuid(uuid)?.toEntityLedgeredAsset()
         ?: throw ResourceNotFoundException("Entity not found for id: $uuid")
 
     fun ledgeredAssetsByEntity(
@@ -2320,10 +2320,10 @@ class PulseMetricService(
         sort: List<SortOrder>,
         sortColumn: List<String>,
     ): PagedResults<EntityLedgeredAsset> {
-        val entityLedgeredAssetList = LedgerEntityRecord.getAllPaginated(page.toOffset(count), count)
+        val entityLedgeredAssetList = LedgerEntityRecord.getActivePaginated(page.toOffset(count), count)
             .map { it.toEntityLedgeredAsset() }
 
-        val totalEntities = transaction { LedgerEntityRecord.all().count() }
+        val totalEntities = LedgerEntityRecord.countActive()
         return PagedResults(
             pages = totalEntities.pageCountOfResults(count),
             results = entityLedgeredAssetList,
@@ -2338,7 +2338,7 @@ class PulseMetricService(
         sort: List<SortOrder>,
         sortColumn: List<String>,
         ): PagedResults<EntityLedgeredAssetDetail>? {
-        val entity = LedgerEntityRecord.findByUuid(uuid)
+        val entity = LedgerEntityRecord.findActiveByUuid(uuid)
             ?: throw ResourceNotFoundException("Entity not found for id: $uuid")
 
         val entityAssets: List<EntityLedgeredAssetDetail> = when (entity.type) {
