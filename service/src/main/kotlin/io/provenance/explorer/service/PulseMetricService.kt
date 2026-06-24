@@ -85,6 +85,7 @@ class PulseMetricService(
     @Qualifier("pulseHttpClient") private val pulseHttpClient: HttpClient,
     private val pricingService: PricingService,
     private val metadataGrpcClient: MetadataGrpcClient,
+    private val passportHashService: PassportHashService,
 ) {
     companion object {
         private val isBackfillInProgress = AtomicBoolean(false)
@@ -139,6 +140,31 @@ class PulseMetricService(
     private val percentage = "PERCENTAGE"
     private val longest_range = 90L
     private val figure_heloc_denom = "FIGR_HELOC"
+
+    /** Denoms priced at $1 USD per display unit when exchange trade price is unavailable. */
+    private val usdParityDenoms = setOf(
+        "uusd.trading",
+        "uusdc.figure.se",
+        "uusdt.figure.se",
+        "uylds.fcc",
+    )
+
+    /**
+     * Resolves USD price per display unit for Pulse asset metrics.
+     * Prefers exchange trade average, then $1 parity denoms, then asset_pricing engine price.
+     */
+    private fun resolvePulseAssetUsdPrice(denom: String, exchangeAvgPrice: BigDecimal): BigDecimal {
+        if (exchangeAvgPrice.compareTo(BigDecimal.ZERO) > 0) {
+            return exchangeAvgPrice
+        }
+        if (denom in usdParityDenoms) {
+            return BigDecimal.ONE
+        }
+        return pricingService.getPricingInfoSingle(denom)?.let { pricing ->
+            val exp = denomExponent(denom)
+            pricing.multiply(BigDecimal.TEN.pow(exp))
+        } ?: BigDecimal.ZERO
+    }
 
     private fun nowUTC() = LocalDateTime.now(ZoneOffset.UTC)
     private fun endOfDay(time: LocalDateTime) =
@@ -369,7 +395,7 @@ class PulseMetricService(
                     }
                 }
                 logger.warn("Failed to find price for $denom on $atDate looking back $giveUp days")
-                return@let BigDecimal.ZERO
+                return@let resolvePulseAssetUsdPrice(denom, BigDecimal.ZERO)
             }
         }
 
@@ -447,7 +473,10 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val committedValue = this.exchangeCommittedAssetsValue(
+            val committedValue = committedAssetTotals(atDateTime)
+                .filterKeys { it != UTILITY_TOKEN }
+                .committedAssetsToValue()
+            val passportHashValue = passportHashTvl(
                 range = range,
                 atDateTime = atDateTime
             )
@@ -464,6 +493,7 @@ class PulseMetricService(
             }
 
             val totalValue = committedValue.amount
+                .add(passportHashValue.amount)
                 .add(navValue.amount)
                 .add(privateEquityValue)
 
@@ -476,6 +506,44 @@ class PulseMetricService(
                     atDateTime = atDateTime,
                     valueSelector = { it.amount }
                 )
+            )
+        }
+
+    private fun passportHashBalance(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PASSPORT_HASH_BALANCE_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            val accounts = passportHashService.getPassportAccounts()
+            val totalNhash = passportHashService.sumHashHoldings(accounts, atDateTime)
+                .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+            logger.info(
+                "Passport HASH balance: ${accounts.size} accounts, total $totalNhash $UTILITY_TOKEN"
+            )
+            PulseMetric.build(
+                base = UTILITY_TOKEN,
+                amount = totalNhash
+            )
+        }
+
+    private fun passportHashTvl(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PASSPORT_HASH_TVL_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            val balance = passportHashBalance(range, atDateTime).amount
+            val hashPrice = hashPriceAtDate(atDateTime)
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = balance.times(hashPrice)
             )
         }
 
@@ -930,9 +998,27 @@ class PulseMetricService(
     }
 
     /**
+     * Inclusive start/end of the last [completeDayCount] **complete** UTC calendar days that are
+     * strictly before [asOfUtcDate] (i.e. [asOfUtcDate] is never included). For live Pulse this is
+     * always "yesterday" back through [completeDayCount] days — never "today" plus a trailing window
+     * (which would be one extra day and confuse week/month totals).
+     */
+    private fun completeUtcDayWindowBefore(
+        asOfUtcDate: LocalDate,
+        completeDayCount: Long
+    ): Pair<LocalDate, LocalDate> {
+        val periodEndInclusive = asOfUtcDate.minusDays(1)
+        val periodStartInclusive = periodEndInclusive.minusDays(completeDayCount - 1)
+        return Pair(periodStartInclusive, periodEndInclusive)
+    }
+
+    /**
      * Binds the range to Range-over-Range span of time. For example,
      * given a MONTH range the metric is the sum of the last 30 **complete** UTC days
      * (yesterday and earlier, excluding today) compared to the sum of the previous 30 complete days.
+     *
+     * Trend for WEEK is prior 7 complete UTC days vs the 7 complete UTC days immediately after that
+     * (still excluding today on the live clock).
      *
      * Returns a pair of prior span, current span
      */
@@ -955,12 +1041,10 @@ class PulseMetricService(
             rangeOverSpan = rangeSpanFromCache(rangeOverStartDate, type, days)
             rangeSpan = rangeSpanFromCache(startDate, type, days)
         } else {
-            val currentPeriodEnd = todayUtc.minusDays(1)
-            val startDate = currentPeriodEnd.minusDays(days - 1)
-            val rangeOverEndDate = startDate.minusDays(1)
-            val rangeOverStartDate = rangeOverEndDate.minusDays(days - 1)
-            rangeOverSpan = rangeSpanFromCache(rangeOverStartDate, type, days)
-            rangeSpan = rangeSpanFromCache(startDate, type, days)
+            val (currentStart, _) = completeUtcDayWindowBefore(todayUtc, days)
+            val (priorStart, _) = completeUtcDayWindowBefore(currentStart, days)
+            rangeOverSpan = rangeSpanFromCache(priorStart, type, days)
+            rangeSpan = rangeSpanFromCache(currentStart, type, days)
         }
 
         return Pair(rangeOverSpan, rangeSpan)
@@ -1222,6 +1306,11 @@ class PulseMetricService(
             }
         }
 
+    /**
+     * Week/month/quarter views sum daily cached disbursements from [rangeOverRangeSpans]: each span is
+     * exactly N complete UTC days ending yesterday (today is never included). The trend compares the
+     * prior N-day sum to the current N-day sum (e.g. 7 vs 7 for WEEK).
+     */
     private fun loanLedgerDisbursementsOverRange(
         range: MetricRangeType,
         type: PulseCacheType = PulseCacheType.LOAN_LEDGER_DISBURSEMENTS_METRIC,
@@ -1883,6 +1972,17 @@ class PulseMetricService(
                 range,
                 atDateTime
             )
+
+            PulseCacheType.PASSPORT_HASH_BALANCE_METRIC -> passportHashBalance(
+                range,
+                atDateTime
+            )
+
+            PulseCacheType.PASSPORT_HASH_TVL_METRIC -> passportHashTvl(
+                range,
+                atDateTime
+            )
+
             /* Order of this kind of matters since it depends on
              * the committed assets value metric
              */
@@ -2027,7 +2127,7 @@ class PulseMetricService(
 
             PulseMetric.build(
                 base = USD_UPPER,
-                amount = avgTradePrice,
+                amount = resolvePulseAssetUsdPrice(denom, avgTradePrice),
             )
         }
         val volumeMetric = fetchOrBuildCacheFromDataSource(

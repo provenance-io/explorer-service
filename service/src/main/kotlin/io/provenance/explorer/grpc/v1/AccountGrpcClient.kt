@@ -240,6 +240,20 @@ class AccountGrpcClient(channelUri: URI) {
             queryDelegatorDelegationsResponse { }
         }
 
+    suspend fun getDelegationsAtHeight(address: String, offset: Int, limit: Int, height: Int) =
+        try {
+            stakingClient
+                .addBlockHeightToQuery(height)
+                .delegatorDelegations(
+                    queryDelegatorDelegationsRequest {
+                        this.delegatorAddr = address
+                        this.pagination = getPagination(offset, limit)
+                    }
+                )
+        } catch (e: Exception) {
+            queryDelegatorDelegationsResponse { }
+        }
+
     suspend fun getUnbondingDelegations(address: String, offset: Int, limit: Int) =
         stakingClient.delegatorUnbondingDelegations(
             queryDelegatorUnbondingDelegationsRequest {
@@ -260,6 +274,11 @@ class AccountGrpcClient(channelUri: URI) {
 
     suspend fun getRewards(delAddr: String) =
         distClient.delegationTotalRewards(queryDelegationTotalRewardsRequest { this.delegatorAddress = delAddr })
+
+    suspend fun getRewardsAtHeight(delAddr: String, height: Int) =
+        distClient
+            .addBlockHeightToQuery(height)
+            .delegationTotalRewards(queryDelegationTotalRewardsRequest { this.delegatorAddress = delAddr })
 
     suspend fun getCommunityPoolAmount(denom: String, height: Int? = null): String =
         distClient
