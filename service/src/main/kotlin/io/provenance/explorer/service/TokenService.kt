@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import cosmos.auth.v1beta1.Auth
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
+import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_DECIMAL_PLACES
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AccountRecord
@@ -258,6 +259,10 @@ class TokenService(
 
         originalAmount.minus(vestedAmount)
     }.sumOf { it }
+
+    /** On-chain base amount (e.g. nhash) scaled to display HASH using [UTILITY_TOKEN_BASE_MULTIPLIER]. */
+    fun utilityTokenBaseToHash(baseAmount: BigDecimal): BigDecimal =
+        baseAmount.divide(UTILITY_TOKEN_BASE_MULTIPLIER, UTILITY_TOKEN_BASE_DECIMAL_PLACES, RoundingMode.HALF_EVEN)
 
     // max supply = supply from bank module
     fun maxSupply(height: Int? = null) = runBlocking { accountClient.getCurrentSupply(UTILITY_TOKEN, height).amount.toBigDecimal() }

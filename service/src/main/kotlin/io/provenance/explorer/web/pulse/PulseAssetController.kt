@@ -40,13 +40,15 @@ class PulseAssetController(private val pulseMetricService: PulseMetricService) {
                                @RequestParam(required = false) sortColumn: List<String>?
     ): List<PulseAssetSummary> =
         pulseMetricService.pulseAssetSummaries().filter {
-            // this is a small list so we can get away with this
-            search.isNullOrBlank() ||
-                    it.name.contains(search, ignoreCase = true) ||
-                    it.symbol.contains(search, ignoreCase = true) ||
-                    it.display.contains(search, ignoreCase = true) ||
-                    it.base.contains(search, ignoreCase = true) ||
-                    it.description.contains(search, ignoreCase = true)
+            it.marketCap > BigDecimal.ZERO &&
+                    (
+                        search.isNullOrBlank() ||
+                                it.name.contains(search, ignoreCase = true) ||
+                                it.symbol.contains(search, ignoreCase = true) ||
+                                it.display.contains(search, ignoreCase = true) ||
+                                it.base.contains(search, ignoreCase = true) ||
+                                it.description.contains(search, ignoreCase = true)
+                    )
         }.sortedWith(
             Comparator { a, b ->
             if (sortColumn == null || sortOrder == null) return@Comparator 0

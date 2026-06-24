@@ -484,18 +484,10 @@ class PulseMetricService(
                 range = range,
                 atDateTime = atDateTime
             )
-            val privateEquityValue = this.pulseProperties.privateEquityTvlDenoms.sumOf {
-                this.denomSupplyCache(it, atDateTime)
-                    .times(
-                        pricingService.getPricingInfoSingle(it)
-                            ?: BigDecimal.ZERO
-                    )
-            }
 
             val totalValue = committedValue.amount
                 .add(passportHashValue.amount)
                 .add(navValue.amount)
-                .add(privateEquityValue)
 
             PulseMetric.build(
                 base = USD_UPPER,
@@ -1547,7 +1539,7 @@ class PulseMetricService(
             atDateTime = atDateTime,
             subtype = type.name,
         ) {
-            LedgerEntityRecord.findByType(type).sumOf {
+            LedgerEntityRecord.findActiveByType(type).sumOf {
                 totalBalanceByEntity(range, it, atDateTime).amount
             }.let {
                 PulseMetric.build(
@@ -1568,7 +1560,7 @@ class PulseMetricService(
             atDateTime = atDateTime,
             subtype = type.name,
         ) {
-            LedgerEntityRecord.findByType(type).sumOf {
+            LedgerEntityRecord.findActiveByType(type).sumOf {
                 totalAssetsByEntity(range, it, atDateTime).amount
             }.let {
                 PulseMetric.build(
@@ -1811,7 +1803,7 @@ class PulseMetricService(
                     val supply = tokenService.maxSupply()
                         .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
 
-                    val percentageStaked = staked.divide(supply)
+                    val percentageStaked = staked.divide(supply, 18, RoundingMode.HALF_UP)
                         .multiply(BigDecimal(100))
 
                     PulseMetric.build(
@@ -1829,7 +1821,7 @@ class PulseMetricService(
                         .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
 
                     val progress = MetricProgress(
-                        percentage = tokenSupply.divide(maxSupply)
+                        percentage = tokenSupply.divide(maxSupply, 18, RoundingMode.HALF_UP)
                             .multiply(BigDecimal(100)),
                         description = "in Circulation"
                     )
@@ -2419,7 +2411,7 @@ class PulseMetricService(
      * **********************/
     fun ledgeredAssetsByEntity(
         uuid: String,
-    ): EntityLedgeredAsset = LedgerEntityRecord.findByUuid(uuid)?.toEntityLedgeredAsset()
+    ): EntityLedgeredAsset = LedgerEntityRecord.findActiveByUuid(uuid)?.toEntityLedgeredAsset()
         ?: throw ResourceNotFoundException("Entity not found for id: $uuid")
 
     fun ledgeredAssetsByEntity(
@@ -2428,10 +2420,10 @@ class PulseMetricService(
         sort: List<SortOrder>,
         sortColumn: List<String>,
     ): PagedResults<EntityLedgeredAsset> {
-        val entityLedgeredAssetList = LedgerEntityRecord.getAllPaginated(page.toOffset(count), count)
+        val entityLedgeredAssetList = LedgerEntityRecord.getActivePaginated(page.toOffset(count), count)
             .map { it.toEntityLedgeredAsset() }
 
-        val totalEntities = transaction { LedgerEntityRecord.all().count() }
+        val totalEntities = LedgerEntityRecord.countActive()
         return PagedResults(
             pages = totalEntities.pageCountOfResults(count),
             results = entityLedgeredAssetList,
@@ -2446,7 +2438,7 @@ class PulseMetricService(
         sort: List<SortOrder>,
         sortColumn: List<String>,
         ): PagedResults<EntityLedgeredAssetDetail>? {
-        val entity = LedgerEntityRecord.findByUuid(uuid)
+        val entity = LedgerEntityRecord.findActiveByUuid(uuid)
             ?: throw ResourceNotFoundException("Entity not found for id: $uuid")
 
         val entityAssets: List<EntityLedgeredAssetDetail> = when (entity.type) {

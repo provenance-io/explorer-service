@@ -38,11 +38,20 @@ interface TokenClient : BaseClient {
     @RequestLine("GET ${TokenRoutes.MAX_SUPPLY}")
     fun maxSupply(): BigDecimal
 
+    @RequestLine("GET ${TokenRoutes.MAX_SUPPLY}?unit={unit}")
+    fun maxSupply(@Param("unit") unit: String): BigDecimal
+
     @RequestLine("GET ${TokenRoutes.TOTAL_SUPPLY}")
     fun totalSupply(): BigDecimal
 
+    @RequestLine("GET ${TokenRoutes.TOTAL_SUPPLY}?unit={unit}")
+    fun totalSupply(@Param("unit") unit: String): BigDecimal
+
     @RequestLine("GET ${TokenRoutes.CIRCULATING_SUPPLY}")
     fun circulatingSupply(): BigDecimal
+
+    @RequestLine("GET ${TokenRoutes.CIRCULATING_SUPPLY}?unit={unit}")
+    fun circulatingSupply(@Param("unit") unit: String): BigDecimal
 
     @RequestLine("GET ${TokenRoutes.HISTORICAL_PRICING}?fromDate={fromDate}&toDate={toDate}")
     fun historicalPricing(
