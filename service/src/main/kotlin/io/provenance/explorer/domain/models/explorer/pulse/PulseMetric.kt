@@ -13,7 +13,9 @@ data class PulseMetric(
     val quoteAmount: BigDecimal?,
     val trend: MetricTrend? = null,
     val progress: MetricProgress? = null,
-    val series: MetricSeries? = null
+    val series: MetricSeries? = null,
+    val asOfDate: String? = null,
+    val dataStartDate: String? = null
 ) {
     companion object {
         fun build(
@@ -22,7 +24,9 @@ data class PulseMetric(
             quote: String? = null,
             quoteAmount: BigDecimal? = null,
             series: MetricSeries? = null,
-            progress: MetricProgress? = null
+            progress: MetricProgress? = null,
+            asOfDate: String? = null,
+            dataStartDate: String? = null
         ) = PulseMetric(
             id = UUID.randomUUID(),
             base = base,
@@ -30,7 +34,9 @@ data class PulseMetric(
             quote = quote,
             quoteAmount = quoteAmount,
             series = series,
-            progress = progress
+            progress = progress,
+            asOfDate = asOfDate,
+            dataStartDate = dataStartDate
         )
 
         fun build(
@@ -40,7 +46,9 @@ data class PulseMetric(
             quote: String? = null,
             quoteAmount: BigDecimal? = null,
             series: MetricSeries? = null,
-            progress: MetricProgress? = null
+            progress: MetricProgress? = null,
+            asOfDate: String? = null,
+            dataStartDate: String? = null
         ) =
             PulseMetric(
                 id = UUID.randomUUID(),
@@ -57,7 +65,9 @@ data class PulseMetric(
                     period = MetricTrendPeriod.DAY
                 ),
                 series = series,
-                progress = progress
+                progress = progress,
+                asOfDate = asOfDate,
+                dataStartDate = dataStartDate
             )
 
         // create a function called build

@@ -1076,7 +1076,9 @@ class PulseMetricService(
                 }.body<JsonNode>().let {
                     PulseMetric.build(
                         base = USD_UPPER,
-                        amount = it["TotalBalance"].asText().toBigDecimal()
+                        amount = it["TotalBalance"].asText().toBigDecimal(),
+                        asOfDate = it["AsOfDate"]?.asText(),
+                        dataStartDate = it["DataStartDate"]?.asText()
                     )
                 }
             }
@@ -1097,7 +1099,9 @@ class PulseMetricService(
                 }.body<JsonNode>().let {
                     PulseMetric.build(
                         base = count,
-                        amount = it["TotalCount"].asText().toBigDecimal()
+                        amount = it["TotalCount"].asText().toBigDecimal(),
+                        asOfDate = it["AsOfDate"]?.asText(),
+                        dataStartDate = it["DataStartDate"]?.asText()
                     )
                 }
             }
