@@ -497,57 +497,20 @@ class PulseMetricService(
             )
         }
 
-    /**
-     * USD value of passport account HASH holdings: nhash → HASH → multiply by price.
-     */
-    private fun passportHashUsdValue(atDateTime: LocalDateTime? = null): BigDecimal =
-        passportHashBreakdown(atDateTime).usdValue
-
-    private fun passportHashBreakdown(atDateTime: LocalDateTime? = null): PassportHashBreakdown {
-        val accounts = passportHashService.getPassportAccounts()
-        val nhashTotal = passportHashService.sumHashHoldings(accounts, atDateTime)
-        val hashAmount = tokenService.utilityTokenBaseToHash(nhashTotal)
-        val hashPrice = hashPriceAtDate(atDateTime)
-        val usdValue = hashAmount.times(hashPrice)
-
-        logger.info(
-            "Passport HASH USD calc: attribute=${pulseProperties.passportAttributeName}, " +
-                "accounts=${accounts.size}, nhash=$nhashTotal, hash=$hashAmount, " +
-                "multiplier=$UTILITY_TOKEN_BASE_MULTIPLIER, price=$hashPrice, usd=$usdValue, " +
-                "atDateTime=$atDateTime, sampleAccounts=${accounts.take(3)}"
+    private fun passportHashUsdValue(atDateTime: LocalDateTime? = null): BigDecimal {
+        val hashAmount = tokenService.utilityTokenBaseToHash(
+            passportHashService.sumHashHoldings(atDateTime)
         )
-
-        return PassportHashBreakdown(nhashTotal, hashAmount, hashPrice, usdValue)
+        return hashAmount.times(hashPriceAtDate(atDateTime))
     }
 
-    private data class PassportHashBreakdown(
-        val nhashTotal: BigDecimal,
-        val hashAmount: BigDecimal,
-        val hashPrice: BigDecimal,
-        val usdValue: BigDecimal,
-    )
-
-    private fun passportHashBalance(
+    private fun passportHashMetric(
+        type: PulseCacheType,
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
     ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PASSPORT_HASH_BALANCE_METRIC,
-            range = range,
-            atDateTime = atDateTime
-        ) {
-            PulseMetric.build(
-                base = USD_UPPER,
-                amount = passportHashUsdValue(atDateTime)
-            )
-        }
-
-    private fun passportHashTvl(
-        range: MetricRangeType = MetricRangeType.DAY,
-        atDateTime: LocalDateTime? = null
-    ): PulseMetric =
-        fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PASSPORT_HASH_TVL_METRIC,
+            type = type,
             range = range,
             atDateTime = atDateTime
         ) {
@@ -1983,12 +1946,9 @@ class PulseMetricService(
                 atDateTime
             )
 
-            PulseCacheType.PASSPORT_HASH_BALANCE_METRIC -> passportHashBalance(
-                range,
-                atDateTime
-            )
-
-            PulseCacheType.PASSPORT_HASH_TVL_METRIC -> passportHashTvl(
+            PulseCacheType.PASSPORT_HASH_BALANCE_METRIC,
+            PulseCacheType.PASSPORT_HASH_TVL_METRIC -> passportHashMetric(
+                type,
                 range,
                 atDateTime
             )
