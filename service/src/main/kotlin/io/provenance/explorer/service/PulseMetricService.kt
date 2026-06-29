@@ -497,20 +497,33 @@ class PulseMetricService(
             )
         }
 
-    private fun passportHashUsdValue(atDateTime: LocalDateTime? = null): BigDecimal {
-        val hashAmount = tokenService.utilityTokenBaseToHash(
-            passportHashService.sumHashHoldings(atDateTime)
-        )
-        return hashAmount.times(hashPriceAtDate(atDateTime))
-    }
+    private fun passportHashBalanceAmount(atDateTime: LocalDateTime? = null): BigDecimal =
+        tokenService.utilityTokenBaseToHash(passportHashService.sumHashHoldings(atDateTime))
 
-    private fun passportHashMetric(
-        type: PulseCacheType,
+    private fun passportHashUsdValue(atDateTime: LocalDateTime? = null): BigDecimal =
+        passportHashBalanceAmount(atDateTime).times(hashPriceAtDate(atDateTime))
+
+    private fun passportHashBalance(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
     ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = type,
+            type = PulseCacheType.PASSPORT_HASH_BALANCE_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            PulseMetric.build(
+                base = UTILITY_TOKEN,
+                amount = passportHashBalanceAmount(atDateTime)
+            )
+        }
+
+    private fun passportHashTvl(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PASSPORT_HASH_TVL_METRIC,
             range = range,
             atDateTime = atDateTime
         ) {
@@ -1946,9 +1959,12 @@ class PulseMetricService(
                 atDateTime
             )
 
-            PulseCacheType.PASSPORT_HASH_BALANCE_METRIC,
-            PulseCacheType.PASSPORT_HASH_TVL_METRIC -> passportHashMetric(
-                type,
+            PulseCacheType.PASSPORT_HASH_BALANCE_METRIC -> passportHashBalance(
+                range,
+                atDateTime
+            )
+
+            PulseCacheType.PASSPORT_HASH_TVL_METRIC -> passportHashTvl(
                 range,
                 atDateTime
             )
