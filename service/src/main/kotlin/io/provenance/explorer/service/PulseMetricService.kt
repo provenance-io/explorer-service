@@ -476,17 +476,13 @@ class PulseMetricService(
             val committedValue = committedAssetTotals(atDateTime)
                 .filterKeys { it != UTILITY_TOKEN }
                 .committedAssetsToValue()
-            val passportHashValue = passportHashTvl(
-                range = range,
-                atDateTime = atDateTime
-            )
             val navValue = this.totalMetadataNavs(
                 range = range,
                 atDateTime = atDateTime
             )
 
             val totalValue = committedValue.amount
-                .add(passportHashValue.amount)
+                .add(passportHashUsdValue(atDateTime))
                 .add(navValue.amount)
 
             PulseMetric.build(
@@ -505,10 +501,12 @@ class PulseMetricService(
      * Sums passport account [UTILITY_TOKEN] holdings (base units) and converts to display HASH.
      */
     private fun passportHashDisplayAmount(atDateTime: LocalDateTime? = null): BigDecimal =
-        passportHashService.sumHashHoldings(
-            passportHashService.getPassportAccounts(),
-            atDateTime
-        ).divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+        tokenService.utilityTokenBaseToHash(
+            passportHashService.sumHashHoldings(
+                passportHashService.getPassportAccounts(),
+                atDateTime
+            )
+        )
 
     /**
      * USD value of passport account HASH holdings: nhash → HASH → multiply by price.
