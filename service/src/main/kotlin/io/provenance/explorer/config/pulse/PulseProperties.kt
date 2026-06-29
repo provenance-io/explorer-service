@@ -16,5 +16,7 @@ class PulseProperties(
     val hashHoldersExcludedFromCirculatingSupply: Set<String>,
     // denoms to include as private equity in TVL calc
     val privateEquityTvlDenoms: List<String>,
-    val hftExchangeApi: String
+    val hftExchangeApi: String,
+    // attribute name for Figure passport KYC accounts included in Pulse TVL HASH calc
+    val passportAttributeName: String,
 )

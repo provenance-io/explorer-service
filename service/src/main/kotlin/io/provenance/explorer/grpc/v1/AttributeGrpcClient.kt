@@ -2,6 +2,7 @@ package io.provenance.explorer.grpc.v1
 
 import io.grpc.ManagedChannelBuilder
 import io.provenance.attribute.v1.Attribute
+import io.provenance.attribute.v1.queryAttributeAccountsRequest
 import io.provenance.attribute.v1.queryAttributesRequest
 import io.provenance.attribute.v1.queryParamsRequest
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
@@ -66,6 +67,32 @@ class AttributeGrpcClient(channelUri: URI) {
         }
 
         return attributes
+    }
+
+    suspend fun getAccountsForAttribute(attributeName: String): Set<String> {
+        var (offset, limit) = 0 to 100
+
+        val results = attrClient.attributeAccounts(
+            queryAttributeAccountsRequest {
+                this.attributeName = attributeName
+                this.pagination = getPagination(offset, limit)
+            }
+        )
+
+        val total = results.pagination?.total ?: results.accountsCount.toLong()
+        val accounts = results.accountsList.toMutableList()
+
+        while (accounts.size < total) {
+            offset += limit
+            attrClient.attributeAccounts(
+                queryAttributeAccountsRequest {
+                    this.attributeName = attributeName
+                    this.pagination = getPagination(offset, limit)
+                }
+            ).accountsList.also { accounts.addAll(it) }
+        }
+
+        return accounts.toSet()
     }
 
     suspend fun getNamesForAddress(address: String, offset: Int, limit: Int) =
