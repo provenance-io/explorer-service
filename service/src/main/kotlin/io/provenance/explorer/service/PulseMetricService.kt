@@ -502,14 +502,13 @@ class PulseMetricService(
         }
 
     /**
-     * Sums passport account [UTILITY_TOKEN] holdings (base units) and converts to display HASH
-     * using the same denom-exponent path as exchange committed assets.
+     * Sums passport account [UTILITY_TOKEN] holdings (base units) and converts to display HASH.
      */
-    private fun passportHashDisplayAmount(atDateTime: LocalDateTime? = null): BigDecimal {
-        val accounts = passportHashService.getPassportAccounts()
-        val totalNhash = passportHashService.sumHashHoldings(accounts, atDateTime)
-        return convertDenomToDisplayUnits(UTILITY_TOKEN, totalNhash)
-    }
+    private fun passportHashDisplayAmount(atDateTime: LocalDateTime? = null): BigDecimal =
+        passportHashService.sumHashHoldings(
+            passportHashService.getPassportAccounts(),
+            atDateTime
+        ).divide(UTILITY_TOKEN_BASE_MULTIPLIER)
 
     private fun passportHashBalance(
         range: MetricRangeType = MetricRangeType.DAY,
@@ -521,10 +520,7 @@ class PulseMetricService(
             atDateTime = atDateTime
         ) {
             val accounts = passportHashService.getPassportAccounts()
-            val hashAmount = convertDenomToDisplayUnits(
-                UTILITY_TOKEN,
-                passportHashService.sumHashHoldings(accounts, atDateTime)
-            )
+            val hashAmount = passportHashDisplayAmount(atDateTime)
             logger.info(
                 "Passport HASH balance: ${accounts.size} accounts, total $hashAmount HASH"
             )
