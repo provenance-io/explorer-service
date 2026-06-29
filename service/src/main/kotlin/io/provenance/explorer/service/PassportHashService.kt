@@ -68,8 +68,14 @@ class PassportHashService(
             }.awaitAll()
 
             val totalNhash = perAccount.sumOf { it.totalNhash }
+            val totalBank = perAccount.sumOf { it.bankBalance }
+            val totalDelegated = perAccount.sumOf { it.delegatedBalance }
+            val totalRewards = perAccount.sumOf { it.rewardsBalance }
+            val nonZeroAccounts = perAccount.count { it.totalNhash > BigDecimal.ZERO }
+
             logger.info(
-                "Passport HASH sum: ${accounts.size} accounts, total nhash=$totalNhash, " +
+                "Passport HASH sum: ${accounts.size} accounts ($nonZeroAccounts non-zero), " +
+                    "total nhash=$totalNhash (bank=$totalBank, delegated=$totalDelegated, rewards=$totalRewards), " +
                     "height=$height, atDateTime=$atDateTime"
             )
 
@@ -77,8 +83,8 @@ class PassportHashService(
                 .sortedByDescending { it.totalNhash }
                 .take(10)
                 .forEach {
-                    logger.debug(
-                        "Passport account ${it.address}: bank=${it.bankBalance}, " +
+                    logger.info(
+                        "Passport top holder ${it.address}: bank=${it.bankBalance}, " +
                             "delegated=${it.delegatedBalance}, rewards=${it.rewardsBalance}, " +
                             "total nhash=${it.totalNhash}"
                     )
