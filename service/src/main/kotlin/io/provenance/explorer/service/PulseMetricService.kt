@@ -501,6 +501,16 @@ class PulseMetricService(
             )
         }
 
+    /**
+     * Sums passport account [UTILITY_TOKEN] holdings (base units) and converts to display HASH
+     * using the same denom-exponent path as exchange committed assets.
+     */
+    private fun passportHashDisplayAmount(atDateTime: LocalDateTime? = null): BigDecimal {
+        val accounts = passportHashService.getPassportAccounts()
+        val totalNhash = passportHashService.sumHashHoldings(accounts, atDateTime)
+        return convertDenomToDisplayUnits(UTILITY_TOKEN, totalNhash)
+    }
+
     private fun passportHashBalance(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
@@ -511,14 +521,16 @@ class PulseMetricService(
             atDateTime = atDateTime
         ) {
             val accounts = passportHashService.getPassportAccounts()
-            val totalNhash = passportHashService.sumHashHoldings(accounts, atDateTime)
-                .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+            val hashAmount = convertDenomToDisplayUnits(
+                UTILITY_TOKEN,
+                passportHashService.sumHashHoldings(accounts, atDateTime)
+            )
             logger.info(
-                "Passport HASH balance: ${accounts.size} accounts, total $totalNhash $UTILITY_TOKEN"
+                "Passport HASH balance: ${accounts.size} accounts, total $hashAmount HASH"
             )
             PulseMetric.build(
                 base = UTILITY_TOKEN,
-                amount = totalNhash
+                amount = hashAmount
             )
         }
 
@@ -531,11 +543,12 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val balance = passportHashBalance(range, atDateTime).amount
+            // Compute from chain holdings directly; do not reuse passportHashBalance cache.
+            val hashAmount = passportHashDisplayAmount(atDateTime)
             val hashPrice = hashPriceAtDate(atDateTime)
             PulseMetric.build(
                 base = USD_UPPER,
-                amount = balance.times(hashPrice)
+                amount = hashAmount.times(hashPrice)
             )
         }
 
