@@ -510,6 +510,12 @@ class PulseMetricService(
             atDateTime
         ).divide(UTILITY_TOKEN_BASE_MULTIPLIER)
 
+    /**
+     * USD value of passport account HASH holdings: nhash → HASH → multiply by price.
+     */
+    private fun passportHashUsdValue(atDateTime: LocalDateTime? = null): BigDecimal =
+        passportHashDisplayAmount(atDateTime).times(hashPriceAtDate(atDateTime))
+
     private fun passportHashBalance(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
@@ -520,13 +526,13 @@ class PulseMetricService(
             atDateTime = atDateTime
         ) {
             val accounts = passportHashService.getPassportAccounts()
-            val hashAmount = passportHashDisplayAmount(atDateTime)
+            val usdValue = passportHashUsdValue(atDateTime)
             logger.info(
-                "Passport HASH balance: ${accounts.size} accounts, total $hashAmount HASH"
+                "Passport HASH balance: ${accounts.size} accounts, total $usdValue USD"
             )
             PulseMetric.build(
-                base = UTILITY_TOKEN,
-                amount = hashAmount
+                base = USD_UPPER,
+                amount = usdValue
             )
         }
 
@@ -539,12 +545,9 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            // Compute from chain holdings directly; do not reuse passportHashBalance cache.
-            val hashAmount = passportHashDisplayAmount(atDateTime)
-            val hashPrice = hashPriceAtDate(atDateTime)
             PulseMetric.build(
                 base = USD_UPPER,
-                amount = hashAmount.times(hashPrice)
+                amount = passportHashUsdValue(atDateTime)
             )
         }
 
