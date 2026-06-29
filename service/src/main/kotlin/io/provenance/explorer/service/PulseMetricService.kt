@@ -498,21 +498,34 @@ class PulseMetricService(
         }
 
     /**
-     * Sums passport account [UTILITY_TOKEN] holdings (base units) and converts to display HASH.
-     */
-    private fun passportHashDisplayAmount(atDateTime: LocalDateTime? = null): BigDecimal =
-        tokenService.utilityTokenBaseToHash(
-            passportHashService.sumHashHoldings(
-                passportHashService.getPassportAccounts(),
-                atDateTime
-            )
-        )
-
-    /**
      * USD value of passport account HASH holdings: nhash → HASH → multiply by price.
      */
     private fun passportHashUsdValue(atDateTime: LocalDateTime? = null): BigDecimal =
-        passportHashDisplayAmount(atDateTime).times(hashPriceAtDate(atDateTime))
+        passportHashBreakdown(atDateTime).usdValue
+
+    private fun passportHashBreakdown(atDateTime: LocalDateTime? = null): PassportHashBreakdown {
+        val accounts = passportHashService.getPassportAccounts()
+        val nhashTotal = passportHashService.sumHashHoldings(accounts, atDateTime)
+        val hashAmount = tokenService.utilityTokenBaseToHash(nhashTotal)
+        val hashPrice = hashPriceAtDate(atDateTime)
+        val usdValue = hashAmount.times(hashPrice)
+
+        logger.info(
+            "Passport HASH USD calc: attribute=${pulseProperties.passportAttributeName}, " +
+                "accounts=${accounts.size}, nhash=$nhashTotal, hash=$hashAmount, " +
+                "multiplier=$UTILITY_TOKEN_BASE_MULTIPLIER, price=$hashPrice, usd=$usdValue, " +
+                "atDateTime=$atDateTime, sampleAccounts=${accounts.take(3)}"
+        )
+
+        return PassportHashBreakdown(nhashTotal, hashAmount, hashPrice, usdValue)
+    }
+
+    private data class PassportHashBreakdown(
+        val nhashTotal: BigDecimal,
+        val hashAmount: BigDecimal,
+        val hashPrice: BigDecimal,
+        val usdValue: BigDecimal,
+    )
 
     private fun passportHashBalance(
         range: MetricRangeType = MetricRangeType.DAY,
@@ -523,14 +536,9 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val accounts = passportHashService.getPassportAccounts()
-            val usdValue = passportHashUsdValue(atDateTime)
-            logger.info(
-                "Passport HASH balance: ${accounts.size} accounts, total $usdValue USD"
-            )
             PulseMetric.build(
                 base = USD_UPPER,
-                amount = usdValue
+                amount = passportHashUsdValue(atDateTime)
             )
         }
 

@@ -38,8 +38,12 @@ class PassportHashService(
     fun getPassportAccounts(): Set<String> =
         passportAccountsCache.get(pulseProperties.passportAttributeName) { attributeName ->
             runBlocking {
-                logger.info("Fetching passport accounts for attribute $attributeName")
-                attributeGrpcClient.getAccountsForAttribute(attributeName)
+                val accounts = attributeGrpcClient.getAccountsForAttribute(attributeName)
+                logger.info(
+                    "Fetched ${accounts.size} passport accounts for attribute $attributeName, " +
+                        "sample=${accounts.take(3)}"
+                )
+                accounts
             }
         } ?: emptySet()
 
@@ -48,23 +52,52 @@ class PassportHashService(
      */
     fun sumHashHoldings(accounts: Set<String>, atDateTime: LocalDateTime? = null): BigDecimal {
         if (accounts.isEmpty()) {
+            logger.info("Passport HASH sum: no accounts, total nhash=0")
             return BigDecimal.ZERO
         }
 
         val height = atDateTime?.let { BlockCacheRecord.getLastBlockBeforeTime(it) }
 
         return runBlocking {
-            accounts.map { address ->
+            val perAccount = accounts.map { address ->
                 async {
                     semaphore.withPermit {
                         sumHashForAccount(address, height)
                     }
                 }
-            }.awaitAll().sumOf { it }
+            }.awaitAll()
+
+            val totalNhash = perAccount.sumOf { it.totalNhash }
+            logger.info(
+                "Passport HASH sum: ${accounts.size} accounts, total nhash=$totalNhash, " +
+                    "height=$height, atDateTime=$atDateTime"
+            )
+
+            perAccount
+                .sortedByDescending { it.totalNhash }
+                .take(10)
+                .forEach {
+                    logger.debug(
+                        "Passport account ${it.address}: bank=${it.bankBalance}, " +
+                            "delegated=${it.delegatedBalance}, rewards=${it.rewardsBalance}, " +
+                            "total nhash=${it.totalNhash}"
+                    )
+                }
+
+            totalNhash
         }
     }
 
-    private suspend fun sumHashForAccount(address: String, height: Int?): BigDecimal {
+    private data class AccountHashHoldings(
+        val address: String,
+        val bankBalance: BigDecimal,
+        val delegatedBalance: BigDecimal,
+        val rewardsBalance: BigDecimal,
+    ) {
+        val totalNhash: BigDecimal = bankBalance.add(delegatedBalance).add(rewardsBalance)
+    }
+
+    private suspend fun sumHashForAccount(address: String, height: Int?): AccountHashHoldings {
         val bankBalance = if (height != null) {
             accountGrpcClient.getAccountBalanceForDenomAtHeight(address, UTILITY_TOKEN, height)
                 .amount.toBigDecimal()
@@ -76,7 +109,7 @@ class PassportHashService(
         val delegatedBalance = delegationTotalNhash(address, height)
         val rewardsBalance = rewardsTotalNhash(address, height)
 
-        return bankBalance.add(delegatedBalance).add(rewardsBalance)
+        return AccountHashHoldings(address, bankBalance, delegatedBalance, rewardsBalance)
     }
 
     private suspend fun delegationTotalNhash(address: String, height: Int?): BigDecimal {
