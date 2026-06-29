@@ -3,7 +3,7 @@ package io.provenance.explorer.service
 import com.github.benmanes.caffeine.cache.Caffeine
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.pulse.PulseProperties
-import io.provenance.explorer.domain.core.logger
+import io.provenance.explorer.domain.extensions.toDecimalStringOld
 import io.provenance.explorer.domain.entities.BlockCacheRecord
 import io.provenance.explorer.grpc.v1.AccountGrpcClient
 import io.provenance.explorer.grpc.v1.AttributeGrpcClient
@@ -155,6 +155,6 @@ class PassportHashService(
 
         return rewards.totalList
             .filter { it.denom == UTILITY_TOKEN }
-            .sumOf { it.amount.toBigDecimal() }
+            .sumOf { it.amount.toDecimalStringOld().toBigDecimal() }
     }
 }
