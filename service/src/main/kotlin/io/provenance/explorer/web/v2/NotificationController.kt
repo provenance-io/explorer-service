@@ -1,7 +1,5 @@
 package io.provenance.explorer.web.v2
 
-import io.provenance.explorer.domain.annotation.HiddenApi
-import io.provenance.explorer.domain.models.explorer.Announcement
 import io.provenance.explorer.service.NotificationService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -13,11 +11,8 @@ import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
-import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PutMapping
-import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -39,15 +34,6 @@ class NotificationController(private val notifService: NotificationService) {
     @Operation(summary = "Returns list of scheduled upgrades")
     @GetMapping("/upgrades")
     fun getScheduledUpgrades() = ResponseEntity.ok(notifService.fetchScheduledUpgrades())
-
-    @Operation(summary = "Insert or update an announcement to be displayed in Explorer")
-    @PutMapping("/announcement")
-    @HiddenApi
-    fun upsertAnnouncement(@RequestBody obj: Announcement): ResponseEntity<String> {
-        val id = notifService.upsertAnnouncement(obj)
-        val text = if (obj.id == null) "created" else "updated"
-        return ResponseEntity.ok("Announcement with ID $id has been $text.")
-    }
 
     @Operation(summary = "Returns a paginated list of announcements")
     @GetMapping("/announcement/all")
@@ -73,12 +59,4 @@ class NotificationController(private val notifService: NotificationService) {
     @Operation(summary = "Returns a single announcement by ID")
     @GetMapping("/announcement/{id}")
     fun getAnnouncementById(@PathVariable id: Int) = ResponseEntity.ok(notifService.getAnnouncementById(id))
-
-    @Operation(summary = "Delete an existing announcement")
-    @DeleteMapping("/announcement/{id}")
-    @HiddenApi
-    fun deleteAnnouncement(@PathVariable id: Int): ResponseEntity<String> {
-        notifService.deleteAnnouncement(id)
-        return ResponseEntity.ok("Announcement with ID $id has been deleted.")
-    }
 }

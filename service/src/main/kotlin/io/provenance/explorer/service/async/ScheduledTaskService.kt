@@ -424,6 +424,12 @@ class ScheduledTaskService(
         pulseMetricService.refreshCache()
     }
 
+    // Recompute any pulse cache rows an operator flagged with refresh = true.
+    @Scheduled(initialDelay = 1L, fixedDelay = 5L, timeUnit = TimeUnit.MINUTES)
+    fun backFillPulseMetrics() {
+        pulseMetricService.backFillAllMetrics()
+    }
+
     // hopefully a one time thing
     @Scheduled(initialDelay = 0L, fixedDelay = 7L, timeUnit = TimeUnit.DAYS)
     fun populateScopes() {
