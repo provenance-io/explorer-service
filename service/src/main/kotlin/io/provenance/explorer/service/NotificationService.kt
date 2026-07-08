@@ -6,10 +6,8 @@ import io.provenance.explorer.config.ResourceNotFoundException
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.AnnouncementRecord
 import io.provenance.explorer.domain.entities.GovProposalRecord
-import io.provenance.explorer.domain.exceptions.InvalidArgumentException
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.toOffset
-import io.provenance.explorer.domain.models.explorer.Announcement
 import io.provenance.explorer.grpc.v1.GovGrpcClient
 import io.provenance.explorer.model.AnnouncementOut
 import io.provenance.explorer.model.OpenProposals
@@ -78,17 +76,6 @@ class NotificationService(
         }
     }
 
-    fun upsertAnnouncement(obj: Announcement) = transaction {
-        obj.validateAnnouncement().upsert()
-    }
-
-    private fun Announcement.validateAnnouncement(): Announcement {
-        if (this.id == null && (this.title == null || this.body == null)) {
-            throw InvalidArgumentException("Both title and announcement body must be filled in for new announcement.")
-        }
-        return this
-    }
-
     fun getAnnouncements(page: Int, count: Int, fromDate: LocalDateTime?) =
         AnnouncementRecord.getAnnouncements(page.toOffset(count), count, fromDate)
             .let { results ->
@@ -99,6 +86,4 @@ class NotificationService(
     fun getAnnouncementById(id: Int) = transaction {
         AnnouncementRecord.getById(id) ?: throw ResourceNotFoundException("Invalid announcement id: '$id'")
     }
-
-    fun deleteAnnouncement(id: Int) = AnnouncementRecord.deleteById(id)
 }

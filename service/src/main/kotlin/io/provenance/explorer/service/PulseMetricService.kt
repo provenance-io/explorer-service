@@ -65,7 +65,6 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -1758,6 +1757,65 @@ class PulseMetricService(
     }
 
     /**
+     * Recomputes pulse cache rows flagged via `pulse_cache.refresh = true`.
+     * Operators set the flag in SQL; the scheduled task drains the queue.
+     *
+     * For a date range:
+     *   UPDATE pulse_cache SET refresh = true
+     *   WHERE cache_date BETWEEN '2026-06-01' AND '2026-06-30' AND type = 'PULSE_TVL_METRIC';
+     *
+     * For asset price/volume on a specific denom, set subtype to the denom when flagging.
+     */
+    fun backFillAllMetrics() {
+        val flagged = PulseCacheRecord.findRowsToRefresh()
+        if (flagged.isEmpty()) return
+
+        if (isBackfillInProgress.compareAndSet(false, true)) {
+            try {
+                logger.info("Backfilling ${flagged.size} flagged pulse cache row(s)")
+                flagged.forEach { row ->
+                    try {
+                        /*
+                         Pulse works on the principal that the metric for a given
+                         date is the aggregation of all events for that date. So we need to
+                         set the backfill date to the end of the day to ensure that we
+                         capture all events for that date.
+                         */
+                        val d = endOfDay(row.cacheDate.atStartOfDay())
+                        logger.info("Backfilling ${row.type} for $d")
+                        if (row.type == PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC ||
+                            row.type == PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC
+                        ) {
+                            if (row.subtype != null) {
+                                // Backfill specific denom's price/volume metrics
+                                pulseAssetSummary(row.subtype, d)
+                            } else {
+                                // Backfill all assets
+                                pulseAssetSummaries(d)
+                            }
+                        } else {
+                            pulseMetric(
+                                type = row.type,
+                                atDateTime = d
+                            )
+                        }
+                        PulseCacheRecord.clearRefresh(row.id)
+                    } catch (e: Exception) {
+                        logger.warn(
+                            "Failed to backfill ${row.type} for ${row.cacheDate}: ${e.message}",
+                            e
+                        )
+                    }
+                }
+            } finally {
+                isBackfillInProgress.set(false)
+            }
+        } else {
+            logger.warn("Backfill already in progress, skipping")
+        }
+    }
+
+    /**
      * Returns the current hash metrics for the given type
      */
     fun hashMetric(
@@ -2342,61 +2400,6 @@ class PulseMetricService(
                 total = pr.total
 
             )
-        }
-    }
-
-    /**
-     * Fill in the pulse cache for a date range for a list of cache types
-     */
-    fun backFillAllMetrics(
-        fromDate: LocalDate,
-        toDate: LocalDate,
-        types: List<PulseCacheType>,
-        denom: String? = null
-    ) {
-        if (isBackfillInProgress.compareAndSet(false, true)) {
-            try {
-                val days = fromDate.until(toDate, ChronoUnit.DAYS)
-                for (i in 0..days) {
-                    /*
-                     Pulse works on the principal that the metric for a given
-                     is the aggregation of all events for that date. So we need to
-                     set the backfill date the end of the day to ensure that we
-                     capture all events for that date.
-                     */
-                    val d = endOfDay(fromDate.plusDays(i).atStartOfDay())
-                    for (type in types) {
-                        try {
-                            logger.info("Backfilling $type for $d")
-                            if (type == PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC ||
-                                type == PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC
-                            ) {
-                                if (denom != null) {
-                                    // Backfill specific denom's price/volume metrics
-                                    pulseAssetSummary(denom, d)
-                                } else {
-                                    // Backfill all assets
-                                    pulseAssetSummaries(d)
-                                }
-                            } else {
-                                pulseMetric(
-                                    type = type,
-                                    atDateTime = d
-                                )
-                            }
-                        } catch (e: Exception) {
-                            logger.warn(
-                                "Failed to backfill $type for $d: ${e.message}",
-                                e
-                            )
-                        }
-                    }
-                }
-            } finally {
-                isBackfillInProgress.set(false)
-            }
-        } else {
-            logger.warn("Backfill already in progress, skipping")
         }
     }
 

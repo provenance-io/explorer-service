@@ -327,7 +327,19 @@ object PulseCacheTable : IntIdTable(name = "pulse_cache") {
     val data = jsonb<PulseCacheTable, PulseMetric>("data", OBJECT_MAPPER)
     val type: Column<PulseCacheType> = enumerationByName("type", 128, PulseCacheType::class)
     val subtype = text("subtype").nullable()
+    val refresh = bool("refresh").default(false)
 }
+
+/**
+ * Lightweight, transaction-safe view of a pulse cache row that an operator has
+ * flagged for recomputation (refresh = true) by the scheduled task.
+ */
+data class PulseCacheRefreshRequest(
+    val id: Int,
+    val cacheDate: LocalDate,
+    val type: PulseCacheType,
+    val subtype: String?
+)
 
 class PulseCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<PulseCacheRecord>(
@@ -367,6 +379,21 @@ class PulseCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                 }.orderBy(Pair(PulseCacheTable.cacheDate, SortOrder.ASC))
                 .toList()
             }
+
+        /**
+         * Returns rows flagged for recomputation. Set `pulse_cache.refresh = true`
+         * (via SQL) on the rows you want the scheduled task to rebuild.
+         */
+        fun findRowsToRefresh() = transaction {
+            PulseCacheRecord.find { PulseCacheTable.refresh eq true }
+                .map { PulseCacheRefreshRequest(it.id.value, it.cacheDate, it.type, it.subtype) }
+        }
+
+        fun clearRefresh(id: Int) = transaction {
+            PulseCacheTable.update({ PulseCacheTable.id eq id }) {
+                it[refresh] = false
+            }
+        }
     }
 
     var type by PulseCacheTable.type
@@ -374,4 +401,5 @@ class PulseCacheRecord(id: EntityID<Int>) : IntEntity(id) {
     var updatedTimestamp by PulseCacheTable.updatedTimestamp
     var subtype by PulseCacheTable.subtype
     var cacheDate by PulseCacheTable.cacheDate
+    var refresh by PulseCacheTable.refresh
 }
