@@ -2,7 +2,6 @@ package io.provenance.explorer.web.v3
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
-import io.provenance.explorer.domain.annotation.HiddenApi
 import io.provenance.explorer.domain.models.explorer.TokenHistoricalDataRequest
 import io.provenance.explorer.service.TokenService
 import io.swagger.v3.oas.annotations.Operation
@@ -51,11 +50,6 @@ class TokenController(private val tokenService: TokenService) {
     @Operation(summary = "Returns token statistics for the chain, ie circulation, community pool")
     @GetMapping("/stats")
     fun getTokenStats() = tokenService.getTokenBreakdown()
-
-    @Operation(summary = "Runs the distribution update")
-    @GetMapping("/run")
-    @HiddenApi
-    fun runDistribution() = tokenService.updateTokenDistributionStats(UTILITY_TOKEN)
 
     @Operation(summary = "Returns distribution of hash between sets of accounts = all - nhash marker - zeroSeq - modules - contracts")
     @GetMapping("/distribution")
