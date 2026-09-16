@@ -4,6 +4,7 @@ import cosmos.base.query.v1beta1.pageRequest
 import io.grpc.ManagedChannelBuilder
 import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.extensions.toByteString
+import io.provenance.explorer.grpc.extensions.addBlockHeightToQuery
 import io.provenance.explorer.grpc.extensions.getPagination
 import io.provenance.metadata.v1.QueryGrpcKt.QueryCoroutineStub
 import io.provenance.metadata.v1.QueryScopeNetAssetValuesRequest
@@ -150,11 +151,13 @@ class MetadataGrpcClient(channelUri: URI, private val semaphore: Semaphore) {
     suspend fun getMetadataParams() = metadataClient.params(queryParamsRequest { })
 
     /**
-     * Current on-chain NAVs for a scope (uuid or bech32 scope address).
+     * On-chain NAVs for a scope (uuid or bech32 scope address).
+     * Pass [height] to query historical state via `x-cosmos-block-height`.
      */
-    suspend fun getScopeNetAssetValues(scopeId: String) =
+    suspend fun getScopeNetAssetValues(scopeId: String, height: Int? = null) =
         semaphore.withPermit {
             metadataClient
+                .addBlockHeightToQuery(height)
                 .withDeadlineAfter(30, TimeUnit.SECONDS)
                 .scopeNetAssetValues(
                     QueryScopeNetAssetValuesRequest.newBuilder().setId(scopeId).build()

@@ -86,9 +86,11 @@ class PulseMetricService(
     private val pricingService: PricingService,
     private val metadataGrpcClient: MetadataGrpcClient,
     private val passportHashService: PassportHashService,
+    private val scopeNavSnapshotService: ScopeNavSnapshotService,
 ) {
     companion object {
         private val isBackfillInProgress = AtomicBoolean(false)
+        private val backfillingType = ThreadLocal<PulseCacheType?>()
     }
 
     protected val logger = logger(PulseMetricService::class)
@@ -684,22 +686,45 @@ class PulseMetricService(
         }
 
     /**
-     * Sum of current on-chain scope NAVs from the latest snapshot table.
-     * This is current-state only; historical `atDateTime` cannot be reconstructed.
-     * Not yet used by TVL — compare against [totalMetadataNavs] first.
+     * Sum of on-chain scope NAVs.
+     * Live (`atDateTime` null) reads the current `scope_nav_snapshot` table.
+     * Historical dates query chain at the last block on that UTC day and only
+     * persist the total to `pulse_cache` — they do not update `scope_nav_snapshot`.
+     *
+     * After TVL switches to this metric, refresh the snapshot row for a date
+     * first, then refresh `PULSE_TVL_METRIC` so TVL can reuse the cached total
+     * instead of walking every scope again.
      */
     private fun totalScopeNavSnapshot(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
-    ): PulseMetric =
-        fetchOrBuildCacheFromDataSource(
+    ): PulseMetric {
+        if (atDateTime != null &&
+            backfillingType.get() != PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC
+        ) {
+            fromPulseMetricCache(
+                atDateTime.toLocalDate(),
+                PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC
+            )?.let { return it }
+        }
+
+        return fetchOrBuildCacheFromDataSource(
             type = PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC,
             range = range,
             atDateTime = atDateTime
         ) {
             val ignoredScopeAddresses = getIgnoredScopeAddresses()
+            val amounts = if (atDateTime != null) {
+                val height = BlockCacheRecord.getLastBlockBeforeTime(atDateTime)
+                logger.info(
+                    "Computing PULSE_SCOPE_NAV_SNAPSHOT_METRIC from chain at height $height for $atDateTime"
+                )
+                scopeNavSnapshotService.usdNavAmountsAtHeight(height)
+            } else {
+                ScopeNavSnapshotRecord.usdNavAmounts()
+            }
 
-            ScopeNavSnapshotRecord.usdNavAmounts()
+            amounts
                 .filter { (scopeAddress, _) ->
                     scopeAddress !in ignoredScopeAddresses
                 }
@@ -711,6 +736,7 @@ class PulseMetricService(
                     )
                 }
         }
+    }
 
     /**
      * Retrieves the transaction volume for the last 30 days to build
@@ -1686,6 +1712,7 @@ class PulseMetricService(
             try {
                 logger.info("Backfilling ${flagged.size} flagged pulse cache row(s)")
                 flagged.forEach { row ->
+                    backfillingType.set(row.type)
                     try {
                         /*
                          Pulse works on the principal that the metric for a given
@@ -1717,6 +1744,8 @@ class PulseMetricService(
                             "Failed to backfill ${row.type} for ${row.cacheDate}: ${e.message}",
                             e
                         )
+                    } finally {
+                        backfillingType.remove()
                     }
                 }
             } finally {
