@@ -11,6 +11,7 @@ import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insertAndGetId
@@ -91,6 +92,32 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         /**
+         * Keyset page of non-deleted scopes for the on-chain NAV snapshot job.
+         */
+        fun findActiveScopesAfter(afterId: Int, limit: Int): List<ActiveNftScope> = transaction {
+            val query = """
+                SELECT id, uuid, address
+                FROM nft_scope
+                WHERE deleted = false AND id > ?
+                ORDER BY id
+                LIMIT ?
+            """.trimIndent()
+
+            query.execAndMap(
+                listOf(
+                    Pair(IntegerColumnType(), afterId),
+                    Pair(IntegerColumnType(), limit)
+                )
+            ) {
+                ActiveNftScope(
+                    id = it.getInt("id"),
+                    uuid = it.getString("uuid"),
+                    address = it.getString("address")
+                )
+            }
+        }
+
+        /**
          * Returns a set of scope addresses that have value_owner_address in the given set of addresses
          */
         fun findScopeAddressesByValueOwners(valueOwnerAddresses: Set<String>): Set<String> = transaction {
@@ -125,6 +152,12 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
     var deleted by NftScopeTable.deleted
     var scope by NftScopeTable.scope
 }
+
+data class ActiveNftScope(
+    val id: Int,
+    val uuid: String,
+    val address: String
+)
 
 object NftScopeSpecTable : IntIdTable(name = "nft_scope_spec") {
     val uuid = varchar("uuid", 128)

@@ -6,6 +6,7 @@ import io.provenance.explorer.config.interceptor.GrpcLoggingInterceptor
 import io.provenance.explorer.domain.extensions.toByteString
 import io.provenance.explorer.grpc.extensions.getPagination
 import io.provenance.metadata.v1.QueryGrpcKt.QueryCoroutineStub
+import io.provenance.metadata.v1.QueryScopeNetAssetValuesRequest
 import io.provenance.metadata.v1.contractSpecificationRequest
 import io.provenance.metadata.v1.ownershipRequest
 import io.provenance.metadata.v1.queryParamsRequest
@@ -147,4 +148,16 @@ class MetadataGrpcClient(channelUri: URI, private val semaphore: Semaphore) {
         }
 
     suspend fun getMetadataParams() = metadataClient.params(queryParamsRequest { })
+
+    /**
+     * Current on-chain NAVs for a scope (uuid or bech32 scope address).
+     */
+    suspend fun getScopeNetAssetValues(scopeId: String) =
+        semaphore.withPermit {
+            metadataClient
+                .withDeadlineAfter(30, TimeUnit.SECONDS)
+                .scopeNetAssetValues(
+                    QueryScopeNetAssetValuesRequest.newBuilder().setId(scopeId).build()
+                )
+        }
 }

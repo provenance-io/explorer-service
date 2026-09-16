@@ -25,6 +25,7 @@ import io.provenance.explorer.domain.entities.NavEvent
 import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.entities.NftScopeRecord
 import io.provenance.explorer.domain.entities.PulseCacheRecord
+import io.provenance.explorer.domain.entities.ScopeNavSnapshotRecord
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.roundWhole
@@ -672,6 +673,35 @@ class PulseMetricService(
             NavEventsRecord.totalMetadataNavs(atDateTime)
                 .filter { (scopeId, _) ->
                     scopeId?.let { it !in ignoredScopeAddresses } ?: true
+                }
+                .sumOf { (_, priceAmount) -> priceAmount }
+                .let {
+                    PulseMetric.build(
+                        base = USD_UPPER,
+                        amount = it.times(scopeNAVDecimal)
+                    )
+                }
+        }
+
+    /**
+     * Sum of current on-chain scope NAVs from the latest snapshot table.
+     * This is current-state only; historical `atDateTime` cannot be reconstructed.
+     * Not yet used by TVL — compare against [totalMetadataNavs] first.
+     */
+    private fun totalScopeNavSnapshot(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            val ignoredScopeAddresses = getIgnoredScopeAddresses()
+
+            ScopeNavSnapshotRecord.usdNavAmounts()
+                .filter { (scopeAddress, _) ->
+                    scopeAddress !in ignoredScopeAddresses
                 }
                 .sumOf { (_, priceAmount) -> priceAmount }
                 .let {
@@ -1625,7 +1655,8 @@ class PulseMetricService(
             logger.info("Refreshing pulse cache for thread $threadName")
             PulseCacheType.entries.filter {
                 it != PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC &&
-                        it != PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
+                    it != PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC &&
+                    it != PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC
             }
                 .forEach { type ->
                     pulseMetric(type = type)
@@ -1869,6 +1900,11 @@ class PulseMetricService(
             )
 
             PulseCacheType.PULSE_TOTAL_NAV_METRIC -> totalMetadataNavs(
+                range,
+                atDateTime
+            )
+
+            PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC -> totalScopeNavSnapshot(
                 range,
                 atDateTime
             )

@@ -42,3 +42,9 @@ fromDate = 2025-04-08 &
 toDate = 2025-04-08 &
 types = PULSE_TRADING_TVL_METRIC
 
+### Compare event-based Total NAV vs on-chain scope NAV snapshot
+GET http://localhost:8612/api/pulse/metric/type/PULSE_TOTAL_NAV_METRIC?range=24h
+
+###
+GET http://localhost:8612/api/pulse/metric/type/PULSE_SCOPE_NAV_SNAPSHOT_METRIC?range=24h
+
