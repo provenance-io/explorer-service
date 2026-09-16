@@ -34,6 +34,7 @@ import io.provenance.explorer.domain.extensions.height
 import io.provenance.explorer.domain.extensions.monthToQuarter
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toDateTime
+import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
 import io.provenance.explorer.grpc.extensions.getMsgSubTypes
 import io.provenance.explorer.grpc.extensions.getMsgType
 import io.provenance.explorer.service.AccountService
@@ -45,6 +46,7 @@ import io.provenance.explorer.service.GovService
 import io.provenance.explorer.service.MetricsService
 import io.provenance.explorer.service.NftService
 import io.provenance.explorer.service.PulseMetricService
+import io.provenance.explorer.service.ScopeNavSnapshotService
 import io.provenance.explorer.service.TokenService
 import io.provenance.explorer.service.ValidatorService
 import io.provenance.explorer.service.getBlock
@@ -82,7 +84,8 @@ class ScheduledTaskService(
     private val metricsService: MetricsService,
     private val assetService: AssetService,
     private val pulseMetricService: PulseMetricService,
-    private val nftService: NftService
+    private val nftService: NftService,
+    private val scopeNavSnapshotService: ScopeNavSnapshotService
 ) {
 
     protected val logger = logger(ScheduledTaskService::class)
@@ -422,6 +425,16 @@ class ScheduledTaskService(
     @Scheduled(initialDelay = 1L, fixedDelay = 5L, timeUnit = TimeUnit.MINUTES)
     fun refreshPulseMetricCache() {
         pulseMetricService.refreshCache()
+    }
+
+    /**
+     * Current on-chain scope NAVs. Heavy (~all scopes via gRPC), so this is
+     * not part of the 5-minute Pulse cache refresh.
+     */
+    @Scheduled(initialDelay = 15, fixedDelay = 6 * 60, timeUnit = TimeUnit.MINUTES)
+    fun snapshotScopeNavs() {
+        scopeNavSnapshotService.snapshotCurrentNavs()
+        pulseMetricService.pulseMetric(type = PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC)
     }
 
     // Recompute any pulse cache rows an operator flagged with refresh = true.
