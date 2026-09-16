@@ -383,9 +383,15 @@ class PulseCacheRecord(id: EntityID<Int>) : IntEntity(id) {
         /**
          * Returns rows flagged for recomputation. Set `pulse_cache.refresh = true`
          * (via SQL) on the rows you want the scheduled task to rebuild.
+         * Oldest cache_date first so each day's trend can use the previous day's total.
          */
         fun findRowsToRefresh() = transaction {
             PulseCacheRecord.find { PulseCacheTable.refresh eq true }
+                .orderBy(
+                    Pair(PulseCacheTable.cacheDate, SortOrder.ASC),
+                    Pair(PulseCacheTable.type, SortOrder.ASC),
+                    Pair(PulseCacheTable.id, SortOrder.ASC)
+                )
                 .map { PulseCacheRefreshRequest(it.id.value, it.cacheDate, it.type, it.subtype) }
         }
 
