@@ -62,4 +62,11 @@ class AssetControllerV3(private val assetService: AssetService, private val ibcS
         @RequestParam(required = false)
         denom: String?
     ) = assetService.getMetadata(denom)
+
+    @Operation(summary = "Returns assets by role and address")
+    @GetMapping("/by-role/{role}/{address}")
+    fun getAssetsByRole(
+        @Parameter(description = "The role to filter by (e.g., ISSUER, ADMIN)") @PathVariable role: String,
+        @Parameter(description = "The address to filter by") @PathVariable address: String
+    ) = assetService.getAssetsByRole(role, address)
 }
