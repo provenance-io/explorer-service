@@ -30,6 +30,13 @@ Types of changes (Stanzas):
 "Data" for any data changes.
 Ref: https://keepachangelog.com/en/1.0.0/
 -->
+## [v7.0.6](https://github.com/provenance-io/explorer-service/releases/tag/v7.0.6) - 2025-03-20
+
+### Features
+
+Version 7.0.6 Introduces two new tables that will be used to track loan receivable data 
+for ledgering on-chain
+
 ## [v7.0.5](https://github.com/provenance-io/explorer-service/releases/tag/v7.0.5) - 2025-03-20
 
 ### Bug Fixes
