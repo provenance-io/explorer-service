@@ -429,12 +429,14 @@ class ScheduledTaskService(
 
     /**
      * Current on-chain scope NAVs. Heavy (~all scopes via gRPC), so this is
-     * not part of the 5-minute Pulse cache refresh.
+     * not part of the 5-minute Pulse cache refresh. Checked often so a restart
+     * can catch an empty/stale table; the walk itself still only runs when due.
      */
-    @Scheduled(initialDelay = 15, fixedDelay = 6 * 60, timeUnit = TimeUnit.MINUTES)
+    @Scheduled(initialDelay = 1, fixedDelay = 15, timeUnit = TimeUnit.MINUTES)
     fun snapshotScopeNavs() {
-        scopeNavSnapshotService.snapshotCurrentNavs()
-        pulseMetricService.pulseMetric(type = PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC)
+        if (scopeNavSnapshotService.snapshotCurrentNavsIfDue()) {
+            pulseMetricService.pulseMetric(type = PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC)
+        }
     }
 
     // Recompute any pulse cache rows an operator flagged with refresh = true.

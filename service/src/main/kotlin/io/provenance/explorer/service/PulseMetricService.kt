@@ -491,7 +491,9 @@ class PulseMetricService(
             cacheType = PulseCacheType.PULSE_TVL_SNAPSHOT_METRIC,
             range = range,
             atDateTime = atDateTime,
-            navMetric = { r, d -> totalScopeNavSnapshot(r, d) }
+            navMetric = { r, d ->
+                totalScopeNavSnapshot(r, d, persist = d != null)
+            }
         )
 
     private fun pulseTvlFromNav(
@@ -729,13 +731,16 @@ class PulseMetricService(
      * Historical dates query chain at the last block on that UTC day and only
      * persist the total to `pulse_cache` — they do not update `scope_nav_snapshot`.
      *
-     * Historical `PULSE_TVL_SNAPSHOT_METRIC` reuses this cached total. Refresh
+     * Live TVL passes [persist] false so the 5-minute refresh does not overwrite
+     * `PULSE_SCOPE_NAV_SNAPSHOT_METRIC`; that row is written after a real walk.
+     * Historical `PULSE_TVL_SNAPSHOT_METRIC` reuses the cached total. Refresh
      * the snapshot row for a date first, then refresh `PULSE_TVL_SNAPSHOT_METRIC`
      * so TVL does not walk every scope again.
      */
     private fun totalScopeNavSnapshot(
         range: MetricRangeType = MetricRangeType.DAY,
-        atDateTime: LocalDateTime? = null
+        atDateTime: LocalDateTime? = null,
+        persist: Boolean = true
     ): PulseMetric {
         if (atDateTime != null &&
             backfillingType.get() != PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC
@@ -746,11 +751,7 @@ class PulseMetricService(
             )?.let { return it }
         }
 
-        return fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC,
-            range = range,
-            atDateTime = atDateTime
-        ) {
+        val compute = {
             val ignoredScopeAddresses = getIgnoredScopeAddresses()
             val amounts = if (atDateTime != null) {
                 val height = BlockCacheRecord.getLastBlockBeforeTime(atDateTime)
@@ -774,6 +775,14 @@ class PulseMetricService(
                     )
                 }
         }
+
+        if (!persist) return compute()
+
+        return fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) { compute() }
     }
 
     /**
