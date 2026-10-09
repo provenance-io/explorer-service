@@ -143,10 +143,38 @@ class TokenServiceTest {
         val latestData = tokenServiceSpy.processLatestTokenData(historicalPrices, today)
 
         assertNotNull(latestData, "Latest data should not be null")
-        assertEquals("1.600", latestData?.quote?.get(USD_UPPER)?.price?.toPlainString(), "Latest price is incorrect")
+        assertEquals("1.6", latestData?.quote?.get(USD_UPPER)?.price?.toPlainString(), "Latest price is incorrect")
         assertEquals("14.3", latestData?.quote?.get(USD_UPPER)?.percent_change_24h?.toPlainString(), "Percent change is incorrect")
         assertEquals("450", latestData?.quote?.get(USD_UPPER)?.volume_24h?.toPlainString(), "Volume sum is incorrect")
         assertEquals("1600.000", latestData?.quote?.get(USD_UPPER)?.market_cap_by_total_supply?.toPlainString(), "Market cap is incorrect")
+    }
+
+    @Test
+    fun `test processLatestTokenData keeps CoinGecko price precision`() {
+        val today = LocalDateTime.now()
+        val historicalPrices = listOf(
+            HistoricalPrice(
+                time = today.minusDays(1).toEpochSecond(ZoneOffset.UTC),
+                high = "0.0065".toBigDecimal(),
+                low = "0.0064".toBigDecimal(),
+                open = "0.0064".toBigDecimal(),
+                close = "0.006456".toBigDecimal(),
+                volume = "100".toBigDecimal(),
+                source = "coin-gecko"
+            )
+        )
+        val tokenServiceSpy = spyk(tokenService) {
+            every { totalSupply() } returns "1000".toBigDecimal().multiply(ExplorerProperties.UTILITY_TOKEN_BASE_MULTIPLIER)
+        }
+
+        val latestData = tokenServiceSpy.processLatestTokenData(historicalPrices, today)
+
+        assertNotNull(latestData, "Latest data should not be null")
+        assertEquals(
+            "0.006456",
+            latestData?.quote?.get(USD_UPPER)?.price?.toPlainString(),
+            "Latest price should keep CoinGecko precision instead of truncating to 3 decimals"
+        )
     }
 
     @Test

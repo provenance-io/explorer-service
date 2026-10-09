@@ -1829,7 +1829,7 @@ class PulseMetricService(
                 }
 
                 PulseCacheType.HASH_SUPPLY_METRIC -> {
-                    val tokenSupply = tokenService.maxSupply()
+                    val tokenSupply = tokenService.totalSupply(height)
                         .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
                         .roundWhole()
                     PulseMetric.build(
@@ -1861,10 +1861,11 @@ class PulseMetricService(
 
                 PulseCacheType.HASH_FDV_METRIC -> {
                     /*
-                    The market cap if the max supply was in circulation.
-                    Fully-diluted value (FDV) = price x max supply.
+                    The market cap if the remaining (non-burned) supply was in circulation.
+                    Fully-diluted value (FDV) = price x total supply.
+                    Total supply = on-chain bank supply - burned HASH on the nhash marker.
                      */
-                    val tokenSupply = tokenService.maxSupply(height)
+                    val tokenSupply = tokenService.totalSupply(height)
                         .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
                         .roundWhole()
                     val fdv = hashPriceAtDate.times(tokenSupply)
