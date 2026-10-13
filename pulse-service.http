@@ -48,3 +48,9 @@ GET http://localhost:8612/api/pulse/metric/type/PULSE_TOTAL_NAV_METRIC?range=24h
 ###
 GET http://localhost:8612/api/pulse/metric/type/PULSE_SCOPE_NAV_SNAPSHOT_METRIC?range=24h
 
+### Snapshot-based TVL (committed + passport HASH + PULSE_SCOPE_NAV_SNAPSHOT_METRIC)
+GET http://localhost:8612/api/pulse/metric/type/PULSE_TVL_SNAPSHOT_METRIC?range=24h
+
+### Event-based TVL (committed + passport HASH + PULSE_TOTAL_NAV_METRIC)
+GET http://localhost:8612/api/pulse/metric/type/PULSE_TVL_METRIC?range=24h
+

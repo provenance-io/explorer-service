@@ -470,18 +470,47 @@ class PulseMetricService(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
     ): PulseMetric =
+        pulseTvlFromNav(
+            cacheType = PulseCacheType.PULSE_TVL_METRIC,
+            range = range,
+            atDateTime = atDateTime,
+            navMetric = { r, d -> totalMetadataNavs(r, d) }
+        )
+
+    /**
+     * TVL using on-chain scope NAV snapshots instead of `nav_events`.
+     * Same committed-exchange + passport HASH components as [pulseTVL].
+     * Historical backfill reuses cached `PULSE_SCOPE_NAV_SNAPSHOT_METRIC` —
+     * refresh that type first for a date, then this type.
+     */
+    private fun pulseTvlSnapshot(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
+        pulseTvlFromNav(
+            cacheType = PulseCacheType.PULSE_TVL_SNAPSHOT_METRIC,
+            range = range,
+            atDateTime = atDateTime,
+            navMetric = { r, d ->
+                totalScopeNavSnapshot(r, d, persist = d != null)
+            }
+        )
+
+    private fun pulseTvlFromNav(
+        cacheType: PulseCacheType,
+        range: MetricRangeType,
+        atDateTime: LocalDateTime?,
+        navMetric: (MetricRangeType, LocalDateTime?) -> PulseMetric
+    ): PulseMetric =
         fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PULSE_TVL_METRIC,
+            type = cacheType,
             range = range,
             atDateTime = atDateTime
         ) {
             val committedValue = committedAssetTotals(atDateTime)
                 .filterKeys { it != UTILITY_TOKEN }
                 .committedAssetsToValue()
-            val navValue = this.totalMetadataNavs(
-                range = range,
-                atDateTime = atDateTime
-            )
+            val navValue = navMetric(range, atDateTime)
 
             val totalValue = committedValue.amount
                 .add(passportHashUsdValue(atDateTime))
@@ -490,13 +519,24 @@ class PulseMetricService(
             PulseMetric.build(
                 base = USD_UPPER,
                 amount = totalValue,
-                series = seriesFromPriorMetrics(
-                    type = PulseCacheType.PULSE_TVL_METRIC,
-                    days = longest_range,
-                    atDateTime = atDateTime,
-                    valueSelector = { it.amount }
-                )
+                series = tvlSeriesFromPriorMetrics(cacheType, atDateTime)
             )
+        }
+
+    private fun tvlSeriesFromPriorMetrics(
+        type: PulseCacheType,
+        atDateTime: LocalDateTime?
+    ): MetricSeries? =
+        try {
+            seriesFromPriorMetrics(
+                type = type,
+                days = longest_range,
+                atDateTime = atDateTime,
+                valueSelector = { it.amount }
+            )
+        } catch (e: ResourceNotFoundException) {
+            logger.info("No ${type.name} history yet for series: ${e.message}")
+            null
         }
 
     private fun passportHashBalanceAmount(atDateTime: LocalDateTime? = null): BigDecimal =
@@ -691,13 +731,16 @@ class PulseMetricService(
      * Historical dates query chain at the last block on that UTC day and only
      * persist the total to `pulse_cache` — they do not update `scope_nav_snapshot`.
      *
-     * After TVL switches to this metric, refresh the snapshot row for a date
-     * first, then refresh `PULSE_TVL_METRIC` so TVL can reuse the cached total
-     * instead of walking every scope again.
+     * Live TVL passes [persist] false so the 5-minute refresh does not overwrite
+     * `PULSE_SCOPE_NAV_SNAPSHOT_METRIC`; that row is written after a real walk.
+     * Historical `PULSE_TVL_SNAPSHOT_METRIC` reuses the cached total. Refresh
+     * the snapshot row for a date first, then refresh `PULSE_TVL_SNAPSHOT_METRIC`
+     * so TVL does not walk every scope again.
      */
     private fun totalScopeNavSnapshot(
         range: MetricRangeType = MetricRangeType.DAY,
-        atDateTime: LocalDateTime? = null
+        atDateTime: LocalDateTime? = null,
+        persist: Boolean = true
     ): PulseMetric {
         if (atDateTime != null &&
             backfillingType.get() != PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC
@@ -708,11 +751,7 @@ class PulseMetricService(
             )?.let { return it }
         }
 
-        return fetchOrBuildCacheFromDataSource(
-            type = PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC,
-            range = range,
-            atDateTime = atDateTime
-        ) {
+        val compute = {
             val ignoredScopeAddresses = getIgnoredScopeAddresses()
             val amounts = if (atDateTime != null) {
                 val height = BlockCacheRecord.getLastBlockBeforeTime(atDateTime)
@@ -736,6 +775,14 @@ class PulseMetricService(
                     )
                 }
         }
+
+        if (!persist) return compute()
+
+        return fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) { compute() }
     }
 
     /**
@@ -1702,6 +1749,9 @@ class PulseMetricService(
      *   UPDATE pulse_cache SET refresh = true
      *   WHERE cache_date BETWEEN '2026-06-01' AND '2026-06-30' AND type = 'PULSE_TVL_METRIC';
      *
+     * Snapshot TVL: flag `PULSE_SCOPE_NAV_SNAPSHOT_METRIC` first (oldest to newest),
+     * then `PULSE_TVL_SNAPSHOT_METRIC` so TVL reuses the cached NAV total.
+     *
      * For asset price/volume on a specific denom, set subtype to the denom when flagging.
      */
     fun backFillAllMetrics() {
@@ -1918,6 +1968,7 @@ class PulseMetricService(
             )
 
             PulseCacheType.PULSE_TVL_METRIC -> pulseTVL(range, atDateTime)
+            PulseCacheType.PULSE_TVL_SNAPSHOT_METRIC -> pulseTvlSnapshot(range, atDateTime)
             PulseCacheType.PULSE_CHAIN_FEES_VALUE_METRIC ->
                 pulseChainFeesOverRange(range, type, atDateTime)
 
