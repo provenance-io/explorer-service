@@ -9,7 +9,36 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.LocalDateTime
+import java.time.LocalTime
+
+/**
+ * Live snapshot cadence from the last successful
+ * `PULSE_SCOPE_NAV_SNAPSHOT_METRIC` write, not `scope_nav_snapshot.snapshot_at`.
+ */
+fun snapshotWalkDue(
+    now: LocalDateTime,
+    lastMetricUpdated: LocalDateTime?,
+    maxAge: Duration,
+    endOfDayFrom: LocalTime = LocalTime.of(22, 0)
+): Boolean {
+    if (lastMetricUpdated == null) return true
+    if (lastMetricUpdated.isBefore(now.minus(maxAge))) return true
+    val eveningStart = now.toLocalDate().atTime(endOfDayFrom)
+    return !now.isBefore(eveningStart) && lastMetricUpdated.isBefore(eveningStart)
+}
+
+fun snapshotWalkDueReason(
+    now: LocalDateTime,
+    lastMetricUpdated: LocalDateTime?,
+    maxAge: Duration,
+    endOfDayFrom: LocalTime = LocalTime.of(22, 0)
+): String = when {
+    lastMetricUpdated == null -> "never"
+    lastMetricUpdated.isBefore(now.minus(maxAge)) -> "stale"
+    else -> "end-of-day"
+}
 
 data class ScopeNavSnapshotRow(
     val scopeUuid: String,
