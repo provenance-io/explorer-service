@@ -69,6 +69,7 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.pow
 /**
  * Service handler for the Provenance Pulse application
@@ -90,7 +91,7 @@ class PulseMetricService(
 ) {
     companion object {
         private val isBackfillInProgress = AtomicBoolean(false)
-        private val backfillingType = ThreadLocal<PulseCacheType?>()
+        private val backfillingType = AtomicReference<PulseCacheType?>(null)
     }
 
     protected val logger = logger(PulseMetricService::class)
@@ -1718,24 +1719,31 @@ class PulseMetricService(
         } ?: BigDecimal.ZERO
 
     /**
-     * Periodically refreshes the pulse cache
+     * Periodically refreshes today's pulse cache. When a historical backfill is
+     * running, skip only that type so live cards keep updating.
      */
-    fun refreshCache() = if (isBackfillInProgress.get()) {
-        logger.info("Skipping refreshing pulse cache because backfill is in progress.")
-    } else {
+    fun refreshCache() {
+        val skipType = backfillingType.get()
         transaction {
             val threadName = Thread.currentThread().name
             logger.info("Refreshing pulse cache for thread $threadName")
             PulseCacheType.entries.filter {
                 it != PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC &&
                     it != PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC &&
-                    it != PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC
+                    it != PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC &&
+                    it != skipType
             }
                 .forEach { type ->
                     pulseMetric(type = type)
                 }
 
-            pulseAssetSummaries()
+            if (skipType == PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC ||
+                skipType == PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
+            ) {
+                logger.info("Skipping pulse asset summaries because ${skipType.name} backfill is in progress")
+            } else {
+                pulseAssetSummaries()
+            }
 
             logger.info("Pulse cache refreshed for thread $threadName")
         }
@@ -1795,7 +1803,7 @@ class PulseMetricService(
                             e
                         )
                     } finally {
-                        backfillingType.remove()
+                        backfillingType.set(null)
                     }
                 }
             } finally {
