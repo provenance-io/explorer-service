@@ -57,3 +57,7 @@ GET http://localhost:8612/api/pulse/metric/type/PULSE_TVL_METRIC?range=24h
 ### Digital assets (bank coin supply of exchange denoms, minus LRWA and excluded uusd.trading addresses)
 GET http://localhost:8612/api/pulse/metric/type/PULSE_DIGITAL_ASSETS_VALUE_METRIC?range=24h
 
+### Snapshot loan balance / count (scope_nav_snapshot filtered to LOANS specs)
+GET http://localhost:8612/api/pulse/metric/type/PULSE_LOAN_BALANCE_SNAPSHOT_METRIC?range=24h
+GET http://localhost:8612/api/pulse/metric/type/PULSE_LOAN_COUNT_SNAPSHOT_METRIC?range=24h
+

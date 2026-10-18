@@ -796,6 +796,56 @@ class PulseMetricService(
     }
 
     /**
+     * Loan NAV totals from scope_nav_snapshot for nft_scope rows whose
+     * specification belongs to a LOANS ledger entity. Includes inactive
+     * loan entities (e.g. Figure) so this is not the 3rd-party tile.
+     * Reads the current snapshot table; it does not walk chain at height.
+     */
+    private fun loanBalanceSnapshot(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_LOAN_BALANCE_SNAPSHOT_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = loanSnapshotNavs().sumOf { it.second }.times(scopeNAVDecimal)
+            )
+        }
+
+    private fun loanCountSnapshot(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_LOAN_COUNT_SNAPSHOT_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            PulseMetric.build(
+                base = count,
+                amount = loanSnapshotNavs().size.toBigDecimal()
+            )
+        }
+
+    private fun loanSnapshotNavs(): List<Pair<String, BigDecimal>> {
+        val specIds = loanSpecificationIds()
+        if (specIds.isEmpty()) return emptyList()
+        val ignoredScopeAddresses = getIgnoredScopeAddresses()
+        return ScopeNavSnapshotRecord.usdNavAmountsForSpecs(specIds)
+            .filter { (scopeAddress, _) -> scopeAddress !in ignoredScopeAddresses }
+    }
+
+    private fun loanSpecificationIds(): Set<String> =
+        LedgerEntityRecord.findByType(EntityType.LOANS)
+            .flatMap { LedgerEntitySpecRecord.findByUuid(it.uuid) }
+            .map { it.specificationId }
+            .toSet()
+
+    /**
      * Retrieves the transaction volume for the last 30 days to build
      * metric chart data
      */
@@ -2117,6 +2167,16 @@ class PulseMetricService(
             )
 
             PulseCacheType.LOAN_LEDGER_TOTAL_COUNT_METRIC -> loanLedgerTotalCount(
+                range,
+                atDateTime
+            )
+
+            PulseCacheType.PULSE_LOAN_BALANCE_SNAPSHOT_METRIC -> loanBalanceSnapshot(
+                range,
+                atDateTime
+            )
+
+            PulseCacheType.PULSE_LOAN_COUNT_SNAPSHOT_METRIC -> loanCountSnapshot(
                 range,
                 atDateTime
             )
