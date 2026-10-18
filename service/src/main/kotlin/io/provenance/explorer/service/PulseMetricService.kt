@@ -143,6 +143,15 @@ class PulseMetricService(
     private val percentage = "PERCENTAGE"
     private val longest_range = 90L
     private val figure_heloc_denom = "FIGR_HELOC"
+    private val lrwaDenom = "ulrwa.figure.markets"
+    private val usdTradingDenom = "uusd.trading"
+
+    /** uusd.trading balances excluded from digital-assets value. */
+    private val digitalAssetsUusdExcludedAddresses = setOf(
+        "pb100ay24eh6t8mm87j9jkt7hg0daxyzzunjpwejcejcchqmcsq3haqfjzfnl",
+        "pb15ld4dmjhd6dt8853eu8rumlfvs7h57e3xs0d63566m5qe44curjqjcu6hq",
+        "pb1tp4559l0gy6d5cv004gw6a3h3fqd6kcvzqhm6nzfey7p6hxn8qkqd70va9",
+    )
 
     /** Denoms priced at $1 USD per display unit when exchange trade price is unavailable. */
     private val usdParityDenoms = setOf(
@@ -961,6 +970,51 @@ class PulseMetricService(
         ) {
             committedAssetTotals(atDateTime).committedAssetsToValue()
         }
+
+    /**
+     * Same exchange-traded denom universe as committed assets, valued from
+     * bank coin supply instead of exchange commitments. Drops LRWA and the
+     * configured uusd.trading addresses.
+     */
+    private fun digitalAssetsValue(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_DIGITAL_ASSETS_VALUE_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            digitalAssetCoinBalances(atDateTime).committedAssetsToValue()
+        }
+
+    private fun digitalAssetCoinBalances(atDateTime: LocalDateTime? = null): Map<String, BigDecimal> {
+        val ignoredDenoms = getIgnoredMarkers().values
+        val height = atDateTime?.let { BlockCacheRecord.getLastBlockBeforeTime(it) }
+        val excludedUusd = uusdExcludedBalances(height)
+        return committedAssetTotals(atDateTime)
+            .keys
+            .filter { it !in ignoredDenoms && it != lrwaDenom }
+            .associateWith { denom ->
+                val supply = denomSupplyCache(denom, atDateTime)
+                if (denom == usdTradingDenom) {
+                    (supply - excludedUusd).max(BigDecimal.ZERO)
+                } else {
+                    supply
+                }
+            }
+    }
+
+    private fun uusdExcludedBalances(height: Int?): BigDecimal = runBlocking {
+        digitalAssetsUusdExcludedAddresses.sumOf { address ->
+            val coin = if (height != null) {
+                accountGrpcClient.getAccountBalanceForDenomAtHeight(address, usdTradingDenom, height)
+            } else {
+                accountGrpcClient.getAccountBalanceForDenom(address, usdTradingDenom)
+            }
+            coin.amount.toBigDecimal()
+        }
+    }
 
     private fun Map<String, BigDecimal>.committedAssetsToValue() = this.let { committedAssets ->
         val ignoredDenoms = getIgnoredMarkers().values
@@ -2018,6 +2072,11 @@ class PulseMetricService(
             )
 
             PulseCacheType.PULSE_COMMITTED_ASSETS_VALUE_METRIC -> exchangeCommittedAssetsValue(
+                range,
+                atDateTime
+            )
+
+            PulseCacheType.PULSE_DIGITAL_ASSETS_VALUE_METRIC -> digitalAssetsValue(
                 range,
                 atDateTime
             )
