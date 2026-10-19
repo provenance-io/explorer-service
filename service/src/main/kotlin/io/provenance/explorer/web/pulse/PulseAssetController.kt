@@ -39,41 +39,71 @@ class PulseAssetController(private val pulseMetricService: PulseMetricService) {
                                @RequestParam(required = false) sortOrder: List<SortOrder>?,
                                @RequestParam(required = false) sortColumn: List<String>?
     ): List<PulseAssetSummary> =
-        pulseMetricService.pulseAssetSummaries().filter {
-            it.marketCap > BigDecimal.ZERO &&
-                    (
-                        search.isNullOrBlank() ||
-                                it.name.contains(search, ignoreCase = true) ||
-                                it.symbol.contains(search, ignoreCase = true) ||
-                                it.display.contains(search, ignoreCase = true) ||
-                                it.base.contains(search, ignoreCase = true) ||
-                                it.description.contains(search, ignoreCase = true)
+        filterAndSortAssetSummaries(
+            pulseMetricService.pulseAssetSummaries(),
+            search,
+            sortOrder,
+            sortColumn,
+            requirePositiveMarketCap = true
+        )
+
+    @Operation(summary = "Digital Asset Summaries")
+    @GetMapping("/digital/summary/list")
+    fun getPulseDigitalAssetSummaries(
+        @RequestParam(required = false) search: String?,
+        @RequestParam(required = false) sortOrder: List<SortOrder>?,
+        @RequestParam(required = false) sortColumn: List<String>?
+    ): List<PulseAssetSummary> =
+        filterAndSortAssetSummaries(
+            pulseMetricService.pulseDigitalAssetSummaries(),
+            search,
+            sortOrder,
+            sortColumn,
+            requirePositiveMarketCap = false
+        )
+
+    private fun filterAndSortAssetSummaries(
+        summaries: List<PulseAssetSummary>,
+        search: String?,
+        sortOrder: List<SortOrder>?,
+        sortColumn: List<String>?,
+        requirePositiveMarketCap: Boolean
+    ): List<PulseAssetSummary> =
+        summaries.filter {
+            (!requirePositiveMarketCap || it.marketCap > BigDecimal.ZERO) &&
+                (
+                    search.isNullOrBlank() ||
+                        it.name.contains(search, ignoreCase = true) ||
+                        it.symbol.contains(search, ignoreCase = true) ||
+                        it.display.contains(search, ignoreCase = true) ||
+                        it.base.contains(search, ignoreCase = true) ||
+                        it.description.contains(search, ignoreCase = true)
                     )
         }.sortedWith(
             Comparator { a, b ->
-            if (sortColumn == null || sortOrder == null) return@Comparator 0
+                if (sortColumn == null || sortOrder == null) return@Comparator 0
 
-            for (i in sortColumn.indices) {
-                val column = sortColumn[i]
-                val order = sortOrder[i]
+                for (i in sortColumn.indices) {
+                    val column = sortColumn[i]
+                    val order = sortOrder[i]
 
-                val comparisonResult = when (column) {
-                    "name" -> compareValues(
-                        a.name.ifEmpty { a.base },
-                        b.name.ifEmpty { b.base }
-                    )
-                    "price" -> compareValues(a.priceTrend?.currentQuantity ?: BigDecimal.ZERO, b.priceTrend?.currentQuantity ?: BigDecimal.ZERO)
-                    "marketCap" -> compareValues(a.marketCap, b.marketCap)
-                    "volume" -> compareValues(a.volumeTrend?.currentQuantity ?: BigDecimal.ZERO, b.volumeTrend?.currentQuantity ?: BigDecimal.ZERO)
-                    else -> throw IllegalArgumentException("Invalid sort column: $column")
+                    val comparisonResult = when (column) {
+                        "name" -> compareValues(
+                            a.name.ifEmpty { a.base },
+                            b.name.ifEmpty { b.base }
+                        )
+                        "price" -> compareValues(a.priceTrend?.currentQuantity ?: BigDecimal.ZERO, b.priceTrend?.currentQuantity ?: BigDecimal.ZERO)
+                        "marketCap" -> compareValues(a.marketCap, b.marketCap)
+                        "volume" -> compareValues(a.volumeTrend?.currentQuantity ?: BigDecimal.ZERO, b.volumeTrend?.currentQuantity ?: BigDecimal.ZERO)
+                        else -> throw IllegalArgumentException("Invalid sort column: $column")
+                    }
+
+                    if (comparisonResult != 0) {
+                        return@Comparator if (order == SortOrder.ASC) comparisonResult else -comparisonResult
+                    }
                 }
-
-                if (comparisonResult != 0) {
-                    return@Comparator if (order == SortOrder.ASC) comparisonResult else -comparisonResult
-                }
+                0
             }
-            0
-        }
         )
 
     /**

@@ -1873,6 +1873,7 @@ class PulseMetricService(
                 logger.info("Skipping pulse asset summaries because ${skipType.name} backfill is in progress")
             } else {
                 pulseAssetSummaries()
+                pulseDigitalAssetSummaries()
             }
 
             logger.info("Pulse cache refreshed for thread $threadName")
@@ -2404,6 +2405,32 @@ class PulseMetricService(
                 )
             ) // empties to the bottom
     }
+
+    /**
+     * Asset summaries for the Pulse /assets page: the hardcoded digital-asset
+     * denoms plus HASH. HASH market cap is FDV. Missing denoms are skipped.
+     */
+    fun pulseDigitalAssetSummaries(atDateTime: LocalDateTime? = null): List<PulseAssetSummary> =
+        (digitalAssetDenoms + UTILITY_TOKEN)
+            .mapNotNull { denom ->
+                try {
+                    val summary = buildAssetSummaryForDenom(denom, atDateTime)
+                    if (denom == UTILITY_TOKEN) {
+                        summary.copy(marketCap = hashFullyDilutedValue(atDateTime))
+                    } else {
+                        summary
+                    }
+                } catch (e: Exception) {
+                    logger.warn("Failed to build digital asset summary for $denom: ${e.message}")
+                    null
+                }
+            }
+            .sortedWith(
+                compareBy(
+                    { it.symbol.isEmpty() },
+                    { it.symbol }
+                )
+            )
 
     fun exchangeSummaries(denom: String): List<ExchangeSummary> = runBlocking {
         exchangeGrpcClient.getMarketBriefsByDenom(denom)
