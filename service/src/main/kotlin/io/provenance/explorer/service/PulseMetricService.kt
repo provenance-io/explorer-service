@@ -51,6 +51,7 @@ import io.provenance.explorer.grpc.v1.ExchangeGrpcClient
 import io.provenance.explorer.grpc.v1.MetadataGrpcClient
 import io.provenance.explorer.model.ValidatorState.ACTIVE
 import io.provenance.explorer.model.base.DateTruncGranularity
+import io.provenance.explorer.model.base.KEY_SCOPE_SPECIFICATION
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.USD_LOWER
 import io.provenance.explorer.model.base.USD_UPPER
@@ -66,6 +67,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.util.Base64
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -506,23 +508,48 @@ class PulseMetricService(
         )
 
     /**
-     * TVL using on-chain scope NAV snapshots instead of `nav_events`.
-     * Same committed-exchange + passport HASH components as [pulseTVL].
-     * Historical backfill reuses cached `PULSE_SCOPE_NAV_SNAPSHOT_METRIC` —
-     * refresh that type first for a date, then this type.
+     * Snapshot TVL: loan snapshot balance + digital assets + 3rd-party
+     * snapshot balance. Historical backfill reuses those cached types —
+     * refresh them first for a date, then this type.
      */
     private fun pulseTvlSnapshot(
         range: MetricRangeType = MetricRangeType.DAY,
         atDateTime: LocalDateTime? = null
     ): PulseMetric =
-        pulseTvlFromNav(
-            cacheType = PulseCacheType.PULSE_TVL_SNAPSHOT_METRIC,
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_TVL_SNAPSHOT_METRIC,
             range = range,
-            atDateTime = atDateTime,
-            navMetric = { r, d ->
-                totalScopeNavSnapshot(r, d, persist = d != null)
-            }
-        )
+            atDateTime = atDateTime
+        ) {
+            val loans = tvlSnapshotComponent(
+                PulseCacheType.PULSE_LOAN_BALANCE_SNAPSHOT_METRIC,
+                atDateTime
+            ) { loanBalanceSnapshot(range, atDateTime) }
+            val digitalAssets = tvlSnapshotComponent(
+                PulseCacheType.PULSE_DIGITAL_ASSETS_VALUE_METRIC,
+                atDateTime
+            ) { digitalAssetsValue(range, atDateTime) }
+            val thirdParty = tvlSnapshotComponent(
+                PulseCacheType.PULSE_THIRD_PARTY_BALANCE_SNAPSHOT_METRIC,
+                atDateTime
+            ) { thirdPartyBalanceSnapshot(range, atDateTime) }
+
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = loans.amount.plus(digitalAssets.amount).plus(thirdParty.amount)
+            )
+        }
+
+    private fun tvlSnapshotComponent(
+        type: PulseCacheType,
+        atDateTime: LocalDateTime?,
+        compute: () -> PulseMetric
+    ): PulseMetric {
+        if (atDateTime != null && backfillingType.get() != type) {
+            fromPulseMetricCache(atDateTime.toLocalDate(), type)?.let { return it }
+        }
+        return compute()
+    }
 
     private fun pulseTvlFromNav(
         cacheType: PulseCacheType,
@@ -814,10 +841,10 @@ class PulseMetricService(
     }
 
     /**
-     * Loan NAV totals from scope_nav_snapshot for nft_scope rows whose
-     * specification belongs to a LOANS ledger entity. Includes inactive
-     * loan entities (e.g. Figure) so this is not the 3rd-party tile.
-     * Reads the current snapshot table; it does not walk chain at height.
+     * Loan NAV totals for nft_scope rows whose specification belongs to a
+     * LOANS ledger entity. Includes inactive loan entities (e.g. Figure).
+     * Live reads the current snapshot table; historical backfill walks only
+     * those loan-spec scopes at the last block of the UTC day.
      */
     private fun loanBalanceSnapshot(
         range: MetricRangeType = MetricRangeType.DAY,
@@ -830,7 +857,7 @@ class PulseMetricService(
         ) {
             PulseMetric.build(
                 base = USD_UPPER,
-                amount = loanSnapshotNavs().sumOf { it.second }.times(scopeNAVDecimal)
+                amount = loanSnapshotNavs(atDateTime).sumOf { it.second }.times(scopeNAVDecimal)
             )
         }
 
@@ -845,16 +872,70 @@ class PulseMetricService(
         ) {
             PulseMetric.build(
                 base = count,
-                amount = loanSnapshotNavs().size.toBigDecimal()
+                amount = loanSnapshotNavs(atDateTime).size.toBigDecimal()
             )
         }
 
-    private fun loanSnapshotNavs(): List<Pair<String, BigDecimal>> {
-        val specIds = loanSpecificationIds()
+    /**
+     * 3rd-party NAV from scope_nav_snapshot for specs of *active* non-LOANS
+     * ledger entities. LOANS stay in the loan snapshot metric so TVL can
+     * add the two without double-counting. Deactivating an entity drops it
+     * from live and from historical backfill.
+     */
+    private fun thirdPartyBalanceSnapshot(
+        range: MetricRangeType = MetricRangeType.DAY,
+        atDateTime: LocalDateTime? = null
+    ): PulseMetric =
+        fetchOrBuildCacheFromDataSource(
+            type = PulseCacheType.PULSE_THIRD_PARTY_BALANCE_SNAPSHOT_METRIC,
+            range = range,
+            atDateTime = atDateTime
+        ) {
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = snapshotNavsForSpecs(
+                    specIds = activeNonLoanSnapshotSpecificationIds(),
+                    atDateTime = atDateTime,
+                    label = "third-party"
+                ).sumOf { it.second }.times(scopeNAVDecimal)
+            )
+        }
+
+    private data class SpecNavWalkKey(val height: Int, val specIds: Set<String>)
+
+    private val specNavsAtHeight =
+        ThreadLocal<Pair<SpecNavWalkKey, List<Pair<String, BigDecimal>>>>()
+
+    private fun loanSnapshotNavs(atDateTime: LocalDateTime? = null): List<Pair<String, BigDecimal>> =
+        snapshotNavsForSpecs(
+            specIds = loanSnapshotSpecificationIds(),
+            atDateTime = atDateTime,
+            label = "loan"
+        )
+
+    private fun snapshotNavsForSpecs(
+        specIds: Set<String>,
+        atDateTime: LocalDateTime?,
+        label: String
+    ): List<Pair<String, BigDecimal>> {
         if (specIds.isEmpty()) return emptyList()
         val ignoredScopeAddresses = getIgnoredScopeAddresses()
-        return ScopeNavSnapshotRecord.usdNavAmountsForSpecs(specIds)
-            .filter { (scopeAddress, _) -> scopeAddress !in ignoredScopeAddresses }
+        val amounts = if (atDateTime != null) {
+            val height = BlockCacheRecord.getLastBlockBeforeTime(atDateTime)
+            val key = SpecNavWalkKey(height, specIds)
+            specNavsAtHeight.get()?.takeIf { it.first == key }?.second
+                ?: run {
+                    logger.info(
+                        "Computing $label snapshot NAVs from chain at height $height for $atDateTime"
+                    )
+                    val navs = scopeNavSnapshotService.usdNavAmountsAtHeightForSpecs(specIds, height)
+                    specNavsAtHeight.set(key to navs)
+                    navs
+                }
+        } else {
+            ScopeNavSnapshotRecord.usdNavAmountsForSpecs(specIds)
+        }
+        return amounts.filter { (scopeAddress, _) -> scopeAddress !in ignoredScopeAddresses }
     }
 
     private fun loanSpecificationIds(): Set<String> =
@@ -862,6 +943,39 @@ class PulseMetricService(
             .flatMap { LedgerEntitySpecRecord.findByUuid(it.uuid) }
             .map { it.specificationId }
             .toSet()
+
+    private fun activeNonLoanEntitySpecificationIds(): Set<String> =
+        EntityType.entries
+            .filter { it != EntityType.LOANS }
+            .flatMap { LedgerEntityRecord.findActiveByType(it) }
+            .flatMap { LedgerEntitySpecRecord.findByUuid(it.uuid) }
+            .map { it.specificationId }
+            .toSet()
+
+    /**
+     * ledger_entity_spec stores a 32-char hex UUID; nft_scope JSON stores the
+     * scopespec MetadataAddress as base64 (0x04 + uuid). Include both so SQL
+     * and the historical walk match indexed scopes.
+     */
+    private fun loanSnapshotSpecificationIds(): Set<String> =
+        withNftScopeJsonSpecIds(loanSpecificationIds())
+
+    private fun activeNonLoanSnapshotSpecificationIds(): Set<String> =
+        withNftScopeJsonSpecIds(activeNonLoanEntitySpecificationIds())
+
+    private fun withNftScopeJsonSpecIds(ids: Set<String>): Set<String> =
+        ids + ids.mapNotNull { specificationIdToNftScopeJson(it) }
+
+    private fun specificationIdToNftScopeJson(specificationId: String): String? {
+        val hex = specificationId.replace("-", "")
+        if (hex.length != 32 || !hex.all { it.isDigit() || it in 'a'..'f' || it in 'A'..'F' }) {
+            return null
+        }
+        val uuidBytes = hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+        return Base64.getEncoder().encodeToString(
+            byteArrayOf(KEY_SCOPE_SPECIFICATION) + uuidBytes
+        )
+    }
 
     /**
      * Retrieves the transaction volume for the last 30 days to build
@@ -1888,8 +2002,18 @@ class PulseMetricService(
      *   UPDATE pulse_cache SET refresh = true
      *   WHERE cache_date BETWEEN '2026-06-01' AND '2026-06-30' AND type = 'PULSE_TVL_METRIC';
      *
-     * Snapshot TVL: flag `PULSE_SCOPE_NAV_SNAPSHOT_METRIC` first (oldest to newest),
-     * then `PULSE_TVL_SNAPSHOT_METRIC` so TVL reuses the cached NAV total.
+     * Snapshot TVL: flag `PULSE_LOAN_BALANCE_SNAPSHOT_METRIC`,
+     * `PULSE_DIGITAL_ASSETS_VALUE_METRIC`, and
+     * `PULSE_THIRD_PARTY_BALANCE_SNAPSHOT_METRIC` first (oldest to newest),
+     * then `PULSE_TVL_SNAPSHOT_METRIC` so TVL reuses those cached totals.
+     *
+     * Loan snapshot metrics walk only LOANS-spec scopes at height. Flag
+     * `PULSE_LOAN_BALANCE_SNAPSHOT_METRIC` and `PULSE_LOAN_COUNT_SNAPSHOT_METRIC`
+     * for the same dates; the second type reuses the in-progress height walk.
+     *
+     * 3rd-party snapshot (`PULSE_THIRD_PARTY_BALANCE_SNAPSHOT_METRIC`) walks
+     * active non-LOANS entity specs, so a deactivated entity is omitted from
+     * every backfilled day and loan NAVs are not counted twice in snapshot TVL.
      *
      * For asset price/volume on a specific denom, set subtype to the denom when flagging.
      */
@@ -2207,6 +2331,11 @@ class PulseMetricService(
             PulseCacheType.ENTITY_TOTAL_BALANCE_METRIC -> entityTotalBalance(
                 range = range,
                 atDateTime = atDateTime,
+            )
+
+            PulseCacheType.PULSE_THIRD_PARTY_BALANCE_SNAPSHOT_METRIC -> thirdPartyBalanceSnapshot(
+                range,
+                atDateTime
             )
 
             PulseCacheType.ENTITY_TOTAL_ASSETS_METRIC -> entityTotalAssets(

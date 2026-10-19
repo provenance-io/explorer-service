@@ -124,7 +124,30 @@ class ScopeNavSnapshotService(
      * Preferred USD millidollar NAVs at [height]. Does not write scope_nav_snapshot.
      * Used to persist a historical Pulse cache total for a given date.
      */
-    fun usdNavAmountsAtHeight(height: Int): List<Pair<String, BigDecimal>> {
+    fun usdNavAmountsAtHeight(height: Int): List<Pair<String, BigDecimal>> =
+        usdNavAmountsAtHeight(height, label = "all") { afterId ->
+            NftScopeRecord.findActiveScopesAfter(afterId, PAGE_SIZE)
+        }
+
+    /**
+     * Same as [usdNavAmountsAtHeight] but only scopes whose specification_id
+     * is in [specificationIds] (nft_scope JSON values).
+     */
+    fun usdNavAmountsAtHeightForSpecs(
+        specificationIds: Set<String>,
+        height: Int
+    ): List<Pair<String, BigDecimal>> {
+        if (specificationIds.isEmpty()) return emptyList()
+        return usdNavAmountsAtHeight(height, label = "loan-spec") { afterId ->
+            NftScopeRecord.findActiveScopesAfter(afterId, PAGE_SIZE, specificationIds)
+        }
+    }
+
+    private fun usdNavAmountsAtHeight(
+        height: Int,
+        label: String,
+        nextPage: (Int) -> List<ActiveNftScope>
+    ): List<Pair<String, BigDecimal>> {
         if (!running.compareAndSet(false, true)) {
             throw IllegalStateException(
                 "Scope NAV snapshot already running; cannot query historical NAVs at height $height"
@@ -134,7 +157,7 @@ class ScopeNavSnapshotService(
         try {
             val started = System.currentTimeMillis()
             val snapshotAt = LocalDateTime.now(ZoneOffset.UTC)
-            logger.info("Starting on-chain scope NAV snapshot at height $height")
+            logger.info("Starting on-chain $label scope NAV snapshot at height $height")
 
             val amounts = mutableListOf<Pair<String, BigDecimal>>()
             var afterId = 0
@@ -143,7 +166,7 @@ class ScopeNavSnapshotService(
 
             runBlocking {
                 while (true) {
-                    val page = NftScopeRecord.findActiveScopesAfter(afterId, PAGE_SIZE)
+                    val page = nextPage(afterId)
                     if (page.isEmpty()) break
                     afterId = page.last().id
 
@@ -164,20 +187,21 @@ class ScopeNavSnapshotService(
 
                     processed += page.size
                     logger.info(
-                        "Scope NAV snapshot batch: height=$height size=${page.size} errors=$batchErrors " +
-                            "elapsedMs=${System.currentTimeMillis() - batchStarted} " +
+                        "Scope NAV snapshot batch: height=$height label=$label size=${page.size} " +
+                            "errors=$batchErrors elapsedMs=${System.currentTimeMillis() - batchStarted} " +
                             "processed=$processed totalElapsedMs=${System.currentTimeMillis() - started}"
                     )
                 }
             }
 
             logger.info(
-                "Scope NAV snapshot finished at height $height: processed=$processed errors=$errors " +
-                    "withUsdNav=${amounts.size} elapsedMs=${System.currentTimeMillis() - started}"
+                "Scope NAV snapshot finished at height $height label=$label: processed=$processed " +
+                    "errors=$errors withUsdNav=${amounts.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - started}"
             )
             return amounts
         } catch (e: Exception) {
-            logger.error("Scope NAV snapshot failed at height $height", e)
+            logger.error("Scope NAV snapshot failed at height $height label=$label", e)
             throw e
         } finally {
             running.set(false)

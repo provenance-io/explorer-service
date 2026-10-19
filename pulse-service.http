@@ -48,7 +48,7 @@ GET http://localhost:8612/api/pulse/metric/type/PULSE_TOTAL_NAV_METRIC?range=24h
 ###
 GET http://localhost:8612/api/pulse/metric/type/PULSE_SCOPE_NAV_SNAPSHOT_METRIC?range=24h
 
-### Snapshot-based TVL (committed + passport HASH + PULSE_SCOPE_NAV_SNAPSHOT_METRIC)
+### Snapshot-based TVL (loan snapshot + digital assets + 3rd-party snapshot)
 GET http://localhost:8612/api/pulse/metric/type/PULSE_TVL_SNAPSHOT_METRIC?range=24h
 
 ### Event-based TVL (committed + passport HASH + PULSE_TOTAL_NAV_METRIC)
@@ -63,4 +63,7 @@ GET http://localhost:8612/api/pulse/asset/digital/summary/list
 ### Snapshot loan balance / count (scope_nav_snapshot filtered to LOANS specs)
 GET http://localhost:8612/api/pulse/metric/type/PULSE_LOAN_BALANCE_SNAPSHOT_METRIC?range=24h
 GET http://localhost:8612/api/pulse/metric/type/PULSE_LOAN_COUNT_SNAPSHOT_METRIC?range=24h
+
+### Snapshot 3rd-party balance (scope_nav_snapshot filtered to active non-LOANS entity specs)
+GET http://localhost:8612/api/pulse/metric/type/PULSE_THIRD_PARTY_BALANCE_SNAPSHOT_METRIC?range=24h
 
