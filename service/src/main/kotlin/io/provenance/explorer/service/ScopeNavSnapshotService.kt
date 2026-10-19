@@ -138,7 +138,7 @@ class ScopeNavSnapshotService(
         height: Int
     ): List<Pair<String, BigDecimal>> {
         if (specificationIds.isEmpty()) return emptyList()
-        return usdNavAmountsAtHeight(height, label = "loan-spec") { afterId ->
+        return usdNavAmountsAtHeight(height, label = "spec") { afterId ->
             NftScopeRecord.findActiveScopesAfter(afterId, PAGE_SIZE, specificationIds)
         }
     }

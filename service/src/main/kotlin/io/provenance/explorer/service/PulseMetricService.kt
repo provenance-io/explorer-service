@@ -51,7 +51,6 @@ import io.provenance.explorer.grpc.v1.ExchangeGrpcClient
 import io.provenance.explorer.grpc.v1.MetadataGrpcClient
 import io.provenance.explorer.model.ValidatorState.ACTIVE
 import io.provenance.explorer.model.base.DateTruncGranularity
-import io.provenance.explorer.model.base.KEY_SCOPE_SPECIFICATION
 import io.provenance.explorer.model.base.PagedResults
 import io.provenance.explorer.model.base.USD_LOWER
 import io.provenance.explorer.model.base.USD_UPPER
@@ -67,7 +66,6 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.util.Base64
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -785,17 +783,10 @@ class PulseMetricService(
      * Live (`atDateTime` null) reads the current `scope_nav_snapshot` table.
      * Historical dates query chain at the last block on that UTC day and only
      * persist the total to `pulse_cache` — they do not update `scope_nav_snapshot`.
-     *
-     * Live TVL passes [persist] false so the 5-minute refresh does not overwrite
-     * `PULSE_SCOPE_NAV_SNAPSHOT_METRIC`; that row is written after a real walk.
-     * Historical `PULSE_TVL_SNAPSHOT_METRIC` reuses the cached total. Refresh
-     * the snapshot row for a date first, then refresh `PULSE_TVL_SNAPSHOT_METRIC`
-     * so TVL does not walk every scope again.
      */
     private fun totalScopeNavSnapshot(
         range: MetricRangeType = MetricRangeType.DAY,
-        atDateTime: LocalDateTime? = null,
-        persist: Boolean = true
+        atDateTime: LocalDateTime? = null
     ): PulseMetric {
         if (atDateTime != null &&
             backfillingType.get() != PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC
@@ -830,8 +821,6 @@ class PulseMetricService(
                     )
                 }
         }
-
-        if (!persist) return compute()
 
         return fetchOrBuildCacheFromDataSource(
             type = PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC,
@@ -894,7 +883,7 @@ class PulseMetricService(
             PulseMetric.build(
                 base = USD_UPPER,
                 amount = snapshotNavsForSpecs(
-                    specIds = activeNonLoanSnapshotSpecificationIds(),
+                    specIds = activeNonLoanEntitySpecificationIds(),
                     atDateTime = atDateTime,
                     label = "third-party"
                 ).sumOf { it.second }.times(scopeNAVDecimal)
@@ -908,7 +897,7 @@ class PulseMetricService(
 
     private fun loanSnapshotNavs(atDateTime: LocalDateTime? = null): List<Pair<String, BigDecimal>> =
         snapshotNavsForSpecs(
-            specIds = loanSnapshotSpecificationIds(),
+            specIds = loanSpecificationIds(),
             atDateTime = atDateTime,
             label = "loan"
         )
@@ -951,31 +940,6 @@ class PulseMetricService(
             .flatMap { LedgerEntitySpecRecord.findByUuid(it.uuid) }
             .map { it.specificationId }
             .toSet()
-
-    /**
-     * ledger_entity_spec stores a 32-char hex UUID; nft_scope JSON stores the
-     * scopespec MetadataAddress as base64 (0x04 + uuid). Include both so SQL
-     * and the historical walk match indexed scopes.
-     */
-    private fun loanSnapshotSpecificationIds(): Set<String> =
-        withNftScopeJsonSpecIds(loanSpecificationIds())
-
-    private fun activeNonLoanSnapshotSpecificationIds(): Set<String> =
-        withNftScopeJsonSpecIds(activeNonLoanEntitySpecificationIds())
-
-    private fun withNftScopeJsonSpecIds(ids: Set<String>): Set<String> =
-        ids + ids.mapNotNull { specificationIdToNftScopeJson(it) }
-
-    private fun specificationIdToNftScopeJson(specificationId: String): String? {
-        val hex = specificationId.replace("-", "")
-        if (hex.length != 32 || !hex.all { it.isDigit() || it in 'a'..'f' || it in 'A'..'F' }) {
-            return null
-        }
-        val uuidBytes = hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-        return Base64.getEncoder().encodeToString(
-            byteArrayOf(KEY_SCOPE_SPECIFICATION) + uuidBytes
-        )
-    }
 
     /**
      * Retrieves the transaction volume for the last 30 days to build
