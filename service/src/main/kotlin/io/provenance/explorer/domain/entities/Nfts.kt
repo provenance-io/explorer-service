@@ -94,11 +94,27 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
         /**
          * Keyset page of non-deleted scopes for the on-chain NAV snapshot job.
          */
-        fun findActiveScopesAfter(afterId: Int, limit: Int): List<ActiveNftScope> = transaction {
+        fun findActiveScopesAfter(afterId: Int, limit: Int): List<ActiveNftScope> =
+            findActiveScopesAfter(afterId, limit, specificationIds = null)
+
+        /**
+         * Keyset page of non-deleted scopes, optionally limited to nft_scope
+         * JSON specification_id values in [specificationIds].
+         */
+        fun findActiveScopesAfter(
+            afterId: Int,
+            limit: Int,
+            specificationIds: Set<String>?
+        ): List<ActiveNftScope> = transaction {
+            if (specificationIds != null && specificationIds.isEmpty()) return@transaction emptyList()
+            val specFilter = specificationIds?.let {
+                "AND scope ->> 'specification_id' IN (${it.toDbQueryList()})"
+            } ?: ""
             val query = """
                 SELECT id, uuid, address
                 FROM nft_scope
                 WHERE deleted = false AND id > ?
+                  $specFilter
                 ORDER BY id
                 LIMIT ?
             """.trimIndent()

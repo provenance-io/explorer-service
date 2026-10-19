@@ -1,6 +1,7 @@
 package io.provenance.explorer.domain.entities
 
 import io.provenance.explorer.domain.core.sql.batchUpsert
+import io.provenance.explorer.domain.core.sql.toDbQueryList
 import io.provenance.explorer.domain.extensions.execAndMap
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
@@ -106,6 +107,28 @@ class ScopeNavSnapshotRecord(id: EntityID<Int>) : IntEntity(id) {
                 Pair(it.getString("scope_address"), BigDecimal(it.getString("price_amount")))
             }
         }
+
+        /**
+         * Latest USD millidollar NAVs for scopes whose specification is in
+         * [specificationIds]. Empty [specificationIds] returns no rows.
+         */
+        fun usdNavAmountsForSpecs(specificationIds: Set<String>): List<Pair<String, BigDecimal>> =
+            transaction {
+                if (specificationIds.isEmpty()) return@transaction emptyList()
+                """
+                    SELECT sns.scope_address, sns.price_amount
+                    FROM scope_nav_snapshot sns
+                    JOIN nft_scope ns
+                      ON ns.address = sns.scope_address
+                     AND ns.deleted = false
+                    WHERE sns.price_amount > 0
+                      AND sns.query_error IS NULL
+                      AND sns.price_denom = 'usd'
+                      AND ns.scope ->> 'specification_id' IN (${specificationIds.toDbQueryList()})
+                """.trimIndent().execAndMap {
+                    Pair(it.getString("scope_address"), BigDecimal(it.getString("price_amount")))
+                }
+            }
 
         fun pruneDeletedScopes() = transaction {
             exec(

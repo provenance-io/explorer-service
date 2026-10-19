@@ -276,9 +276,23 @@ class NftService(
     }
 
     fun populateScopes() = runBlocking {
-        NftScopeRecord.findWithMissingScope().forEach {
-            insertOrUpdateNft(it.uuid, it.address)
+        val missing = NftScopeRecord.findWithMissingScope()
+        logger().info("Populating ${missing.size} nft_scope row(s) with missing scope JSON")
+        var filled = 0
+        var failed = 0
+        missing.forEach {
+            try {
+                insertOrUpdateNft(it.uuid, it.address)
+                filled++
+            } catch (e: Exception) {
+                failed++
+                logger().warn(
+                    "Failed to populate nft_scope uuid=${it.uuid} address=${it.address}: ${e.message}",
+                    e
+                )
+            }
         }
+        logger().info("Populate nft_scope finished: filled=$filled failed=$failed")
     }
 
     private fun scopeToListview(nft: NftData, ownerAddress: String) = runBlocking {
