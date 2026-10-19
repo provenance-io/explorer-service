@@ -143,8 +143,26 @@ class PulseMetricService(
     private val percentage = "PERCENTAGE"
     private val longest_range = 90L
     private val figure_heloc_denom = "FIGR_HELOC"
-    private val lrwaDenom = "ulrwa.figure.markets"
     private val usdTradingDenom = "uusd.trading"
+
+    /**
+     * Bank-supply denoms for Total Digital Assets. HASH is added separately
+     * as FDV, not bank supply.
+     */
+    private val digitalAssetDenoms = setOf(
+        "uylds.fcc",
+        "nbtc.figure.se",
+        "nfgrd",
+        "uusd.trading",
+        "uusdc.figure.se",
+        "neth.figure.se",
+        "nsol.figure.se",
+        "uusdt.figure.se",
+        "uxrp.figure.se",
+        "ueur.trading",
+        "nlink.figure.se",
+        "nuni.figure.se",
+    )
 
     /** uusd.trading balances excluded from digital-assets value. */
     private val digitalAssetsUusdExcludedAddresses = setOf(
@@ -1022,9 +1040,9 @@ class PulseMetricService(
         }
 
     /**
-     * Same exchange-traded denom universe as committed assets, valued from
-     * bank coin supply instead of exchange commitments. Drops LRWA and the
-     * configured uusd.trading addresses.
+     * Hardcoded digital-asset denoms valued from bank coin supply times last
+     * traded price, plus HASH FDV. Subtracts the configured uusd.trading
+     * addresses from USD supply.
      */
     private fun digitalAssetsValue(
         range: MetricRangeType = MetricRangeType.DAY,
@@ -1035,24 +1053,32 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            digitalAssetCoinBalances(atDateTime).committedAssetsToValue()
+            val coinValue = digitalAssetCoinBalances(atDateTime).committedAssetsToValue().amount
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = coinValue.plus(hashFullyDilutedValue(atDateTime))
+            )
         }
 
     private fun digitalAssetCoinBalances(atDateTime: LocalDateTime? = null): Map<String, BigDecimal> {
-        val ignoredDenoms = getIgnoredMarkers().values
         val height = atDateTime?.let { BlockCacheRecord.getLastBlockBeforeTime(it) }
         val excludedUusd = uusdExcludedBalances(height)
-        return committedAssetTotals(atDateTime)
-            .keys
-            .filter { it !in ignoredDenoms && it != lrwaDenom }
-            .associateWith { denom ->
-                val supply = denomSupplyCache(denom, atDateTime)
-                if (denom == usdTradingDenom) {
-                    (supply - excludedUusd).max(BigDecimal.ZERO)
-                } else {
-                    supply
-                }
+        return digitalAssetDenoms.associateWith { denom ->
+            val supply = denomSupplyCache(denom, atDateTime)
+            if (denom == usdTradingDenom) {
+                (supply - excludedUusd).max(BigDecimal.ZERO)
+            } else {
+                supply
             }
+        }
+    }
+
+    private fun hashFullyDilutedValue(atDateTime: LocalDateTime?): BigDecimal {
+        val height = atDateTime?.let { BlockCacheRecord.getLastBlockBeforeTime(it) }
+        val tokenSupply = tokenService.maxSupply(height)
+            .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
+            .roundWhole()
+        return hashPriceAtDate(atDateTime).times(tokenSupply)
     }
 
     private fun uusdExcludedBalances(height: Int?): BigDecimal = runBlocking {
@@ -2026,13 +2052,9 @@ class PulseMetricService(
                     The market cap if the max supply was in circulation.
                     Fully-diluted value (FDV) = price x max supply.
                      */
-                    val tokenSupply = tokenService.maxSupply(height)
-                        .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
-                        .roundWhole()
-                    val fdv = hashPriceAtDate.times(tokenSupply)
                     PulseMetric.build(
                         base = USD_UPPER,
-                        amount = fdv
+                        amount = hashFullyDilutedValue(atDateTime)
                     )
                 }
 

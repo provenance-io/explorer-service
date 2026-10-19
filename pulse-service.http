@@ -54,7 +54,7 @@ GET http://localhost:8612/api/pulse/metric/type/PULSE_TVL_SNAPSHOT_METRIC?range=
 ### Event-based TVL (committed + passport HASH + PULSE_TOTAL_NAV_METRIC)
 GET http://localhost:8612/api/pulse/metric/type/PULSE_TVL_METRIC?range=24h
 
-### Digital assets (bank coin supply of exchange denoms, minus LRWA and excluded uusd.trading addresses)
+### Digital assets (hardcoded denoms from bank supply, HASH FDV, minus excluded uusd.trading addresses)
 GET http://localhost:8612/api/pulse/metric/type/PULSE_DIGITAL_ASSETS_VALUE_METRIC?range=24h
 
 ### Snapshot loan balance / count (scope_nav_snapshot filtered to LOANS specs)
