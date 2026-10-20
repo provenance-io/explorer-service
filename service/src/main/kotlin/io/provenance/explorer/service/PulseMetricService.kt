@@ -133,6 +133,15 @@ class PulseMetricService(
             maximumSize(1)
         }.build()
 
+    /**
+     * Live Digital Assets table payload. Rebuilt on pulse refresh and on miss.
+     */
+    private val digitalAssetSummariesCache: Cache<String, List<PulseAssetSummary>> =
+        Caffeine.newBuilder().apply {
+            expireAfterWrite(5, TimeUnit.MINUTES)
+            maximumSize(1)
+        }.build()
+
     /* so it turns out that the `usd` in metadata nav events
        use 3 decimal places - :|
      */
@@ -145,6 +154,7 @@ class PulseMetricService(
     private val count = "COUNT"
     private val percentage = "PERCENTAGE"
     private val longest_range = 90L
+    private val ledgerEntityBasePrefix = "entity/"
     private val figure_heloc_denom = "FIGR_HELOC"
     private val usdTradingDenom = "uusd.trading"
 
@@ -509,9 +519,9 @@ class PulseMetricService(
         )
 
     /**
-     * Snapshot TVL: loan snapshot balance + digital assets + 3rd-party
-     * snapshot balance. Historical backfill reuses those cached types —
-     * refresh them first for a date, then this type.
+     * Snapshot TVL: loan snapshot + digital assets. Digital already includes
+     * 3rd-party entity NAVs, so 3rd party is not added again.
+     * Historical backfill: refresh loans and digital first, then this type.
      */
     private fun pulseTvlSnapshot(
         range: MetricRangeType = MetricRangeType.DAY,
@@ -530,14 +540,10 @@ class PulseMetricService(
                 PulseCacheType.PULSE_DIGITAL_ASSETS_VALUE_METRIC,
                 atDateTime
             ) { digitalAssetsValue(range, atDateTime) }
-            val thirdParty = tvlSnapshotComponent(
-                PulseCacheType.PULSE_THIRD_PARTY_BALANCE_SNAPSHOT_METRIC,
-                atDateTime
-            ) { thirdPartyBalanceSnapshot(range, atDateTime) }
 
             PulseMetric.build(
                 base = USD_UPPER,
-                amount = loans.amount.plus(digitalAssets.amount).plus(thirdParty.amount)
+                amount = loans.amount.plus(digitalAssets.amount)
             )
         }
 
@@ -871,11 +877,11 @@ class PulseMetricService(
         }
 
     /**
-     * 3rd-party NAV from scope_nav_snapshot for specs of *active* non-LOANS
-     * ledger entities. LOANS stay in the loan snapshot metric so TVL can
-     * add the two without double-counting. Deactivating an entity drops it
-     * from live and from historical backfill. usd_pricing_exponent is applied
-     * per entity so dollar-denominated scopes are not treated as millidollars.
+     * 3rd-party NAV total from scope_nav_snapshot for specs of *active*
+     * non-LOANS ledger entities. Cached as `subtype IS NULL` only; the Digital
+     * Assets list builds per-entity rows live from the same snapshot. LOANS
+     * stay in the loan snapshot metric. Deactivating an entity drops it from
+     * live and historical backfill.
      */
     private fun thirdPartyBalanceSnapshot(
         range: MetricRangeType = MetricRangeType.DAY,
@@ -886,13 +892,15 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
-            val specs = activeNonLoanLedgerSpecs()
+            val specs = activeNonLoanLedgerEntities().flatMap { ledgerSpecsForEntity(it) }
+            val navs = snapshotNavsForSpecs(
+                specs.map { it.specificationId }.toSet(),
+                atDateTime,
+                "third-party"
+            )
             PulseMetric.build(
                 base = USD_UPPER,
-                amount = scaleSnapshotNavs(
-                    snapshotNavsForSpecs(specs.map { it.specificationId }.toSet(), atDateTime, "third-party"),
-                    specs
-                )
+                amount = scaleSnapshotNavs(navs, specs)
             )
         }
 
@@ -965,11 +973,10 @@ class PulseMetricService(
     private fun loanLedgerSpecs(): List<LedgerSpecNav> =
         LedgerEntityRecord.findByType(EntityType.LOANS).flatMap { ledgerSpecsForEntity(it) }
 
-    private fun activeNonLoanLedgerSpecs(): List<LedgerSpecNav> =
+    private fun activeNonLoanLedgerEntities(): List<LedgerEntityRecord> =
         EntityType.entries
             .filter { it != EntityType.LOANS }
             .flatMap { LedgerEntityRecord.findActiveByType(it) }
-            .flatMap { ledgerSpecsForEntity(it) }
 
     private fun ledgerSpecsForEntity(entity: LedgerEntityRecord): List<LedgerSpecNav> {
         val exponent = entity.usdPricingExponent ?: millidollarPricingExponent
@@ -1156,8 +1163,8 @@ class PulseMetricService(
 
     /**
      * Hardcoded digital-asset denoms valued from bank coin supply times last
-     * traded price, plus HASH FDV. Subtracts the configured uusd.trading
-     * addresses from USD supply.
+     * traded price, plus HASH FDV, plus 3rd-party entity NAVs.
+     * Subtracts the configured uusd.trading addresses from USD supply.
      */
     private fun digitalAssetsValue(
         range: MetricRangeType = MetricRangeType.DAY,
@@ -1171,9 +1178,28 @@ class PulseMetricService(
             val coinValue = digitalAssetCoinBalances(atDateTime).committedAssetsToValue().amount
             PulseMetric.build(
                 base = USD_UPPER,
-                amount = coinValue.plus(hashFullyDilutedValue(atDateTime))
+                amount = coinValue
+                    .plus(hashFullyDilutedValue(atDateTime))
+                    .plus(thirdPartyAmountForDigital(range, atDateTime))
             )
         }
+
+    /**
+     * Historical digital backfill reuses the cached 3rd-party total when
+     * present so it does not walk chain. Live always refreshes 3rd party.
+     */
+    private fun thirdPartyAmountForDigital(
+        range: MetricRangeType,
+        atDateTime: LocalDateTime?
+    ): BigDecimal {
+        if (atDateTime != null) {
+            fromPulseMetricCache(
+                atDateTime.toLocalDate(),
+                PulseCacheType.PULSE_THIRD_PARTY_BALANCE_SNAPSHOT_METRIC
+            )?.amount?.let { return it }
+        }
+        return thirdPartyBalanceSnapshot(range, atDateTime).amount
+    }
 
     private fun digitalAssetCoinBalances(atDateTime: LocalDateTime? = null): Map<String, BigDecimal> {
         val height = atDateTime?.let { BlockCacheRecord.getLastBlockBeforeTime(it) }
@@ -2003,6 +2029,7 @@ class PulseMetricService(
             } else {
                 val summariesStarted = System.currentTimeMillis()
                 pulseAssetSummaries()
+                digitalAssetSummariesCache.invalidateAll()
                 pulseDigitalAssetSummaries()
                 logger.info(
                     "Pulse cache refresh asset summaries " +
@@ -2027,10 +2054,12 @@ class PulseMetricService(
      *   UPDATE pulse_cache SET refresh = true
      *   WHERE cache_date BETWEEN '2026-06-01' AND '2026-06-30' AND type = 'PULSE_TVL_METRIC';
      *
-     * Snapshot TVL: flag `PULSE_LOAN_BALANCE_SNAPSHOT_METRIC`,
-     * `PULSE_DIGITAL_ASSETS_VALUE_METRIC`, and
-     * `PULSE_THIRD_PARTY_BALANCE_SNAPSHOT_METRIC` first (oldest to newest),
+     * Snapshot TVL: flag `PULSE_LOAN_BALANCE_SNAPSHOT_METRIC` and
+     * `PULSE_DIGITAL_ASSETS_VALUE_METRIC` first (oldest to newest),
      * then `PULSE_TVL_SNAPSHOT_METRIC` so TVL reuses those cached totals.
+     * Digital includes the 3rd-party total; flag
+     * `PULSE_THIRD_PARTY_BALANCE_SNAPSHOT_METRIC` before digital if that
+     * cached total must be rebuilt.
      *
      * Loan snapshot metrics walk only LOANS-spec scopes at height. Flag
      * `PULSE_LOAN_BALANCE_SNAPSHOT_METRIC` and `PULSE_LOAN_COUNT_SNAPSHOT_METRIC`
@@ -2562,30 +2591,104 @@ class PulseMetricService(
     }
 
     /**
-     * Asset summaries for the Pulse /assets page: the hardcoded digital-asset
-     * denoms plus HASH. HASH market cap is FDV. Missing denoms are skipped.
+     * Asset summaries for the Pulse /assets page: hardcoded digital-asset
+     * denoms plus HASH (FDV) plus one row per active non-loan ledger entity.
+     * List rows are supply + market cap only (no NAV events, volume, or
+     * 90-day series). Live results are cached for 5 minutes.
+     * Missing denoms are skipped.
      */
-    fun pulseDigitalAssetSummaries(atDateTime: LocalDateTime? = null): List<PulseAssetSummary> =
-        (digitalAssetDenoms + UTILITY_TOKEN)
-            .mapNotNull { denom ->
-                try {
-                    val summary = buildAssetSummaryForDenom(denom, atDateTime)
-                    if (denom == UTILITY_TOKEN) {
-                        summary.copy(marketCap = hashFullyDilutedValue(atDateTime))
-                    } else {
-                        summary
+    fun pulseDigitalAssetSummaries(atDateTime: LocalDateTime? = null): List<PulseAssetSummary> {
+        if (atDateTime != null) {
+            return buildDigitalAssetSummaries(atDateTime)
+        }
+        return digitalAssetSummariesCache.get("live") {
+            buildDigitalAssetSummaries(null)
+        } ?: emptyList()
+    }
+
+    private fun buildDigitalAssetSummaries(atDateTime: LocalDateTime?): List<PulseAssetSummary> =
+        (
+            (digitalAssetDenoms + UTILITY_TOKEN)
+                .mapNotNull { denom ->
+                    try {
+                        buildDigitalListSummaryForDenom(denom, atDateTime)
+                    } catch (e: Exception) {
+                        logger.warn("Failed to build digital asset summary for $denom: ${e.message}")
+                        null
                     }
-                } catch (e: Exception) {
-                    logger.warn("Failed to build digital asset summary for $denom: ${e.message}")
-                    null
-                }
-            }
+                } +
+                thirdPartyEntityAssetSummaries(atDateTime)
+            )
             .sortedWith(
                 compareBy(
-                    { it.symbol.isEmpty() },
-                    { it.symbol }
+                    { it.name.isEmpty() },
+                    { it.name.lowercase() }
                 )
             )
+
+    /**
+     * Digital Assets table row: metadata, bank supply, and cached USD price.
+     * HASH market cap is FDV. Skips exchange NAV events and price series.
+     */
+    private fun buildDigitalListSummaryForDenom(
+        denom: String,
+        atDateTime: LocalDateTime?
+    ): PulseAssetSummary {
+        val denomMetadata = pulseAssetDenomMetadata(denom)
+        val denomExp = denomExponent(denomMetadata) ?: 1
+        val denomPow = inversePowerOfTen(denomExp)
+        val supply = denomSupplyCache(denom, atDateTime).times(denomPow)
+        val cacheDate = atDateTime?.toLocalDate() ?: nowUTC().toLocalDate()
+        val marketCap = if (denom == UTILITY_TOKEN) {
+            fromPulseMetricCache(cacheDate, PulseCacheType.HASH_FDV_METRIC)?.amount
+                ?: hashFullyDilutedValue(atDateTime)
+        } else {
+            supply.times(pulseLastTradedAssetPrice(denom, cacheDate))
+        }
+        return PulseAssetSummary(
+            id = UUID.randomUUID(),
+            name = denomMetadata.name,
+            description = denomMetadata.description,
+            symbol = denomMetadata.symbol,
+            display = denomMetadata.display,
+            base = denom,
+            quote = USD_UPPER,
+            marketCap = marketCap,
+            supply = supply,
+            priceTrend = null,
+            volumeTrend = null
+        )
+    }
+
+    private fun thirdPartyEntityAssetSummaries(
+        atDateTime: LocalDateTime? = null
+    ): List<PulseAssetSummary> {
+        val entities = activeNonLoanLedgerEntities()
+        val allSpecs = entities.flatMap { ledgerSpecsForEntity(it) }
+        val navs = snapshotNavsForSpecs(
+            allSpecs.map { it.specificationId }.toSet(),
+            atDateTime,
+            "third-party"
+        )
+        return entities.map { entity ->
+            val entitySpecs = ledgerSpecsForEntity(entity)
+            val specIds = entitySpecs.map { it.specificationId }.toSet()
+            val entityNavs = navs.filter { it.specificationId in specIds }
+            PulseAssetSummary(
+                id = UUID.randomUUID(),
+                name = entity.name,
+                description = entity.type.displayText,
+                symbol = entity.type.displayText,
+                display = entity.type.displayText,
+                base = "$ledgerEntityBasePrefix${entity.uuid}",
+                quote = USD_UPPER,
+                marketCap = scaleSnapshotNavs(entityNavs, entitySpecs),
+                supply = entityNavs.size.toBigDecimal(),
+                priceTrend = null,
+                volumeTrend = null
+            )
+        }
+    }
 
     fun exchangeSummaries(denom: String): List<ExchangeSummary> = runBlocking {
         exchangeGrpcClient.getMarketBriefsByDenom(denom)
