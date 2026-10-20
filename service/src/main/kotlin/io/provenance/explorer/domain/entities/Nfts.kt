@@ -87,8 +87,19 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
             query.execAndMap { it.toNftData() }
         }
 
+        /**
+         * Rows with no scope blob, or a default/empty protobuf Scope whose
+         * specification_id never got populated (same-block gRPC miss).
+         */
         fun findWithMissingScope() = transaction {
-            NftScopeRecord.find { NftScopeTable.scope.isNull() }.toList()
+            """
+                SELECT id
+                FROM nft_scope
+                WHERE scope IS NULL
+                   OR COALESCE(scope ->> 'specification_id', '') = ''
+            """.trimIndent().execAndMap {
+                NftScopeRecord[it.getInt("id")]
+            }
         }
 
         /**

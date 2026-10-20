@@ -445,8 +445,8 @@ class ScheduledTaskService(
         pulseMetricService.backFillAllMetrics()
     }
 
-    // hopefully a one time thing
-    @Scheduled(initialDelay = 0L, fixedDelay = 7L, timeUnit = TimeUnit.DAYS)
+    // Refetch nft_scope rows with null JSON or empty specification_id.
+    @Scheduled(initialDelay = 0L, fixedDelay = 1L, timeUnit = TimeUnit.HOURS)
     fun populateScopes() {
         nftService.populateScopes()
     }
