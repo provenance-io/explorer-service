@@ -6,6 +6,7 @@ import io.provenance.explorer.domain.entities.NftScopeRecord
 import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.ScopeNavSnapshotRecord
 import io.provenance.explorer.domain.entities.ScopeNavSnapshotRow
+import io.provenance.explorer.domain.entities.ScopeSpecNavAmount
 import io.provenance.explorer.domain.entities.snapshotWalkDue
 import io.provenance.explorer.domain.entities.snapshotWalkDueReason
 import io.provenance.explorer.domain.extensions.ChainScopeNav
@@ -78,16 +79,16 @@ class ScopeNavSnapshotService(
             val snapshotAt = LocalDateTime.now(ZoneOffset.UTC)
             logger.info("Starting on-chain scope NAV snapshot")
 
-            var afterId = 0
+            var afterAddress = ""
             var processed = 0
             var errors = 0
             var empty = 0
 
             runBlocking {
                 while (true) {
-                    val page = NftScopeRecord.findActiveScopesAfter(afterId, PAGE_SIZE)
+                    val page = NftScopeRecord.findActiveScopesAfter(afterAddress, PAGE_SIZE)
                     if (page.isEmpty()) break
-                    afterId = page.last().id
+                    afterAddress = page.last().address
 
                     val batchStarted = System.currentTimeMillis()
                     val rows = snapshotPage(page, snapshotAt, height = null)
@@ -124,7 +125,30 @@ class ScopeNavSnapshotService(
      * Preferred USD millidollar NAVs at [height]. Does not write scope_nav_snapshot.
      * Used to persist a historical Pulse cache total for a given date.
      */
-    fun usdNavAmountsAtHeight(height: Int): List<Pair<String, BigDecimal>> {
+    fun usdNavAmountsAtHeight(height: Int): List<Pair<String, BigDecimal>> =
+        usdNavAmountsAtHeight(height, label = "all") { afterAddress ->
+            NftScopeRecord.findActiveScopesAfter(afterAddress, PAGE_SIZE)
+        }.map { it.scopeAddress to it.priceAmount }
+
+    /**
+     * Same as [usdNavAmountsAtHeight] but only scopes whose specification_id
+     * is in [specificationIds] (nft_scope JSON values).
+     */
+    fun usdNavAmountsAtHeightForSpecs(
+        specificationIds: Set<String>,
+        height: Int
+    ): List<ScopeSpecNavAmount> {
+        if (specificationIds.isEmpty()) return emptyList()
+        return usdNavAmountsAtHeight(height, label = "spec") { afterAddress ->
+            NftScopeRecord.findActiveScopesAfter(afterAddress, PAGE_SIZE, specificationIds)
+        }.filter { it.specificationId.isNotBlank() }
+    }
+
+    private fun usdNavAmountsAtHeight(
+        height: Int,
+        label: String,
+        nextPage: (String) -> List<ActiveNftScope>
+    ): List<ScopeSpecNavAmount> {
         if (!running.compareAndSet(false, true)) {
             throw IllegalStateException(
                 "Scope NAV snapshot already running; cannot query historical NAVs at height $height"
@@ -134,18 +158,19 @@ class ScopeNavSnapshotService(
         try {
             val started = System.currentTimeMillis()
             val snapshotAt = LocalDateTime.now(ZoneOffset.UTC)
-            logger.info("Starting on-chain scope NAV snapshot at height $height")
+            logger.info("Starting on-chain $label scope NAV snapshot at height $height")
 
-            val amounts = mutableListOf<Pair<String, BigDecimal>>()
-            var afterId = 0
+            val amounts = mutableListOf<ScopeSpecNavAmount>()
+            var afterAddress = ""
             var processed = 0
             var errors = 0
 
             runBlocking {
                 while (true) {
-                    val page = NftScopeRecord.findActiveScopesAfter(afterId, PAGE_SIZE)
+                    val page = nextPage(afterAddress)
                     if (page.isEmpty()) break
-                    afterId = page.last().id
+                    afterAddress = page.last().address
+                    val specByAddress = page.associate { it.address to it.specificationId }
 
                     val batchStarted = System.currentTimeMillis()
                     val rows = snapshotPage(page, snapshotAt, height)
@@ -158,26 +183,31 @@ class ScopeNavSnapshotService(
                             amount > 0L &&
                             row.priceDenom?.equals(USD_LOWER, ignoreCase = true) == true
                         ) {
-                            amounts += Pair(row.scopeAddress, BigDecimal(amount))
+                            amounts += ScopeSpecNavAmount(
+                                scopeAddress = row.scopeAddress,
+                                specificationId = specByAddress[row.scopeAddress].orEmpty(),
+                                priceAmount = BigDecimal(amount)
+                            )
                         }
                     }
 
                     processed += page.size
                     logger.info(
-                        "Scope NAV snapshot batch: height=$height size=${page.size} errors=$batchErrors " +
-                            "elapsedMs=${System.currentTimeMillis() - batchStarted} " +
+                        "Scope NAV snapshot batch: height=$height label=$label size=${page.size} " +
+                            "errors=$batchErrors elapsedMs=${System.currentTimeMillis() - batchStarted} " +
                             "processed=$processed totalElapsedMs=${System.currentTimeMillis() - started}"
                     )
                 }
             }
 
             logger.info(
-                "Scope NAV snapshot finished at height $height: processed=$processed errors=$errors " +
-                    "withUsdNav=${amounts.size} elapsedMs=${System.currentTimeMillis() - started}"
+                "Scope NAV snapshot finished at height $height label=$label: processed=$processed " +
+                    "errors=$errors withUsdNav=${amounts.size} " +
+                    "elapsedMs=${System.currentTimeMillis() - started}"
             )
             return amounts
         } catch (e: Exception) {
-            logger.error("Scope NAV snapshot failed at height $height", e)
+            logger.error("Scope NAV snapshot failed at height $height label=$label", e)
             throw e
         } finally {
             running.set(false)

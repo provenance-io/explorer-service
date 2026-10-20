@@ -13,6 +13,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.or
@@ -87,32 +88,65 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
             query.execAndMap { it.toNftData() }
         }
 
+        /**
+         * Rows with no scope blob, or a default/empty protobuf Scope whose
+         * specification_id never got populated (same-block gRPC miss).
+         */
         fun findWithMissingScope() = transaction {
-            NftScopeRecord.find { NftScopeTable.scope.isNull() }.toList()
+            """
+                SELECT id
+                FROM nft_scope
+                WHERE scope IS NULL
+                   OR COALESCE(scope ->> 'specification_id', '') = ''
+            """.trimIndent().execAndMap {
+                NftScopeRecord[it.getInt("id")]
+            }
         }
 
         /**
          * Keyset page of non-deleted scopes for the on-chain NAV snapshot job.
+         * One row per address (prefers a populated specification_id, then lowest id).
          */
-        fun findActiveScopesAfter(afterId: Int, limit: Int): List<ActiveNftScope> = transaction {
+        fun findActiveScopesAfter(afterAddress: String, limit: Int): List<ActiveNftScope> =
+            findActiveScopesAfter(afterAddress, limit, specificationIds = null)
+
+        /**
+         * Keyset page of non-deleted scopes, optionally limited to nft_scope
+         * JSON specification_id values in [specificationIds].
+         * Distinct on address so duplicate nft_scope rows are not walked twice.
+         */
+        fun findActiveScopesAfter(
+            afterAddress: String,
+            limit: Int,
+            specificationIds: Set<String>?
+        ): List<ActiveNftScope> = transaction {
+            if (specificationIds != null && specificationIds.isEmpty()) return@transaction emptyList()
+            val specFilter = specificationIds?.let {
+                "AND scope ->> 'specification_id' IN (${it.toDbQueryList()})"
+            } ?: ""
             val query = """
-                SELECT id, uuid, address
+                SELECT DISTINCT ON (address)
+                    id, uuid, address, scope ->> 'specification_id' AS specification_id
                 FROM nft_scope
-                WHERE deleted = false AND id > ?
-                ORDER BY id
+                WHERE deleted = false AND address > ?
+                  $specFilter
+                ORDER BY address,
+                  CASE WHEN COALESCE(scope ->> 'specification_id', '') <> '' THEN 0 ELSE 1 END,
+                  id
                 LIMIT ?
             """.trimIndent()
 
             query.execAndMap(
                 listOf(
-                    Pair(IntegerColumnType(), afterId),
+                    Pair(VarCharColumnType(128), afterAddress),
                     Pair(IntegerColumnType(), limit)
                 )
             ) {
                 ActiveNftScope(
                     id = it.getInt("id"),
                     uuid = it.getString("uuid"),
-                    address = it.getString("address")
+                    address = it.getString("address"),
+                    specificationId = it.getString("specification_id")
                 )
             }
         }
@@ -156,7 +190,8 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
 data class ActiveNftScope(
     val id: Int,
     val uuid: String,
-    val address: String
+    val address: String,
+    val specificationId: String? = null
 )
 
 object NftScopeSpecTable : IntIdTable(name = "nft_scope_spec") {

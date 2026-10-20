@@ -38,6 +38,7 @@ import io.provenance.explorer.model.base.toMAddressContractSpec
 import io.provenance.explorer.model.base.toMAddressScope
 import io.provenance.explorer.model.base.toMAddressScopeSpec
 import io.provenance.metadata.v1.PartyType
+import io.provenance.metadata.v1.Scope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flatMapMerge
@@ -209,13 +210,22 @@ class NftService(
 
     fun insertOrUpdateNft(uuid: String, address: String) = runBlocking {
         val scope = metadataClient.getScopeById(address, false, false).scope.scope
-        NftScopeRecord.insertOrUpdate(uuid, address, scope)
+        persistScope(uuid, address, scope)
     }
 
     fun updateNft(scopeAddr: String) = runBlocking {
         val scope = metadataClient.getScopeById(scopeAddr, false, false).scope
-        NftScopeRecord.insertOrUpdate(scope.scopeIdInfo.scopeUuid, scopeAddr, scope.scope)
+        persistScope(scope.scopeIdInfo.scopeUuid, scopeAddr, scope.scope)
     }
+
+    private fun persistScope(uuid: String, address: String, scope: Scope) =
+        NftScopeRecord.insertOrUpdate(uuid, address, scope).also {
+            if (scope.specificationId.isEmpty) {
+                logger().warn(
+                    "Persisting nft_scope with empty specification_id uuid=$uuid address=$address"
+                )
+            }
+        }
 
     fun saveMAddress(md: MetadataAddress) = transaction {
         when (md.getParentForType()) {
@@ -276,9 +286,25 @@ class NftService(
     }
 
     fun populateScopes() = runBlocking {
-        NftScopeRecord.findWithMissingScope().forEach {
-            insertOrUpdateNft(it.uuid, it.address)
+        val missing = NftScopeRecord.findWithMissingScope()
+        logger().info(
+            "Populating ${missing.size} nft_scope row(s) with null JSON or empty specification_id"
+        )
+        var filled = 0
+        var failed = 0
+        missing.forEach {
+            try {
+                insertOrUpdateNft(it.uuid, it.address)
+                filled++
+            } catch (e: Exception) {
+                failed++
+                logger().warn(
+                    "Failed to populate nft_scope uuid=${it.uuid} address=${it.address}: ${e.message}",
+                    e
+                )
+            }
         }
+        logger().info("Populate nft_scope finished: filled=$filled failed=$failed")
     }
 
     private fun scopeToListview(nft: NftData, ownerAddress: String) = runBlocking {
