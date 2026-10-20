@@ -6,7 +6,7 @@ import io.provenance.explorer.domain.entities.NftScopeRecord
 import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.ScopeNavSnapshotRecord
 import io.provenance.explorer.domain.entities.ScopeNavSnapshotRow
-import io.provenance.explorer.domain.entities.ScopeSpecNavAmount
+import io.provenance.explorer.domain.entities.SpecNavAggregate
 import io.provenance.explorer.domain.entities.snapshotWalkDue
 import io.provenance.explorer.domain.entities.snapshotWalkDueReason
 import io.provenance.explorer.domain.extensions.ChainScopeNav
@@ -19,6 +19,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.time.Duration
@@ -122,33 +124,47 @@ class ScopeNavSnapshotService(
     }
 
     /**
-     * Preferred USD millidollar NAVs at [height]. Does not write scope_nav_snapshot.
-     * Used to persist a historical Pulse cache total for a given date.
+     * Sum of preferred USD millidollar NAVs at [height]. Does not write
+     * `scope_nav_snapshot`. Used for a historical Pulse cache total.
      */
-    fun usdNavAmountsAtHeight(height: Int): List<Pair<String, BigDecimal>> =
-        usdNavAmountsAtHeight(height, label = "all") { afterAddress ->
+    fun usdNavAmountsAtHeight(
+        height: Int,
+        ignoredScopeAddresses: Set<String> = emptySet()
+    ): BigDecimal =
+        walkSpecNavsAtHeight(
+            height = height,
+            label = "all",
+            ignoredScopeAddresses = ignoredScopeAddresses
+        ) { afterAddress ->
             NftScopeRecord.findActiveScopesAfter(afterAddress, PAGE_SIZE)
-        }.map { it.scopeAddress to it.priceAmount }
+        }.sumOf { it.priceAmountSum }
 
     /**
-     * Same as [usdNavAmountsAtHeight] but only scopes whose specification_id
-     * is in [specificationIds] (nft_scope JSON values).
+     * Per-spec USD millidollar totals at [height] for scopes whose
+     * specification_id is in [specificationIds]. Does not retain one row
+     * per scope.
      */
     fun usdNavAmountsAtHeightForSpecs(
         specificationIds: Set<String>,
-        height: Int
-    ): List<ScopeSpecNavAmount> {
+        height: Int,
+        ignoredScopeAddresses: Set<String> = emptySet()
+    ): List<SpecNavAggregate> {
         if (specificationIds.isEmpty()) return emptyList()
-        return usdNavAmountsAtHeight(height, label = "spec") { afterAddress ->
+        return walkSpecNavsAtHeight(
+            height = height,
+            label = "spec",
+            ignoredScopeAddresses = ignoredScopeAddresses
+        ) { afterAddress ->
             NftScopeRecord.findActiveScopesAfter(afterAddress, PAGE_SIZE, specificationIds)
         }.filter { it.specificationId.isNotBlank() }
     }
 
-    private fun usdNavAmountsAtHeight(
+    private fun walkSpecNavsAtHeight(
         height: Int,
         label: String,
+        ignoredScopeAddresses: Set<String>,
         nextPage: (String) -> List<ActiveNftScope>
-    ): List<ScopeSpecNavAmount> {
+    ): List<SpecNavAggregate> {
         if (!running.compareAndSet(false, true)) {
             throw IllegalStateException(
                 "Scope NAV snapshot already running; cannot query historical NAVs at height $height"
@@ -160,10 +176,12 @@ class ScopeNavSnapshotService(
             val snapshotAt = LocalDateTime.now(ZoneOffset.UTC)
             logger.info("Starting on-chain $label scope NAV snapshot at height $height")
 
-            val amounts = mutableListOf<ScopeSpecNavAmount>()
+            val sums = mutableMapOf<String, BigDecimal>()
+            val counts = mutableMapOf<String, Int>()
             var afterAddress = ""
             var processed = 0
             var errors = 0
+            var withUsdNav = 0
 
             runBlocking {
                 while (true) {
@@ -181,13 +199,14 @@ class ScopeNavSnapshotService(
                         if (row.queryError == null &&
                             amount != null &&
                             amount > 0L &&
-                            row.priceDenom?.equals(USD_LOWER, ignoreCase = true) == true
+                            row.priceDenom?.equals(USD_LOWER, ignoreCase = true) == true &&
+                            row.scopeAddress !in ignoredScopeAddresses
                         ) {
-                            amounts += ScopeSpecNavAmount(
-                                scopeAddress = row.scopeAddress,
-                                specificationId = specByAddress[row.scopeAddress].orEmpty(),
-                                priceAmount = BigDecimal(amount)
-                            )
+                            val spec = specByAddress[row.scopeAddress].orEmpty()
+                            if (spec.isBlank()) return@forEach
+                            sums.merge(spec, BigDecimal(amount), BigDecimal::add)
+                            counts.merge(spec, 1, Int::plus)
+                            withUsdNav++
                         }
                     }
 
@@ -200,12 +219,19 @@ class ScopeNavSnapshotService(
                 }
             }
 
+            val aggregates = sums.map { (spec, sum) ->
+                SpecNavAggregate(
+                    specificationId = spec,
+                    priceAmountSum = sum,
+                    scopeCount = counts[spec] ?: 0
+                )
+            }
             logger.info(
                 "Scope NAV snapshot finished at height $height label=$label: processed=$processed " +
-                    "errors=$errors withUsdNav=${amounts.size} " +
+                    "errors=$errors withUsdNav=$withUsdNav specs=${aggregates.size} " +
                     "elapsedMs=${System.currentTimeMillis() - started}"
             )
-            return amounts
+            return aggregates
         } catch (e: Exception) {
             logger.error("Scope NAV snapshot failed at height $height label=$label", e)
             throw e
@@ -219,8 +245,11 @@ class ScopeNavSnapshotService(
         snapshotAt: LocalDateTime,
         height: Int?
     ): List<ScopeNavSnapshotRow> = coroutineScope {
+        val limiter = Semaphore(MAX_IN_FLIGHT)
         page.map { scope ->
-            async { snapshotOne(scope, snapshotAt, height) }
+            async {
+                limiter.withPermit { snapshotOne(scope, snapshotAt, height) }
+            }
         }.awaitAll()
     }
 
@@ -261,6 +290,7 @@ class ScopeNavSnapshotService(
 
     companion object {
         private const val PAGE_SIZE = 200
+        private const val MAX_IN_FLIGHT = 25
         val SNAPSHOT_MAX_AGE: Duration = Duration.ofHours(6)
         val END_OF_DAY_FROM: LocalTime = LocalTime.of(22, 0)
     }
