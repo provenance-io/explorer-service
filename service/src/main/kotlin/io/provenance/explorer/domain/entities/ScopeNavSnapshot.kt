@@ -109,14 +109,18 @@ class ScopeNavSnapshotRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         /**
-         * Latest USD millidollar NAVs for scopes whose specification is in
-         * [specificationIds]. Empty [specificationIds] returns no rows.
+         * Latest USD NAVs for scopes whose specification is in [specificationIds].
+         * [ScopeSpecNavAmount.priceAmount] is the raw stored amount; callers
+         * scale with the ledger entity's usd_pricing_exponent.
+         * Empty [specificationIds] returns no rows.
          */
-        fun usdNavAmountsForSpecs(specificationIds: Set<String>): List<Pair<String, BigDecimal>> =
+        fun usdNavAmountsForSpecs(specificationIds: Set<String>): List<ScopeSpecNavAmount> =
             transaction {
                 if (specificationIds.isEmpty()) return@transaction emptyList()
                 """
-                    SELECT sns.scope_address, sns.price_amount
+                    SELECT sns.scope_address,
+                           sns.price_amount,
+                           ns.scope ->> 'specification_id' AS specification_id
                     FROM scope_nav_snapshot sns
                     JOIN nft_scope ns
                       ON ns.address = sns.scope_address
@@ -126,8 +130,12 @@ class ScopeNavSnapshotRecord(id: EntityID<Int>) : IntEntity(id) {
                       AND sns.price_denom = 'usd'
                       AND ns.scope ->> 'specification_id' IN (${specificationIds.toDbQueryList()})
                 """.trimIndent().execAndMap {
-                    Pair(it.getString("scope_address"), BigDecimal(it.getString("price_amount")))
-                }
+                    ScopeSpecNavAmount(
+                        scopeAddress = it.getString("scope_address"),
+                        specificationId = it.getString("specification_id") ?: "",
+                        priceAmount = BigDecimal(it.getString("price_amount"))
+                    )
+                }.filter { it.specificationId.isNotBlank() }
             }
 
         fun pruneDeletedScopes() = transaction {
@@ -153,3 +161,9 @@ class ScopeNavSnapshotRecord(id: EntityID<Int>) : IntEntity(id) {
     var snapshotAt by ScopeNavSnapshotTable.snapshotAt
     var queryError by ScopeNavSnapshotTable.queryError
 }
+
+data class ScopeSpecNavAmount(
+    val scopeAddress: String,
+    val specificationId: String,
+    val priceAmount: BigDecimal
+)

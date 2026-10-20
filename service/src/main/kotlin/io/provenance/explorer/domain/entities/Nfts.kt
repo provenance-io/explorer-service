@@ -87,8 +87,19 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
             query.execAndMap { it.toNftData() }
         }
 
+        /**
+         * Rows with no scope blob, or a default/empty protobuf Scope whose
+         * specification_id never got populated (same-block gRPC miss).
+         */
         fun findWithMissingScope() = transaction {
-            NftScopeRecord.find { NftScopeTable.scope.isNull() }.toList()
+            """
+                SELECT id
+                FROM nft_scope
+                WHERE scope IS NULL
+                   OR COALESCE(scope ->> 'specification_id', '') = ''
+            """.trimIndent().execAndMap {
+                NftScopeRecord[it.getInt("id")]
+            }
         }
 
         /**
@@ -111,7 +122,7 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
                 "AND scope ->> 'specification_id' IN (${it.toDbQueryList()})"
             } ?: ""
             val query = """
-                SELECT id, uuid, address
+                SELECT id, uuid, address, scope ->> 'specification_id' AS specification_id
                 FROM nft_scope
                 WHERE deleted = false AND id > ?
                   $specFilter
@@ -128,7 +139,8 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
                 ActiveNftScope(
                     id = it.getInt("id"),
                     uuid = it.getString("uuid"),
-                    address = it.getString("address")
+                    address = it.getString("address"),
+                    specificationId = it.getString("specification_id")
                 )
             }
         }
@@ -172,7 +184,8 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
 data class ActiveNftScope(
     val id: Int,
     val uuid: String,
-    val address: String
+    val address: String,
+    val specificationId: String? = null
 )
 
 object NftScopeSpecTable : IntIdTable(name = "nft_scope_spec") {

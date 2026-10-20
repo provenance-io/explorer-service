@@ -26,6 +26,7 @@ import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.entities.NftScopeRecord
 import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.ScopeNavSnapshotRecord
+import io.provenance.explorer.domain.entities.ScopeSpecNavAmount
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.roundWhole
@@ -134,7 +135,8 @@ class PulseMetricService(
     /* so it turns out that the `usd` in metadata nav events
        use 3 decimal places - :|
      */
-    private val scopeNAVDecimal = inversePowerOfTen(3)
+    private val millidollarPricingExponent = 3
+    private val scopeNAVDecimal = inversePowerOfTen(millidollarPricingExponent)
 
     val base = UTILITY_TOKEN
     val quote = USD_UPPER
@@ -834,6 +836,8 @@ class PulseMetricService(
      * LOANS ledger entity. Includes inactive loan entities (e.g. Figure).
      * Live reads the current snapshot table; historical backfill walks only
      * those loan-spec scopes at the last block of the UTC day.
+     * Each entity's usd_pricing_exponent converts stored NAV to USD
+     * (0 = dollars, 3 = millidollars; null defaults to millidollars).
      */
     private fun loanBalanceSnapshot(
         range: MetricRangeType = MetricRangeType.DAY,
@@ -844,9 +848,10 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
+            val specs = loanLedgerSpecs()
             PulseMetric.build(
                 base = USD_UPPER,
-                amount = loanSnapshotNavs(atDateTime).sumOf { it.second }.times(scopeNAVDecimal)
+                amount = scaleSnapshotNavs(loanSnapshotNavs(specs, atDateTime), specs)
             )
         }
 
@@ -861,7 +866,7 @@ class PulseMetricService(
         ) {
             PulseMetric.build(
                 base = count,
-                amount = loanSnapshotNavs(atDateTime).size.toBigDecimal()
+                amount = loanSnapshotNavs(loanLedgerSpecs(), atDateTime).size.toBigDecimal()
             )
         }
 
@@ -869,7 +874,8 @@ class PulseMetricService(
      * 3rd-party NAV from scope_nav_snapshot for specs of *active* non-LOANS
      * ledger entities. LOANS stay in the loan snapshot metric so TVL can
      * add the two without double-counting. Deactivating an entity drops it
-     * from live and from historical backfill.
+     * from live and from historical backfill. usd_pricing_exponent is applied
+     * per entity so dollar-denominated scopes are not treated as millidollars.
      */
     private fun thirdPartyBalanceSnapshot(
         range: MetricRangeType = MetricRangeType.DAY,
@@ -880,24 +886,32 @@ class PulseMetricService(
             range = range,
             atDateTime = atDateTime
         ) {
+            val specs = activeNonLoanLedgerSpecs()
             PulseMetric.build(
                 base = USD_UPPER,
-                amount = snapshotNavsForSpecs(
-                    specIds = activeNonLoanEntitySpecificationIds(),
-                    atDateTime = atDateTime,
-                    label = "third-party"
-                ).sumOf { it.second }.times(scopeNAVDecimal)
+                amount = scaleSnapshotNavs(
+                    snapshotNavsForSpecs(specs.map { it.specificationId }.toSet(), atDateTime, "third-party"),
+                    specs
+                )
             )
         }
 
     private data class SpecNavWalkKey(val height: Int, val specIds: Set<String>)
 
-    private val specNavsAtHeight =
-        ThreadLocal<Pair<SpecNavWalkKey, List<Pair<String, BigDecimal>>>>()
+    private data class LedgerSpecNav(
+        val specificationId: String,
+        val usdPricingExponent: Int
+    )
 
-    private fun loanSnapshotNavs(atDateTime: LocalDateTime? = null): List<Pair<String, BigDecimal>> =
+    private val specNavsAtHeight =
+        ThreadLocal<Pair<SpecNavWalkKey, List<ScopeSpecNavAmount>>>()
+
+    private fun loanSnapshotNavs(
+        specs: List<LedgerSpecNav>,
+        atDateTime: LocalDateTime? = null
+    ): List<ScopeSpecNavAmount> =
         snapshotNavsForSpecs(
-            specIds = loanSpecificationIds(),
+            specIds = specs.map { it.specificationId }.toSet(),
             atDateTime = atDateTime,
             label = "loan"
         )
@@ -906,7 +920,7 @@ class PulseMetricService(
         specIds: Set<String>,
         atDateTime: LocalDateTime?,
         label: String
-    ): List<Pair<String, BigDecimal>> {
+    ): List<ScopeSpecNavAmount> {
         if (specIds.isEmpty()) return emptyList()
         val ignoredScopeAddresses = getIgnoredScopeAddresses()
         val amounts = if (atDateTime != null) {
@@ -924,22 +938,36 @@ class PulseMetricService(
         } else {
             ScopeNavSnapshotRecord.usdNavAmountsForSpecs(specIds)
         }
-        return amounts.filter { (scopeAddress, _) -> scopeAddress !in ignoredScopeAddresses }
+        return amounts.filter { it.scopeAddress !in ignoredScopeAddresses }
     }
 
-    private fun loanSpecificationIds(): Set<String> =
-        LedgerEntityRecord.findByType(EntityType.LOANS)
-            .flatMap { LedgerEntitySpecRecord.findByUuid(it.uuid) }
-            .map { it.specificationId }
-            .toSet()
+    private fun scaleSnapshotNavs(
+        navs: List<ScopeSpecNavAmount>,
+        specs: List<LedgerSpecNav>
+    ): BigDecimal {
+        val exponentBySpec = specs.associate { it.specificationId to it.usdPricingExponent }
+        return navs.sumOf { nav ->
+            nav.priceAmount.times(
+                inversePowerOfTen(exponentBySpec[nav.specificationId] ?: millidollarPricingExponent)
+            )
+        }
+    }
 
-    private fun activeNonLoanEntitySpecificationIds(): Set<String> =
+    private fun loanLedgerSpecs(): List<LedgerSpecNav> =
+        LedgerEntityRecord.findByType(EntityType.LOANS).flatMap { ledgerSpecsForEntity(it) }
+
+    private fun activeNonLoanLedgerSpecs(): List<LedgerSpecNav> =
         EntityType.entries
             .filter { it != EntityType.LOANS }
             .flatMap { LedgerEntityRecord.findActiveByType(it) }
-            .flatMap { LedgerEntitySpecRecord.findByUuid(it.uuid) }
-            .map { it.specificationId }
-            .toSet()
+            .flatMap { ledgerSpecsForEntity(it) }
+
+    private fun ledgerSpecsForEntity(entity: LedgerEntityRecord): List<LedgerSpecNav> {
+        val exponent = entity.usdPricingExponent ?: millidollarPricingExponent
+        return LedgerEntitySpecRecord.findByUuid(entity.uuid).map {
+            LedgerSpecNav(it.specificationId, exponent)
+        }
+    }
 
     /**
      * Retrieves the transaction volume for the last 30 days to build

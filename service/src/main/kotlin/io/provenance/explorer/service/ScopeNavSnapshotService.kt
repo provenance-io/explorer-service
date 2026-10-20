@@ -6,6 +6,7 @@ import io.provenance.explorer.domain.entities.NftScopeRecord
 import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.ScopeNavSnapshotRecord
 import io.provenance.explorer.domain.entities.ScopeNavSnapshotRow
+import io.provenance.explorer.domain.entities.ScopeSpecNavAmount
 import io.provenance.explorer.domain.entities.snapshotWalkDue
 import io.provenance.explorer.domain.entities.snapshotWalkDueReason
 import io.provenance.explorer.domain.extensions.ChainScopeNav
@@ -127,7 +128,7 @@ class ScopeNavSnapshotService(
     fun usdNavAmountsAtHeight(height: Int): List<Pair<String, BigDecimal>> =
         usdNavAmountsAtHeight(height, label = "all") { afterId ->
             NftScopeRecord.findActiveScopesAfter(afterId, PAGE_SIZE)
-        }
+        }.map { it.scopeAddress to it.priceAmount }
 
     /**
      * Same as [usdNavAmountsAtHeight] but only scopes whose specification_id
@@ -136,18 +137,18 @@ class ScopeNavSnapshotService(
     fun usdNavAmountsAtHeightForSpecs(
         specificationIds: Set<String>,
         height: Int
-    ): List<Pair<String, BigDecimal>> {
+    ): List<ScopeSpecNavAmount> {
         if (specificationIds.isEmpty()) return emptyList()
         return usdNavAmountsAtHeight(height, label = "spec") { afterId ->
             NftScopeRecord.findActiveScopesAfter(afterId, PAGE_SIZE, specificationIds)
-        }
+        }.filter { it.specificationId.isNotBlank() }
     }
 
     private fun usdNavAmountsAtHeight(
         height: Int,
         label: String,
         nextPage: (Int) -> List<ActiveNftScope>
-    ): List<Pair<String, BigDecimal>> {
+    ): List<ScopeSpecNavAmount> {
         if (!running.compareAndSet(false, true)) {
             throw IllegalStateException(
                 "Scope NAV snapshot already running; cannot query historical NAVs at height $height"
@@ -159,7 +160,7 @@ class ScopeNavSnapshotService(
             val snapshotAt = LocalDateTime.now(ZoneOffset.UTC)
             logger.info("Starting on-chain $label scope NAV snapshot at height $height")
 
-            val amounts = mutableListOf<Pair<String, BigDecimal>>()
+            val amounts = mutableListOf<ScopeSpecNavAmount>()
             var afterId = 0
             var processed = 0
             var errors = 0
@@ -169,6 +170,7 @@ class ScopeNavSnapshotService(
                     val page = nextPage(afterId)
                     if (page.isEmpty()) break
                     afterId = page.last().id
+                    val specByAddress = page.associate { it.address to it.specificationId }
 
                     val batchStarted = System.currentTimeMillis()
                     val rows = snapshotPage(page, snapshotAt, height)
@@ -181,7 +183,11 @@ class ScopeNavSnapshotService(
                             amount > 0L &&
                             row.priceDenom?.equals(USD_LOWER, ignoreCase = true) == true
                         ) {
-                            amounts += Pair(row.scopeAddress, BigDecimal(amount))
+                            amounts += ScopeSpecNavAmount(
+                                scopeAddress = row.scopeAddress,
+                                specificationId = specByAddress[row.scopeAddress].orEmpty(),
+                                priceAmount = BigDecimal(amount)
+                            )
                         }
                     }
 
