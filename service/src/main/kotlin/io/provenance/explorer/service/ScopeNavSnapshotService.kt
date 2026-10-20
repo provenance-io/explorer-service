@@ -79,16 +79,16 @@ class ScopeNavSnapshotService(
             val snapshotAt = LocalDateTime.now(ZoneOffset.UTC)
             logger.info("Starting on-chain scope NAV snapshot")
 
-            var afterId = 0
+            var afterAddress = ""
             var processed = 0
             var errors = 0
             var empty = 0
 
             runBlocking {
                 while (true) {
-                    val page = NftScopeRecord.findActiveScopesAfter(afterId, PAGE_SIZE)
+                    val page = NftScopeRecord.findActiveScopesAfter(afterAddress, PAGE_SIZE)
                     if (page.isEmpty()) break
-                    afterId = page.last().id
+                    afterAddress = page.last().address
 
                     val batchStarted = System.currentTimeMillis()
                     val rows = snapshotPage(page, snapshotAt, height = null)
@@ -126,8 +126,8 @@ class ScopeNavSnapshotService(
      * Used to persist a historical Pulse cache total for a given date.
      */
     fun usdNavAmountsAtHeight(height: Int): List<Pair<String, BigDecimal>> =
-        usdNavAmountsAtHeight(height, label = "all") { afterId ->
-            NftScopeRecord.findActiveScopesAfter(afterId, PAGE_SIZE)
+        usdNavAmountsAtHeight(height, label = "all") { afterAddress ->
+            NftScopeRecord.findActiveScopesAfter(afterAddress, PAGE_SIZE)
         }.map { it.scopeAddress to it.priceAmount }
 
     /**
@@ -139,15 +139,15 @@ class ScopeNavSnapshotService(
         height: Int
     ): List<ScopeSpecNavAmount> {
         if (specificationIds.isEmpty()) return emptyList()
-        return usdNavAmountsAtHeight(height, label = "spec") { afterId ->
-            NftScopeRecord.findActiveScopesAfter(afterId, PAGE_SIZE, specificationIds)
+        return usdNavAmountsAtHeight(height, label = "spec") { afterAddress ->
+            NftScopeRecord.findActiveScopesAfter(afterAddress, PAGE_SIZE, specificationIds)
         }.filter { it.specificationId.isNotBlank() }
     }
 
     private fun usdNavAmountsAtHeight(
         height: Int,
         label: String,
-        nextPage: (Int) -> List<ActiveNftScope>
+        nextPage: (String) -> List<ActiveNftScope>
     ): List<ScopeSpecNavAmount> {
         if (!running.compareAndSet(false, true)) {
             throw IllegalStateException(
@@ -161,15 +161,15 @@ class ScopeNavSnapshotService(
             logger.info("Starting on-chain $label scope NAV snapshot at height $height")
 
             val amounts = mutableListOf<ScopeSpecNavAmount>()
-            var afterId = 0
+            var afterAddress = ""
             var processed = 0
             var errors = 0
 
             runBlocking {
                 while (true) {
-                    val page = nextPage(afterId)
+                    val page = nextPage(afterAddress)
                     if (page.isEmpty()) break
-                    afterId = page.last().id
+                    afterAddress = page.last().address
                     val specByAddress = page.associate { it.address to it.specificationId }
 
                     val batchStarted = System.currentTimeMillis()

@@ -13,6 +13,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.IntegerColumnType
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.or
@@ -104,16 +105,18 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
 
         /**
          * Keyset page of non-deleted scopes for the on-chain NAV snapshot job.
+         * One row per address (prefers a populated specification_id, then lowest id).
          */
-        fun findActiveScopesAfter(afterId: Int, limit: Int): List<ActiveNftScope> =
-            findActiveScopesAfter(afterId, limit, specificationIds = null)
+        fun findActiveScopesAfter(afterAddress: String, limit: Int): List<ActiveNftScope> =
+            findActiveScopesAfter(afterAddress, limit, specificationIds = null)
 
         /**
          * Keyset page of non-deleted scopes, optionally limited to nft_scope
          * JSON specification_id values in [specificationIds].
+         * Distinct on address so duplicate nft_scope rows are not walked twice.
          */
         fun findActiveScopesAfter(
-            afterId: Int,
+            afterAddress: String,
             limit: Int,
             specificationIds: Set<String>?
         ): List<ActiveNftScope> = transaction {
@@ -122,17 +125,20 @@ class NftScopeRecord(id: EntityID<Int>) : IntEntity(id) {
                 "AND scope ->> 'specification_id' IN (${it.toDbQueryList()})"
             } ?: ""
             val query = """
-                SELECT id, uuid, address, scope ->> 'specification_id' AS specification_id
+                SELECT DISTINCT ON (address)
+                    id, uuid, address, scope ->> 'specification_id' AS specification_id
                 FROM nft_scope
-                WHERE deleted = false AND id > ?
+                WHERE deleted = false AND address > ?
                   $specFilter
-                ORDER BY id
+                ORDER BY address,
+                  CASE WHEN COALESCE(scope ->> 'specification_id', '') <> '' THEN 0 ELSE 1 END,
+                  id
                 LIMIT ?
             """.trimIndent()
 
             query.execAndMap(
                 listOf(
-                    Pair(IntegerColumnType(), afterId),
+                    Pair(VarCharColumnType(128), afterAddress),
                     Pair(IntegerColumnType(), limit)
                 )
             ) {

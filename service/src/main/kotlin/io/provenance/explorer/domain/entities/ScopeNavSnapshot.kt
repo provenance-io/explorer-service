@@ -118,7 +118,8 @@ class ScopeNavSnapshotRecord(id: EntityID<Int>) : IntEntity(id) {
             transaction {
                 if (specificationIds.isEmpty()) return@transaction emptyList()
                 """
-                    SELECT sns.scope_address,
+                    SELECT DISTINCT ON (sns.scope_address)
+                           sns.scope_address,
                            sns.price_amount,
                            ns.scope ->> 'specification_id' AS specification_id
                     FROM scope_nav_snapshot sns
@@ -129,6 +130,7 @@ class ScopeNavSnapshotRecord(id: EntityID<Int>) : IntEntity(id) {
                       AND sns.query_error IS NULL
                       AND sns.price_denom = 'usd'
                       AND ns.scope ->> 'specification_id' IN (${specificationIds.toDbQueryList()})
+                    ORDER BY sns.scope_address, ns.id
                 """.trimIndent().execAndMap {
                     ScopeSpecNavAmount(
                         scopeAddress = it.getString("scope_address"),
