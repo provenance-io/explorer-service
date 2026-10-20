@@ -92,6 +92,7 @@ class PulseMetricService(
 ) {
     companion object {
         private val isBackfillInProgress = AtomicBoolean(false)
+        private val isRefreshInProgress = AtomicBoolean(false)
         private val backfillingType = AtomicReference<PulseCacheType?>(null)
     }
 
@@ -1959,9 +1960,14 @@ class PulseMetricService(
      * running, skip only that type so live cards keep updating.
      */
     fun refreshCache() {
+        if (!isRefreshInProgress.compareAndSet(false, true)) {
+            logger.info("Skipping pulse cache refresh, already running")
+            return
+        }
         val skipType = backfillingType.get()
-        transaction {
-            val threadName = Thread.currentThread().name
+        val threadName = Thread.currentThread().name
+        val started = System.currentTimeMillis()
+        try {
             logger.info("Refreshing pulse cache for thread $threadName")
             PulseCacheType.entries.filter {
                 it != PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC &&
@@ -1970,7 +1976,16 @@ class PulseMetricService(
                     it != skipType
             }
                 .forEach { type ->
-                    pulseMetric(type = type)
+                    val typeStarted = System.currentTimeMillis()
+                    try {
+                        pulseMetric(type = type)
+                    } catch (e: Exception) {
+                        logger.warn("Pulse cache refresh failed for $type: ${e.message}", e)
+                    }
+                    logger.info(
+                        "Pulse cache refresh type=$type " +
+                            "elapsedMs=${System.currentTimeMillis() - typeStarted}"
+                    )
                 }
 
             if (skipType == PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC ||
@@ -1978,11 +1993,21 @@ class PulseMetricService(
             ) {
                 logger.info("Skipping pulse asset summaries because ${skipType.name} backfill is in progress")
             } else {
+                val summariesStarted = System.currentTimeMillis()
                 pulseAssetSummaries()
                 pulseDigitalAssetSummaries()
+                logger.info(
+                    "Pulse cache refresh asset summaries " +
+                        "elapsedMs=${System.currentTimeMillis() - summariesStarted}"
+                )
             }
 
-            logger.info("Pulse cache refreshed for thread $threadName")
+            logger.info(
+                "Pulse cache refreshed for thread $threadName " +
+                    "elapsedMs=${System.currentTimeMillis() - started}"
+            )
+        } finally {
+            isRefreshInProgress.set(false)
         }
     }
 
