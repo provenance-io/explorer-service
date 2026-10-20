@@ -26,7 +26,7 @@ import io.provenance.explorer.domain.entities.NavEventsRecord
 import io.provenance.explorer.domain.entities.NftScopeRecord
 import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.ScopeNavSnapshotRecord
-import io.provenance.explorer.domain.entities.ScopeSpecNavAmount
+import io.provenance.explorer.domain.entities.SpecNavAggregate
 import io.provenance.explorer.domain.entities.TxCacheRecord
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.roundWhole
@@ -802,27 +802,24 @@ class PulseMetricService(
 
         val compute = {
             val ignoredScopeAddresses = getIgnoredScopeAddresses()
-            val amounts = if (atDateTime != null) {
+            val amount = if (atDateTime != null) {
                 val height = BlockCacheRecord.getLastBlockBeforeTime(atDateTime)
                 logger.info(
                     "Computing PULSE_SCOPE_NAV_SNAPSHOT_METRIC from chain at height $height for $atDateTime"
                 )
-                scopeNavSnapshotService.usdNavAmountsAtHeight(height)
+                scopeNavSnapshotService.usdNavAmountsAtHeight(height, ignoredScopeAddresses)
             } else {
                 ScopeNavSnapshotRecord.usdNavAmounts()
+                    .filter { (scopeAddress, _) ->
+                        scopeAddress !in ignoredScopeAddresses
+                    }
+                    .sumOf { (_, priceAmount) -> priceAmount }
             }
 
-            amounts
-                .filter { (scopeAddress, _) ->
-                    scopeAddress !in ignoredScopeAddresses
-                }
-                .sumOf { (_, priceAmount) -> priceAmount }
-                .let {
-                    PulseMetric.build(
-                        base = USD_UPPER,
-                        amount = it.times(scopeNAVDecimal)
-                    )
-                }
+            PulseMetric.build(
+                base = USD_UPPER,
+                amount = amount.times(scopeNAVDecimal)
+            )
         }
 
         return fetchOrBuildCacheFromDataSource(
@@ -867,7 +864,9 @@ class PulseMetricService(
         ) {
             PulseMetric.build(
                 base = count,
-                amount = loanSnapshotNavs(loanLedgerSpecs(), atDateTime).size.toBigDecimal()
+                amount = loanSnapshotNavs(loanLedgerSpecs(), atDateTime)
+                    .sumOf { it.scopeCount }
+                    .toBigDecimal()
             )
         }
 
@@ -905,12 +904,12 @@ class PulseMetricService(
     )
 
     private val specNavsAtHeight =
-        ThreadLocal<Pair<SpecNavWalkKey, List<ScopeSpecNavAmount>>>()
+        ThreadLocal<Pair<SpecNavWalkKey, List<SpecNavAggregate>>>()
 
     private fun loanSnapshotNavs(
         specs: List<LedgerSpecNav>,
         atDateTime: LocalDateTime? = null
-    ): List<ScopeSpecNavAmount> =
+    ): List<SpecNavAggregate> =
         snapshotNavsForSpecs(
             specIds = specs.map { it.specificationId }.toSet(),
             atDateTime = atDateTime,
@@ -921,34 +920,43 @@ class PulseMetricService(
         specIds: Set<String>,
         atDateTime: LocalDateTime?,
         label: String
-    ): List<ScopeSpecNavAmount> {
+    ): List<SpecNavAggregate> {
         if (specIds.isEmpty()) return emptyList()
         val ignoredScopeAddresses = getIgnoredScopeAddresses()
-        val amounts = if (atDateTime != null) {
+        if (atDateTime != null) {
             val height = BlockCacheRecord.getLastBlockBeforeTime(atDateTime)
             val key = SpecNavWalkKey(height, specIds)
-            specNavsAtHeight.get()?.takeIf { it.first == key }?.second
-                ?: run {
-                    logger.info(
-                        "Computing $label snapshot NAVs from chain at height $height for $atDateTime"
-                    )
-                    val navs = scopeNavSnapshotService.usdNavAmountsAtHeightForSpecs(specIds, height)
-                    specNavsAtHeight.set(key to navs)
-                    navs
-                }
-        } else {
-            ScopeNavSnapshotRecord.usdNavAmountsForSpecs(specIds)
+            specNavsAtHeight.get()?.takeIf { it.first == key }?.second?.let { return it }
+            logger.info(
+                "Computing $label snapshot NAVs from chain at height $height for $atDateTime"
+            )
+            val navs = scopeNavSnapshotService.usdNavAmountsAtHeightForSpecs(
+                specIds,
+                height,
+                ignoredScopeAddresses
+            )
+            specNavsAtHeight.set(key to navs)
+            return navs
         }
-        return amounts.filter { it.scopeAddress !in ignoredScopeAddresses }
+        return ScopeNavSnapshotRecord.usdNavAmountsForSpecs(specIds)
+            .filter { it.scopeAddress !in ignoredScopeAddresses }
+            .groupBy { it.specificationId }
+            .map { (spec, rows) ->
+                SpecNavAggregate(
+                    specificationId = spec,
+                    priceAmountSum = rows.sumOf { it.priceAmount },
+                    scopeCount = rows.size
+                )
+            }
     }
 
     private fun scaleSnapshotNavs(
-        navs: List<ScopeSpecNavAmount>,
+        navs: List<SpecNavAggregate>,
         specs: List<LedgerSpecNav>
     ): BigDecimal {
         val exponentBySpec = specs.associate { it.specificationId to it.usdPricingExponent }
         return navs.sumOf { nav ->
-            nav.priceAmount.times(
+            nav.priceAmountSum.times(
                 inversePowerOfTen(exponentBySpec[nav.specificationId] ?: millidollarPricingExponent)
             )
         }
@@ -2079,6 +2087,7 @@ class PulseMetricService(
                     }
                 }
             } finally {
+                specNavsAtHeight.remove()
                 isBackfillInProgress.set(false)
             }
         } else {

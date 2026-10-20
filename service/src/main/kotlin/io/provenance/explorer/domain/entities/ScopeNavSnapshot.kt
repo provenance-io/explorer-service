@@ -169,3 +169,10 @@ data class ScopeSpecNavAmount(
     val specificationId: String,
     val priceAmount: BigDecimal
 )
+
+/** Per-spec totals from a height walk. Avoids retaining one row per scope. */
+data class SpecNavAggregate(
+    val specificationId: String,
+    val priceAmountSum: BigDecimal,
+    val scopeCount: Int
+)
