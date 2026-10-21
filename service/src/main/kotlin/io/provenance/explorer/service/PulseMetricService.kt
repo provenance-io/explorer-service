@@ -10,6 +10,7 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.url
 import io.provenance.explorer.VANILLA_MAPPER
+import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
 import io.provenance.explorer.config.ResourceNotFoundException
@@ -28,6 +29,7 @@ import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.ScopeNavSnapshotRecord
 import io.provenance.explorer.domain.entities.SpecNavAggregate
 import io.provenance.explorer.domain.entities.TxCacheRecord
+import io.provenance.explorer.domain.extensions.isAddressAsType
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.roundWhole
 import io.provenance.explorer.domain.extensions.startOfDay
@@ -1237,14 +1239,16 @@ class PulseMetricService(
     }
 
     private fun uusdExcludedBalances(height: Int?): BigDecimal = runBlocking {
-        digitalAssetsUusdExcludedAddresses.sumOf { address ->
-            val coin = if (height != null) {
-                accountGrpcClient.getAccountBalanceForDenomAtHeight(address, usdTradingDenom, height)
-            } else {
-                accountGrpcClient.getAccountBalanceForDenom(address, usdTradingDenom)
+        digitalAssetsUusdExcludedAddresses
+            .filter { it.isAddressAsType(PROV_ACC_PREFIX) }
+            .sumOf { address ->
+                val coin = if (height != null) {
+                    accountGrpcClient.getAccountBalanceForDenomAtHeight(address, usdTradingDenom, height)
+                } else {
+                    accountGrpcClient.getAccountBalanceForDenom(address, usdTradingDenom)
+                }
+                coin.amount.toBigDecimal()
             }
-            coin.amount.toBigDecimal()
-        }
     }
 
     private fun Map<String, BigDecimal>.committedAssetsToValue() = this.let { committedAssets ->
