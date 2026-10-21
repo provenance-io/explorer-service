@@ -2041,7 +2041,7 @@ class PulseMetricService(
                 skipType == PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC ||
                     skipType == PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
             if (skipPriceVolumeSummaries) {
-                logger.info("Skipping pulse asset summaries because ${skipType.name} backfill is in progress")
+                logger.info("Skipping pulse asset summaries because ${skipType?.name} backfill is in progress")
             } else {
                 val summariesStarted = System.currentTimeMillis()
                 refreshExchangeAssetSummariesIfDue(walkRunning)
