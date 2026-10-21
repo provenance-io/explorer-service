@@ -70,6 +70,7 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.pow
 /**
@@ -141,6 +142,19 @@ class PulseMetricService(
             expireAfterWrite(5, TimeUnit.MINUTES)
             maximumSize(1)
         }.build()
+
+    /**
+     * Live exchange-traded /asset/summary/list payload. Rebuilt at most every
+     * 15 minutes on pulse refresh and on miss.
+     */
+    private val exchangeAssetSummariesCache: Cache<String, List<PulseAssetSummary>> =
+        Caffeine.newBuilder().apply {
+            expireAfterWrite(15, TimeUnit.MINUTES)
+            maximumSize(1)
+        }.build()
+
+    private val lastExchangeSummariesRefreshMs = AtomicLong(0L)
+    private val exchangeSummariesRefreshIntervalMs = TimeUnit.MINUTES.toMillis(15)
 
     /* so it turns out that the `usd` in metadata nav events
        use 3 decimal places - :|
@@ -1999,6 +2013,7 @@ class PulseMetricService(
             return
         }
         val skipType = backfillingType.get()
+        val walkRunning = scopeNavSnapshotService.isWalkRunning()
         val threadName = Thread.currentThread().name
         val started = System.currentTimeMillis()
         try {
@@ -2022,13 +2037,14 @@ class PulseMetricService(
                     )
                 }
 
-            if (skipType == PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC ||
-                skipType == PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
-            ) {
+            val skipPriceVolumeSummaries =
+                skipType == PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC ||
+                    skipType == PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
+            if (skipPriceVolumeSummaries) {
                 logger.info("Skipping pulse asset summaries because ${skipType.name} backfill is in progress")
             } else {
                 val summariesStarted = System.currentTimeMillis()
-                pulseAssetSummaries()
+                refreshExchangeAssetSummariesIfDue(walkRunning)
                 digitalAssetSummariesCache.invalidateAll()
                 pulseDigitalAssetSummaries()
                 logger.info(
@@ -2044,6 +2060,29 @@ class PulseMetricService(
         } finally {
             isRefreshInProgress.set(false)
         }
+    }
+
+    /**
+     * Exchange-traded list plus per-denom price/volume cache. Not on the 5
+     * minute Pulse tile path; run at most every 15 minutes and skip while a
+     * scope NAV walk holds heap.
+     */
+    private fun refreshExchangeAssetSummariesIfDue(walkRunning: Boolean) {
+        if (walkRunning) {
+            logger.info("Skipping pulseAssetSummaries because a scope NAV walk is running")
+            return
+        }
+        val now = System.currentTimeMillis()
+        val elapsedMs = now - lastExchangeSummariesRefreshMs.get()
+        if (elapsedMs < exchangeSummariesRefreshIntervalMs) {
+            logger.info(
+                "Skipping pulseAssetSummaries, last run ${elapsedMs}ms ago"
+            )
+            return
+        }
+        exchangeAssetSummariesCache.invalidateAll()
+        pulseAssetSummaries()
+        lastExchangeSummariesRefreshMs.set(now)
     }
 
     /**
@@ -2573,6 +2612,15 @@ class PulseMetricService(
      * TODO - this is problematic because it assumes all assets are USD quoted
      */
     fun pulseAssetSummaries(atDateTime: LocalDateTime? = null): List<PulseAssetSummary> {
+        if (atDateTime != null) {
+            return buildExchangeAssetSummaries(atDateTime)
+        }
+        return exchangeAssetSummariesCache.get("live") {
+            buildExchangeAssetSummaries(null)
+        } ?: emptyList()
+    }
+
+    private fun buildExchangeAssetSummaries(atDateTime: LocalDateTime?): List<PulseAssetSummary> {
         val ignoredDenoms = getIgnoredMarkers().values
         val committedTotals = committedAssetTotals(atDateTime)
         return committedTotals.keys.distinct()

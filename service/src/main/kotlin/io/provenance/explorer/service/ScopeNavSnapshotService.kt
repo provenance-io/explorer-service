@@ -38,6 +38,8 @@ class ScopeNavSnapshotService(
     protected val logger = logger(ScopeNavSnapshotService::class)
     private val running = AtomicBoolean(false)
 
+    fun isWalkRunning(): Boolean = running.get()
+
     /**
      * Runs a live snapshot when today's `PULSE_SCOPE_NAV_SNAPSHOT_METRIC` row
      * is missing, older than [maxAge], or it is after 22:00 UTC and that row
