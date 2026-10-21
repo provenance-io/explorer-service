@@ -93,20 +93,27 @@ class ScopeNavSnapshotRecord(id: EntityID<Int>) : IntEntity(id) {
         }
 
         /**
-         * Latest USD millidollar NAVs from the on-chain snapshot. Ignores query
-         * failures and rows with no USD price.
+         * Sum of latest USD millidollar NAVs. Postgres sums so the live metric
+         * write does not materialize one row per scope.
          */
-        fun usdNavAmounts(): List<Pair<String, BigDecimal>> = transaction {
-            """
-                SELECT scope_address, price_amount
-                FROM scope_nav_snapshot
-                WHERE price_amount > 0
-                  AND query_error IS NULL
-                  AND price_denom = 'usd'
-            """.trimIndent().execAndMap {
-                Pair(it.getString("scope_address"), BigDecimal(it.getString("price_amount")))
+        fun usdNavAmountSum(ignoredScopeAddresses: Set<String> = emptySet()): BigDecimal =
+            transaction {
+                val ignoredFilter = if (ignoredScopeAddresses.isEmpty()) {
+                    ""
+                } else {
+                    "AND scope_address NOT IN (${ignoredScopeAddresses.toDbQueryList()})"
+                }
+                """
+                    SELECT COALESCE(SUM(price_amount), 0) AS total
+                    FROM scope_nav_snapshot
+                    WHERE price_amount > 0
+                      AND query_error IS NULL
+                      AND price_denom = 'usd'
+                      $ignoredFilter
+                """.trimIndent().execAndMap {
+                    BigDecimal(it.getString("total"))
+                }.first()
             }
-        }
 
         /**
          * Latest USD NAVs for scopes whose specification is in [specificationIds].

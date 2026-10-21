@@ -109,6 +109,7 @@ class ScopeNavSnapshotService(
                 }
             }
 
+            logger.info("Scope NAV snapshot prune starting: processed=$processed")
             ScopeNavSnapshotRecord.pruneDeletedScopes()
             logger.info(
                 "Scope NAV snapshot finished: processed=$processed errors=$errors empty=$empty " +

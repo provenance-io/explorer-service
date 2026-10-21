@@ -831,11 +831,7 @@ class PulseMetricService(
                 )
                 scopeNavSnapshotService.usdNavAmountsAtHeight(height, ignoredScopeAddresses)
             } else {
-                ScopeNavSnapshotRecord.usdNavAmounts()
-                    .filter { (scopeAddress, _) ->
-                        scopeAddress !in ignoredScopeAddresses
-                    }
-                    .sumOf { (_, priceAmount) -> priceAmount }
+                ScopeNavSnapshotRecord.usdNavAmountSum(ignoredScopeAddresses)
             }
 
             PulseMetric.build(

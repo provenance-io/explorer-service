@@ -435,7 +435,9 @@ class ScheduledTaskService(
     @Scheduled(initialDelay = 1, fixedDelay = 15, timeUnit = TimeUnit.MINUTES)
     fun snapshotScopeNavs() {
         if (scopeNavSnapshotService.snapshotCurrentNavsIfDue()) {
+            logger.info("Writing PULSE_SCOPE_NAV_SNAPSHOT_METRIC after live walk")
             pulseMetricService.pulseMetric(type = PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC)
+            logger.info("Wrote PULSE_SCOPE_NAV_SNAPSHOT_METRIC after live walk")
         }
     }
 
