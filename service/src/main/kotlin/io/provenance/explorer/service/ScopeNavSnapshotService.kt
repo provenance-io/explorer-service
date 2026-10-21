@@ -19,8 +19,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.time.Duration
@@ -245,11 +243,8 @@ class ScopeNavSnapshotService(
         snapshotAt: LocalDateTime,
         height: Int?
     ): List<ScopeNavSnapshotRow> = coroutineScope {
-        val limiter = Semaphore(MAX_IN_FLIGHT)
         page.map { scope ->
-            async {
-                limiter.withPermit { snapshotOne(scope, snapshotAt, height) }
-            }
+            async { snapshotOne(scope, snapshotAt, height) }
         }.awaitAll()
     }
 
@@ -290,7 +285,6 @@ class ScopeNavSnapshotService(
 
     companion object {
         private const val PAGE_SIZE = 200
-        private const val MAX_IN_FLIGHT = 25
         val SNAPSHOT_MAX_AGE: Duration = Duration.ofHours(6)
         val END_OF_DAY_FROM: LocalTime = LocalTime.of(22, 0)
     }
