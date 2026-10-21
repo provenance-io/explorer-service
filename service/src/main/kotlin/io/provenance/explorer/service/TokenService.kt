@@ -270,7 +270,7 @@ class TokenService(
     fun maxSupply(denom: String, height: Int? = null) = runBlocking { accountClient.getCurrentSupply(denom, height).amount.toBigDecimal() }
 
     // total supply = max - burned -> comes from the nhash marker address
-    fun totalSupply(height: Int? = null) = maxSupply() - burnedSupply(height).roundWhole()
+    fun totalSupply(height: Int? = null) = maxSupply(height) - burnedSupply(height).roundWhole()
 
     // circulating supply = total supply - unvested supply held in vesting accounts
     fun circulatingSupply(height: Int? = null, atDateTime: LocalDateTime? = null): BigDecimal {
@@ -384,9 +384,9 @@ class TokenService(
 
     fun processLatestTokenData(list: List<HistoricalPrice>, today: LocalDateTime): CmcLatestDataAbbrev? {
         val prevRecord = list.firstOrNull() ?: return null
-        val price = list.last().close.toThirdDecimal()
+        val price = list.last().close
         val percentChg = prevRecord.priceChangePercentage24h?.takeIf { list.size == 1 }
-            ?: price.percentChange(prevRecord.close.toThirdDecimal())
+            ?: price.percentChange(prevRecord.close)
         val vol24Hr = list.sumOf { it.volume.toThirdDecimal() }.stripTrailingZeros()
         val marketCap = price.multiply(totalSupply().divide(UTILITY_TOKEN_BASE_MULTIPLIER)).toThirdDecimal()
 

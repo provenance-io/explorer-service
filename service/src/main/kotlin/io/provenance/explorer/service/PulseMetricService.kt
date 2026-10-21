@@ -10,6 +10,7 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.url
 import io.provenance.explorer.VANILLA_MAPPER
+import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN_BASE_MULTIPLIER
 import io.provenance.explorer.config.ResourceNotFoundException
@@ -28,6 +29,7 @@ import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.ScopeNavSnapshotRecord
 import io.provenance.explorer.domain.entities.SpecNavAggregate
 import io.provenance.explorer.domain.entities.TxCacheRecord
+import io.provenance.explorer.domain.extensions.isAddressAsType
 import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.roundWhole
 import io.provenance.explorer.domain.extensions.startOfDay
@@ -70,6 +72,7 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.pow
 /**
@@ -141,6 +144,19 @@ class PulseMetricService(
             expireAfterWrite(5, TimeUnit.MINUTES)
             maximumSize(1)
         }.build()
+
+    /**
+     * Live exchange-traded /asset/summary/list payload. Rebuilt at most every
+     * 15 minutes on pulse refresh and on miss.
+     */
+    private val exchangeAssetSummariesCache: Cache<String, List<PulseAssetSummary>> =
+        Caffeine.newBuilder().apply {
+            expireAfterWrite(15, TimeUnit.MINUTES)
+            maximumSize(1)
+        }.build()
+
+    private val lastExchangeSummariesRefreshMs = AtomicLong(0L)
+    private val exchangeSummariesRefreshIntervalMs = TimeUnit.MINUTES.toMillis(15)
 
     /* so it turns out that the `usd` in metadata nav events
        use 3 decimal places - :|
@@ -1216,21 +1232,23 @@ class PulseMetricService(
 
     private fun hashFullyDilutedValue(atDateTime: LocalDateTime?): BigDecimal {
         val height = atDateTime?.let { BlockCacheRecord.getLastBlockBeforeTime(it) }
-        val tokenSupply = tokenService.maxSupply(height)
+        val tokenSupply = tokenService.totalSupply(height)
             .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
             .roundWhole()
         return hashPriceAtDate(atDateTime).times(tokenSupply)
     }
 
     private fun uusdExcludedBalances(height: Int?): BigDecimal = runBlocking {
-        digitalAssetsUusdExcludedAddresses.sumOf { address ->
-            val coin = if (height != null) {
-                accountGrpcClient.getAccountBalanceForDenomAtHeight(address, usdTradingDenom, height)
-            } else {
-                accountGrpcClient.getAccountBalanceForDenom(address, usdTradingDenom)
+        digitalAssetsUusdExcludedAddresses
+            .filter { it.isAddressAsType(PROV_ACC_PREFIX) }
+            .sumOf { address ->
+                val coin = if (height != null) {
+                    accountGrpcClient.getAccountBalanceForDenomAtHeight(address, usdTradingDenom, height)
+                } else {
+                    accountGrpcClient.getAccountBalanceForDenom(address, usdTradingDenom)
+                }
+                coin.amount.toBigDecimal()
             }
-            coin.amount.toBigDecimal()
-        }
     }
 
     private fun Map<String, BigDecimal>.committedAssetsToValue() = this.let { committedAssets ->
@@ -1999,6 +2017,7 @@ class PulseMetricService(
             return
         }
         val skipType = backfillingType.get()
+        val walkRunning = scopeNavSnapshotService.isWalkRunning()
         val threadName = Thread.currentThread().name
         val started = System.currentTimeMillis()
         try {
@@ -2022,13 +2041,14 @@ class PulseMetricService(
                     )
                 }
 
-            if (skipType == PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC ||
-                skipType == PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
-            ) {
-                logger.info("Skipping pulse asset summaries because ${skipType.name} backfill is in progress")
+            val skipPriceVolumeSummaries =
+                skipType == PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC ||
+                    skipType == PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC
+            if (skipPriceVolumeSummaries) {
+                logger.info("Skipping pulse asset summaries because ${skipType?.name} backfill is in progress")
             } else {
                 val summariesStarted = System.currentTimeMillis()
-                pulseAssetSummaries()
+                refreshExchangeAssetSummariesIfDue(walkRunning)
                 digitalAssetSummariesCache.invalidateAll()
                 pulseDigitalAssetSummaries()
                 logger.info(
@@ -2044,6 +2064,29 @@ class PulseMetricService(
         } finally {
             isRefreshInProgress.set(false)
         }
+    }
+
+    /**
+     * Exchange-traded list plus per-denom price/volume cache. Not on the 5
+     * minute Pulse tile path; run at most every 15 minutes and skip while a
+     * scope NAV walk holds heap.
+     */
+    private fun refreshExchangeAssetSummariesIfDue(walkRunning: Boolean) {
+        if (walkRunning) {
+            logger.info("Skipping pulseAssetSummaries because a scope NAV walk is running")
+            return
+        }
+        val now = System.currentTimeMillis()
+        val elapsedMs = now - lastExchangeSummariesRefreshMs.get()
+        if (elapsedMs < exchangeSummariesRefreshIntervalMs) {
+            logger.info(
+                "Skipping pulseAssetSummaries, last run ${elapsedMs}ms ago"
+            )
+            return
+        }
+        exchangeAssetSummariesCache.invalidateAll()
+        pulseAssetSummaries()
+        lastExchangeSummariesRefreshMs.set(now)
     }
 
     /**
@@ -2197,7 +2240,7 @@ class PulseMetricService(
                 }
 
                 PulseCacheType.HASH_SUPPLY_METRIC -> {
-                    val tokenSupply = tokenService.maxSupply()
+                    val tokenSupply = tokenService.totalSupply(height)
                         .divide(UTILITY_TOKEN_BASE_MULTIPLIER)
                         .roundWhole()
                     PulseMetric.build(
@@ -2229,8 +2272,9 @@ class PulseMetricService(
 
                 PulseCacheType.HASH_FDV_METRIC -> {
                     /*
-                    The market cap if the max supply was in circulation.
-                    Fully-diluted value (FDV) = price x max supply.
+                    The market cap if the remaining (non-burned) supply was in circulation.
+                    Fully-diluted value (FDV) = price x total supply.
+                    Total supply = on-chain bank supply - burned HASH on the nhash marker.
                      */
                     PulseMetric.build(
                         base = USD_UPPER,
@@ -2572,6 +2616,15 @@ class PulseMetricService(
      * TODO - this is problematic because it assumes all assets are USD quoted
      */
     fun pulseAssetSummaries(atDateTime: LocalDateTime? = null): List<PulseAssetSummary> {
+        if (atDateTime != null) {
+            return buildExchangeAssetSummaries(atDateTime)
+        }
+        return exchangeAssetSummariesCache.get("live") {
+            buildExchangeAssetSummaries(null)
+        } ?: emptyList()
+    }
+
+    private fun buildExchangeAssetSummaries(atDateTime: LocalDateTime?): List<PulseAssetSummary> {
         val ignoredDenoms = getIgnoredMarkers().values
         val committedTotals = committedAssetTotals(atDateTime)
         return committedTotals.keys.distinct()
