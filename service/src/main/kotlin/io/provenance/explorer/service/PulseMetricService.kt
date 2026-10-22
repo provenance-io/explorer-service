@@ -97,6 +97,7 @@ class PulseMetricService(
         private val isBackfillInProgress = AtomicBoolean(false)
         private val isRefreshInProgress = AtomicBoolean(false)
         private val backfillingType = AtomicReference<PulseCacheType?>(null)
+        private val pinnedLiveHashPrice = ThreadLocal<BigDecimal>()
     }
 
     protected val logger = logger(PulseMetricService::class)
@@ -481,14 +482,14 @@ class PulseMetricService(
             var height: Int? = null
             if (atDateTime != null) {
                 height = BlockCacheRecord.getLastBlockBeforeTime(atDateTime)
-                tokenService.getTokenHistorical(
-                    fromDate = atDateTime,
-                    toDate = atDateTime
-                ).firstOrNull { it.quote[quote] != null }?.quote?.get(quote)?.close
+            }
+            val price = hashPriceAtDate(atDateTime)
+            if (price.signum() == 0) {
+                PulseMetric.build(
+                    base = USD_UPPER,
+                    amount = BigDecimal.ZERO,
+                )
             } else {
-                tokenService.getTokenLatest()
-                    ?.takeIf { it.quote[quote] != null }?.quote?.get(quote)?.price
-            }?.let { price ->
                 val supply = when (type) {
                     PulseCacheType.HASH_FOUNDATION_MARKET_CAP_METRIC -> tokenService.totalBalanceForList(
                         pulseProperties.hashHoldersExcludedFromCirculatingSupply.toSet(), height
@@ -496,16 +497,11 @@ class PulseMetricService(
 
                     else -> tokenService.circulatingSupply(height, atDateTime)
                 }.divide(UTILITY_TOKEN_BASE_MULTIPLIER)
-                val marketCap = price.times(supply)
-
                 PulseMetric.build(
                     base = USD_UPPER,
-                    amount = marketCap
+                    amount = price.times(supply)
                 )
-            } ?: PulseMetric.build(
-                base = USD_UPPER,
-                amount = BigDecimal.ZERO,
-            )
+            }
         }
 
     private fun hashTVL(
@@ -2021,16 +2017,30 @@ class PulseMetricService(
             }
         }
 
-    private fun hashPriceAtDate(atDateTime: LocalDateTime?) =
+    /**
+     * Live Pulse refresh pins one CoinGecko price so HASH price, FDV, market
+     * cap, and other USD HASH metrics in the same cycle use the same quote.
+     * Historical dates always read that day's close.
+     */
+    private fun pinLiveHashPrice() {
+        val price = tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price
+        if (price != null) {
+            pinnedLiveHashPrice.set(price)
+            logger.info("Pinned live HASH price=$price for pulse cache refresh")
+        }
+    }
+
+    private fun hashPriceAtDate(atDateTime: LocalDateTime?): BigDecimal {
         if (atDateTime != null) {
-            tokenService.getTokenHistorical(atDateTime, atDateTime)
+            return tokenService.getTokenHistorical(atDateTime, atDateTime)
                 .firstOrNull { it.quote[USD_UPPER] != null }
-                ?.let {
-                    it.quote[USD_UPPER]?.close
-                }
-        } else {
-            tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price
-        } ?: BigDecimal.ZERO
+                ?.quote?.get(USD_UPPER)?.close
+                ?: BigDecimal.ZERO
+        }
+        return pinnedLiveHashPrice.get()
+            ?: tokenService.getTokenLatest()?.quote?.get(USD_UPPER)?.price
+            ?: BigDecimal.ZERO
+    }
 
     /**
      * Periodically refreshes today's pulse cache. When a historical backfill is
@@ -2046,6 +2056,7 @@ class PulseMetricService(
         val threadName = Thread.currentThread().name
         val started = System.currentTimeMillis()
         try {
+            pinLiveHashPrice()
             logger.info("Refreshing pulse cache for thread $threadName")
             PulseCacheType.entries.filter {
                 it != PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC &&
@@ -2087,6 +2098,7 @@ class PulseMetricService(
                     "elapsedMs=${System.currentTimeMillis() - started}"
             )
         } finally {
+            pinnedLiveHashPrice.remove()
             isRefreshInProgress.set(false)
         }
     }
