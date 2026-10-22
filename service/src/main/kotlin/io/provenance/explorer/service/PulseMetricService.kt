@@ -47,6 +47,7 @@ import io.provenance.explorer.domain.models.explorer.pulse.MetricRangeType
 import io.provenance.explorer.domain.models.explorer.pulse.MetricSeries
 import io.provenance.explorer.domain.models.explorer.pulse.PulseAssetSummary
 import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
+import io.provenance.explorer.domain.models.explorer.pulse.PulseFreshness
 import io.provenance.explorer.domain.models.explorer.pulse.PulseLoanLedger
 import io.provenance.explorer.domain.models.explorer.pulse.PulseMetric
 import io.provenance.explorer.domain.models.explorer.pulse.TransactionSummary
@@ -2370,6 +2371,30 @@ class PulseMetricService(
                 else -> throw ResourceNotFoundException("Invalid hash metric request for type $type")
             }
         }
+
+    /**
+     * Today's Pulse as-of times. Cache stamp is the latest 5-minute write;
+     * snapshot stamp is the live NAV walk that loan tiles read.
+     */
+    fun pulseFreshness(): PulseFreshness {
+        val today = nowUTC().toLocalDate()
+        val cacheRefreshed = PulseCacheRecord.maxUpdatedTimestamp(
+            today,
+            setOf(
+                PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC,
+                PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC,
+                PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC
+            )
+        )
+        val snapshot = PulseCacheRecord.findByDateAndType(
+            today,
+            PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC
+        )?.updatedTimestamp
+        return PulseFreshness(
+            cacheRefreshedAt = cacheRefreshed?.atOffset(ZoneOffset.UTC),
+            snapshotAsOf = snapshot?.atOffset(ZoneOffset.UTC)
+        )
+    }
 
     /**
      * Returns the pulse metric for the given type - pulse metrics are "global"
