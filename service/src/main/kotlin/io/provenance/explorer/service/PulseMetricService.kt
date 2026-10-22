@@ -9,6 +9,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.url
+import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
@@ -34,6 +35,7 @@ import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.roundWhole
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toOffset
+import io.provenance.explorer.domain.models.CoinGeckoExchangeRates
 import io.provenance.explorer.domain.models.explorer.pulse.EntityLedgeredAsset
 import io.provenance.explorer.domain.models.explorer.pulse.EntityLedgeredAssetDetail
 import io.provenance.explorer.domain.models.explorer.pulse.EntityType
@@ -159,6 +161,13 @@ class PulseMetricService(
     private val lastExchangeSummariesRefreshMs = AtomicLong(0L)
     private val exchangeSummariesRefreshIntervalMs = TimeUnit.MINUTES.toMillis(15)
 
+    /** CoinGecko BTC-quoted FX; usd/eur is USD per 1 EUR. */
+    private val coinGeckoUsdPerEurCache: Cache<String, BigDecimal> =
+        Caffeine.newBuilder().apply {
+            expireAfterWrite(15, TimeUnit.MINUTES)
+            maximumSize(1)
+        }.build()
+
     /* so it turns out that the `usd` in metadata nav events
        use 3 decimal places - :|
      */
@@ -174,6 +183,7 @@ class PulseMetricService(
     private val ledgerEntityBasePrefix = "entity/"
     private val figure_heloc_denom = "FIGR_HELOC"
     private val usdTradingDenom = "uusd.trading"
+    private val eurTradingDenom = "ueur.trading"
 
     /**
      * Bank-supply denoms for Total Digital Assets. HASH is added separately
@@ -211,7 +221,8 @@ class PulseMetricService(
 
     /**
      * Resolves USD price per display unit for Pulse asset metrics.
-     * Prefers exchange trade average, then $1 parity denoms, then asset_pricing engine price.
+     * Prefers exchange trade average, then $1 parity denoms, then CoinGecko
+     * EUR/USD for ueur.trading, then asset_pricing engine price.
      */
     private fun resolvePulseAssetUsdPrice(denom: String, exchangeAvgPrice: BigDecimal): BigDecimal {
         if (exchangeAvgPrice.compareTo(BigDecimal.ZERO) > 0) {
@@ -220,10 +231,42 @@ class PulseMetricService(
         if (denom in usdParityDenoms) {
             return BigDecimal.ONE
         }
+        if (denom == eurTradingDenom) {
+            coinGeckoUsdPerEur()?.let { return it }
+        }
         return pricingService.getPricingInfoSingle(denom)?.let { pricing ->
             val exp = denomExponent(denom)
             pricing.multiply(BigDecimal.TEN.pow(exp))
         } ?: BigDecimal.ZERO
+    }
+
+    private fun coinGeckoUsdPerEur(): BigDecimal? {
+        coinGeckoUsdPerEurCache.getIfPresent("live")?.let { return it }
+        val usdPerEur = fetchCoinGeckoUsdPerEur() ?: return null
+        coinGeckoUsdPerEurCache.put("live", usdPerEur)
+        return usdPerEur
+    }
+
+    /**
+     * Live CoinGecko /exchange_rates: USD per 1 EUR from BTC-quoted usd and eur.
+     */
+    private fun fetchCoinGeckoUsdPerEur(): BigDecimal? = runBlocking {
+        try {
+            val rates = KTOR_CLIENT_JAVA.get {
+                url("https://api.coingecko.com/api/v3/exchange_rates")
+            }.body<CoinGeckoExchangeRates>().rates
+            val usd = rates["usd"]?.value
+            val eur = rates["eur"]?.value
+            if (usd == null || eur == null || eur.compareTo(BigDecimal.ZERO) == 0) {
+                logger.warn("CoinGecko exchange_rates missing usd or eur")
+                null
+            } else {
+                usd.divide(eur, 8, RoundingMode.HALF_UP)
+            }
+        } catch (e: Exception) {
+            logger.error("Unable to fetch CoinGecko EUR/USD rate: ${e.message}")
+            null
+        }
     }
 
     private fun nowUTC() = LocalDateTime.now(ZoneOffset.UTC)

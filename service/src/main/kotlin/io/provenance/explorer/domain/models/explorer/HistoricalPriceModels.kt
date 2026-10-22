@@ -70,3 +70,11 @@ data class CoinGeckoTotalVolume(
     val timestamp: Long,
     val totalVolume: BigDecimal
 )
+
+data class CoinGeckoExchangeRates(
+    val rates: Map<String, CoinGeckoExchangeRate>
+)
+
+data class CoinGeckoExchangeRate(
+    val value: BigDecimal
+)
