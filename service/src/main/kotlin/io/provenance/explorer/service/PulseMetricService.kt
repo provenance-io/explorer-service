@@ -357,7 +357,9 @@ class PulseMetricService(
                 type,
                 subtype
             )?.amount ?: BigDecimal.ZERO
-            // Trim series data to only include data within the range
+            // Trim a stored series, or assemble one from daily pulse_cache
+            // amounts. Snapshot metrics never persist series; this avoids a
+            // rewalk of those types.
             val trimmedSeries =
                 it.series?.let { series ->
                     val seriesSize = series.seriesData.size
@@ -379,7 +381,7 @@ class PulseMetricService(
                     } else {
                         series
                     }
-                }
+                } ?: seriesFromCachedAmounts(type, range, subtype, atDateTime)
             PulseMetric.build(
                 previous = previous,
                 current = it.amount,
@@ -1280,6 +1282,33 @@ class PulseMetricService(
         }
 
         return total.times(inversePowerOfTen(dE))
+    }
+
+    /**
+     * Sparkline for a requested range from existing daily cache rows.
+     * Completed UTC days only; missing dates are omitted. Cheap SQL, no chain walk.
+     */
+    private fun seriesFromCachedAmounts(
+        type: PulseCacheType,
+        range: MetricRangeType,
+        subtype: String? = null,
+        atDateTime: LocalDateTime? = null
+    ): MetricSeries? {
+        val today = atDateTime?.toLocalDate() ?: nowUTC().toLocalDate()
+        val days = rangeToDays(range)
+        val endDate = today.minusDays(1)
+        val startDate = endDate.minusDays(days - 1)
+        val records = PulseCacheRecord.findByDateSpanAndType(
+            startDate,
+            endDate,
+            type,
+            subtype
+        )
+        if (records.isEmpty()) return null
+        return MetricSeries(
+            seriesData = records.map { it.data.amount },
+            labels = records.map { it.cacheDate.toString() }
+        )
     }
 
     private fun seriesFromPriorMetrics(
