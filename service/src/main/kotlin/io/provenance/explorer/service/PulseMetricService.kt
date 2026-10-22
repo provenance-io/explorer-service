@@ -1211,18 +1211,16 @@ class PulseMetricService(
         return thirdPartyBalanceSnapshot(range, atDateTime).amount
     }
 
-    private fun digitalAssetCoinBalances(atDateTime: LocalDateTime? = null): Map<String, BigDecimal> {
+    /** Bank supply for a digital-asset denom. uusd.trading drops configured exclusion addresses. */
+    private fun digitalAssetBankSupply(denom: String, atDateTime: LocalDateTime?): BigDecimal {
+        val supply = denomSupplyCache(denom, atDateTime)
+        if (denom != usdTradingDenom) return supply
         val height = atDateTime?.let { BlockCacheRecord.getLastBlockBeforeTime(it) }
-        val excludedUusd = uusdExcludedBalances(height)
-        return digitalAssetDenoms.associateWith { denom ->
-            val supply = denomSupplyCache(denom, atDateTime)
-            if (denom == usdTradingDenom) {
-                (supply - excludedUusd).max(BigDecimal.ZERO)
-            } else {
-                supply
-            }
-        }
+        return (supply - uusdExcludedBalances(height)).max(BigDecimal.ZERO)
     }
+
+    private fun digitalAssetCoinBalances(atDateTime: LocalDateTime? = null): Map<String, BigDecimal> =
+        digitalAssetDenoms.associateWith { digitalAssetBankSupply(it, atDateTime) }
 
     private fun hashFullyDilutedValue(atDateTime: LocalDateTime?): BigDecimal {
         val height = atDateTime?.let { BlockCacheRecord.getLastBlockBeforeTime(it) }
@@ -2719,6 +2717,7 @@ class PulseMetricService(
     /**
      * Digital Assets table row: metadata, bank supply, and cached USD price.
      * HASH supply is total supply (max minus burned) and market cap is FDV.
+     * uusd.trading uses the same exclusion addresses as the digital-assets tile.
      * Skips exchange NAV events and price series.
      */
     private fun buildDigitalListSummaryForDenom(
@@ -2735,7 +2734,7 @@ class PulseMetricService(
                     atDateTime?.let { BlockCacheRecord.getLastBlockBeforeTime(it) }
                 ).divide(UTILITY_TOKEN_BASE_MULTIPLIER).roundWhole()
         } else {
-            denomSupplyCache(denom, atDateTime).times(denomPow)
+            digitalAssetBankSupply(denom, atDateTime).times(denomPow)
         }
         val marketCap = if (denom == UTILITY_TOKEN) {
             fromPulseMetricCache(cacheDate, PulseCacheType.HASH_FDV_METRIC)?.amount
