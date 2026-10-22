@@ -2708,10 +2708,8 @@ class PulseMetricService(
                 thirdPartyEntityAssetSummaries(atDateTime)
             )
             .sortedWith(
-                compareBy(
-                    { it.name.isEmpty() },
-                    { it.name.lowercase() }
-                )
+                compareByDescending<PulseAssetSummary> { it.marketCap }
+                    .thenBy { it.name.lowercase() }
             )
 
     /**
