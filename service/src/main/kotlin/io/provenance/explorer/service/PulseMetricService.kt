@@ -2718,7 +2718,8 @@ class PulseMetricService(
 
     /**
      * Digital Assets table row: metadata, bank supply, and cached USD price.
-     * HASH market cap is FDV. Skips exchange NAV events and price series.
+     * HASH supply is total supply (max minus burned) and market cap is FDV.
+     * Skips exchange NAV events and price series.
      */
     private fun buildDigitalListSummaryForDenom(
         denom: String,
@@ -2727,8 +2728,15 @@ class PulseMetricService(
         val denomMetadata = pulseAssetDenomMetadata(denom)
         val denomExp = denomExponent(denomMetadata) ?: 1
         val denomPow = inversePowerOfTen(denomExp)
-        val supply = denomSupplyCache(denom, atDateTime).times(denomPow)
         val cacheDate = atDateTime?.toLocalDate() ?: nowUTC().toLocalDate()
+        val supply = if (denom == UTILITY_TOKEN) {
+            fromPulseMetricCache(cacheDate, PulseCacheType.HASH_SUPPLY_METRIC)?.amount
+                ?: tokenService.totalSupply(
+                    atDateTime?.let { BlockCacheRecord.getLastBlockBeforeTime(it) }
+                ).divide(UTILITY_TOKEN_BASE_MULTIPLIER).roundWhole()
+        } else {
+            denomSupplyCache(denom, atDateTime).times(denomPow)
+        }
         val marketCap = if (denom == UTILITY_TOKEN) {
             fromPulseMetricCache(cacheDate, PulseCacheType.HASH_FDV_METRIC)?.amount
                 ?: hashFullyDilutedValue(atDateTime)
@@ -2773,7 +2781,7 @@ class PulseMetricService(
                 base = "$ledgerEntityBasePrefix${entity.uuid}",
                 quote = USD_UPPER,
                 marketCap = scaleSnapshotNavs(entityNavs, entitySpecs),
-                supply = entityNavs.size.toBigDecimal(),
+                supply = entityNavs.sumOf { it.scopeCount }.toBigDecimal(),
                 priceTrend = null,
                 volumeTrend = null
             )
