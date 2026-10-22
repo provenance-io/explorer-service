@@ -19,6 +19,7 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.notInList
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.deleteWhere
@@ -367,6 +368,14 @@ class PulseCacheRecord(id: EntityID<Int>) : IntEntity(id) {
                             (PulseCacheTable.type eq type) and
                             (if (subtype != null) PulseCacheTable.subtype eq subtype else PulseCacheTable.subtype.isNull())
                 }.firstOrNull()
+            }
+
+        fun maxUpdatedTimestamp(date: LocalDate, excluding: Set<PulseCacheType>): LocalDateTime? =
+            transaction {
+                PulseCacheRecord.find {
+                    (PulseCacheTable.cacheDate eq date) and
+                        (PulseCacheTable.type notInList excluding.toList())
+                }.maxOfOrNull { it.updatedTimestamp }
             }
 
         fun findByDateSpanAndType(startDate: LocalDate, endDate: LocalDate, type: PulseCacheType, subtype: String? = null) =

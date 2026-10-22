@@ -3,6 +3,7 @@ package io.provenance.explorer.web.pulse
 import io.provenance.explorer.domain.models.explorer.pulse.MetricRangeType
 import io.provenance.explorer.domain.models.explorer.pulse.MetricRangeTypeConverter
 import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
+import io.provenance.explorer.domain.models.explorer.pulse.PulseFreshness
 import io.provenance.explorer.domain.models.explorer.pulse.PulseMetric
 import io.provenance.explorer.service.PulseMetricService
 import io.swagger.v3.oas.annotations.Operation
@@ -35,6 +36,11 @@ class PulseMetricController(private val pulseMetricService: PulseMetricService) 
             MetricRangeTypeConverter()
         )
     }
+
+    @Operation(summary = "Pulse cache refresh and loan/NAV snapshot as-of times")
+    @GetMapping("/freshness")
+    fun getPulseFreshness(): PulseFreshness =
+        pulseMetricService.pulseFreshness()
 
     @Operation(summary = "Global metrics based on the given type")
     @GetMapping("/type/{type}")

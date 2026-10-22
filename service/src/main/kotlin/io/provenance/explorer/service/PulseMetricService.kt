@@ -9,6 +9,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.url
+import io.provenance.explorer.KTOR_CLIENT_JAVA
 import io.provenance.explorer.VANILLA_MAPPER
 import io.provenance.explorer.config.ExplorerProperties.Companion.PROV_ACC_PREFIX
 import io.provenance.explorer.config.ExplorerProperties.Companion.UTILITY_TOKEN
@@ -34,6 +35,7 @@ import io.provenance.explorer.domain.extensions.pageCountOfResults
 import io.provenance.explorer.domain.extensions.roundWhole
 import io.provenance.explorer.domain.extensions.startOfDay
 import io.provenance.explorer.domain.extensions.toOffset
+import io.provenance.explorer.domain.models.CoinGeckoExchangeRates
 import io.provenance.explorer.domain.models.explorer.pulse.EntityLedgeredAsset
 import io.provenance.explorer.domain.models.explorer.pulse.EntityLedgeredAssetDetail
 import io.provenance.explorer.domain.models.explorer.pulse.EntityType
@@ -45,6 +47,7 @@ import io.provenance.explorer.domain.models.explorer.pulse.MetricRangeType
 import io.provenance.explorer.domain.models.explorer.pulse.MetricSeries
 import io.provenance.explorer.domain.models.explorer.pulse.PulseAssetSummary
 import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
+import io.provenance.explorer.domain.models.explorer.pulse.PulseFreshness
 import io.provenance.explorer.domain.models.explorer.pulse.PulseLoanLedger
 import io.provenance.explorer.domain.models.explorer.pulse.PulseMetric
 import io.provenance.explorer.domain.models.explorer.pulse.TransactionSummary
@@ -159,6 +162,13 @@ class PulseMetricService(
     private val lastExchangeSummariesRefreshMs = AtomicLong(0L)
     private val exchangeSummariesRefreshIntervalMs = TimeUnit.MINUTES.toMillis(15)
 
+    /** CoinGecko BTC-quoted FX; usd/eur is USD per 1 EUR. */
+    private val coinGeckoUsdPerEurCache: Cache<String, BigDecimal> =
+        Caffeine.newBuilder().apply {
+            expireAfterWrite(15, TimeUnit.MINUTES)
+            maximumSize(1)
+        }.build()
+
     /* so it turns out that the `usd` in metadata nav events
        use 3 decimal places - :|
      */
@@ -174,6 +184,7 @@ class PulseMetricService(
     private val ledgerEntityBasePrefix = "entity/"
     private val figure_heloc_denom = "FIGR_HELOC"
     private val usdTradingDenom = "uusd.trading"
+    private val eurTradingDenom = "ueur.trading"
 
     /**
      * Bank-supply denoms for Total Digital Assets. HASH is added separately
@@ -211,7 +222,8 @@ class PulseMetricService(
 
     /**
      * Resolves USD price per display unit for Pulse asset metrics.
-     * Prefers exchange trade average, then $1 parity denoms, then asset_pricing engine price.
+     * Prefers exchange trade average, then $1 parity denoms, then CoinGecko
+     * EUR/USD for ueur.trading, then asset_pricing engine price.
      */
     private fun resolvePulseAssetUsdPrice(denom: String, exchangeAvgPrice: BigDecimal): BigDecimal {
         if (exchangeAvgPrice.compareTo(BigDecimal.ZERO) > 0) {
@@ -220,10 +232,42 @@ class PulseMetricService(
         if (denom in usdParityDenoms) {
             return BigDecimal.ONE
         }
+        if (denom == eurTradingDenom) {
+            coinGeckoUsdPerEur()?.let { return it }
+        }
         return pricingService.getPricingInfoSingle(denom)?.let { pricing ->
             val exp = denomExponent(denom)
             pricing.multiply(BigDecimal.TEN.pow(exp))
         } ?: BigDecimal.ZERO
+    }
+
+    private fun coinGeckoUsdPerEur(): BigDecimal? {
+        coinGeckoUsdPerEurCache.getIfPresent("live")?.let { return it }
+        val usdPerEur = fetchCoinGeckoUsdPerEur() ?: return null
+        coinGeckoUsdPerEurCache.put("live", usdPerEur)
+        return usdPerEur
+    }
+
+    /**
+     * Live CoinGecko /exchange_rates: USD per 1 EUR from BTC-quoted usd and eur.
+     */
+    private fun fetchCoinGeckoUsdPerEur(): BigDecimal? = runBlocking {
+        try {
+            val rates = KTOR_CLIENT_JAVA.get {
+                url("https://api.coingecko.com/api/v3/exchange_rates")
+            }.body<CoinGeckoExchangeRates>().rates
+            val usd = rates["usd"]?.value
+            val eur = rates["eur"]?.value
+            if (usd == null || eur == null || eur.compareTo(BigDecimal.ZERO) == 0) {
+                logger.warn("CoinGecko exchange_rates missing usd or eur")
+                null
+            } else {
+                usd.divide(eur, 8, RoundingMode.HALF_UP)
+            }
+        } catch (e: Exception) {
+            logger.error("Unable to fetch CoinGecko EUR/USD rate: ${e.message}")
+            null
+        }
     }
 
     private fun nowUTC() = LocalDateTime.now(ZoneOffset.UTC)
@@ -1211,18 +1255,16 @@ class PulseMetricService(
         return thirdPartyBalanceSnapshot(range, atDateTime).amount
     }
 
-    private fun digitalAssetCoinBalances(atDateTime: LocalDateTime? = null): Map<String, BigDecimal> {
+    /** Bank supply for a digital-asset denom. uusd.trading drops configured exclusion addresses. */
+    private fun digitalAssetBankSupply(denom: String, atDateTime: LocalDateTime?): BigDecimal {
+        val supply = denomSupplyCache(denom, atDateTime)
+        if (denom != usdTradingDenom) return supply
         val height = atDateTime?.let { BlockCacheRecord.getLastBlockBeforeTime(it) }
-        val excludedUusd = uusdExcludedBalances(height)
-        return digitalAssetDenoms.associateWith { denom ->
-            val supply = denomSupplyCache(denom, atDateTime)
-            if (denom == usdTradingDenom) {
-                (supply - excludedUusd).max(BigDecimal.ZERO)
-            } else {
-                supply
-            }
-        }
+        return (supply - uusdExcludedBalances(height)).max(BigDecimal.ZERO)
     }
+
+    private fun digitalAssetCoinBalances(atDateTime: LocalDateTime? = null): Map<String, BigDecimal> =
+        digitalAssetDenoms.associateWith { digitalAssetBankSupply(it, atDateTime) }
 
     private fun hashFullyDilutedValue(atDateTime: LocalDateTime?): BigDecimal {
         val height = atDateTime?.let { BlockCacheRecord.getLastBlockBeforeTime(it) }
@@ -2331,6 +2373,30 @@ class PulseMetricService(
         }
 
     /**
+     * Today's Pulse as-of times. Cache stamp is the latest 5-minute write;
+     * snapshot stamp is the live NAV walk that loan tiles read.
+     */
+    fun pulseFreshness(): PulseFreshness {
+        val today = nowUTC().toLocalDate()
+        val cacheRefreshed = PulseCacheRecord.maxUpdatedTimestamp(
+            today,
+            setOf(
+                PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC,
+                PulseCacheType.PULSE_ASSET_PRICE_SUMMARY_METRIC,
+                PulseCacheType.PULSE_ASSET_VOLUME_SUMMARY_METRIC
+            )
+        )
+        val snapshot = PulseCacheRecord.findByDateAndType(
+            today,
+            PulseCacheType.PULSE_SCOPE_NAV_SNAPSHOT_METRIC
+        )?.updatedTimestamp
+        return PulseFreshness(
+            cacheRefreshedAt = cacheRefreshed?.atOffset(ZoneOffset.UTC),
+            snapshotAsOf = snapshot?.atOffset(ZoneOffset.UTC)
+        )
+    }
+
+    /**
      * Returns the pulse metric for the given type - pulse metrics are "global"
      * metrics that are not specific to Hash
      */
@@ -2710,15 +2776,14 @@ class PulseMetricService(
                 thirdPartyEntityAssetSummaries(atDateTime)
             )
             .sortedWith(
-                compareBy(
-                    { it.name.isEmpty() },
-                    { it.name.lowercase() }
-                )
+                compareByDescending<PulseAssetSummary> { it.marketCap }
+                    .thenBy { it.name.lowercase() }
             )
 
     /**
      * Digital Assets table row: metadata, bank supply, and cached USD price.
      * HASH supply is total supply (max minus burned) and market cap is FDV.
+     * uusd.trading uses the same exclusion addresses as the digital-assets tile.
      * Skips exchange NAV events and price series.
      */
     private fun buildDigitalListSummaryForDenom(
@@ -2735,7 +2800,7 @@ class PulseMetricService(
                     atDateTime?.let { BlockCacheRecord.getLastBlockBeforeTime(it) }
                 ).divide(UTILITY_TOKEN_BASE_MULTIPLIER).roundWhole()
         } else {
-            denomSupplyCache(denom, atDateTime).times(denomPow)
+            digitalAssetBankSupply(denom, atDateTime).times(denomPow)
         }
         val marketCap = if (denom == UTILITY_TOKEN) {
             fromPulseMetricCache(cacheDate, PulseCacheType.HASH_FDV_METRIC)?.amount
