@@ -149,8 +149,15 @@ class LedgerGrpcClient(channelUri: URI, private val semaphore: Semaphore) {
                 request
             )
         } catch (e: Exception) {
-            if (Status.fromThrowable(e).code == Status.Code.NOT_FOUND) null else throw e
+            if (isLedgerNotFound(e)) null else throw e
         }
+    }
+
+    private fun isLedgerNotFound(e: Exception): Boolean {
+        val status = Status.fromThrowable(e)
+        if (status.code == Status.Code.NOT_FOUND) return true
+        val detail = listOfNotNull(status.description, e.message).joinToString(" ")
+        return detail.contains("ledger not found", ignoreCase = true)
     }
 
     companion object {
