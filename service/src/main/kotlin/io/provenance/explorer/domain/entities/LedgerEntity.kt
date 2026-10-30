@@ -1,5 +1,6 @@
 package io.provenance.explorer.domain.entities
 
+import io.provenance.explorer.domain.extensions.execAndMap
 import io.provenance.explorer.domain.models.explorer.pulse.EntityType
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
@@ -81,6 +82,17 @@ class LedgerEntitySpecRecord(id: EntityID<Int>) : IntEntity(id) {
     ) {
         fun findByUuid(uuid: String) = transaction {
             LedgerEntitySpecRecord.find { LedgerEntitySpecTable.entityUuid eq uuid }.toList()
+        }
+
+        fun findSpecificationIdsByEntityType(type: EntityType): Set<String> = transaction {
+            """
+                SELECT les.specification_id
+                FROM ledger_entity_spec les
+                JOIN ledger_entity le ON le.uuid = les.entity_uuid
+                WHERE le.type = '${type.name}'
+            """.trimIndent().execAndMap {
+                it.getString("specification_id")
+            }.toSet()
         }
     }
 
