@@ -7,10 +7,12 @@ import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.javatime.date
 import org.jetbrains.exposed.sql.javatime.datetime
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.math.BigDecimal
 import java.time.Duration
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
@@ -49,7 +51,13 @@ data class ScopeNavSnapshotRow(
     val volume: Long?,
     val updatedBlockHeight: Long?,
     val snapshotAt: LocalDateTime,
-    val queryError: String?
+    val queryError: String?,
+    val nextPmtAmt: Long? = null,
+    val nextPmtDenom: String? = null,
+    val nextPmtDate: LocalDate? = null,
+    val maturityDate: LocalDate? = null,
+    val loanStatus: String? = null,
+    val interestRate: Int? = null
 )
 
 object ScopeNavSnapshotTable : IntIdTable(name = "scope_nav_snapshot") {
@@ -61,6 +69,12 @@ object ScopeNavSnapshotTable : IntIdTable(name = "scope_nav_snapshot") {
     val updatedBlockHeight = long("updated_block_height").nullable()
     val snapshotAt = datetime("snapshot_at")
     val queryError = text("query_error").nullable()
+    val nextPmtAmt = long("next_pmt_amt").nullable()
+    val nextPmtDenom = varchar("next_pmt_denom", 128).nullable()
+    val nextPmtDate = date("next_pmt_date").nullable()
+    val maturityDate = date("maturity_date").nullable()
+    val loanStatus = varchar("loan_status", 50).nullable()
+    val interestRate = integer("interest_rate").nullable()
 }
 
 class ScopeNavSnapshotRecord(id: EntityID<Int>) : IntEntity(id) {
@@ -78,7 +92,13 @@ class ScopeNavSnapshotRecord(id: EntityID<Int>) : IntEntity(id) {
                     ScopeNavSnapshotTable.volume,
                     ScopeNavSnapshotTable.updatedBlockHeight,
                     ScopeNavSnapshotTable.snapshotAt,
-                    ScopeNavSnapshotTable.queryError
+                    ScopeNavSnapshotTable.queryError,
+                    ScopeNavSnapshotTable.nextPmtAmt,
+                    ScopeNavSnapshotTable.nextPmtDenom,
+                    ScopeNavSnapshotTable.nextPmtDate,
+                    ScopeNavSnapshotTable.maturityDate,
+                    ScopeNavSnapshotTable.loanStatus,
+                    ScopeNavSnapshotTable.interestRate
                 )
             ) { batch, row ->
                 batch[scopeUuid] = row.scopeUuid
@@ -89,6 +109,12 @@ class ScopeNavSnapshotRecord(id: EntityID<Int>) : IntEntity(id) {
                 batch[updatedBlockHeight] = row.updatedBlockHeight
                 batch[snapshotAt] = row.snapshotAt
                 batch[queryError] = row.queryError
+                batch[nextPmtAmt] = row.nextPmtAmt
+                batch[nextPmtDenom] = row.nextPmtDenom
+                batch[nextPmtDate] = row.nextPmtDate
+                batch[maturityDate] = row.maturityDate
+                batch[loanStatus] = row.loanStatus
+                batch[interestRate] = row.interestRate
             }
         }
 
@@ -169,6 +195,12 @@ class ScopeNavSnapshotRecord(id: EntityID<Int>) : IntEntity(id) {
     var updatedBlockHeight by ScopeNavSnapshotTable.updatedBlockHeight
     var snapshotAt by ScopeNavSnapshotTable.snapshotAt
     var queryError by ScopeNavSnapshotTable.queryError
+    var nextPmtAmt by ScopeNavSnapshotTable.nextPmtAmt
+    var nextPmtDenom by ScopeNavSnapshotTable.nextPmtDenom
+    var nextPmtDate by ScopeNavSnapshotTable.nextPmtDate
+    var maturityDate by ScopeNavSnapshotTable.maturityDate
+    var loanStatus by ScopeNavSnapshotTable.loanStatus
+    var interestRate by ScopeNavSnapshotTable.interestRate
 }
 
 data class ScopeSpecNavAmount(

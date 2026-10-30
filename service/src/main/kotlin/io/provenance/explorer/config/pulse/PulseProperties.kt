@@ -14,6 +14,10 @@ class PulseProperties(
     supply.
      */
     val hashHoldersExcludedFromCirculatingSupply: Set<String>,
+    /*
+    uusd.trading balances excluded from Total Digital Assets (tile and list).
+     */
+    val digitalAssetsUusdExcludedAddresses: Set<String>,
     // denoms to include as private equity in TVL calc
     val privateEquityTvlDenoms: List<String>,
     val hftExchangeApi: String,

@@ -2,6 +2,7 @@ package io.provenance.explorer.service
 
 import io.provenance.explorer.domain.core.logger
 import io.provenance.explorer.domain.entities.ActiveNftScope
+import io.provenance.explorer.domain.entities.LedgerEntitySpecRecord
 import io.provenance.explorer.domain.entities.NftScopeRecord
 import io.provenance.explorer.domain.entities.PulseCacheRecord
 import io.provenance.explorer.domain.entities.ScopeNavSnapshotRecord
@@ -10,11 +11,17 @@ import io.provenance.explorer.domain.entities.SpecNavAggregate
 import io.provenance.explorer.domain.entities.snapshotWalkDue
 import io.provenance.explorer.domain.entities.snapshotWalkDueReason
 import io.provenance.explorer.domain.extensions.ChainScopeNav
+import io.provenance.explorer.domain.extensions.ledgerDaysSinceEpochToDate
 import io.provenance.explorer.domain.extensions.pickPreferredScopeNav
+import io.provenance.explorer.domain.extensions.specificationIdToScopeSpecAddr
+import io.provenance.explorer.domain.models.explorer.pulse.EntityType
 import io.provenance.explorer.domain.models.explorer.pulse.PulseCacheType
+import io.provenance.explorer.grpc.v1.ChainLedger
+import io.provenance.explorer.grpc.v1.LedgerGrpcClient
 import io.provenance.explorer.grpc.v1.MetadataGrpcClient
 import io.provenance.explorer.model.base.USD_LOWER
 import io.provenance.metadata.v1.NetAssetValue
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -22,6 +29,7 @@ import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.time.Duration
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneOffset
@@ -33,7 +41,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 @Service
 class ScopeNavSnapshotService(
-    private val metadataGrpcClient: MetadataGrpcClient
+    private val metadataGrpcClient: MetadataGrpcClient,
+    private val ledgerGrpcClient: LedgerGrpcClient
 ) {
     protected val logger = logger(ScopeNavSnapshotService::class)
     private val running = AtomicBoolean(false)
@@ -79,7 +88,10 @@ class ScopeNavSnapshotService(
         try {
             val started = System.currentTimeMillis()
             val snapshotAt = LocalDateTime.now(ZoneOffset.UTC)
-            logger.info("Starting on-chain scope NAV snapshot")
+            val loanSpecIds = LedgerEntitySpecRecord.findSpecificationIdsByEntityType(EntityType.LOANS)
+            logger.info(
+                "Starting on-chain scope NAV snapshot loanSpecs=${loanSpecIds.size}"
+            )
 
             var afterAddress = ""
             var processed = 0
@@ -93,7 +105,12 @@ class ScopeNavSnapshotService(
                     afterAddress = page.last().address
 
                     val batchStarted = System.currentTimeMillis()
-                    val rows = snapshotPage(page, snapshotAt, height = null)
+                    val rows = snapshotPage(
+                        page,
+                        snapshotAt,
+                        height = null,
+                        loanSpecIds = loanSpecIds
+                    )
                     errors += rows.count { it.queryError != null }
                     empty += rows.count {
                         it.queryError == null && (it.priceAmount == null || it.priceAmount == 0L)
@@ -103,6 +120,7 @@ class ScopeNavSnapshotService(
                     processed += page.size
                     logger.info(
                         "Scope NAV snapshot batch: size=${page.size} errors=${rows.count { it.queryError != null }} " +
+                            "loanHeaders=${rows.count { it.loanStatus != null }} " +
                             "elapsedMs=${System.currentTimeMillis() - batchStarted} " +
                             "processed=$processed totalElapsedMs=${System.currentTimeMillis() - started}"
                     )
@@ -244,19 +262,55 @@ class ScopeNavSnapshotService(
     private suspend fun snapshotPage(
         page: List<ActiveNftScope>,
         snapshotAt: LocalDateTime,
-        height: Int?
+        height: Int?,
+        loanSpecIds: Set<String> = emptySet()
     ): List<ScopeNavSnapshotRow> = coroutineScope {
         page.map { scope ->
-            async { snapshotOne(scope, snapshotAt, height) }
+            async {
+                try {
+                    snapshotOne(scope, snapshotAt, height, loanSpecIds)
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    logger.warn("Scope snapshot failed for ${scope.address}: ${e.message}")
+                    ScopeNavSnapshotRow(
+                        scopeUuid = scope.uuid,
+                        scopeAddress = scope.address,
+                        priceAmount = null,
+                        priceDenom = null,
+                        volume = null,
+                        updatedBlockHeight = null,
+                        snapshotAt = snapshotAt,
+                        queryError = e.message?.take(1000)
+                    )
+                }
+            }
         }.awaitAll()
     }
 
     private suspend fun snapshotOne(
         scope: ActiveNftScope,
         snapshotAt: LocalDateTime,
-        height: Int?
+        height: Int?,
+        loanSpecIds: Set<String>
     ): ScopeNavSnapshotRow {
-        return try {
+        val nav = queryScopeNav(scope, snapshotAt, height)
+        val loanHeader = queryLoanLedgerHeader(scope, height, loanSpecIds)
+        return nav.copy(
+            nextPmtAmt = loanHeader.nextPmtAmt,
+            nextPmtDenom = loanHeader.nextPmtDenom,
+            nextPmtDate = loanHeader.nextPmtDate,
+            maturityDate = loanHeader.maturityDate,
+            loanStatus = loanHeader.loanStatus,
+            interestRate = loanHeader.interestRate
+        )
+    }
+
+    private suspend fun queryScopeNav(
+        scope: ActiveNftScope,
+        snapshotAt: LocalDateTime,
+        height: Int?
+    ): ScopeNavSnapshotRow =
+        try {
             val navs = metadataGrpcClient.getScopeNetAssetValues(scope.address, height)
                 .netAssetValuesList
                 .mapNotNull { it.toChainScopeNav() }
@@ -272,6 +326,7 @@ class ScopeNavSnapshotService(
                 queryError = null
             )
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             logger.warn("Failed to query scope NAV for ${scope.address}: ${e.message}")
             ScopeNavSnapshotRow(
                 scopeUuid = scope.uuid,
@@ -284,7 +339,64 @@ class ScopeNavSnapshotService(
                 queryError = e.message?.take(1000)
             )
         }
+
+    /**
+     * Best-effort loan header. Failures leave ledger columns null and
+     * never fail the NAV upsert for this scope.
+     */
+    private suspend fun queryLoanLedgerHeader(
+        scope: ActiveNftScope,
+        height: Int?,
+        loanSpecIds: Set<String>
+    ): LoanLedgerHeader {
+        if (height != null || scope.specificationId !in loanSpecIds) {
+            return LoanLedgerHeader()
+        }
+        return try {
+            loanLedgerHeader(scope)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            logger.warn("Failed to query loan ledger for ${scope.address}: ${e.message}")
+            LoanLedgerHeader()
+        }
     }
+
+    private suspend fun loanLedgerHeader(scope: ActiveNftScope): LoanLedgerHeader {
+        val specAddr = specificationIdToScopeSpecAddr(scope.specificationId.orEmpty())
+            ?: return LoanLedgerHeader()
+        val ledger = ledgerGrpcClient.getLedger(specAddr, scope.address)
+            ?: return LoanLedgerHeader()
+        return headerFromLedger(ledger)
+    }
+
+    private suspend fun headerFromLedger(ledger: ChainLedger): LoanLedgerHeader {
+        val nextPmtAmt = ledger.nextPmtAmt.toLongOrNull()
+        val nextPmtDate = ledgerDaysSinceEpochToDate(ledger.nextPmtDate)
+        val nextPmtDenom = if (nextPmtAmt != null && nextPmtAmt > 0) {
+            ignoreLedgerLookupFailure { ledgerGrpcClient.classDenom(ledger.ledgerClassId) }
+        } else {
+            null
+        }
+        val loanStatus = ignoreLedgerLookupFailure {
+            ledgerGrpcClient.statusCode(ledger.ledgerClassId, ledger.statusTypeId)
+        }
+        return LoanLedgerHeader(
+            nextPmtAmt = if (nextPmtAmt != null && nextPmtAmt > 0) nextPmtAmt else null,
+            nextPmtDenom = nextPmtDenom,
+            nextPmtDate = nextPmtDate,
+            maturityDate = ledgerDaysSinceEpochToDate(ledger.maturityDate),
+            loanStatus = loanStatus,
+            interestRate = ledger.interestRate.takeIf { it > 0 }
+        )
+    }
+
+    private suspend fun <T> ignoreLedgerLookupFailure(block: suspend () -> T): T? =
+        try {
+            block()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            null
+        }
 
     companion object {
         private const val PAGE_SIZE = 200
@@ -292,6 +404,15 @@ class ScopeNavSnapshotService(
         val END_OF_DAY_FROM: LocalTime = LocalTime.of(22, 0)
     }
 }
+
+private data class LoanLedgerHeader(
+    val nextPmtAmt: Long? = null,
+    val nextPmtDenom: String? = null,
+    val nextPmtDate: LocalDate? = null,
+    val maturityDate: LocalDate? = null,
+    val loanStatus: String? = null,
+    val interestRate: Int? = null
+)
 
 private fun NetAssetValue.toChainScopeNav(): ChainScopeNav? {
     if (!hasPrice()) return null
