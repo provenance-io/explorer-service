@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.caffeine)
     implementation(libs.flyway)
     implementation(libs.grpc.netty)
+    implementation(libs.grpc.protobuf)
     implementation(libs.json)
     implementation(libs.kase.change)
     implementation(libs.kotlin.reflect)

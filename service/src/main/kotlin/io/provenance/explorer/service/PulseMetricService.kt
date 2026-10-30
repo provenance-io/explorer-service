@@ -205,13 +205,6 @@ class PulseMetricService(
         "nuni.figure.se",
     )
 
-    /** uusd.trading balances excluded from digital-assets value. */
-    private val digitalAssetsUusdExcludedAddresses = setOf(
-        "pb100ay24eh6t8mm87j9jkt7hg0daxyzzunjpwejcejcchqmcsq3haqfjzfnl",
-        "pb15ld4dmjhd6dt8853eu8rumlfvs7h57e3xs0d63566m5qe44curjqjcu6hq",
-        "pb1tp4559l0gy6d5cv004gw6a3h3fqd6kcvzqhm6nzfey7p6hxn8qkqd70va9",
-    )
-
     /** Denoms priced at $1 USD per display unit when exchange trade price is unavailable. */
     private val usdParityDenoms = setOf(
         "uusd.trading",
@@ -1275,7 +1268,7 @@ class PulseMetricService(
     }
 
     private fun uusdExcludedBalances(height: Int?): BigDecimal = runBlocking {
-        digitalAssetsUusdExcludedAddresses
+        pulseProperties.digitalAssetsUusdExcludedAddresses
             .filter { it.isAddressAsType(PROV_ACC_PREFIX) }
             .sumOf { address ->
                 val coin = if (height != null) {
